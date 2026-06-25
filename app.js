@@ -33,6 +33,17 @@ const productos = [
 
 const dias = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
 
+const clientesIniciales = [
+  "Fratello",
+  "Pedernera y Colombia",
+  "Giuliano",
+  "Laura",
+  "Cliente 4",
+  "Cliente 5",
+  "Cliente 6",
+  "Cliente 7",
+];
+
 const diccionario = [
   ["rasquetas grasas", "RASQ_G"], ["rasqueta grasa", "RASQ_G"],
   ["rasquetas manteca", "RASQ_M"], ["rasqueta manteca", "RASQ_M"],
@@ -77,6 +88,7 @@ function crearPredeterminadasIniciales() {
 let produccion = JSON.parse(localStorage.getItem("fratello_produccion") || "{}");
 let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
 let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas") || "null") || crearPredeterminadasIniciales();
+let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") || clientesIniciales;
 let modoEdicionPredeterminada = false;
 
 const $ = (id) => document.getElementById(id);
@@ -269,6 +281,79 @@ function procesarTextoPedido(texto, cliente, fecha) {
   });
 }
 
+
+function guardarClientes() {
+  localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
+}
+
+function renderClientes(clienteSeleccionado = null) {
+  const select = $("cliente");
+  const actual = clienteSeleccionado || select.value || clientes[0] || "";
+
+  select.innerHTML = "";
+
+  clientes.forEach(nombre => {
+    const option = document.createElement("option");
+    option.value = nombre;
+    option.textContent = nombre;
+    select.appendChild(option);
+  });
+
+  if (clientes.includes(actual)) {
+    select.value = actual;
+  }
+}
+
+function limpiarPedidoCrudo() {
+  $("pedidoCrudo").value = "";
+}
+
+function agregarCliente() {
+  const nombre = prompt("Nombre del nuevo cliente:");
+  if (!nombre) return;
+
+  const limpio = nombre.trim();
+  if (!limpio) return;
+
+  const existe = clientes.some(c => normalizar(c) === normalizar(limpio));
+  if (existe) {
+    alert("Ese cliente ya existe.");
+    return;
+  }
+
+  clientes.push(limpio);
+  guardarClientes();
+  renderClientes(limpio);
+  limpiarPedidoCrudo();
+  alert("Cliente agregado.");
+}
+
+function modificarCliente() {
+  const actual = $("cliente").value;
+  if (!actual) {
+    alert("No hay cliente seleccionado.");
+    return;
+  }
+
+  const nuevo = prompt("Modificar nombre del cliente:", actual);
+  if (!nuevo) return;
+
+  const limpio = nuevo.trim();
+  if (!limpio) return;
+
+  const existe = clientes.some(c => normalizar(c) === normalizar(limpio) && c !== actual);
+  if (existe) {
+    alert("Ya existe otro cliente con ese nombre.");
+    return;
+  }
+
+  clientes = clientes.map(c => c === actual ? limpio : c);
+  guardarClientes();
+  renderClientes(limpio);
+  limpiarPedidoCrudo();
+  alert("Cliente modificado.");
+}
+
 function procesarPedidoActual() {
   const fecha = $("fechaPedido").value || hoyISO();
   const cliente = $("cliente").value;
@@ -288,15 +373,16 @@ function procesarPedidoActual() {
 }
 
 function renderUltimoProcesado(items) {
+  items = pedidos.flatMap(p=>p.items.map(i=>({...i,cliente:p.cliente})));
   if (!items || !items.length) {
     $("ultimoProcesado").innerHTML = "<p>No se detectaron productos.</p>";
     return;
   }
 
-  let html = "<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Unidad</th><th>Estado</th><th>Texto leído</th></tr></thead><tbody>";
+  let html = "<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Unidad</th><th>Cliente</th><th>Estado</th><th>Texto leído</th></tr></thead><tbody>";
 
   for (const it of items) {
-    html += `<tr><td>${it.producto}</td><td>${fmt(it.cantidad)}</td><td>${it.unidad}</td><td>${it.estado}</td><td>${it.original}</td></tr>`;
+    html += `<tr><td>${it.producto}</td><td>${fmt(it.cantidad)}</td><td>${it.unidad}</td><td>${it.cliente}</td><td>${it.estado}</td><td>${it.original}</td></tr>`;
   }
 
   $("ultimoProcesado").innerHTML = html + "</tbody></table>";
@@ -387,6 +473,21 @@ function copiarResumen() {
     .catch(() => alert("No se pudo copiar automáticamente. Copiá el texto manualmente."));
 }
 
+
+function generarVistaPedidos(){
+ let html="<h2>FRATELLO - PEDIDOS</h2>";
+ pedidos.forEach(p=>{
+   html+=`<h3>${p.cliente}</h3><table><tr><th>Producto</th><th>Cant.</th></tr>`;
+   p.items.filter(i=>i.estado!=="NO PEDIDO").forEach(i=>{
+      html+=`<tr><td>${i.producto}</td><td>${fmt(i.cantidad)} ${i.unidad}</td></tr>`;
+   });
+   html+="</table>";
+ });
+ const w=window.open("","_blank");
+ w.document.write(`<html><head><title>Pedidos</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px}h3{background:#eee;padding:6px}</style></head><body>${html}</body></html>`);
+ w.document.close();
+}
+
 function resetDatos() {
   if (!confirm("¿Seguro que querés borrar producción y pedidos cargados?")) return;
 
@@ -405,6 +506,11 @@ function resetDatos() {
 
 function init() {
   $("fechaPedido").value = hoyISO();
+  renderClientes();
+
+  $("cliente").onchange = limpiarPedidoCrudo;
+  $("btnAgregarCliente").onclick = agregarCliente;
+  $("btnModificarCliente").onclick = modificarCliente;
 
   $("diaProduccion").onchange = () => {
     renderProduccion();
@@ -421,6 +527,7 @@ function init() {
   $("btnCalcular").onclick = calcularDiferencias;
   $("btnExportar").onclick = copiarResumen;
   $("btnReset").onclick = resetDatos;
+  $("btnVistaPedidos").onclick = generarVistaPedidos;
 
   renderProduccion();
   renderPedidosCargados();

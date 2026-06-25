@@ -181,3 +181,29 @@ pre {
     width: 100%;
   }
 }
+
+
+.clienteBox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clienteActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.clienteActions button {
+  flex: 1;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .clienteActions {
+    flex-direction: column;
+  }
+}
+
+#btnVistaPedidos{margin-bottom:10px;}

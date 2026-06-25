@@ -59,16 +59,13 @@
       <input id="fechaPedido" type="date" />
 
       <label>Cliente</label>
-      <select id="cliente">
-        <option>Fratello</option>
-        <option>Pedernera y Colombia</option>
-        <option>Giuliano</option>
-        <option>Laura</option>
-        <option>Cliente 4</option>
-        <option>Cliente 5</option>
-        <option>Cliente 6</option>
-        <option>Cliente 7</option>
-      </select>
+      <div class="clienteBox">
+        <select id="cliente"></select>
+        <div class="clienteActions">
+          <button id="btnAgregarCliente" type="button">➕ Agregar cliente</button>
+          <button id="btnModificarCliente" type="button">✏️ Modificar cliente</button>
+        </div>
+      </div>
 
       <label>Pedido crudo</label>
       <textarea id="pedidoCrudo" placeholder="Pegá acá el pedido completo de WhatsApp..."></textarea>
@@ -88,8 +85,9 @@
         <button id="btnReset">Borrar datos cargados</button>
       </div>
 
-      <h3>Pedido procesado del último cliente</h3>
+      <h3>Todos los pedidos cargados</h3>
       <div id="ultimoProcesado"></div>
+      <button id="btnVistaPedidos">🖼 Generar vista para imprimir / WhatsApp</button>
 
       <h3>Comparador producción vs pedidos</h3>
       <div id="comparador"></div>
@@ -98,6 +96,9 @@
       <pre id="resumenPanadero"></pre>
     </section>
   </main>
+<div id="vistaPedidosModal" class="hidden">
+<div id="vistaPedidosContenido"></div>
+</div>
 
   <script src="app.js"></script>
 </body>
