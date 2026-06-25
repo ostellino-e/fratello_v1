@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fratello - Pedidos y Producción</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Fratello</h1>
+    <p>Pedidos WhatsApp → Producción → Faltantes</p>
+  </header>
+
+  <main class="layout">
+    <section class="card">
+      <h2>1. Producción estibada/realizada</h2>
+      <p class="hint">
+        Elegí el día y el sistema carga la producción base. Solo cambiás algo si ese día fue distinto.
+      </p>
+
+      <label>Día de producción</label>
+      <select id="diaProduccion">
+        <option value="lunes">Lunes</option>
+        <option value="martes">Martes</option>
+        <option value="miercoles">Miércoles</option>
+        <option value="jueves">Jueves</option>
+        <option value="viernes">Viernes</option>
+        <option value="sabado">Sábado</option>
+        <option value="domingo">Domingo</option>
+      </select>
+
+      <div class="statusBox">
+        <strong>Producción base:</strong>
+        <span id="estadoBase">cargada automáticamente</span>
+      </div>
+
+      <div class="toolbar">
+        <button id="btnGuardarProduccion" class="primary">Guardar producción realizada</button>
+        <button id="btnEditarPredeterminada">Cambiar producción base</button>
+        <button id="btnGuardarPredeterminada" class="primary hidden">Guardar nueva base</button>
+        <button id="btnCancelarPredeterminada" class="hidden">Cancelar</button>
+      </div>
+
+      <div id="modoProduccion" class="modo">Modo actual: producción realizada</div>
+
+      <div id="produccionLista" class="table-like"></div>
+
+      <details class="specialBox">
+        <summary>➕ Agregar producción especial / por encargo</summary>
+        <p class="hint">Usá esto para productos que no aparecen siempre: pan hamburguesa, pan de chips, pan de pancho, etc.</p>
+        <div id="produccionExtra"></div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>2. Pegar pedido de WhatsApp</h2>
+      <label>Fecha de entrega</label>
+      <input id="fechaPedido" type="date" />
+
+      <label>Cliente</label>
+      <select id="cliente">
+        <option>Fratello</option>
+        <option>Pedernera y Colombia</option>
+        <option>Giuliano</option>
+        <option>Laura</option>
+        <option>Cliente 4</option>
+        <option>Cliente 5</option>
+        <option>Cliente 6</option>
+        <option>Cliente 7</option>
+      </select>
+
+      <label>Pedido crudo</label>
+      <textarea id="pedidoCrudo" placeholder="Pegá acá el pedido completo de WhatsApp..."></textarea>
+
+      <button id="btnProcesar" class="primary">Procesar pedido</button>
+      <button id="btnLimpiarPedido">Limpiar cuadro</button>
+
+      <h3>Pedidos cargados</h3>
+      <div id="pedidosCargados"></div>
+    </section>
+
+    <section class="card wide">
+      <h2>3. Resultado final</h2>
+      <div class="toolbar">
+        <button id="btnCalcular" class="primary">Calcular diferencias</button>
+        <button id="btnExportar">Copiar resumen para WhatsApp</button>
+        <button id="btnReset">Borrar datos cargados</button>
+      </div>
+
+      <h3>Pedido procesado del último cliente</h3>
+      <div id="ultimoProcesado"></div>
+
+      <h3>Comparador producción vs pedidos</h3>
+      <div id="comparador"></div>
+
+      <h3>Resumen para panadero</h3>
+      <pre id="resumenPanadero"></pre>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

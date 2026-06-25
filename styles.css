@@ -1,0 +1,183 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f1ea;
+  color: #2b2118;
+}
+
+header {
+  background: #2b2118;
+  color: white;
+  padding: 18px 24px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+header p {
+  margin: 4px 0 0;
+  opacity: .85;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  padding: 18px;
+}
+
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+
+.card.wide {
+  grid-column: 1 / -1;
+}
+
+h2 {
+  margin-top: 0;
+}
+
+.hint {
+  background: #fff6d6;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+label {
+  display: block;
+  margin-top: 12px;
+  font-weight: bold;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d4c7b8;
+  border-radius: 8px;
+  margin-top: 5px;
+  font-size: 17px;
+}
+
+textarea {
+  min-height: 240px;
+  resize: vertical;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 15px;
+  margin: 8px 6px 8px 0;
+  cursor: pointer;
+  background: #e6ded2;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+button.primary {
+  background: #c47a2c;
+  color: white;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th, td {
+  border-bottom: 1px solid #e7ded3;
+  padding: 9px;
+  text-align: left;
+}
+
+th {
+  background: #f0e4d7;
+}
+
+td input, td select {
+  margin: 0;
+  padding: 8px;
+}
+
+.estado-falta {
+  color: #b00020;
+  font-weight: bold;
+}
+
+.estado-sobra {
+  color: #1f7a35;
+  font-weight: bold;
+}
+
+.estado-justo {
+  color: #555;
+  font-weight: bold;
+}
+
+.modo {
+  background: #eee;
+  padding: 10px;
+  border-radius: 10px;
+  margin: 8px 0;
+  font-weight: bold;
+}
+
+.statusBox {
+  background: #eaf7eb;
+  padding: 12px;
+  border-radius: 10px;
+  margin: 12px 0;
+}
+
+.specialBox {
+  margin-top: 18px;
+  background: #faf6ef;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.specialBox summary {
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.hidden {
+  display: none;
+}
+
+pre {
+  background: #1f1a16;
+  color: #fff;
+  padding: 14px;
+  border-radius: 12px;
+  white-space: pre-wrap;
+  font-size: 15px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  button {
+    width: 100%;
+  }
+}
