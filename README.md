@@ -1,8 +1,6 @@
-# Fratello v0.38
+# Fratello v0.39
 
 Corrección:
-- Arreglado error loginAdmin is not defined.
-- Firebase ya configurado.
-
-IMPORTANTE:
-Además hay que activar reglas de Firestore para permitir lectura/escritura.
+- El botón Procesar pedido vuelve a funcionar correctamente.
+- Al cargar un pedido muestra: "Pedido cargado correctamente".
+- Después de cargar, el cuadro del pedido queda en blanco.

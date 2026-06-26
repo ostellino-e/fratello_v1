@@ -306,3 +306,16 @@ input:disabled, select:disabled, button:disabled {
     margin: 10px;
   }
 }
+
+
+.mensajePedido {
+  display: none;
+  background: #eaf7eb;
+  border: 1px solid #9ccc9c;
+  color: #1f7a35;
+  font-weight: bold;
+  padding: 12px;
+  border-radius: 10px;
+  margin: 8px 0 12px;
+  text-align: center;
+}

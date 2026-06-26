@@ -497,22 +497,46 @@ function modificarCliente() {
   alert("Cliente modificado.");
 }
 
-function procesarPedidoActual() {
+
+function mostrarMensajePedido(texto) {
+  let aviso = $("mensajePedido");
+  if (!aviso) {
+    aviso = document.createElement("div");
+    aviso.id = "mensajePedido";
+    aviso.className = "mensajePedido";
+    const btn = $("btnProcesar");
+    btn.parentNode.insertBefore(aviso, btn.nextSibling);
+  }
+
+  aviso.textContent = texto;
+  aviso.style.display = "block";
+
+  setTimeout(() => {
+    aviso.style.display = "none";
+  }, 2500);
+}
+
+async function procesarPedidoActual() {
   const fecha = $("fechaPedido").value || hoyISO();
   const cliente = $("cliente").value;
   const texto = $("pedidoCrudo").value;
 
-  if (!texto.trim()) return alert("Pegá un pedido primero.");
+  if (!texto.trim()) {
+    alert("Pegá un pedido primero.");
+    return;
+  }
 
   const procesado = procesarTextoPedido(texto, cliente, fecha);
   pedidos.push({ id: Date.now(), fecha, cliente, textoOriginal: texto, items: procesado });
 
   guardarTodo();
 
-  renderUltimoProcesado();
+  renderUltimoProcesado(procesado);
   renderPedidosCargados();
   calcularDiferencias();
-  // Pedido procesado sin cartel para agilizar la carga.
+
+  $("pedidoCrudo").value = "";
+  mostrarMensajePedido("Pedido cargado correctamente");
 }
 
 function renderUltimoProcesado(items) {
@@ -740,7 +764,7 @@ async function init() {
   $("btnGuardarPredeterminada").onclick = guardarPredeterminada;
   $("btnCancelarPredeterminada").onclick = cancelarEdicionPredeterminada;
 
-  $("btnProcesar").onclick = procesarPedidoActual;
+  $("btnProcesar").onclick = () => procesarPedidoActual();
   $("btnLimpiarPedido").onclick = () => $("pedidoCrudo").value = "";
   $("btnCalcular").onclick = calcularDiferencias;
   $("btnExportar").onclick = copiarResumen;
