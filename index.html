@@ -31,6 +31,11 @@
         <option value="domingo">Domingo</option>
       </select>
 
+      <label class="checkControl">
+        <input type="checkbox" id="checkProduccionCompleta">
+        Confirmo que el día seleccionado es el correcto
+      </label>
+
       <div class="statusBox">
         <strong>Producción base:</strong>
         <span id="estadoBase">cargada automáticamente</span>
@@ -46,8 +51,7 @@
       </div>
 
       <div id="modoProduccion" class="modo">Modo actual: producción realizada</div>
-
-      <div id="produccionLista" class="table-like"></div>
+<div id="produccionLista" class="table-like"></div>
 
       <details class="specialBox">
         <summary>➕ Agregar producción especial / por encargo</summary>
@@ -71,18 +75,23 @@
 
       <label>Pedido crudo</label>
       <textarea id="pedidoCrudo" placeholder="Pegá acá el pedido completo de WhatsApp..."></textarea>
-
-      <button id="btnProcesar" class="primary">Procesar pedido</button>
+<button id="btnProcesar" class="primary">Procesar pedido</button>
       <button id="btnLimpiarPedido">Limpiar cuadro</button>
 
       <h3>Pedidos cargados</h3>
       <div id="pedidosCargados"></div>
+
+      <label class="checkControl">
+        <input type="checkbox" id="checkPedidoCompleto">
+        Confirmo que todos los pedidos cargados están correctos
+      </label>
     </section>
 
     <section class="card wide">
       <h2>3. Resultado final</h2>
       <div class="toolbar">
         <button id="btnCalcular" class="primary">Calcular diferencias</button>
+        <button id="btnConfirmarPedidos" class="primary" type="button">✅ Confirmar pedidos</button>
         <button id="btnExportar">Copiar resumen para WhatsApp</button>
         <button id="btnReset">Borrar pedidos cargados</button>
       </div>
@@ -90,6 +99,8 @@
       <h3>Todos los pedidos cargados</h3>
       <div id="ultimoProcesado" class="oculto"></div>
       <button id="btnVistaPedidos">🖼 Generar vista para imprimir / WhatsApp</button>
+
+      <div id="estadoConfirmacion" class="estadoConfirmacion">Pedidos sin confirmar</div>
 
       <h3>Comparador producción vs pedidos</h3>
       <div id="comparador"></div>

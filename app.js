@@ -1,34 +1,34 @@
 const productos = [
-  { id: "CHIC", nombre: "Chicharrón", unidad: "unidad", visible: true },
-  { id: "TREN", nombre: "Trenzas", unidad: "unidad", visible: true },
-  { id: "RASP", nombre: "Raspaditas", unidad: "unidad", visible: true },
-  { id: "CORD_S", nombre: "Corderos salados", unidad: "unidad", visible: true },
-  { id: "CORD_D", nombre: "Corderos dulces", unidad: "unidad", visible: true },
-  { id: "RASQ_G", nombre: "Rasquetas grasas", unidad: "unidad", visible: true },
-  { id: "RASQ_M", nombre: "Rasquetas manteca", unidad: "unidad", visible: true },
-  { id: "BIZ_H", nombre: "Bizcocho hojaldre", unidad: "kg", visible: true },
-  { id: "LIB_MEM", nombre: "Librito membrillo", unidad: "kg", visible: true },
-  { id: "BIZ_G", nombre: "Bizcochos de grasa", unidad: "kg", visible: true },
-  { id: "FAC_SUR", nombre: "Facturas surtidas", unidad: "docena", visible: true },
-  { id: "MED", nombre: "Medialunas", unidad: "docena", visible: true },
-  { id: "PAN", nombre: "Pan", unidad: "kg", visible: true },
-  { id: "CAS", nombre: "Caserito", unidad: "kg", visible: true },
-  { id: "PAN_CAS", nombre: "Pan casero", unidad: "unidad", visible: true },
-  { id: "PALM", nombre: "Palmeritas", unidad: "kg", visible: true },
-  { id: "PAN_SAL", nombre: "Pan de salvado", unidad: "kg", visible: true },
-  { id: "PREP", nombre: "Prepizzas", unidad: "unidad", visible: true },
-  { id: "PAN_INT", nombre: "Pan integral", unidad: "unidad", visible: true },
-  { id: "BUD", nombre: "Budín", unidad: "unidad", visible: true },
-  { id: "TAP_MAI", nombre: "Tapitas maicena", unidad: "kg", visible: true },
-  { id: "FROLA", nombre: "Frolas", unidad: "kg", visible: true },
-  { id: "SCON", nombre: "Scon", unidad: "kg", visible: true },
-  { id: "PEPAS", nombre: "Pepas", unidad: "kg", visible: true },
-  { id: "CANON", nombre: "Cañoncitos", unidad: "kg", visible: true },
-  { id: "PIZZ_KG", nombre: "Pizzetas x kg", unidad: "kg", visible: true },
+  { id: "CHIC", nombre: "Chicharrón", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "TREN", nombre: "Trenzas", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "RASP", nombre: "Raspaditas", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "CORD_S", nombre: "Corderos salados", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "CORD_D", nombre: "Corderos dulces", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "RASQ_G", nombre: "Rasquetas grasas", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "RASQ_M", nombre: "Rasquetas manteca", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "BIZ_H", nombre: "Bizcocho hojaldre", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "LIB_MEM", nombre: "Librito membrillo", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "BIZ_G", nombre: "Bizcochos de grasa", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "FAC_SUR", nombre: "Facturas surtidas", unidad: "docena", visible: true, activo: true, nuevo: false },
+  { id: "MED", nombre: "Medialunas", unidad: "docena", visible: true, activo: true, nuevo: false },
+  { id: "PAN", nombre: "Pan", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "CAS", nombre: "Caserito", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "PAN_CAS", nombre: "Pan casero", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "PALM", nombre: "Palmeritas", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "PAN_SAL", nombre: "Pan de salvado", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "PREP", nombre: "Prepizzas", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "PAN_INT", nombre: "Pan integral", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "BUD", nombre: "Budín", unidad: "unidad", visible: true, activo: true, nuevo: false },
+  { id: "TAP_MAI", nombre: "Tapitas maicena", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "FROLA", nombre: "Frolas", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "SCON", nombre: "Scon", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "PEPAS", nombre: "Pepas", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "CANON", nombre: "Cañoncitos", unidad: "kg", visible: true, activo: true, nuevo: false },
+  { id: "PIZZ_KG", nombre: "Pizzetas x kg", unidad: "kg", visible: true, activo: true, nuevo: false },
 
-  { id: "PAN_HAMB", nombre: "Pan hamburguesa", unidad: "unidad", visible: false },
-  { id: "PAN_CHIPS", nombre: "Pan de chips", unidad: "unidad", visible: false },
-  { id: "PAN_PANCHO", nombre: "Pan de pancho", unidad: "unidad", visible: false },
+  { id: "PAN_HAMB", nombre: "Pan hamburguesa", unidad: "unidad", visible: false, activo: true, nuevo: false },
+  { id: "PAN_CHIPS", nombre: "Pan de chips", unidad: "unidad", visible: false, activo: true, nuevo: false },
+  { id: "PAN_PANCHO", nombre: "Pan de pancho", unidad: "unidad", visible: false, activo: true, nuevo: false },
 ];
 
 const dias = ["lunes_jueves", "viernes", "sabado", "domingo"];
@@ -137,7 +137,14 @@ async function cargarDesdeNube() {
       produccion = data.produccion || produccion;
       pedidos = data.pedidos || pedidos;
       predeterminadas = data.predeterminadas || predeterminadas;
-      clientes = data.clientes || clientes;
+      clientes = (Array.isArray(data.clientes) && data.clientes.length > 0) ? data.clientes : clientes;
+      validarClientes();
+    productosExtra = data.productosExtra || productosExtra;
+    pedidosConfirmados = data.pedidosConfirmados || false;
+    productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); } );
+      productosExtra = data.productosExtra || productosExtra;
+      pedidosConfirmados = data.pedidosConfirmados || false;
+      productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); } );
     correspondePedido = data.correspondePedido || correspondePedido;
       correspondePedido = data.correspondePedido || correspondePedido;
     }
@@ -161,7 +168,11 @@ function escucharCambiosNube() {
     produccion = data.produccion || produccion;
     pedidos = data.pedidos || pedidos;
     predeterminadas = data.predeterminadas || predeterminadas;
-    clientes = data.clientes || clientes;
+    clientes = (Array.isArray(data.clientes) && data.clientes.length > 0) ? data.clientes : clientes;
+      validarClientes();
+      productosExtra = data.productosExtra || productosExtra;
+      pedidosConfirmados = data.pedidosConfirmados || false;
+      productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); } );
     correspondePedido = data.correspondePedido || correspondePedido;
 
     guardarTodo();
@@ -185,8 +196,8 @@ function guardarTodo() {
   localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
   localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
   localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
-    localStorage.setItem("fratello_corresponde", JSON.stringify(correspondePedido));
-  localStorage.setItem("fratello_corresponde", JSON.stringify(correspondePedido));
+  localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
+  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
   guardarEnNube();
 }
 
@@ -194,9 +205,12 @@ function guardarTodo() {
 let produccion = JSON.parse(localStorage.getItem("fratello_produccion") || "{}");
 let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
 let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas") || "null") || crearPredeterminadasIniciales();
-let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") || clientesIniciales;
+let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") || [...clientesIniciales];
+let productosExtra = JSON.parse(localStorage.getItem("fratello_productos_extra") || "[]");
+productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); });
 let correspondePedido = JSON.parse(localStorage.getItem("fratello_corresponde") || "{}");
 let modoEdicionPredeterminada = false;
+let pedidosConfirmados = JSON.parse(localStorage.getItem("fratello_pedidos_confirmados") || "false");
 let produccionDesbloqueada = false;
 
 const $ = (id) => document.getElementById(id);
@@ -367,6 +381,7 @@ function guardarProduccion() {
   guardarTodo();
   alert("Producción estibada/realizada guardada.");
   calcularDiferencias();
+  actualizarEstadoConfirmacion();
 }
 
 function activarEdicionPredeterminada() {
@@ -414,97 +429,93 @@ function cancelarEdicionPredeterminada() {
   renderProduccion();
 }
 
+
+function detectarUnidad(texto, unidadDefault = "unidad") {
+  const t = normalizar(texto);
+  if (t.includes("kg") || t.includes("kilo")) return "kg";
+  if (t.includes("doc")) return "docena";
+  if (t.includes("unid") || t.includes("unidad") || t.includes("unidades") || t.includes(" u")) return "unidad";
+  return unidadDefault || "unidad";
+}
+
+function nombreProductoDesdeLinea(original) {
+  return original
+    .replace(/\d+([.,]\d+)?/g, "")
+    .replace(/\bkg\b/gi, "")
+    .replace(/\bkilos?\b/gi, "")
+    .replace(/\bunidad(es)?\b/gi, "")
+    .replace(/\bunid\b/gi, "")
+    .replace(/\bu\b/gi, "")
+    .replace(/\bdoc(ena|enas)?\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function crearProductoExtra(nombre, unidad) {
+  const id = "EXTRA_" + normalizar(nombre).replace(/[^a-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").toUpperCase();
+  let existente = productos.find(p => p.id === id || normalizar(p.nombre.replace("*","")) === normalizar(nombre));
+  if (existente) return existente;
+
+  const nuevo = { id, nombre: nombre + " *", unidad, visible: false, activo: false, nuevo: true };
+  productos.push(nuevo);
+  productosExtra.push(nuevo);
+
+  if (typeof dias !== "undefined") {
+    dias.forEach(d => {
+      if (!predeterminadas[d]) predeterminadas[d] = {};
+      if (predeterminadas[d][id] === undefined) predeterminadas[d][id] = 0;
+    });
+  }
+
+  guardarTodo();
+  return nuevo;
+}
+
+function esProductoGenericoPan(lineaNormalizada, prodId) {
+  return prodId === "PAN" && lineaNormalizada !== "pan";
+}
+
 function procesarTextoPedido(texto, cliente, fecha) {
   return texto.split(/\r?\n/).map(linea => linea.trim()).filter(Boolean).flatMap(original => {
     const normal = normalizar(original);
     if (normal.includes("pedido") || normal.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/)) return [];
-    const id = buscarProducto(normal);
-    if (!id) return [];
-    const producto = productoPorId(id);
+
+    let id = buscarProducto(normal);
     const cantidad = extraerCantidad(normal);
+
+    if (!id && cantidad > 0) {
+      const unidadNueva = detectarUnidad(original, "unidad");
+      const nombreNuevo = nombreProductoDesdeLinea(original);
+      const nuevo = crearProductoExtra(nombreNuevo, unidadNueva);
+      id = nuevo.id;
+    }
+
+    if (id && esProductoGenericoPan(normal, id)) {
+      const unidadNueva = detectarUnidad(original, "unidad");
+      const nombreNuevo = nombreProductoDesdeLinea(original);
+      const nuevo = crearProductoExtra(nombreNuevo, unidadNueva);
+      id = nuevo.id;
+    }
+
+    if (!id) return [];
+
+    const producto = productoPorId(id);
+    const unidad = detectarUnidad(original, producto.unidad);
     let estado = cantidad === 0 ? "NO PEDIDO" : "OK";
     let observacion = cantidad === 0 ? "Línea sin cantidad: se toma como 0" : "";
+
+    if (producto.nuevo || producto.activo === false) {
+      observacion = "Producto nuevo/no habitual";
+    }
+
     if (normal.includes(" o ")) {
       estado = "VARIABLE";
-      observacion = "Cantidad variable: se toma el mínimo detectado";
+      observacion = observacion ? observacion + " - cantidad variable" : "Cantidad variable: se toma el mínimo detectado";
     }
-    return [{ fecha, cliente, productoId: id, producto: producto.nombre, cantidad, unidad: producto.unidad, estado, observacion, original }];
+
+    return [{ fecha, cliente, productoId: id, producto: producto.nombre, cantidad, unidad, estado, observacion, original }];
   });
 }
-
-
-function guardarClientes() {
-  guardarTodo();
-}
-
-function renderClientes(clienteSeleccionado = null) {
-  const select = $("cliente");
-  const actual = clienteSeleccionado || select.value || clientes[0] || "";
-
-  select.innerHTML = "";
-
-  clientes.forEach(nombre => {
-    const option = document.createElement("option");
-    option.value = nombre;
-    option.textContent = nombre;
-    select.appendChild(option);
-  });
-
-  if (clientes.includes(actual)) {
-    select.value = actual;
-  }
-}
-
-function limpiarPedidoCrudo() {
-  $("pedidoCrudo").value = "";
-}
-
-function agregarCliente() {
-  const nombre = prompt("Nombre del nuevo cliente:");
-  if (!nombre) return;
-
-  const limpio = nombre.trim();
-  if (!limpio) return;
-
-  const existe = clientes.some(c => normalizar(c) === normalizar(limpio));
-  if (existe) {
-    alert("Ese cliente ya existe.");
-    return;
-  }
-
-  clientes.push(limpio);
-  guardarClientes();
-  renderClientes(limpio);
-  limpiarPedidoCrudo();
-  alert("Cliente agregado.");
-}
-
-function modificarCliente() {
-  const actual = $("cliente").value;
-  if (!actual) {
-    alert("No hay cliente seleccionado.");
-    return;
-  }
-
-  const nuevo = prompt("Modificar nombre del cliente:", actual);
-  if (!nuevo) return;
-
-  const limpio = nuevo.trim();
-  if (!limpio) return;
-
-  const existe = clientes.some(c => normalizar(c) === normalizar(limpio) && c !== actual);
-  if (existe) {
-    alert("Ya existe otro cliente con ese nombre.");
-    return;
-  }
-
-  clientes = clientes.map(c => c === actual ? limpio : c);
-  guardarClientes();
-  renderClientes(limpio);
-  limpiarPedidoCrudo();
-  alert("Cliente modificado.");
-}
-
 
 function mostrarMensajePedido(texto) {
   let aviso = $("mensajePedido");
@@ -524,7 +535,105 @@ function mostrarMensajePedido(texto) {
   }, 2500);
 }
 
-async function procesarPedidoActual() {
+function validarClientes() {
+  if (!Array.isArray(clientes) || clientes.length === 0) {
+    clientes = [...clientesIniciales];
+  }
+
+  clientes = clientes
+    .filter(c => c && String(c).trim())
+    .map(c => String(c).trim());
+
+  if (clientes.length === 0) {
+    clientes = [...clientesIniciales];
+  }
+}
+
+
+function guardarClientes() {
+  guardarTodo();
+}
+
+function renderClientes(clienteSeleccionado = null) {
+  validarClientes();
+
+  const select = $("cliente");
+  if (!select) return;
+
+  const actual = clienteSeleccionado || select.value || clientes[0] || "";
+  select.innerHTML = "";
+
+  clientes.forEach(nombre => {
+    const option = document.createElement("option");
+    option.value = nombre;
+    option.textContent = nombre;
+    select.appendChild(option);
+  });
+
+  if (clientes.includes(actual)) {
+    select.value = actual;
+  } else if (clientes.length > 0) {
+    select.value = clientes[0];
+  }
+}
+
+function limpiarPedidoCrudo() {
+  const pedido = $("pedidoCrudo");
+  if (pedido) pedido.value = "";
+}
+
+function agregarCliente() {
+  validarClientes();
+
+  const nombre = prompt("Nombre del nuevo cliente:");
+  if (!nombre) return;
+
+  const limpio = nombre.trim();
+  if (!limpio) return;
+
+  const existe = clientes.some(c => normalizar(c) === normalizar(limpio));
+  if (existe) {
+    alert("Ese cliente ya existe.");
+    return;
+  }
+
+  clientes.push(limpio);
+  guardarTodo();
+  renderClientes(limpio);
+  limpiarPedidoCrudo();
+  alert("Cliente agregado.");
+}
+
+function modificarCliente() {
+  validarClientes();
+
+  const select = $("cliente");
+  const actual = select ? select.value : "";
+  if (!actual) {
+    alert("No hay cliente seleccionado.");
+    return;
+  }
+
+  const nuevo = prompt("Modificar nombre del cliente:", actual);
+  if (!nuevo) return;
+
+  const limpio = nuevo.trim();
+  if (!limpio) return;
+
+  const existe = clientes.some(c => normalizar(c) === normalizar(limpio) && c !== actual);
+  if (existe) {
+    alert("Ya existe otro cliente con ese nombre.");
+    return;
+  }
+
+  clientes = clientes.map(c => c === actual ? limpio : c);
+  guardarTodo();
+  renderClientes(limpio);
+  limpiarPedidoCrudo();
+  alert("Cliente modificado.");
+}
+
+function procesarPedidoActual() {
   const fecha = $("fechaPedido").value || hoyISO();
   const cliente = $("cliente").value;
   const texto = $("pedidoCrudo").value;
@@ -537,11 +646,13 @@ async function procesarPedidoActual() {
   const procesado = procesarTextoPedido(texto, cliente, fecha);
   pedidos.push({ id: Date.now(), fecha, cliente, textoOriginal: texto, items: procesado });
 
+  pedidosConfirmados = false;
   guardarTodo();
 
   renderUltimoProcesado(procesado);
   renderPedidosCargados();
   calcularDiferencias();
+  actualizarEstadoConfirmacion();
 
   $("pedidoCrudo").value = "";
   mostrarMensajePedido("Pedido cargado correctamente");
@@ -613,6 +724,7 @@ function calcularDiferencias() {
     const prod = Number(produccion[claveProduccion(p.id)] || 0);
     const ped = Number(totalesPedido[p.id] || 0);
 
+    if ((p.activo === false || p.nuevo) && prod === 0 && ped === 0) continue;
     if (prod === 0 && ped === 0) continue;
 
     const dif = prod - ped;
@@ -717,16 +829,51 @@ function aplicarPermisosUsuario() {
   });
 }
 
+
+function actualizarEstadoConfirmacion() {
+  const el = $("estadoConfirmacion");
+  if (!el) return;
+  el.textContent = pedidosConfirmados ? "Pedidos confirmados" : "Pedidos sin confirmar";
+  el.className = pedidosConfirmados ? "estadoConfirmacion confirmado" : "estadoConfirmacion";
+}
+
+function confirmarPedidos() {
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkPedido = $("checkPedidoCompleto");
+
+  if (checkProduccion && !checkProduccion.checked) {
+    alert("Falta tildar que el día seleccionado es correcto.");
+    return;
+  }
+
+  if (checkPedido && !checkPedido.checked) {
+    alert("Falta tildar que todos los pedidos cargados están correctos.");
+    return;
+  }
+
+  if (!pedidos.length) {
+    alert("Todavía no hay pedidos cargados.");
+    return;
+  }
+
+  pedidosConfirmados = true;
+  guardarTodo();
+  actualizarEstadoConfirmacion();
+  alert("Pedidos confirmados correctamente.");
+}
+
 async function init() {
+  if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   await cargarDesdeNube();
+  validarClientes();
   escucharCambiosNube();
   aplicarPermisosUsuario();
   $("fechaPedido").value = hoyISO();
   renderClientes();
 
-  $("cliente").onchange = limpiarPedidoCrudo;
-  $("btnAgregarCliente").onclick = agregarCliente;
-  $("btnModificarCliente").onclick = modificarCliente;
+  if ($("cliente")) $("cliente").onchange = limpiarPedidoCrudo;
+  if ($("btnAgregarCliente")) $("btnAgregarCliente").onclick = agregarCliente;
+  if ($("btnModificarCliente")) $("btnModificarCliente").onclick = modificarCliente;
 
   $("diaProduccion").onchange = () => {
     renderProduccion();
@@ -743,6 +890,7 @@ async function init() {
   $("btnProcesar").onclick = () => procesarPedidoActual();
   $("btnLimpiarPedido").onclick = () => $("pedidoCrudo").value = "";
   $("btnCalcular").onclick = calcularDiferencias;
+  if ($("btnConfirmarPedidos")) $("btnConfirmarPedidos").onclick = confirmarPedidos;
   $("btnExportar").onclick = copiarResumen;
   $("btnReset").onclick = resetDatos;
   $("btnVistaPedidos").onclick = generarVistaPedidos;
