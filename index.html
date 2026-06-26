@@ -12,6 +12,12 @@
     <p>Pedidos WhatsApp → Producción → Faltantes</p>
   </header>
 
+  <section class="syncPanel">
+    <strong>Sincronización:</strong>
+    <span id="estadoSync">Modo local</span>
+  </section>
+
+
   <section id="loginPanel" class="loginPanel">
     <div>
       <strong>Usuario activo:</strong>
@@ -112,6 +118,8 @@
 <div id="vistaPedidosContenido"></div>
 </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

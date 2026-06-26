@@ -1,7 +1,11 @@
-# Fratello v0.35
+# Fratello v0.37
 
-Cambios sobre v0.34:
+Cambios:
+- Firebase ya configurado.
+- Sincronización online activa entre celulares y computadora.
+- Los pedidos, clientes y producción se guardan en Firestore.
 
-- Se eliminó el cartel "Pedido procesado" al cargar pedidos.
-- En el comparador se eliminó la columna "Diferencia".
-- Los pedidos cargados se muestran en tabla y separados por cliente.
+Uso:
+1. Reemplazar los 4 archivos.
+2. Probar con Live Server.
+3. Subir a Vercel con git add ., commit y push.

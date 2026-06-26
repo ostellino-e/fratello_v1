@@ -291,3 +291,18 @@ input:disabled, select:disabled, button:disabled {
 .oculto {
   display: none;
 }
+
+
+.syncPanel {
+  margin: 10px 18px 0;
+  background: #eaf7eb;
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+}
+
+@media (max-width: 900px) {
+  .syncPanel {
+    margin: 10px;
+  }
+}

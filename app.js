@@ -73,6 +73,118 @@ function crearPredeterminadasIniciales() {
   return base;
 }
 
+
+// --- SINCRONIZACIÓN ONLINE FIREBASE ---
+// Pegá acá el firebaseConfig de Firebase.
+const firebaseConfig = {
+  apiKey: "AIzaSyDPg7UWyqOKYxP5qEelgqjcfTjXD3BXYQY",
+  authDomain: "fratello-c1765.firebaseapp.com",
+  projectId: "fratello-c1765",
+  storageBucket: "fratello-c1765.firebasestorage.app",
+  messagingSenderId: "897400694131",
+  appId: "1:897400694131:web:4262fca5934bcc56629106",
+  measurementId: "G-DSFYHG7QFV"
+};
+
+const FIREBASE_ACTIVO = firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("PEGAR");
+let db = null;
+let cargandoDesdeNube = false;
+
+if (FIREBASE_ACTIVO && typeof firebase !== "undefined") {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+}
+
+function setEstadoSync(texto) {
+  const el = $("estadoSync");
+  if (el) el.textContent = texto;
+}
+
+function datosActuales() {
+  return {
+    produccion,
+    pedidos,
+    predeterminadas,
+    clientes,
+    usuarioActual,
+    actualizado: new Date().toISOString()
+  };
+}
+
+async function guardarEnNube() {
+  if (!db || cargandoDesdeNube) return;
+  try {
+    await db.collection("fratello").doc("estado").set(datosActuales());
+    setEstadoSync("Guardado online");
+  } catch (error) {
+    console.error("Error guardando en Firebase:", error);
+    setEstadoSync("Error al guardar online");
+  }
+}
+
+async function cargarDesdeNube() {
+  if (!db) {
+    setEstadoSync("Modo local");
+    return;
+  }
+
+  try {
+    setEstadoSync("Cargando online...");
+    const doc = await db.collection("fratello").doc("estado").get();
+
+    if (doc.exists) {
+      const data = doc.data();
+      produccion = data.produccion || produccion;
+      pedidos = data.pedidos || pedidos;
+      predeterminadas = data.predeterminadas || predeterminadas;
+      clientes = data.clientes || clientes;
+    }
+
+    setEstadoSync("Online");
+  } catch (error) {
+    console.error("Error cargando Firebase:", error);
+    setEstadoSync("Error online / usando local");
+  }
+}
+
+function escucharCambiosNube() {
+  if (!db) return;
+
+  db.collection("fratello").doc("estado").onSnapshot((doc) => {
+    if (!doc.exists) return;
+
+    cargandoDesdeNube = true;
+    const data = doc.data();
+
+    produccion = data.produccion || produccion;
+    pedidos = data.pedidos || pedidos;
+    predeterminadas = data.predeterminadas || predeterminadas;
+    clientes = data.clientes || clientes;
+
+    guardarTodo();
+    guardarTodo();
+    guardarTodo();
+    guardarTodo();
+
+    if (typeof renderClientes === "function") renderClientes();
+    if (typeof renderProduccion === "function") renderProduccion();
+    if (typeof renderPedidosCargados === "function") renderPedidosCargados();
+    if (typeof calcularDiferencias === "function") calcularDiferencias();
+
+    cargandoDesdeNube = false;
+    setEstadoSync("Online actualizado");
+  });
+}
+
+function guardarTodo() {
+  guardarTodo();
+  guardarTodo();
+  guardarTodo();
+  guardarTodo();
+  guardarEnNube();
+}
+
+
 let produccion = JSON.parse(localStorage.getItem("fratello_produccion") || "{}");
 let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
 let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas") || "null") || crearPredeterminadasIniciales();
@@ -245,7 +357,7 @@ function guardarProduccion() {
     produccion[claveProduccion(prodId)] = cantidad;
   });
 
-  localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
+  guardarTodo();
   alert("Producción estibada/realizada guardada.");
   calcularDiferencias();
 }
@@ -270,12 +382,12 @@ function guardarPredeterminada() {
     predeterminadas[dia][input.dataset.prod] = Number(input.value || 0);
   });
 
-  localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
+  guardarTodo();
 
   document.querySelectorAll("#produccionLista input").forEach(input => {
     produccion[claveProduccion(input.dataset.prod)] = Number(input.value || 0);
   });
-  localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
+  guardarTodo();
 
   modoEdicionPredeterminada = false;
   $("btnGuardarPredeterminada").classList.add("hidden");
@@ -315,7 +427,7 @@ function procesarTextoPedido(texto, cliente, fecha) {
 
 
 function guardarClientes() {
-  localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
+  guardarTodo();
 }
 
 function renderClientes(clienteSeleccionado = null) {
@@ -396,7 +508,7 @@ function procesarPedidoActual() {
   const procesado = procesarTextoPedido(texto, cliente, fecha);
   pedidos.push({ id: Date.now(), fecha, cliente, textoOriginal: texto, items: procesado });
 
-  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+  guardarTodo();
 
   renderUltimoProcesado();
   renderPedidosCargados();
@@ -548,66 +660,21 @@ function generarVistaPedidos(){
 }
 
 function resetDatos() {
-  if (!confirm("¿Seguro que querés borrar solo los pedidos cargados? La producción base y la producción realizada NO se borran.")) return;
+  if (!confirm("¿Seguro que querés borrar solo los pedidos cargados?")) return;
 
   pedidos = [];
-  localStorage.removeItem("fratello_pedidos");
+  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+  guardarEnNube();
 
   renderPedidosCargados();
-  renderUltimoProcesado();
-  calcularDiferencias();
-  $("pedidoCrudo").value = "";
+  $("ultimoProcesado").innerHTML = "";
+  $("comparador").innerHTML = "";
+  $("resumenPanadero").textContent = "";
 }
 
-
-// --- USUARIOS ---
-const CLAVE_ADMIN = "fratello";
-let usuarioActual = localStorage.getItem("fratello_usuario") || "normal";
-
-function aplicarPermisosUsuario() {
-  const esAdmin = usuarioActual === "admin";
-
-  document.querySelectorAll(".adminOnly").forEach(el => {
-    el.style.display = esAdmin ? "" : "none";
-  });
-
-  const label = $("usuarioActivo");
-  if (label) {
-    label.textContent = esAdmin ? "Administrador" : "Usuario normal";
-  }
-
-  const btnCerrar = $("btnCerrarSesion");
-  if (btnCerrar) {
-    btnCerrar.style.display = usuarioActual ? "" : "none";
-  }
-}
-
-function loginAdmin() {
-  const clave = prompt("Clave de administrador:");
-  if (clave !== CLAVE_ADMIN) {
-    alert("Clave incorrecta.");
-    return;
-  }
-
-  usuarioActual = "admin";
-  localStorage.setItem("fratello_usuario", usuarioActual);
-  aplicarPermisosUsuario();
-  alert("Ingresaste como administrador.");
-}
-
-function loginNormal() {
-  usuarioActual = "normal";
-  localStorage.setItem("fratello_usuario", usuarioActual);
-  aplicarPermisosUsuario();
-}
-
-function cerrarSesion() {
-  usuarioActual = "normal";
-  localStorage.setItem("fratello_usuario", usuarioActual);
-  aplicarPermisosUsuario();
-}
-
-function init() {
+async function init() {
+  await cargarDesdeNube();
+  escucharCambiosNube();
   if ($("btnLoginAdmin")) $("btnLoginAdmin").onclick = loginAdmin;
   if ($("btnLoginNormal")) $("btnLoginNormal").onclick = loginNormal;
   if ($("btnCerrarSesion")) $("btnCerrarSesion").onclick = cerrarSesion;
