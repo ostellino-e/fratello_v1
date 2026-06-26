@@ -106,7 +106,6 @@ function datosActuales() {
     pedidos,
     predeterminadas,
     clientes,
-    usuarioActual,
     actualizado: new Date().toISOString()
   };
 }
@@ -671,6 +670,49 @@ function resetDatos() {
   $("comparador").innerHTML = "";
   $("resumenPanadero").textContent = "";
 }
+
+
+// --- USUARIOS ---
+const CLAVE_ADMIN = "fratello";
+let usuarioActual = localStorage.getItem("fratello_usuario") || "normal";
+
+function aplicarPermisosUsuario() {
+  const esAdmin = usuarioActual === "admin";
+
+  document.querySelectorAll(".adminOnly").forEach(el => {
+    el.style.display = esAdmin ? "" : "none";
+  });
+
+  const label = $("usuarioActivo");
+  if (label) {
+    label.textContent = esAdmin ? "Administrador" : "Usuario normal";
+  }
+}
+
+function loginAdmin() {
+  const clave = prompt("Clave de administrador:");
+  if (clave !== CLAVE_ADMIN) {
+    alert("Clave incorrecta.");
+    return;
+  }
+
+  usuarioActual = "admin";
+  localStorage.setItem("fratello_usuario", usuarioActual);
+  aplicarPermisosUsuario();
+}
+
+function loginNormal() {
+  usuarioActual = "normal";
+  localStorage.setItem("fratello_usuario", usuarioActual);
+  aplicarPermisosUsuario();
+}
+
+function cerrarSesion() {
+  usuarioActual = "normal";
+  localStorage.setItem("fratello_usuario", usuarioActual);
+  aplicarPermisosUsuario();
+}
+
 
 async function init() {
   await cargarDesdeNube();
