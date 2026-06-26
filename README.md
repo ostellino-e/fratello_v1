@@ -1,15 +1,7 @@
-# Fratello v0.31
+# Fratello v0.35
 
-Cambios sobre v0.3:
+Cambios sobre v0.34:
 
-- Al cambiar de cliente se limpia automáticamente el cuadro de pedido.
-- Se puede agregar un cliente nuevo desde la pantalla de pedidos.
-- Se puede modificar el nombre del cliente seleccionado.
-- Los clientes quedan guardados en el navegador.
-
-## Uso
-1. Abrir `index.html` con Live Server.
-2. En Punto 2 elegir cliente.
-3. Pegar pedido de WhatsApp.
-4. Procesar.
-5. Cambiar de cliente: el cuadro de pedido se limpia solo.
+- Se eliminó el cartel "Pedido procesado" al cargar pedidos.
+- En el comparador se eliminó la columna "Diferencia".
+- Los pedidos cargados se muestran en tabla y separados por cliente.

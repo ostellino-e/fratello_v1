@@ -31,7 +31,7 @@ const productos = [
   { id: "PAN_PANCHO", nombre: "Pan de pancho", unidad: "unidad", visible: false },
 ];
 
-const dias = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+const dias = ["lunes_jueves", "viernes", "sabado", "domingo"];
 
 const clientesIniciales = [
   "Fratello",
@@ -70,18 +70,6 @@ function crearPredeterminadasIniciales() {
     base[d] = {};
     for (const p of productos) base[d][p.id] = 0;
   }
-
-  // Lunes a jueves quedan iguales por defecto, pero los valores reales los cargás vos una sola vez desde "Cambiar producción base".
-  for (const d of ["lunes", "martes", "miercoles", "jueves"]) {
-    base[d]["PAN"] = 0;
-    base[d]["RASQ_G"] = 0;
-    base[d]["RASQ_M"] = 0;
-    base[d]["BIZ_H"] = 0;
-    base[d]["BIZ_G"] = 0;
-    base[d]["FAC_SUR"] = 0;
-    base[d]["MED"] = 0;
-  }
-
   return base;
 }
 
@@ -90,6 +78,7 @@ let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
 let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas") || "null") || crearPredeterminadasIniciales();
 let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") || clientesIniciales;
 let modoEdicionPredeterminada = false;
+let produccionDesbloqueada = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -120,7 +109,17 @@ function extraerCantidad(lineaNormalizada) {
 }
 
 function diaActual() {
-  return $("diaProduccion").value || "lunes";
+  return $("diaProduccion").value || "lunes_jueves";
+}
+
+function nombreDiaActual() {
+  const mapa = {
+    lunes_jueves: "lunes a jueves",
+    viernes: "viernes",
+    sabado: "sábado",
+    domingo: "domingo",
+  };
+  return mapa[diaActual()] || diaActual();
 }
 
 function claveProduccion(id) {
@@ -144,9 +143,10 @@ function renderProduccion() {
       ? (predeterminadas[dia]?.[p.id] || "")
       : (valorProduccion(p.id) || "");
 
+    const bloqueado = !produccionDesbloqueada ? "disabled" : "";
     html += `<tr>
       <td>${p.nombre}</td>
-      <td><input type="number" step="0.001" data-prod="${p.id}" value="${valor}" placeholder="0"></td>
+      <td><input type="number" step="0.001" data-prod="${p.id}" value="${valor}" placeholder="0" ${bloqueado}></td>
       <td>${p.unidad}</td>
     </tr>`;
   }
@@ -158,14 +158,15 @@ function renderProduccion() {
 }
 
 function renderProduccionExtra() {
+  const bloqueado = !produccionDesbloqueada ? "disabled" : "";
   let html = "<table><thead><tr><th>Producto extra</th><th>Cantidad</th><th>Unidad</th></tr></thead><tbody>";
 
   for (let i = 0; i < 6; i++) {
     html += `<tr>
-      <td><input data-extra-nombre="${i}" placeholder="Ej: Pan hamburguesa"></td>
-      <td><input data-extra-cantidad="${i}" type="number" step="0.001" placeholder="0"></td>
+      <td><input data-extra-nombre="${i}" placeholder="Ej: Pan hamburguesa" ${bloqueado}></td>
+      <td><input data-extra-cantidad="${i}" type="number" step="0.001" placeholder="0" ${bloqueado}></td>
       <td>
-        <select data-extra-unidad="${i}">
+        <select data-extra-unidad="${i}" ${bloqueado}>
           <option>unidad</option>
           <option>kg</option>
           <option>docena</option>
@@ -180,15 +181,42 @@ function renderProduccionExtra() {
 
 function actualizarTextoModo() {
   $("modoProduccion").textContent = modoEdicionPredeterminada
-    ? "Modo actual: cambiando la producción base del día"
-    : "Modo actual: cargando producción estibada/realizada";
+    ? "Modo actual: cambiando la producción base"
+    : (produccionDesbloqueada ? "Modo actual: producción desbloqueada" : "Modo actual: producción bloqueada");
 
   $("estadoBase").textContent = modoEdicionPredeterminada
-    ? "editando base para " + diaActual()
-    : "cargada automáticamente para " + diaActual();
+    ? "editando base para " + nombreDiaActual()
+    : "cargada automáticamente para " + nombreDiaActual();
+
+  if ($("btnDesbloquearProduccion")) {
+    $("btnDesbloquearProduccion").classList.toggle("hidden", produccionDesbloqueada);
+    $("btnBloquearProduccion").classList.toggle("hidden", !produccionDesbloqueada);
+    $("btnGuardarProduccion").disabled = !produccionDesbloqueada;
+    $("btnEditarPredeterminada").disabled = !produccionDesbloqueada;
+  }
+}
+
+function desbloquearProduccion() {
+  const clave = prompt("Clave para modificar producción:");
+  if (clave !== "fratello") {
+    alert("Clave incorrecta.");
+    return;
+  }
+  produccionDesbloqueada = true;
+  renderProduccion();
+}
+
+function bloquearProduccion() {
+  produccionDesbloqueada = false;
+  if (modoEdicionPredeterminada) cancelarEdicionPredeterminada();
+  renderProduccion();
 }
 
 function guardarProduccion() {
+  if (!produccionDesbloqueada) {
+    alert("Producción bloqueada. Primero desbloqueá.");
+    return;
+  }
   if (modoEdicionPredeterminada) {
     alert("Estás cambiando la producción base. Tocá Guardar nueva base o Cancelar.");
     return;
@@ -223,6 +251,10 @@ function guardarProduccion() {
 }
 
 function activarEdicionPredeterminada() {
+  if (!produccionDesbloqueada) {
+    alert("Primero desbloqueá producción.");
+    return;
+  }
   modoEdicionPredeterminada = true;
   $("btnGuardarPredeterminada").classList.remove("hidden");
   $("btnCancelarPredeterminada").classList.remove("hidden");
@@ -250,7 +282,7 @@ function guardarPredeterminada() {
   $("btnCancelarPredeterminada").classList.add("hidden");
   $("btnEditarPredeterminada").classList.remove("hidden");
 
-  alert("Producción base guardada para " + dia + ".");
+  alert("Producción base guardada para " + nombreDiaActual() + ".");
   renderProduccion();
   calcularDiferencias();
 }
@@ -366,10 +398,10 @@ function procesarPedidoActual() {
 
   localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
 
-  renderUltimoProcesado(procesado);
+  renderUltimoProcesado();
   renderPedidosCargados();
   calcularDiferencias();
-  alert("Pedido procesado.");
+  // Pedido procesado sin cartel para agilizar la carga.
 }
 
 function renderUltimoProcesado(items) {
@@ -389,9 +421,36 @@ function renderUltimoProcesado(items) {
 }
 
 function renderPedidosCargados() {
-  $("pedidosCargados").innerHTML = pedidos.length
-    ? `<p>${pedidos.map(p => `${p.cliente} (${p.items.filter(i => i.estado !== "NO PEDIDO").length} ítems)`).join("<br>")}</p>`
-    : "<p>No hay pedidos cargados.</p>";
+  if (!pedidos.length) {
+    $("pedidosCargados").innerHTML = "<p>No hay pedidos cargados.</p>";
+    return;
+  }
+
+  let html = "";
+
+  pedidos.forEach((pedido) => {
+    const itemsValidos = pedido.items.filter(i => i.estado !== "NO PEDIDO");
+
+    html += `<div class="pedidoClienteCard">
+      <div class="pedidoClienteHeader">
+        <strong>${pedido.cliente}</strong>
+        <span>${itemsValidos.length} ítems</span>
+      </div>`;
+
+    if (!itemsValidos.length) {
+      html += "<p>No se detectaron productos con cantidad.</p>";
+    } else {
+      html += "<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Unidad</th></tr></thead><tbody>";
+      itemsValidos.forEach(it => {
+        html += `<tr><td>${it.producto}</td><td>${fmt(it.cantidad)}</td><td>${it.unidad}</td></tr>`;
+      });
+      html += "</tbody></table>";
+    }
+
+    html += `</div>`;
+  });
+
+  $("pedidosCargados").innerHTML = html;
 }
 
 function calcularDiferencias() {
@@ -440,11 +499,11 @@ function renderComparador(filas) {
     return;
   }
 
-  let html = "<table><thead><tr><th>Producto</th><th>Producido</th><th>Pedido total</th><th>Diferencia</th><th>Estado</th><th>Acción</th></tr></thead><tbody>";
+  let html = "<table><thead><tr><th>Producto</th><th>Producido</th><th>Pedido total</th><th>Estado</th><th>Acción</th></tr></thead><tbody>";
 
   for (const f of filas) {
     const cls = f.estado === "FALTA" ? "estado-falta" : f.estado === "SOBRA" ? "estado-sobra" : "estado-justo";
-    html += `<tr><td>${f.producto}</td><td>${fmt(f.prod)} ${f.unidad}</td><td>${fmt(f.ped)} ${f.unidad}</td><td>${fmt(f.dif)} ${f.unidad}</td><td class="${cls}">${f.estado}</td><td>${f.accion}</td></tr>`;
+    html += `<tr><td>${f.producto}</td><td>${fmt(f.prod)} ${f.unidad}</td><td>${fmt(f.ped)} ${f.unidad}</td><td class="${cls}">${f.estado}</td><td>${f.accion}</td></tr>`;
   }
 
   $("comparador").innerHTML = html + "</tbody></table>";
@@ -489,22 +548,70 @@ function generarVistaPedidos(){
 }
 
 function resetDatos() {
-  if (!confirm("¿Seguro que querés borrar producción y pedidos cargados?")) return;
+  if (!confirm("¿Seguro que querés borrar solo los pedidos cargados? La producción base y la producción realizada NO se borran.")) return;
 
-  produccion = {};
   pedidos = [];
-
-  localStorage.removeItem("fratello_produccion");
   localStorage.removeItem("fratello_pedidos");
 
-  renderProduccion();
   renderPedidosCargados();
-  $("ultimoProcesado").innerHTML = "";
-  $("comparador").innerHTML = "";
-  $("resumenPanadero").textContent = "";
+  renderUltimoProcesado();
+  calcularDiferencias();
+  $("pedidoCrudo").value = "";
+}
+
+
+// --- USUARIOS ---
+const CLAVE_ADMIN = "fratello";
+let usuarioActual = localStorage.getItem("fratello_usuario") || "normal";
+
+function aplicarPermisosUsuario() {
+  const esAdmin = usuarioActual === "admin";
+
+  document.querySelectorAll(".adminOnly").forEach(el => {
+    el.style.display = esAdmin ? "" : "none";
+  });
+
+  const label = $("usuarioActivo");
+  if (label) {
+    label.textContent = esAdmin ? "Administrador" : "Usuario normal";
+  }
+
+  const btnCerrar = $("btnCerrarSesion");
+  if (btnCerrar) {
+    btnCerrar.style.display = usuarioActual ? "" : "none";
+  }
+}
+
+function loginAdmin() {
+  const clave = prompt("Clave de administrador:");
+  if (clave !== CLAVE_ADMIN) {
+    alert("Clave incorrecta.");
+    return;
+  }
+
+  usuarioActual = "admin";
+  localStorage.setItem("fratello_usuario", usuarioActual);
+  aplicarPermisosUsuario();
+  alert("Ingresaste como administrador.");
+}
+
+function loginNormal() {
+  usuarioActual = "normal";
+  localStorage.setItem("fratello_usuario", usuarioActual);
+  aplicarPermisosUsuario();
+}
+
+function cerrarSesion() {
+  usuarioActual = "normal";
+  localStorage.setItem("fratello_usuario", usuarioActual);
+  aplicarPermisosUsuario();
 }
 
 function init() {
+  if ($("btnLoginAdmin")) $("btnLoginAdmin").onclick = loginAdmin;
+  if ($("btnLoginNormal")) $("btnLoginNormal").onclick = loginNormal;
+  if ($("btnCerrarSesion")) $("btnCerrarSesion").onclick = cerrarSesion;
+  aplicarPermisosUsuario();
   $("fechaPedido").value = hoyISO();
   renderClientes();
 
@@ -517,6 +624,8 @@ function init() {
     calcularDiferencias();
   };
 
+  $("btnDesbloquearProduccion").onclick = desbloquearProduccion;
+  $("btnBloquearProduccion").onclick = bloquearProduccion;
   $("btnGuardarProduccion").onclick = guardarProduccion;
   $("btnEditarPredeterminada").onclick = activarEdicionPredeterminada;
   $("btnGuardarPredeterminada").onclick = guardarPredeterminada;

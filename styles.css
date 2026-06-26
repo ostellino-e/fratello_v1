@@ -207,3 +207,87 @@ pre {
 }
 
 #btnVistaPedidos{margin-bottom:10px;}
+
+input:disabled, select:disabled, button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pedidoCard {
+  background: #faf6ef;
+  border: 1px solid #e7ded3;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 8px 0;
+}
+
+.pedidoActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pedidoActions button {
+  flex: 1;
+  margin: 0;
+  padding: 9px;
+}
+
+
+.loginPanel {
+  margin: 12px 18px 0;
+  background: white;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.loginActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.loginActions button {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .loginPanel {
+    margin: 10px;
+    align-items: stretch;
+  }
+
+  .loginActions {
+    flex-direction: column;
+    width: 100%;
+  }
+}
+
+
+.pedidoClienteCard {
+  border: 1px solid #e7ded3;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 12px 0;
+  background: #fffaf4;
+}
+
+.pedidoClienteHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  background: #f0e4d7;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.oculto {
+  display: none;
+}
