@@ -319,3 +319,7 @@ input:disabled, select:disabled, button:disabled {
   margin: 8px 0 12px;
   text-align: center;
 }
+
+.normalOnly {
+  display: none;
+}

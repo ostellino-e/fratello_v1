@@ -106,6 +106,7 @@ function datosActuales() {
     pedidos,
     predeterminadas,
     clientes,
+    correspondePedido,
     actualizado: new Date().toISOString()
   };
 }
@@ -137,6 +138,8 @@ async function cargarDesdeNube() {
       pedidos = data.pedidos || pedidos;
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = data.clientes || clientes;
+    correspondePedido = data.correspondePedido || correspondePedido;
+      correspondePedido = data.correspondePedido || correspondePedido;
     }
 
     setEstadoSync("Online");
@@ -159,6 +162,7 @@ function escucharCambiosNube() {
     pedidos = data.pedidos || pedidos;
     predeterminadas = data.predeterminadas || predeterminadas;
     clientes = data.clientes || clientes;
+    correspondePedido = data.correspondePedido || correspondePedido;
 
     guardarTodo();
     guardarTodo();
@@ -167,6 +171,7 @@ function escucharCambiosNube() {
 
     if (typeof renderClientes === "function") renderClientes();
     if (typeof renderProduccion === "function") renderProduccion();
+    if (typeof renderCorrespondePedido === "function")
     if (typeof renderPedidosCargados === "function") renderPedidosCargados();
     if (typeof calcularDiferencias === "function") calcularDiferencias();
 
@@ -180,6 +185,8 @@ function guardarTodo() {
   localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
   localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
   localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
+    localStorage.setItem("fratello_corresponde", JSON.stringify(correspondePedido));
+  localStorage.setItem("fratello_corresponde", JSON.stringify(correspondePedido));
   guardarEnNube();
 }
 
@@ -188,6 +195,7 @@ let produccion = JSON.parse(localStorage.getItem("fratello_produccion") || "{}")
 let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
 let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas") || "null") || crearPredeterminadasIniciales();
 let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") || clientesIniciales;
+let correspondePedido = JSON.parse(localStorage.getItem("fratello_corresponde") || "{}");
 let modoEdicionPredeterminada = false;
 let produccionDesbloqueada = false;
 
@@ -696,54 +704,22 @@ function resetDatos() {
 }
 
 
-// --- USUARIOS ---
-const CLAVE_ADMIN = "fratello";
-let usuarioActual = localStorage.getItem("fratello_usuario") || "normal";
+// --- MODO ADMINISTRADOR ÚNICO ---
+let usuarioActual = "admin";
 
 function aplicarPermisosUsuario() {
-  const esAdmin = usuarioActual === "admin";
-
   document.querySelectorAll(".adminOnly").forEach(el => {
-    el.style.display = esAdmin ? "" : "none";
+    el.style.display = "";
   });
 
-  const label = $("usuarioActivo");
-  if (label) {
-    label.textContent = esAdmin ? "Administrador" : "Usuario normal";
-  }
+  document.querySelectorAll(".normalOnly").forEach(el => {
+    el.style.display = "none";
+  });
 }
-
-function loginAdmin() {
-  const clave = prompt("Clave de administrador:");
-  if (clave !== CLAVE_ADMIN) {
-    alert("Clave incorrecta.");
-    return;
-  }
-
-  usuarioActual = "admin";
-  localStorage.setItem("fratello_usuario", usuarioActual);
-  aplicarPermisosUsuario();
-}
-
-function loginNormal() {
-  usuarioActual = "normal";
-  localStorage.setItem("fratello_usuario", usuarioActual);
-  aplicarPermisosUsuario();
-}
-
-function cerrarSesion() {
-  usuarioActual = "normal";
-  localStorage.setItem("fratello_usuario", usuarioActual);
-  aplicarPermisosUsuario();
-}
-
 
 async function init() {
   await cargarDesdeNube();
   escucharCambiosNube();
-  if ($("btnLoginAdmin")) $("btnLoginAdmin").onclick = loginAdmin;
-  if ($("btnLoginNormal")) $("btnLoginNormal").onclick = loginNormal;
-  if ($("btnCerrarSesion")) $("btnCerrarSesion").onclick = cerrarSesion;
   aplicarPermisosUsuario();
   $("fechaPedido").value = hoyISO();
   renderClientes();

@@ -1,7 +1,8 @@
-# Fratello v0.40
+# Fratello v0.42
 
-Corrección:
-- Arreglado error Maximum call stack size exceeded.
-- El botón Procesar pedido funciona con Firebase.
-- Muestra "Pedido cargado correctamente".
-- Limpia el cuadro después de procesar.
+Cambios:
+- Se eliminó el modo usuario normal.
+- Se eliminó el login.
+- Se eliminó la contraseña.
+- La aplicación abre siempre en modo administrador.
+- Se muestran directamente Punto 1, Punto 2 y Punto 3.
