@@ -830,6 +830,15 @@ function aplicarPermisosUsuario() {
 }
 
 
+
+function destildarCasillasConfirmacion() {
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkPedido = $("checkPedidoCompleto");
+
+  if (checkProduccion) checkProduccion.checked = false;
+  if (checkPedido) checkPedido.checked = false;
+}
+
 function actualizarEstadoConfirmacion() {
   const el = $("estadoConfirmacion");
   if (!el) return;
@@ -859,6 +868,7 @@ function confirmarPedidos() {
   pedidosConfirmados = true;
   guardarTodo();
   actualizarEstadoConfirmacion();
+  destildarCasillasConfirmacion();
   alert("Pedidos confirmados correctamente.");
 }
 
