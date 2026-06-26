@@ -1,6 +1,7 @@
-# Fratello v0.39
+# Fratello v0.40
 
 Corrección:
-- El botón Procesar pedido vuelve a funcionar correctamente.
-- Al cargar un pedido muestra: "Pedido cargado correctamente".
-- Después de cargar, el cuadro del pedido queda en blanco.
+- Arreglado error Maximum call stack size exceeded.
+- El botón Procesar pedido funciona con Firebase.
+- Muestra "Pedido cargado correctamente".
+- Limpia el cuadro después de procesar.

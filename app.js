@@ -176,10 +176,10 @@ function escucharCambiosNube() {
 }
 
 function guardarTodo() {
-  guardarTodo();
-  guardarTodo();
-  guardarTodo();
-  guardarTodo();
+  localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
+  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+  localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
+  localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
   guardarEnNube();
 }
 
