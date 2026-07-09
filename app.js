@@ -658,6 +658,7 @@ function procesarPedidoActual() {
   pedidos.push({ id: Date.now(), fecha, cliente, textoOriginal: texto, items: procesado });
 
   pedidosConfirmados = false;
+  bloquearEnvioWhatsappConfirmado();
   guardarTodo();
 
   renderUltimoProcesado(procesado);
@@ -728,6 +729,7 @@ function borrarPedido(id) {
 
   pedidos = pedidos.filter(p => Number(p.id) !== Number(id));
   pedidosConfirmados = false;
+  bloquearEnvioWhatsappConfirmado();
   guardarTodo();
 
   renderPedidosCargados();
@@ -751,6 +753,7 @@ function borrarPedidosSeleccionados() {
 
   pedidos = pedidos.filter(p => !seleccionados.includes(Number(p.id)));
   pedidosConfirmados = false;
+  bloquearEnvioWhatsappConfirmado();
   guardarTodo();
 
   renderPedidosCargados();
@@ -976,6 +979,7 @@ function confirmarPedidos() {
   }
 
   pedidosConfirmados = true;
+  habilitarEnvioWhatsappConfirmado();
   guardarTodo();
   actualizarEstadoConfirmacion();
   destildarCasillasConfirmacion();
@@ -1027,9 +1031,22 @@ function abrirWhatsApp(numero, mensaje) {
 }
 
 
+
+function habilitarEnvioWhatsappConfirmado() {
+  sessionStorage.setItem("fratello_envio_confirmado", "true");
+}
+
+function bloquearEnvioWhatsappConfirmado() {
+  sessionStorage.removeItem("fratello_envio_confirmado");
+}
+
+function envioWhatsappConfirmadoEnEsteDispositivo() {
+  return sessionStorage.getItem("fratello_envio_confirmado") === "true";
+}
+
 function verificarPedidosConfirmadosAntesDeEnviar() {
-  if (!pedidosConfirmados) {
-    alert("Primero tenés que confirmar los pedidos con el botón Confirmar pedidos.");
+  if (!pedidosConfirmados || !envioWhatsappConfirmadoEnEsteDispositivo()) {
+    alert("Primero tenés que confirmar los pedidos con el botón Confirmar pedidos desde este dispositivo.");
     return false;
   }
 

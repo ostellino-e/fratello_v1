@@ -1,6 +1,6 @@
-# Fratello v0.57
+# Fratello v0.58
 
 Cambios:
-- Antes de enviar pedidos al grupo de WhatsApp, exige Confirmar pedidos.
-- Antes de compartir la vista por WhatsApp, exige Confirmar pedidos.
-- Evita enviar información sin revisar.
+- En celular también exige Confirmar pedidos antes de enviar WhatsApp.
+- La confirmación debe hacerse en el mismo dispositivo desde donde se envía.
+- Si se carga, borra o modifica un pedido, se bloquea nuevamente el envío hasta confirmar.
