@@ -959,33 +959,6 @@ function actualizarEstadoConfirmacion() {
   el.className = pedidosConfirmados ? "estadoConfirmacion confirmado" : "estadoConfirmacion";
 }
 
-function confirmarPedidos() {
-  const checkProduccion = $("checkProduccionCompleta");
-  const checkPedido = $("checkPedidoCompleto");
-
-  if (checkProduccion && !checkProduccion.checked) {
-    alert("Falta tildar que el día seleccionado es correcto.");
-    return;
-  }
-
-  if (checkPedido && !checkPedido.checked) {
-    alert("Falta tildar que todos los pedidos cargados están correctos.");
-    return;
-  }
-
-  if (!pedidos.length) {
-    alert("Todavía no hay pedidos cargados.");
-    return;
-  }
-
-  pedidosConfirmados = true;
-  guardarTodo();
-  actualizarEstadoConfirmacion();
-  destildarCasillasConfirmacion();
-  alert("Pedidos confirmados correctamente.");
-}
-
-
 
 function obtenerFilasComparador() {
   const totalesPedido = {};
@@ -1020,30 +993,13 @@ function obtenerFilasComparador() {
   return filas;
 }
 
-async function abrirWhatsApp(numero, mensaje) {
+function abrirWhatsApp(numero, mensaje) {
   const texto = encodeURIComponent(mensaje);
-
-  // En celular, primero intenta abrir el menú nativo para compartir.
-  if (!numero && navigator.share) {
-    try {
-      await navigator.share({ text: mensaje });
-      return;
-    } catch (e) {
-      // Si cancela o falla, sigue con WhatsApp.
-    }
-  }
-
-  if (!numero && navigator.clipboard) {
-    try {
-      await navigator.clipboard.writeText(mensaje);
-    } catch (e) {}
-  }
-
   const url = numero
-    ? `https://wa.me/${numero}?text=${texto}`
+    ? `https://api.whatsapp.com/send?phone=${numero}&text=${texto}`
     : `https://api.whatsapp.com/send?text=${texto}`;
 
-  window.location.href = url;
+  window.location.assign(url);
 }
 
 function generarMensajeGrupoFratello() {
@@ -1151,7 +1107,6 @@ async function init() {
   $("btnProcesar").onclick = () => procesarPedidoActual();
   $("btnLimpiarPedido").onclick = () => $("pedidoCrudo").value = "";
   $("btnCalcular").onclick = calcularDiferencias;
-  if ($("btnConfirmarPedidos")) $("btnConfirmarPedidos").onclick = confirmarPedidos;
   if ($("btnWhatsAppGrupo")) $("btnWhatsAppGrupo").onclick = generarMensajeGrupoFratello;
   if ($("btnRecordarCliente")) $("btnRecordarCliente").onclick = recordarPedidoCliente;
   $("btnExportar").onclick = copiarResumen;
