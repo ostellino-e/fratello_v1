@@ -1,5 +1,9 @@
-# Fratello v0.60
+# Fratello v0.61
 
-Corrección:
-- Compartir pedidos por WhatsApp en celular ahora abre WhatsApp para elegir contacto o grupo.
-- Mantiene fallback para computadora.
+Cambios:
+- Para compartir por WhatsApp exige que estén tildadas las dos casillas:
+  1. Día de producción correcto.
+  2. Pedidos cargados correctos.
+- En celular intenta usar el menú nativo de compartir.
+- Si no se puede, abre WhatsApp con el mensaje preparado.
+- También intenta copiar el mensaje al portapapeles como respaldo.

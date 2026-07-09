@@ -1020,31 +1020,30 @@ function obtenerFilasComparador() {
   return filas;
 }
 
-function abrirWhatsApp(numero, mensaje) {
+async function abrirWhatsApp(numero, mensaje) {
   const texto = encodeURIComponent(mensaje);
 
-  let url = "";
-
-  if (numero) {
-    url = `https://wa.me/${numero}?text=${texto}`;
-  } else {
-    // En celular abre WhatsApp para elegir contacto o grupo.
-    url = `whatsapp://send?text=${texto}`;
+  // En celular, primero intenta abrir el menú nativo para compartir.
+  if (!numero && navigator.share) {
+    try {
+      await navigator.share({ text: mensaje });
+      return;
+    } catch (e) {
+      // Si cancela o falla, sigue con WhatsApp.
+    }
   }
 
-  const link = document.createElement("a");
-  link.href = url;
-  link.target = "_self";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  // Fallback para computadora si whatsapp:// no abre.
-  if (!numero) {
-    setTimeout(() => {
-      window.location.href = `https://wa.me/?text=${texto}`;
-    }, 800);
+  if (!numero && navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(mensaje);
+    } catch (e) {}
   }
+
+  const url = numero
+    ? `https://wa.me/${numero}?text=${texto}`
+    : `https://api.whatsapp.com/send?text=${texto}`;
+
+  window.location.href = url;
 }
 
 function generarMensajeGrupoFratello() {
