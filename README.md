@@ -1,9 +1,9 @@
-# Fratello v0.51
+# Fratello v0.52
 
 Corrección:
-- Arreglado error actualizarBloqueo is not defined.
-- Desbloquear producción funciona en PC y celular.
-- Bloquear producción funciona correctamente.
+- Eliminado definitivamente error actualizarBloqueo / actualizarBloqueoProduccion.
+- Desbloquear producción usa renderProduccion directamente.
+- Funciona en PC y celular.
 
 Clave:
 fratello

@@ -330,12 +330,10 @@ function actualizarTextoModo() {
 }
 
 function actualizarBloqueo() {
-  const btnDesbloquear = $("btnDesbloquearProduccion");
-  const btnBloquear = $("btnBloquearProduccion");
+  renderProduccion();
+}
 
-  if (btnDesbloquear) btnDesbloquear.classList.toggle("hidden", produccionDesbloqueada);
-  if (btnBloquear) btnBloquear.classList.toggle("hidden", !produccionDesbloqueada);
-
+function actualizarBloqueoProduccion() {
   renderProduccion();
 }
 
@@ -349,13 +347,13 @@ function desbloquearProduccion() {
   }
 
   produccionDesbloqueada = true;
-  actualizarBloqueo();
+  renderProduccion();
 }
 
 function bloquearProduccion() {
   produccionDesbloqueada = false;
   if (modoEdicionPredeterminada) cancelarEdicionPredeterminada();
-  actualizarBloqueo();
+  renderProduccion();
 }
 
 function guardarProduccion() {
