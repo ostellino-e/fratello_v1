@@ -1,9 +1,9 @@
-# Fratello v0.50 corregida
+# Fratello v0.51
 
 Corrección:
-- Desbloquear producción funciona en celular.
-- Se eliminó el error actualizarBloqueoProduccion is not defined.
-- Se parte desde la versión estable v0.49.
+- Arreglado error actualizarBloqueo is not defined.
+- Desbloquear producción funciona en PC y celular.
+- Bloquear producción funciona correctamente.
 
 Clave:
 fratello

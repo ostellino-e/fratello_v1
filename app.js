@@ -329,6 +329,16 @@ function actualizarTextoModo() {
   }
 }
 
+function actualizarBloqueo() {
+  const btnDesbloquear = $("btnDesbloquearProduccion");
+  const btnBloquear = $("btnBloquearProduccion");
+
+  if (btnDesbloquear) btnDesbloquear.classList.toggle("hidden", produccionDesbloqueada);
+  if (btnBloquear) btnBloquear.classList.toggle("hidden", !produccionDesbloqueada);
+
+  renderProduccion();
+}
+
 function desbloquearProduccion() {
   const clave = window.prompt("Clave para desbloquear producción:");
   const claveLimpia = clave ? clave.trim().toLowerCase() : "";
@@ -345,7 +355,7 @@ function desbloquearProduccion() {
 function bloquearProduccion() {
   produccionDesbloqueada = false;
   if (modoEdicionPredeterminada) cancelarEdicionPredeterminada();
-  renderProduccion();
+  actualizarBloqueo();
 }
 
 function guardarProduccion() {
