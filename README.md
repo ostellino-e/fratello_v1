@@ -1,11 +1,10 @@
-# Fratello v0.55
+# Fratello v0.56
 
 Cambios:
-- Agregado formulario público de pedido: pedido.html.
-- Botón Recordar pedido a cliente.
-- El mensaje de WhatsApp manda link al formulario.
-- El cliente carga cantidades y el pedido entra directo a Firebase.
-- El pedido aparece automáticamente en Fratello.
-
-Prueba:
-- Número usado para WhatsApp: 5492657545599.
+- La vista para imprimir ahora se genera dentro de la misma página.
+- La vista tiene botón para imprimir.
+- La vista tiene botón para compartir por WhatsApp.
+- WhatsApp ahora se abre en la misma pestaña para evitar página en blanco en celular.
+- Se puede borrar un pedido individual.
+- Se pueden seleccionar varios pedidos y borrarlos juntos.
+- Sigue existiendo el botón para borrar todos los pedidos.

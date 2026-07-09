@@ -698,7 +698,10 @@ function renderPedidosCargados() {
 
     html += `<div class="pedidoClienteCard">
       <div class="pedidoClienteHeader">
-        <strong>${pedido.cliente}</strong>
+        <label class="pedidoSelect">
+          <input type="checkbox" class="checkPedidoEliminar" value="${pedido.id}">
+          <strong>${pedido.cliente}</strong>
+        </label>
         <span>${itemsValidos.length} ítems</span>
       </div>`;
 
@@ -712,10 +715,50 @@ function renderPedidosCargados() {
       html += "</tbody></table>";
     }
 
+    html += `<button type="button" class="btnEliminarPedido" onclick="borrarPedido(${pedido.id})">Eliminar este pedido</button>`;
     html += `</div>`;
   });
 
   $("pedidosCargados").innerHTML = html;
+}
+
+
+function borrarPedido(id) {
+  if (!confirm("¿Seguro que querés borrar este pedido?")) return;
+
+  pedidos = pedidos.filter(p => Number(p.id) !== Number(id));
+  pedidosConfirmados = false;
+  guardarTodo();
+
+  renderPedidosCargados();
+  calcularDiferencias();
+  actualizarEstadoConfirmacion();
+
+  const vista = $("vistaPedidosInline");
+  if (vista) vista.innerHTML = "";
+}
+
+function borrarPedidosSeleccionados() {
+  const seleccionados = Array.from(document.querySelectorAll(".checkPedidoEliminar:checked"))
+    .map(c => Number(c.value));
+
+  if (!seleccionados.length) {
+    alert("Seleccioná al menos un pedido para borrar.");
+    return;
+  }
+
+  if (!confirm(`¿Seguro que querés borrar ${seleccionados.length} pedido(s)?`)) return;
+
+  pedidos = pedidos.filter(p => !seleccionados.includes(Number(p.id)));
+  pedidosConfirmados = false;
+  guardarTodo();
+
+  renderPedidosCargados();
+  calcularDiferencias();
+  actualizarEstadoConfirmacion();
+
+  const vista = $("vistaPedidosInline");
+  if (vista) vista.innerHTML = "";
 }
 
 function calcularDiferencias() {
@@ -799,18 +842,72 @@ function copiarResumen() {
 }
 
 
+function textoPedidosClientes() {
+  if (!pedidos.length) return "No hay pedidos cargados.";
+
+  let texto = "FRATELLO - Pedidos clientes\n\n";
+
+  pedidos.forEach(p => {
+    texto += `${p.cliente}:\n`;
+    const items = p.items.filter(i => i.estado !== "NO PEDIDO");
+
+    if (!items.length) {
+      texto += "- Sin productos detectados\n";
+    } else {
+      items.forEach(i => {
+        texto += `- ${fmt(i.cantidad)} ${i.unidad} ${i.producto}\n`;
+      });
+    }
+
+    texto += "\n";
+  });
+
+  return texto;
+}
+
+function compartirVistaPedidosWhatsApp() {
+  abrirWhatsApp("", textoPedidosClientes());
+}
+
 function generarVistaPedidos(){
- let html="<h2>FRATELLO - PEDIDOS</h2>";
- pedidos.forEach(p=>{
-   html+=`<h3>${p.cliente}</h3><table><tr><th>Producto</th><th>Cant.</th></tr>`;
-   p.items.filter(i=>i.estado!=="NO PEDIDO").forEach(i=>{
-      html+=`<tr><td>${i.producto}</td><td>${fmt(i.cantidad)} ${i.unidad}</td></tr>`;
-   });
-   html+="</table>";
- });
- const w=window.open("","_blank");
- w.document.write(`<html><head><title>Pedidos</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px}h3{background:#eee;padding:6px}</style></head><body>${html}</body></html>`);
- w.document.close();
+  const cont = $("vistaPedidosInline");
+  if (!cont) return;
+
+  if (!pedidos.length) {
+    cont.innerHTML = "<p>No hay pedidos cargados.</p>";
+    return;
+  }
+
+  let html = `<div class="vistaPedidosCard" id="vistaPedidosCard">
+    <h2>FRATELLO - PEDIDOS</h2>
+    <p>Pedidos cargados para producción/reparto</p>`;
+
+  pedidos.forEach(p => {
+    const items = p.items.filter(i => i.estado !== "NO PEDIDO");
+
+    html += `<div class="vistaCliente">
+      <h3>${p.cliente}</h3>`;
+
+    if (!items.length) {
+      html += "<p>Sin productos detectados</p>";
+    } else {
+      html += "<table><thead><tr><th>Producto</th><th>Cantidad</th></tr></thead><tbody>";
+      items.forEach(i => {
+        html += `<tr><td>${i.producto}</td><td>${fmt(i.cantidad)} ${i.unidad}</td></tr>`;
+      });
+      html += "</tbody></table>";
+    }
+
+    html += "</div>";
+  });
+
+  html += `</div>
+    <div class="vistaPedidosActions">
+      <button type="button" onclick="window.print()">🖨 Imprimir</button>
+      <button type="button" onclick="compartirVistaPedidosWhatsApp()">📲 Compartir por WhatsApp</button>
+    </div>`;
+
+  cont.innerHTML = html;
 }
 
 function resetDatos() {
@@ -924,7 +1021,7 @@ function abrirWhatsApp(numero, mensaje) {
     ? `https://wa.me/${numero}?text=${texto}`
     : `https://wa.me/?text=${texto}`;
 
-  window.open(url, "_blank");
+  window.location.href = url;
 }
 
 function generarMensajeGrupoFratello() {
@@ -1036,6 +1133,7 @@ async function init() {
   $("btnExportar").onclick = copiarResumen;
   $("btnReset").onclick = resetDatos;
   $("btnVistaPedidos").onclick = generarVistaPedidos;
+  if ($("btnBorrarSeleccionados")) $("btnBorrarSeleccionados").onclick = borrarPedidosSeleccionados;
 
   renderProduccion();
   renderPedidosCargados();

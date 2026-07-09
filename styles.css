@@ -365,3 +365,75 @@ input:disabled, select:disabled, button:disabled {
   border: 1px solid #b7d7ba;
   color: #1b5e20;
 }
+
+.vistaPedidosCard {
+  background: white;
+  border: 2px solid #2b2118;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 14px 0;
+}
+
+.vistaPedidosCard h2 {
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.vistaCliente {
+  border-top: 1px solid #d4c7b8;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.vistaCliente h3 {
+  background: #f0e4d7;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.vistaPedidosActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.pedidoSelect {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pedidoSelect input {
+  width: auto;
+  transform: scale(1.25);
+}
+
+.btnEliminarPedido {
+  margin-top: 10px;
+  background: #ffe1de;
+  color: #9b1c1c;
+}
+
+#btnBorrarSeleccionados {
+  background: #ffe1de;
+  color: #9b1c1c;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #vistaPedidosInline, #vistaPedidosInline * {
+    visibility: visible;
+  }
+  #vistaPedidosInline {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .vistaPedidosActions {
+    display: none;
+  }
+}
