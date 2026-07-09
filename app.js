@@ -288,7 +288,6 @@ function renderProduccion() {
   $("produccionLista").innerHTML = html;
   renderProduccionExtra();
   actualizarTextoModo();
-  actualizarBloqueoProduccion();
 }
 
 function renderProduccionExtra() {
@@ -340,7 +339,7 @@ function desbloquearProduccion() {
   }
 
   produccionDesbloqueada = true;
-  actualizarBloqueoProduccion();
+  actualizarBloqueo();
 }
 
 function bloquearProduccion() {
