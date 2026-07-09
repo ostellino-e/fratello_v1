@@ -1,9 +1,8 @@
-# Fratello v0.52
+# Fratello v0.53
 
-Corrección:
-- Eliminado definitivamente error actualizarBloqueo / actualizarBloqueoProduccion.
-- Desbloquear producción usa renderProduccion directamente.
-- Funciona en PC y celular.
-
-Clave:
-fratello
+Cambios:
+- Agregado botón Mensaje panadero.
+- El mensaje al panadero incluye lo que falta y lo que sobra.
+- Se usa número de prueba: 5492657545599.
+- Agregado botón Mensaje grupo Fratello.
+- El mensaje del grupo resume pedidos por cliente.

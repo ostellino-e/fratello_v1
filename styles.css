@@ -352,3 +352,11 @@ input:disabled, select:disabled, button:disabled {
   background: #eaf7eb;
   color: #1f7a35;
 }
+
+/* Botones WhatsApp */
+#btnWhatsAppPanadero,
+#btnWhatsAppGrupo {
+  background: #e8f5e9;
+  border: 1px solid #b7d7ba;
+  color: #1b5e20;
+}
