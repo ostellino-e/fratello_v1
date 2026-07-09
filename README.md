@@ -1,6 +1,10 @@
-# Fratello v0.49
+# Fratello v0.50
 
-Cambios:
-- Al confirmar pedidos, se destildan las casillas de confirmación.
-- Al borrar pedidos cargados, también se destildan las casillas.
-- Esto obliga a revisar nuevamente cada nueva carga diaria.
+Corrección:
+- Desbloquear producción ahora funciona mejor en celular.
+- La clave acepta espacios accidentales y mayúsculas/minúsculas.
+- Al desbloquear se habilitan los campos al instante.
+- Al bloquear se deshabilitan nuevamente.
+
+Clave:
+fratello

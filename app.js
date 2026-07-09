@@ -288,6 +288,7 @@ function renderProduccion() {
   $("produccionLista").innerHTML = html;
   renderProduccionExtra();
   actualizarTextoModo();
+  actualizarBloqueoProduccion();
 }
 
 function renderProduccionExtra() {
@@ -330,13 +331,16 @@ function actualizarTextoModo() {
 }
 
 function desbloquearProduccion() {
-  const clave = prompt("Clave para modificar producción:");
-  if (clave !== "fratello") {
+  const clave = window.prompt("Clave para desbloquear producción:");
+  const claveLimpia = clave ? clave.trim().toLowerCase() : "";
+
+  if (claveLimpia !== "fratello") {
     alert("Clave incorrecta.");
     return;
   }
+
   produccionDesbloqueada = true;
-  renderProduccion();
+  actualizarBloqueoProduccion();
 }
 
 function bloquearProduccion() {
