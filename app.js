@@ -1022,34 +1022,29 @@ function obtenerFilasComparador() {
 
 function abrirWhatsApp(numero, mensaje) {
   const texto = encodeURIComponent(mensaje);
-  const url = numero
-    ? `https://wa.me/${numero}?text=${texto}`
-    : `https://wa.me/?text=${texto}`;
 
-  window.location.href = url;
-}
+  let url = "";
 
-
-
-function habilitarEnvioWhatsappConfirmado() {
-  sessionStorage.setItem("fratello_envio_confirmado", "true");
-}
-
-function bloquearEnvioWhatsappConfirmado() {
-  sessionStorage.removeItem("fratello_envio_confirmado");
-}
-
-function envioWhatsappConfirmadoEnEsteDispositivo() {
-  return sessionStorage.getItem("fratello_envio_confirmado") === "true";
-}
-
-function verificarPedidosConfirmadosAntesDeEnviar() {
-  if (!pedidosConfirmados) {
-    alert("Primero tenés que confirmar los pedidos con el botón Confirmar pedidos.");
-    return false;
+  if (numero) {
+    url = `https://wa.me/${numero}?text=${texto}`;
+  } else {
+    // En celular abre WhatsApp para elegir contacto o grupo.
+    url = `whatsapp://send?text=${texto}`;
   }
 
-  return true;
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_self";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  // Fallback para computadora si whatsapp:// no abre.
+  if (!numero) {
+    setTimeout(() => {
+      window.location.href = `https://wa.me/?text=${texto}`;
+    }, 800);
+  }
 }
 
 function generarMensajeGrupoFratello() {

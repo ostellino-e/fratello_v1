@@ -1,6 +1,5 @@
-# Fratello v0.59
+# Fratello v0.60
 
 Corrección:
-- Arreglado bloqueo incorrecto al enviar WhatsApp después de confirmar.
-- Ahora, si el sistema dice "Pedidos confirmados correctamente", ya permite enviar al grupo.
-- Sigue bloqueando el envío si los pedidos no están confirmados.
+- Compartir pedidos por WhatsApp en celular ahora abre WhatsApp para elegir contacto o grupo.
+- Mantiene fallback para computadora.
