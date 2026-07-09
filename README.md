@@ -1,8 +1,9 @@
-# Fratello v0.53
+# Fratello v0.54
 
 Cambios:
-- Agregado botón Mensaje panadero.
-- El mensaje al panadero incluye lo que falta y lo que sobra.
-- Se usa número de prueba: 5492657545599.
-- Agregado botón Mensaje grupo Fratello.
-- El mensaje del grupo resume pedidos por cliente.
+- Se eliminó el botón Mensaje panadero.
+- Queda solo el botón Enviar al grupo Fratello.
+- El mensaje incluye:
+  - 🔴 Lo que falta hacer.
+  - 🟢 Lo que sobra / guardar.
+  - Pedidos de clientes separados.

@@ -884,7 +884,6 @@ function confirmarPedidos() {
 }
 
 
-const WHATSAPP_PANADERO = "5492657545599";
 
 function obtenerFilasComparador() {
   const totalesPedido = {};
@@ -928,64 +927,53 @@ function abrirWhatsApp(numero, mensaje) {
   window.open(url, "_blank");
 }
 
-function generarMensajePanadero() {
+function generarMensajeGrupoFratello() {
   const filas = obtenerFilasComparador();
   const faltan = filas.filter(f => f.dif < 0);
   const sobran = filas.filter(f => f.dif > 0);
 
-  if (!faltan.length && !sobran.length) {
-    alert("No hay faltantes ni sobrantes para enviar.");
-    return;
-  }
+  let mensaje = "FRATELLO - Resumen de producción y pedidos\n\n";
 
-  let mensaje = "FRATELLO - Producción noche\n\n";
-
-  mensaje += "FALTA HACER:\n";
+  mensaje += "🔴 FALTA HACER:\n";
   if (!faltan.length) {
     mensaje += "- Nada\n";
   } else {
     faltan.forEach(f => {
-      mensaje += `- ${fmt(Math.abs(f.dif))} ${f.unidad} ${f.producto}\n`;
+      mensaje += `🔴 ${fmt(Math.abs(f.dif))} ${f.unidad} ${f.producto}\n`;
     });
   }
 
-  mensaje += "\nSOBRA / GUARDAR:\n";
+  mensaje += "\n🟢 SOBRA / GUARDAR:\n";
   if (!sobran.length) {
     mensaje += "- Nada\n";
   } else {
     sobran.forEach(f => {
-      mensaje += `- ${fmt(f.dif)} ${f.unidad} ${f.producto}\n`;
+      mensaje += `🟢 ${fmt(f.dif)} ${f.unidad} ${f.producto}\n`;
     });
   }
 
-  mensaje += "\nConfirmado desde sistema Fratello.";
+  mensaje += "\n--------------------\n";
+  mensaje += "PEDIDOS DE CLIENTES:\n\n";
 
-  abrirWhatsApp(WHATSAPP_PANADERO, mensaje);
-}
-
-function generarMensajeGrupoFratello() {
   if (!pedidos.length) {
-    alert("No hay pedidos cargados para enviar.");
-    return;
+    mensaje += "No hay pedidos cargados.\n";
+  } else {
+    pedidos.forEach(pedido => {
+      const itemsValidos = pedido.items.filter(i => i.estado !== "NO PEDIDO");
+
+      mensaje += `${pedido.cliente}:\n`;
+
+      if (!itemsValidos.length) {
+        mensaje += "- Sin productos detectados\n";
+      } else {
+        itemsValidos.forEach(it => {
+          mensaje += `- ${fmt(it.cantidad)} ${it.unidad} ${it.producto}\n`;
+        });
+      }
+
+      mensaje += "\n";
+    });
   }
-
-  let mensaje = "FRATELLO - Pedidos clientes\n\n";
-
-  pedidos.forEach(pedido => {
-    const itemsValidos = pedido.items.filter(i => i.estado !== "NO PEDIDO");
-
-    mensaje += `${pedido.cliente}:\n`;
-
-    if (!itemsValidos.length) {
-      mensaje += "- Sin productos detectados\n";
-    } else {
-      itemsValidos.forEach(it => {
-        mensaje += `- ${fmt(it.cantidad)} ${it.unidad} ${it.producto}\n`;
-      });
-    }
-
-    mensaje += "\n";
-  });
 
   mensaje += "Enviado desde sistema Fratello.";
 
@@ -1022,7 +1010,6 @@ async function init() {
   $("btnLimpiarPedido").onclick = () => $("pedidoCrudo").value = "";
   $("btnCalcular").onclick = calcularDiferencias;
   if ($("btnConfirmarPedidos")) $("btnConfirmarPedidos").onclick = confirmarPedidos;
-  if ($("btnWhatsAppPanadero")) $("btnWhatsAppPanadero").onclick = generarMensajePanadero;
   if ($("btnWhatsAppGrupo")) $("btnWhatsAppGrupo").onclick = generarMensajeGrupoFratello;
   $("btnExportar").onclick = copiarResumen;
   $("btnReset").onclick = resetDatos;
