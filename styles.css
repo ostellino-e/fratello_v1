@@ -437,3 +437,12 @@ input:disabled, select:disabled, button:disabled {
     display: none;
   }
 }
+
+.avisoConfirmar {
+  width: 100%;
+  background: #fff6d6;
+  border-radius: 10px;
+  padding: 10px;
+  font-weight: bold;
+  font-size: 14px;
+}

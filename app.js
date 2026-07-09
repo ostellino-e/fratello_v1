@@ -866,6 +866,8 @@ function textoPedidosClientes() {
 }
 
 function compartirVistaPedidosWhatsApp() {
+  if (!verificarPedidosConfirmadosAntesDeEnviar()) return;
+
   abrirWhatsApp("", textoPedidosClientes());
 }
 
@@ -1024,7 +1026,19 @@ function abrirWhatsApp(numero, mensaje) {
   window.location.href = url;
 }
 
+
+function verificarPedidosConfirmadosAntesDeEnviar() {
+  if (!pedidosConfirmados) {
+    alert("Primero tenés que confirmar los pedidos con el botón Confirmar pedidos.");
+    return false;
+  }
+
+  return true;
+}
+
 function generarMensajeGrupoFratello() {
+  if (!verificarPedidosConfirmadosAntesDeEnviar()) return;
+
   const filas = obtenerFilasComparador();
   const faltan = filas.filter(f => f.dif < 0);
   const sobran = filas.filter(f => f.dif > 0);
