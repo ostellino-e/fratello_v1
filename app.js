@@ -979,7 +979,6 @@ function confirmarPedidos() {
   }
 
   pedidosConfirmados = true;
-  habilitarEnvioWhatsappConfirmado();
   guardarTodo();
   actualizarEstadoConfirmacion();
   destildarCasillasConfirmacion();
@@ -1045,8 +1044,8 @@ function envioWhatsappConfirmadoEnEsteDispositivo() {
 }
 
 function verificarPedidosConfirmadosAntesDeEnviar() {
-  if (!pedidosConfirmados || !envioWhatsappConfirmadoEnEsteDispositivo()) {
-    alert("Primero tenés que confirmar los pedidos con el botón Confirmar pedidos desde este dispositivo.");
+  if (!pedidosConfirmados) {
+    alert("Primero tenés que confirmar los pedidos con el botón Confirmar pedidos.");
     return false;
   }
 

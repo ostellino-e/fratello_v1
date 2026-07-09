@@ -1,6 +1,6 @@
-# Fratello v0.58
+# Fratello v0.59
 
-Cambios:
-- En celular también exige Confirmar pedidos antes de enviar WhatsApp.
-- La confirmación debe hacerse en el mismo dispositivo desde donde se envía.
-- Si se carga, borra o modifica un pedido, se bloquea nuevamente el envío hasta confirmar.
+Corrección:
+- Arreglado bloqueo incorrecto al enviar WhatsApp después de confirmar.
+- Ahora, si el sistema dice "Pedidos confirmados correctamente", ya permite enviar al grupo.
+- Sigue bloqueando el envío si los pedidos no están confirmados.
