@@ -359,3 +359,9 @@ input:disabled, select:disabled, button:disabled {
   border: 1px solid #b7d7ba;
   color: #1b5e20;
 }
+
+#btnRecordarCliente {
+  background: #e8f5e9;
+  border: 1px solid #b7d7ba;
+  color: #1b5e20;
+}

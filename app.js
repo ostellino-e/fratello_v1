@@ -981,6 +981,27 @@ function generarMensajeGrupoFratello() {
 }
 
 
+
+const WHATSAPP_CLIENTE_PRUEBA = "5492657545599";
+
+function generarLinkFormularioCliente() {
+  const base = window.location.origin + window.location.pathname.replace("index.html", "");
+  return base + "pedido.html";
+}
+
+function recordarPedidoCliente() {
+  const link = generarLinkFormularioCliente();
+
+  const mensaje = `Hola! Te recordamos cargar tu pedido para mañana en este formulario:
+
+${link}
+
+Gracias, Fratello.`;
+
+  abrirWhatsApp(WHATSAPP_CLIENTE_PRUEBA, mensaje);
+}
+
+
 async function init() {
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   await cargarDesdeNube();
@@ -1011,6 +1032,7 @@ async function init() {
   $("btnCalcular").onclick = calcularDiferencias;
   if ($("btnConfirmarPedidos")) $("btnConfirmarPedidos").onclick = confirmarPedidos;
   if ($("btnWhatsAppGrupo")) $("btnWhatsAppGrupo").onclick = generarMensajeGrupoFratello;
+  if ($("btnRecordarCliente")) $("btnRecordarCliente").onclick = recordarPedidoCliente;
   $("btnExportar").onclick = copiarResumen;
   $("btnReset").onclick = resetDatos;
   $("btnVistaPedidos").onclick = generarVistaPedidos;

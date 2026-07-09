@@ -1,9 +1,11 @@
-# Fratello v0.54
+# Fratello v0.55
 
 Cambios:
-- Se eliminó el botón Mensaje panadero.
-- Queda solo el botón Enviar al grupo Fratello.
-- El mensaje incluye:
-  - 🔴 Lo que falta hacer.
-  - 🟢 Lo que sobra / guardar.
-  - Pedidos de clientes separados.
+- Agregado formulario público de pedido: pedido.html.
+- Botón Recordar pedido a cliente.
+- El mensaje de WhatsApp manda link al formulario.
+- El cliente carga cantidades y el pedido entra directo a Firebase.
+- El pedido aparece automáticamente en Fratello.
+
+Prueba:
+- Número usado para WhatsApp: 5492657545599.
