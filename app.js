@@ -658,7 +658,6 @@ function procesarPedidoActual() {
   pedidos.push({ id: Date.now(), fecha, cliente, textoOriginal: texto, items: procesado });
 
   pedidosConfirmados = false;
-  bloquearEnvioWhatsappConfirmado();
   guardarTodo();
 
   renderUltimoProcesado(procesado);
@@ -729,7 +728,6 @@ function borrarPedido(id) {
 
   pedidos = pedidos.filter(p => Number(p.id) !== Number(id));
   pedidosConfirmados = false;
-  bloquearEnvioWhatsappConfirmado();
   guardarTodo();
 
   renderPedidosCargados();
@@ -753,7 +751,6 @@ function borrarPedidosSeleccionados() {
 
   pedidos = pedidos.filter(p => !seleccionados.includes(Number(p.id)));
   pedidosConfirmados = false;
-  bloquearEnvioWhatsappConfirmado();
   guardarTodo();
 
   renderPedidosCargados();
@@ -869,7 +866,7 @@ function textoPedidosClientes() {
 }
 
 function compartirVistaPedidosWhatsApp() {
-  if (!verificarPedidosConfirmadosAntesDeEnviar()) return;
+  if (!verificarChecksAntesDeWhatsApp()) return;
 
   abrirWhatsApp("", textoPedidosClientes());
 }
@@ -959,6 +956,33 @@ function actualizarEstadoConfirmacion() {
   el.className = pedidosConfirmados ? "estadoConfirmacion confirmado" : "estadoConfirmacion";
 }
 
+function confirmarPedidos() {
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkPedido = $("checkPedidoCompleto");
+
+  if (checkProduccion && !checkProduccion.checked) {
+    alert("Falta tildar que el día seleccionado es correcto.");
+    return;
+  }
+
+  if (checkPedido && !checkPedido.checked) {
+    alert("Falta tildar que todos los pedidos cargados están correctos.");
+    return;
+  }
+
+  if (!pedidos.length) {
+    alert("Todavía no hay pedidos cargados.");
+    return;
+  }
+
+  pedidosConfirmados = true;
+  guardarTodo();
+  actualizarEstadoConfirmacion();
+  destildarCasillasConfirmacion();
+  alert("Pedidos confirmados correctamente.");
+}
+
+
 
 function obtenerFilasComparador() {
   const totalesPedido = {};
@@ -996,14 +1020,32 @@ function obtenerFilasComparador() {
 function abrirWhatsApp(numero, mensaje) {
   const texto = encodeURIComponent(mensaje);
   const url = numero
-    ? `https://api.whatsapp.com/send?phone=${numero}&text=${texto}`
-    : `https://api.whatsapp.com/send?text=${texto}`;
+    ? `https://wa.me/${numero}?text=${texto}`
+    : `https://wa.me/?text=${texto}`;
 
-  window.location.assign(url);
+  window.location.href = url;
+}
+
+
+function verificarChecksAntesDeWhatsApp() {
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkPedido = $("checkPedidoCompleto");
+
+  if (checkProduccion && !checkProduccion.checked) {
+    alert("Primero tildá que el día seleccionado es correcto.");
+    return false;
+  }
+
+  if (checkPedido && !checkPedido.checked) {
+    alert("Primero tildá que los pedidos cargados están correctos.");
+    return false;
+  }
+
+  return true;
 }
 
 function generarMensajeGrupoFratello() {
-  if (!verificarPedidosConfirmadosAntesDeEnviar()) return;
+  if (!verificarChecksAntesDeWhatsApp()) return;
 
   const filas = obtenerFilasComparador();
   const faltan = filas.filter(f => f.dif < 0);
