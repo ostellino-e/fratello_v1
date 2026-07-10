@@ -1,8 +1,11 @@
-# Fratello v0.65
+# Fratello v0.66
 
-Cambios sobre v0.64 estable:
-- Se elimina el botón Confirmar pedidos.
-- Para enviar al grupo de WhatsApp exige dos casillas:
-  1. Día seleccionado correcto.
-  2. Pedidos cargados correctos.
-- Se mantiene el comportamiento estable de WhatsApp de v0.56/v0.64.
+Cambios:
+- Botón visible y claro: “Editar producción base”.
+- Al tocarlo pide la clave directamente.
+- Permite modificar las cantidades base del día seleccionado.
+- Botones Guardar nueva base y Cancelar.
+- Después de guardar o cancelar, vuelve a bloquearse por seguridad.
+
+Clave:
+fratello

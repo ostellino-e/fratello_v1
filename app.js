@@ -397,13 +397,23 @@ function guardarProduccion() {
 
 function activarEdicionPredeterminada() {
   if (!produccionDesbloqueada) {
-    alert("Primero desbloqueá producción.");
-    return;
+    const clave = window.prompt("Clave para editar la producción base:");
+    const claveLimpia = clave ? clave.trim().toLowerCase() : "";
+
+    if (claveLimpia !== "fratello") {
+      alert("Clave incorrecta.");
+      return;
+    }
+
+    produccionDesbloqueada = true;
   }
+
   modoEdicionPredeterminada = true;
+
   $("btnGuardarPredeterminada").classList.remove("hidden");
   $("btnCancelarPredeterminada").classList.remove("hidden");
   $("btnEditarPredeterminada").classList.add("hidden");
+
   renderProduccion();
 }
 
@@ -423,6 +433,7 @@ function guardarPredeterminada() {
   guardarTodo();
 
   modoEdicionPredeterminada = false;
+  produccionDesbloqueada = false;
   $("btnGuardarPredeterminada").classList.add("hidden");
   $("btnCancelarPredeterminada").classList.add("hidden");
   $("btnEditarPredeterminada").classList.remove("hidden");
@@ -434,9 +445,12 @@ function guardarPredeterminada() {
 
 function cancelarEdicionPredeterminada() {
   modoEdicionPredeterminada = false;
+  produccionDesbloqueada = false;
+
   $("btnGuardarPredeterminada").classList.add("hidden");
   $("btnCancelarPredeterminada").classList.add("hidden");
   $("btnEditarPredeterminada").classList.remove("hidden");
+
   renderProduccion();
 }
 
