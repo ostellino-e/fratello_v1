@@ -446,3 +446,4 @@ input:disabled, select:disabled, button:disabled {
   font-weight: bold;
   font-size: 14px;
 }
+.installPanel{margin:10px 18px 0;text-align:center}.installPanel button{width:100%;max-width:520px;background:#2b2118;color:#fff}@media(max-width:900px){.installPanel{margin:10px}}

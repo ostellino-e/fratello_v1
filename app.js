@@ -1,3 +1,22 @@
+let eventoInstalacion = null;
+window.addEventListener("beforeinstallprompt", (evento) => {
+  evento.preventDefault();
+  eventoInstalacion = evento;
+  const boton = document.getElementById("btnInstalarApp");
+  if (boton) boton.classList.remove("hidden");
+});
+async function instalarFratello() {
+  if (!eventoInstalacion) {
+    alert("En iPhone usá Compartir y elegí Agregar a pantalla de inicio.");
+    return;
+  }
+  eventoInstalacion.prompt();
+  await eventoInstalacion.userChoice;
+  eventoInstalacion = null;
+  const boton = document.getElementById("btnInstalarApp");
+  if (boton) boton.classList.add("hidden");
+}
+
 const productos = [
   { id: "CHIC", nombre: "Chicharrón", unidad: "unidad", visible: true, activo: true, nuevo: false },
   { id: "TREN", nombre: "Trenzas", unidad: "unidad", visible: true, activo: true, nuevo: false },
@@ -181,6 +200,7 @@ function escucharCambiosNube() {
     guardarTodo();
 
     if (typeof renderClientes === "function") renderClientes();
+  if ($("btnInstalarApp")) $("btnInstalarApp").onclick = instalarFratello;
     if (typeof renderProduccion === "function") renderProduccion();
     if (typeof renderCorrespondePedido === "function")
     if (typeof renderPedidosCargados === "function") renderPedidosCargados();

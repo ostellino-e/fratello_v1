@@ -5,12 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
   <link rel="stylesheet" href="styles.css" />
+  <meta name="theme-color" content="#2b2118" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Fratello" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
 </head>
 <body>
   <header>
     <h1>Fratello</h1>
     <p>Pedidos WhatsApp → Producción → Faltantes</p>
   </header>
+  <section class="installPanel">
+    <button id="btnInstalarApp" type="button" class="hidden">📲 Instalar Fratello en el celular</button>
+    <p class="hint">En iPhone: Compartir → Agregar a pantalla de inicio.</p>
+  </section>
 
   <section class="syncPanel">
     <strong>Sincronización:</strong>
@@ -121,5 +131,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(console.error));
+    }
+  </script>
 </body>
 </html>
