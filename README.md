@@ -1,12 +1,11 @@
-# Fratello v0.69
+# Fratello v0.70 — Rediseño visual móvil
 
 Cambios:
-- Nuevo ícono oficial de Fratello.
-- Íconos actualizados para PWA, Android e iPhone.
-- Agregado apple-touch-icon de 180x180.
-- Caché PWA actualizado a v0.69.
-
-Después de publicar:
-- En iPhone, eliminá el ícono viejo de la pantalla de inicio.
-- Abrí Fratello en Safari.
-- Compartir → Agregar a pantalla de inicio.
+- Nueva pantalla principal estilo aplicación.
+- Encabezado con logo oficial.
+- Tarjetas grandes para Producción, Pedidos y Resumen.
+- Cada sección se abre de forma independiente.
+- Botones Volver e Inicio.
+- Acciones rápidas.
+- Diseño optimizado para iPhone y Android.
+- No se modificó la lógica de Firebase, pedidos, producción ni WhatsApp.

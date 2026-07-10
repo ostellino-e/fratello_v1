@@ -1,3 +1,55 @@
+
+function mostrarInicioFratello() {
+  const inicio = document.getElementById("panelInicio");
+  const contenido = document.getElementById("contenidoApp");
+
+  document.querySelectorAll(".appSection").forEach(seccion => {
+    seccion.classList.remove("seccionActiva");
+  });
+
+  if (inicio) inicio.classList.remove("hidden");
+  if (contenido) contenido.classList.remove("contenidoVisible");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function abrirSeccionFratello(idSeccion) {
+  const inicio = document.getElementById("panelInicio");
+  const contenido = document.getElementById("contenidoApp");
+  const destino = document.getElementById(idSeccion);
+
+  if (inicio) inicio.classList.add("hidden");
+  if (contenido) contenido.classList.add("contenidoVisible");
+
+  document.querySelectorAll(".appSection").forEach(seccion => {
+    seccion.classList.toggle("seccionActiva", seccion === destino);
+  });
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function iniciarNavegacionFratello() {
+  document.querySelectorAll("[data-seccion]").forEach(boton => {
+    boton.addEventListener("click", () => abrirSeccionFratello(boton.dataset.seccion));
+  });
+
+  document.querySelectorAll(".volverInicio").forEach(boton => {
+    boton.addEventListener("click", mostrarInicioFratello);
+  });
+
+  const btnInicio = document.getElementById("btnInicio");
+  if (btnInicio) btnInicio.addEventListener("click", mostrarInicioFratello);
+
+  const btnBorrarRapido = document.getElementById("btnBorrarRapido");
+  if (btnBorrarRapido) {
+    btnBorrarRapido.addEventListener("click", () => {
+      const btnReset = document.getElementById("btnReset");
+      if (btnReset) btnReset.click();
+    });
+  }
+
+  mostrarInicioFratello();
+}
+
 let eventoInstalacion = null;
 window.addEventListener("beforeinstallprompt", (evento) => {
   evento.preventDefault();
@@ -200,6 +252,7 @@ function escucharCambiosNube() {
     guardarTodo();
 
     if (typeof renderClientes === "function") renderClientes();
+  iniciarNavegacionFratello();
   if ($("btnInstalarApp")) $("btnInstalarApp").onclick = instalarFratello;
     if (typeof renderProduccion === "function") renderProduccion();
     if (typeof renderCorrespondePedido === "function")

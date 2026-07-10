@@ -447,3 +447,302 @@ input:disabled, select:disabled, button:disabled {
   font-size: 14px;
 }
 .installPanel{margin:10px 18px 0;text-align:center}.installPanel button{width:100%;max-width:520px;background:#2b2118;color:#fff}@media(max-width:900px){.installPanel{margin:10px}}
+
+/* ===== FRATELLO v0.70 - REDISEÑO MÓVIL ===== */
+:root {
+  --fratello-brown: #3a2414;
+  --fratello-cream: #fff7e8;
+  --fratello-gold: #d89b2b;
+  --fratello-green: #4d8f3a;
+  --fratello-blue: #2d78a8;
+  --fratello-soft: #f6efe5;
+  --fratello-shadow: 0 10px 28px rgba(58, 36, 20, 0.12);
+}
+
+body {
+  background: linear-gradient(180deg, #fff7e8 0%, #f4eee6 100%);
+  color: #2e2119;
+}
+
+.appHeader {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #fff5df, #f5dfb7);
+  color: var(--fratello-brown);
+  box-shadow: 0 4px 16px rgba(58, 36, 20, 0.12);
+}
+
+.brandWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandLogo {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(58, 36, 20, 0.18);
+}
+
+.appHeader h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(28px, 6vw, 42px);
+  letter-spacing: 1px;
+}
+
+.appHeader p {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.menuButton {
+  width: 48px;
+  min-width: 48px;
+  padding: 9px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--fratello-brown);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.installPanel,
+.syncPanel {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.dashboard {
+  max-width: 760px;
+  margin: 14px auto 90px;
+  padding: 0 14px;
+}
+
+.dashboardCard {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 70px 1fr 28px;
+  align-items: center;
+  gap: 14px;
+  min-height: 132px;
+  margin: 14px 0;
+  padding: 18px;
+  border: 1px solid transparent;
+  border-radius: 22px;
+  text-align: left;
+  box-shadow: var(--fratello-shadow);
+  color: #241a14;
+}
+
+.produccionCard {
+  background: linear-gradient(135deg, #fff1c7, #ffe5aa);
+  border-color: #e6b65d;
+}
+
+.pedidosCard {
+  background: linear-gradient(135deg, #eef7e8, #dcebd4);
+  border-color: #a8c99a;
+}
+
+.resumenCard {
+  background: linear-gradient(135deg, #eaf4fb, #d5e9f6);
+  border-color: #9bc4df;
+}
+
+.dashboardIcon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.72);
+  font-size: 34px;
+}
+
+.dashboardText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dashboardText strong {
+  font-size: 21px;
+}
+
+.dashboardText small {
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dashboardText span {
+  margin-top: 5px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.dashboardArrow {
+  font-size: 46px;
+  font-weight: 300;
+  text-align: center;
+}
+
+.quickTitle {
+  margin: 26px 2px 10px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.quickActions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+
+.quickActions button {
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 5px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.82);
+  box-shadow: 0 6px 16px rgba(58,36,20,.09);
+  font-size: 25px;
+}
+
+.quickActions button span {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#contenidoApp {
+  display: none;
+  max-width: 900px;
+  margin: 0 auto 70px;
+  padding: 12px;
+}
+
+#contenidoApp.contenidoVisible {
+  display: block;
+}
+
+.appSection {
+  display: none !important;
+  border: 0;
+  border-radius: 24px;
+  box-shadow: var(--fratello-shadow);
+}
+
+.appSection.seccionActiva {
+  display: block !important;
+}
+
+.volverInicio {
+  width: auto;
+  margin-bottom: 8px;
+  padding: 9px 14px;
+  background: #efe5d7;
+  color: var(--fratello-brown);
+}
+
+.appSection h2 {
+  font-size: clamp(25px, 6vw, 34px);
+  color: var(--fratello-brown);
+}
+
+.appSection button,
+.appSection input,
+.appSection select,
+.appSection textarea {
+  border-radius: 14px;
+}
+
+.appSection .primary {
+  background: linear-gradient(135deg, #c87d23, #df9b3f);
+  color: white;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 620px) {
+  .appHeader {
+    padding: 11px 12px;
+  }
+
+  .brandLogo {
+    width: 54px;
+    height: 54px;
+    border-radius: 15px;
+  }
+
+  .appHeader h1 {
+    font-size: 29px;
+  }
+
+  .appHeader p {
+    font-size: 12px;
+  }
+
+  .dashboard {
+    margin-top: 8px;
+    padding: 0 10px;
+  }
+
+  .dashboardCard {
+    grid-template-columns: 58px 1fr 22px;
+    min-height: 118px;
+    gap: 11px;
+    padding: 15px;
+    border-radius: 19px;
+  }
+
+  .dashboardIcon {
+    width: 54px;
+    height: 54px;
+    font-size: 28px;
+  }
+
+  .dashboardText strong {
+    font-size: 18px;
+  }
+
+  .dashboardText span {
+    font-size: 13px;
+  }
+
+  .dashboardArrow {
+    font-size: 36px;
+  }
+
+  .quickActions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .quickActions button {
+    min-height: 82px;
+  }
+
+  #contenidoApp {
+    padding: 9px;
+  }
+
+  .appSection {
+    padding: 16px;
+  }
+}
