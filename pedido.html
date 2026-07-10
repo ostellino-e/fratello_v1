@@ -24,23 +24,40 @@
       margin-bottom: 14px;
     }
 
-    .productoPedidoCliente {
-      display: grid;
-      grid-template-columns: 1fr 110px 90px;
-      gap: 8px;
+    .formatoEjemplo {
+      background: #fff6d6;
+      border: 1px solid #ead89a;
+      border-radius: 12px;
+      padding: 12px;
+      margin: 12px 0;
+    }
+
+    .formatoEjemplo pre {
+      white-space: pre-wrap;
+      margin: 8px 0 0;
+      font-family: inherit;
+    }
+
+    #pedidoCrudoCliente {
+      min-height: 260px;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .checkControlCliente {
+      display: flex;
       align-items: center;
-      border-bottom: 1px solid #eadfce;
-      padding: 8px 0;
+      gap: 10px;
+      background: #fff6d6;
+      border-radius: 10px;
+      padding: 12px;
+      margin: 12px 0;
+      font-weight: bold;
     }
 
-    .productoPedidoCliente input {
-      margin: 0;
-    }
-
-    @media (max-width: 600px) {
-      .productoPedidoCliente {
-        grid-template-columns: 1fr;
-      }
+    .checkControlCliente input {
+      width: auto;
+      transform: scale(1.3);
     }
   </style>
 </head>
@@ -48,23 +65,32 @@
   <div class="pedidoClienteWrap">
     <div class="pedidoClienteHeader">
       <h1>Fratello</h1>
-      <p>Cargá tu pedido para mañana</p>
+      <p>Cargá tu pedido para la próxima entrega</p>
     </div>
 
     <section class="card">
       <label>Nombre del cliente / sucursal</label>
-      <input id="clientePedido" placeholder="Ej: Giuliano, Laura, Fratello..." />
+      <input id="clientePedido" placeholder="Ej: Pedernera y Colombia" />
 
       <label>Fecha de entrega</label>
       <input id="fechaEntrega" type="date" />
 
-      <h2>Productos</h2>
-      <p class="hint">Completá solo los productos que necesitás.</p>
+      <div class="formatoEjemplo">
+        <strong>Formato obligatorio: una línea por producto</strong>
+        <pre>Pan 12 kg
+Medialunas 4 docenas
+Raspaditas 20 unidades
+Pan para choripán 50 unidades
+Bizcocho hojaldre 1,5 kg</pre>
+      </div>
 
-      <div id="listaProductosCliente"></div>
+      <label>Pedido</label>
+      <textarea id="pedidoCrudoCliente" placeholder="Pegá o escribí acá tu pedido, una línea por producto..."></textarea>
 
-      <label>Producto especial / observación</label>
-      <textarea id="observacionPedido" placeholder="Ej: Pan para choripán 50 unidades, figacitas 30, etc."></textarea>
+      <label class="checkControlCliente">
+        <input type="checkbox" id="confirmoPedidoCliente">
+        Confirmo que revisé el pedido y está correcto
+      </label>
 
       <button id="btnEnviarPedidoCliente" class="primary" type="button">Enviar pedido</button>
       <div id="mensajeCliente" class="mensajePedido"></div>
@@ -88,134 +114,212 @@
     const db = firebase.firestore();
 
     const productosCliente = [
-      { id: "CHIC", nombre: "Chicharrón", unidad: "unidad" },
-      { id: "TREN", nombre: "Trenzas", unidad: "unidad" },
-      { id: "RASP", nombre: "Raspaditas", unidad: "unidad" },
-      { id: "CORD_S", nombre: "Corderos salados", unidad: "unidad" },
-      { id: "CORD_D", nombre: "Corderos dulces", unidad: "unidad" },
-      { id: "RASQ_G", nombre: "Rasquetas grasas", unidad: "unidad" },
-      { id: "RASQ_M", nombre: "Rasquetas manteca", unidad: "unidad" },
-      { id: "BIZ_H", nombre: "Bizcocho hojaldre", unidad: "kg" },
-      { id: "LIB_MEM", nombre: "Librito membrillo", unidad: "kg" },
-      { id: "BIZ_G", nombre: "Bizcochos de grasa", unidad: "kg" },
-      { id: "FAC_SUR", nombre: "Facturas surtidas", unidad: "docena" },
-      { id: "MED", nombre: "Medialunas", unidad: "docena" },
-      { id: "PAN", nombre: "Pan", unidad: "kg" },
-      { id: "CAS", nombre: "Caserito", unidad: "kg" },
-      { id: "PAN_CAS", nombre: "Pan casero", unidad: "unidad" },
-      { id: "PALM", nombre: "Palmeritas", unidad: "kg" },
-      { id: "PAN_SAL", nombre: "Pan de salvado", unidad: "kg" },
-      { id: "PREP", nombre: "Prepizzas", unidad: "unidad" },
-      { id: "PAN_INT", nombre: "Pan integral", unidad: "unidad" },
-      { id: "BUD", nombre: "Budín", unidad: "unidad" },
-      { id: "TAP_MAI", nombre: "Tapitas maicena", unidad: "kg" },
-      { id: "FROLA", nombre: "Frolas", unidad: "kg" },
-      { id: "SCON", nombre: "Scon", unidad: "kg" },
-      { id: "PEPAS", nombre: "Pepas", unidad: "kg" },
-      { id: "CANON", nombre: "Cañoncitos", unidad: "kg" },
-      { id: "PIZZ_KG", nombre: "Pizzetas x kg", unidad: "kg" }
+      { id: "CHIC", nombre: "Chicharrón", unidad: "unidad", aliases: ["chicharron"] },
+      { id: "TREN", nombre: "Trenzas", unidad: "unidad", aliases: ["trenza", "trenzas"] },
+      { id: "RASP", nombre: "Raspaditas", unidad: "unidad", aliases: ["raspadita", "raspaditas"] },
+      { id: "CORD_S", nombre: "Corderos salados", unidad: "unidad", aliases: ["cordero salado", "corderos salados"] },
+      { id: "CORD_D", nombre: "Corderos dulces", unidad: "unidad", aliases: ["cordero dulce", "corderos dulces"] },
+      { id: "RASQ_G", nombre: "Rasquetas grasas", unidad: "unidad", aliases: ["rasqueta grasa", "rasquetas grasa", "rasquetas grasas"] },
+      { id: "RASQ_M", nombre: "Rasquetas manteca", unidad: "unidad", aliases: ["rasqueta manteca", "rasquetas manteca"] },
+      { id: "BIZ_H", nombre: "Bizcocho hojaldre", unidad: "kg", aliases: ["bizcocho hojaldre", "bizcochos hojaldre"] },
+      { id: "LIB_MEM", nombre: "Librito membrillo", unidad: "kg", aliases: ["librito membrillo", "libritos membrillo"] },
+      { id: "BIZ_G", nombre: "Bizcochos de grasa", unidad: "kg", aliases: ["bizcocho de grasa", "bizcochos de grasa"] },
+      { id: "FAC_SUR", nombre: "Facturas surtidas", unidad: "docena", aliases: ["factura surtida", "facturas surtidas"] },
+      { id: "MED", nombre: "Medialunas", unidad: "docena", aliases: ["medialuna", "medialunas"] },
+      { id: "PAN", nombre: "Pan", unidad: "kg", aliases: ["pan"] },
+      { id: "CAS", nombre: "Caserito", unidad: "kg", aliases: ["caserito", "caseritos"] },
+      { id: "PAN_CAS", nombre: "Pan casero", unidad: "unidad", aliases: ["pan casero"] },
+      { id: "PALM", nombre: "Palmeritas", unidad: "kg", aliases: ["palmerita", "palmeritas"] },
+      { id: "PAN_SAL", nombre: "Pan de salvado", unidad: "kg", aliases: ["pan de salvado", "pan salvado"] },
+      { id: "PREP", nombre: "Prepizzas", unidad: "unidad", aliases: ["prepizza", "prepizzas"] },
+      { id: "PAN_INT", nombre: "Pan integral", unidad: "unidad", aliases: ["pan integral"] },
+      { id: "BUD", nombre: "Budín", unidad: "unidad", aliases: ["budin", "budines"] },
+      { id: "TAP_MAI", nombre: "Tapitas maicena", unidad: "kg", aliases: ["tapitas maicena", "tapitas de maicena"] },
+      { id: "FROLA", nombre: "Frolas", unidad: "kg", aliases: ["frola", "frolas"] },
+      { id: "SCON", nombre: "Scon", unidad: "kg", aliases: ["scon", "scones"] },
+      { id: "PEPAS", nombre: "Pepas", unidad: "kg", aliases: ["pepa", "pepas"] },
+      { id: "CANON", nombre: "Cañoncitos", unidad: "kg", aliases: ["cañoncito", "cañoncitos", "canoncito", "canoncitos"] },
+      { id: "PIZZ_KG", nombre: "Pizzetas x kg", unidad: "kg", aliases: ["pizzetas x kg", "pizzetas"] }
     ];
 
     function hoyISO() {
       return new Date().toISOString().slice(0, 10);
     }
 
-    function mostrarMensaje(texto) {
+    function normalizar(texto) {
+      return String(texto || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function extraerCantidad(linea) {
+      const match = String(linea).replace(",", ".").match(/\d+(?:\.\d+)?/);
+      return match ? Number(match[0]) : 0;
+    }
+
+    function detectarUnidad(linea, unidadDefault = "unidad") {
+      const t = normalizar(linea);
+
+      if (t.includes("kg") || t.includes("kilo")) return "kg";
+      if (t.includes("doc")) return "docena";
+      if (t.includes("unid") || t.includes("unidad") || t.includes(" u")) return "unidad";
+
+      return unidadDefault;
+    }
+
+    function buscarProducto(lineaNormalizada) {
+      const candidatos = [];
+
+      productosCliente.forEach(p => {
+        p.aliases.forEach(alias => {
+          const aliasN = normalizar(alias);
+          if (lineaNormalizada.includes(aliasN)) {
+            candidatos.push({ producto: p, largo: aliasN.length });
+          }
+        });
+      });
+
+      candidatos.sort((a, b) => b.largo - a.largo);
+      return candidatos.length ? candidatos[0].producto : null;
+    }
+
+    function nombreProductoNuevo(original) {
+      return String(original)
+        .replace(/\d+(?:[.,]\d+)?/g, "")
+        .replace(/\bkg\b/gi, "")
+        .replace(/\bkilos?\b/gi, "")
+        .replace(/\bunidad(es)?\b/gi, "")
+        .replace(/\bunid\b/gi, "")
+        .replace(/\bu\b/gi, "")
+        .replace(/\bdoc(ena|enas)?\b/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function procesarPedidoCrudo(texto, cliente, fecha) {
+      const items = [];
+
+      texto.split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(original => {
+        const normal = normalizar(original);
+        const cantidad = extraerCantidad(original);
+
+        if (!cantidad) return;
+
+        let producto = buscarProducto(normal);
+
+        // Evita interpretar "pan para choripán" como pan común.
+        if (producto && producto.id === "PAN" && normal !== "pan" && !normal.match(/^pan\s+\d/)) {
+          producto = null;
+        }
+
+        if (producto) {
+          items.push({
+            fecha,
+            cliente,
+            productoId: producto.id,
+            producto: producto.nombre,
+            cantidad,
+            unidad: detectarUnidad(original, producto.unidad),
+            estado: "OK",
+            observacion: "",
+            original
+          });
+        } else {
+          const nombre = nombreProductoNuevo(original) || original;
+          const id = "EXTRA_" + normalizar(nombre)
+            .replace(/[^a-z0-9]/g, "_")
+            .replace(/_+/g, "_")
+            .replace(/^_|_$/g, "")
+            .toUpperCase();
+
+          items.push({
+            fecha,
+            cliente,
+            productoId: id,
+            producto: nombre + " *",
+            cantidad,
+            unidad: detectarUnidad(original, "unidad"),
+            estado: "OK",
+            observacion: "Producto nuevo/no habitual",
+            original
+          });
+        }
+      });
+
+      return items;
+    }
+
+    function mostrarMensaje(texto, error = false) {
       const el = document.getElementById("mensajeCliente");
       el.textContent = texto;
       el.style.display = "block";
-    }
-
-    function renderProductosCliente() {
-      const cont = document.getElementById("listaProductosCliente");
-      let html = "";
-
-      productosCliente.forEach(p => {
-        html += `<div class="productoPedidoCliente">
-          <strong>${p.nombre}</strong>
-          <input type="number" step="0.001" min="0" data-prod="${p.id}" placeholder="0">
-          <span>${p.unidad}</span>
-        </div>`;
-      });
-
-      cont.innerHTML = html;
+      el.style.background = error ? "#ffe1de" : "#eaf7eb";
+      el.style.color = error ? "#9b1c1c" : "#1f7a35";
     }
 
     async function enviarPedidoCliente() {
       const cliente = document.getElementById("clientePedido").value.trim();
       const fecha = document.getElementById("fechaEntrega").value || hoyISO();
-      const observacion = document.getElementById("observacionPedido").value.trim();
+      const texto = document.getElementById("pedidoCrudoCliente").value.trim();
+      const confirmado = document.getElementById("confirmoPedidoCliente").checked;
 
       if (!cliente) {
         alert("Escribí el nombre del cliente o sucursal.");
         return;
       }
 
-      const items = [];
-
-      document.querySelectorAll("[data-prod]").forEach(input => {
-        const cantidad = Number(input.value || 0);
-        if (cantidad > 0) {
-          const p = productosCliente.find(x => x.id === input.dataset.prod);
-          items.push({
-            fecha,
-            cliente,
-            productoId: p.id,
-            producto: p.nombre,
-            cantidad,
-            unidad: p.unidad,
-            estado: "OK",
-            observacion: "",
-            original: `${p.nombre} ${cantidad} ${p.unidad}`
-          });
-        }
-      });
-
-      if (observacion) {
-        items.push({
-          fecha,
-          cliente,
-          productoId: "OBS_" + Date.now(),
-          producto: "Pedido especial / observación *",
-          cantidad: 1,
-          unidad: "detalle",
-          estado: "OK",
-          observacion,
-          original: observacion
-        });
-      }
-
-      if (!items.length) {
-        alert("Cargá al menos un producto.");
+      if (!texto) {
+        alert("Pegá o escribí el pedido.");
         return;
       }
 
-      const estadoRef = db.collection("fratello").doc("estado");
-      const doc = await estadoRef.get();
-      const data = doc.exists ? doc.data() : {};
-      const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
+      if (!confirmado) {
+        alert("Primero confirmá que revisaste el pedido.");
+        return;
+      }
 
-      pedidos.push({
-        id: Date.now(),
-        fecha,
-        cliente,
-        textoOriginal: "Pedido cargado por formulario",
-        items
-      });
+      const items = procesarPedidoCrudo(texto, cliente, fecha);
 
-      await estadoRef.set({
-        ...data,
-        pedidos,
-        actualizado: new Date().toISOString()
-      });
+      if (!items.length) {
+        mostrarMensaje("No se detectaron productos con cantidad. Usá el formato: Producto + cantidad + unidad.", true);
+        return;
+      }
 
-      document.querySelectorAll("[data-prod]").forEach(input => input.value = "");
-      document.getElementById("observacionPedido").value = "";
-      mostrarMensaje("Pedido enviado correctamente. Gracias.");
+      try {
+        const estadoRef = db.collection("fratello").doc("estado");
+        const doc = await estadoRef.get();
+        const data = doc.exists ? doc.data() : {};
+        const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
+
+        pedidos.push({
+          id: Date.now(),
+          fecha,
+          cliente,
+          textoOriginal: texto,
+          origen: "formulario_cliente",
+          items
+        });
+
+        await estadoRef.set({
+          ...data,
+          pedidos,
+          pedidosConfirmados: false,
+          actualizado: new Date().toISOString()
+        });
+
+        document.getElementById("pedidoCrudoCliente").value = "";
+        document.getElementById("confirmoPedidoCliente").checked = false;
+        mostrarMensaje("Pedido enviado correctamente. Gracias.");
+      } catch (error) {
+        console.error(error);
+        mostrarMensaje("No se pudo enviar el pedido. Intentá nuevamente.", true);
+      }
     }
 
     document.getElementById("fechaEntrega").value = hoyISO();
-    renderProductosCliente();
     document.getElementById("btnEnviarPedidoCliente").onclick = enviarPedidoCliente;
   </script>
 </body>
