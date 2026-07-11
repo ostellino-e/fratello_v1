@@ -1,9 +1,9 @@
-# Fratello v0.73
+# Fratello v0.74
 
 Cambios:
-- Nueva sección Clientes en Acciones rápidas.
-- Permite cargar nombre y teléfono.
-- Opción para activar recordatorio de pedido.
-- Lista de clientes con teléfono y estado del recordatorio.
-- Permite editar y eliminar clientes.
-- Los datos se guardan en Firebase.
+- Después de enviar al grupo de WhatsApp, se limpia la jornada.
+- Se borran los pedidos cargados.
+- Se destildan las confirmaciones.
+- El día seleccionado vuelve a quedar en blanco.
+- Se limpia la vista, comparador y resumen.
+- Antes de enviar exige elegir y confirmar un día.

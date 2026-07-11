@@ -1335,6 +1335,48 @@ function obtenerFilasComparador() {
   return filas;
 }
 
+
+function limpiarJornadaDespuesDeEnviar() {
+  pedidos = [];
+  pedidosConfirmados = false;
+
+  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(false));
+
+  const selectorProduccion = $("diaProduccion");
+  const selectorPedidos = $("diaProduccionPedidos");
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkDiaPedidos = $("checkDiaPedidos");
+  const checkPedidos = $("checkPedidoCompleto");
+  const pedidoCrudo = $("pedidoCrudo");
+
+  if (selectorProduccion) selectorProduccion.value = "";
+  if (selectorPedidos) selectorPedidos.value = "";
+  if (checkProduccion) checkProduccion.checked = false;
+  if (checkDiaPedidos) checkDiaPedidos.checked = false;
+  if (checkPedidos) checkPedidos.checked = false;
+  if (pedidoCrudo) pedidoCrudo.value = "";
+
+  const pedidosCargados = $("pedidosCargados");
+  const ultimoProcesado = $("ultimoProcesado");
+  const comparador = $("comparador");
+  const resumenPanadero = $("resumenPanadero");
+  const vistaPedidos = $("vistaPedidosInline");
+  const produccionLista = $("produccionLista");
+  const produccionExtra = $("produccionExtra");
+
+  if (pedidosCargados) pedidosCargados.innerHTML = "<p>No hay pedidos cargados.</p>";
+  if (ultimoProcesado) ultimoProcesado.innerHTML = "";
+  if (comparador) comparador.innerHTML = "";
+  if (resumenPanadero) resumenPanadero.textContent = "";
+  if (vistaPedidos) vistaPedidos.innerHTML = "";
+  if (produccionLista) produccionLista.innerHTML = "";
+  if (produccionExtra) produccionExtra.innerHTML = "";
+
+  actualizarTarjetaDiaPedidos();
+  guardarEnNube();
+}
+
 function abrirWhatsApp(numero, mensaje) {
   const texto = encodeURIComponent(mensaje);
   const url = numero
@@ -1346,9 +1388,20 @@ function abrirWhatsApp(numero, mensaje) {
 
 
 function verificarChecksAntesDeWhatsApp() {
+  const selectorProduccion = $("diaProduccion");
+  const selectorPedidos = $("diaProduccionPedidos");
   const checkProduccion = $("checkProduccionCompleta");
   const checkDiaPedidos = $("checkDiaPedidos");
   const checkPedido = $("checkPedidoCompleto");
+
+  const diaElegido =
+    (selectorProduccion && selectorProduccion.value) ||
+    (selectorPedidos && selectorPedidos.value);
+
+  if (!diaElegido) {
+    alert("Primero seleccioná el día de producción.");
+    return false;
+  }
 
   const diaConfirmado =
     (checkProduccion && checkProduccion.checked) ||
@@ -1419,6 +1472,7 @@ function generarMensajeGrupoFratello() {
 
   mensaje += "Enviado desde sistema Fratello.";
 
+  limpiarJornadaDespuesDeEnviar();
   abrirWhatsApp("", mensaje);
 }
 
