@@ -755,3 +755,28 @@ body {
 .daySyncHeader strong{font-size:17px}
 .daySyncHeader span{font-size:15px;font-weight:700}
 .daySyncCheck{margin-bottom:0}
+
+.daySyncInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.daySyncInfo label {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+#diaProduccionPedidos {
+  width: 100%;
+  margin: 0;
+  background: rgba(255,255,255,.86);
+  border: 1px solid rgba(58,36,20,.18);
+  font-weight: 700;
+}
+
+.daySyncHeader {
+  align-items: flex-start;
+}

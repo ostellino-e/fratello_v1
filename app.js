@@ -10,30 +10,79 @@ function nombreDiaProduccion(valor) {
 }
 
 function actualizarTarjetaDiaPedidos() {
-  const selector = $("diaProduccion");
+  const selectorProduccion = $("diaProduccion");
+  const selectorPedidos = $("diaProduccionPedidos");
   const checkProduccion = $("checkProduccionCompleta");
   const checkPedidos = $("checkDiaPedidos");
-  const nombre = $("nombreDiaPedidos");
   const estado = $("estadoDiaPedidos");
   const tarjeta = $("tarjetaDiaPedidos");
 
-  if (!selector || !checkProduccion || !checkPedidos) return;
+  if (!selectorProduccion || !selectorPedidos || !checkProduccion || !checkPedidos) return;
 
+  selectorPedidos.value = selectorProduccion.value;
   checkPedidos.checked = checkProduccion.checked;
-  if (nombre) nombre.textContent = nombreDiaProduccion(selector.value);
-  if (estado) estado.textContent = checkProduccion.checked ? "Producción confirmada" : "Producción seleccionada";
+
+  if (estado) {
+    estado.textContent = checkProduccion.checked
+      ? "Producción confirmada"
+      : "Producción seleccionada";
+  }
+
   if (tarjeta) {
     tarjeta.classList.toggle("confirmada", checkProduccion.checked);
     tarjeta.classList.toggle("pendiente", !checkProduccion.checked);
   }
 }
 
-function iniciarSincronizacionDia() {
-  const selector = $("diaProduccion");
+function sincronizarDiaDesdeProduccion() {
+  const selectorProduccion = $("diaProduccion");
+  const selectorPedidos = $("diaProduccionPedidos");
   const checkProduccion = $("checkProduccionCompleta");
   const checkPedidos = $("checkDiaPedidos");
 
-  if (selector) selector.addEventListener("change", actualizarTarjetaDiaPedidos);
+  if (!selectorProduccion || !selectorPedidos) return;
+
+  selectorPedidos.value = selectorProduccion.value;
+
+  // Si cambia el día, se destilda la confirmación para obligar a revisar.
+  if (checkProduccion) checkProduccion.checked = false;
+  if (checkPedidos) checkPedidos.checked = false;
+
+  actualizarTarjetaDiaPedidos();
+}
+
+function sincronizarDiaDesdePedidos() {
+  const selectorProduccion = $("diaProduccion");
+  const selectorPedidos = $("diaProduccionPedidos");
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkPedidos = $("checkDiaPedidos");
+
+  if (!selectorProduccion || !selectorPedidos) return;
+
+  selectorProduccion.value = selectorPedidos.value;
+
+  // Dispara la lógica existente del cuadro 1: recarga producción y diferencias.
+  selectorProduccion.dispatchEvent(new Event("change", { bubbles: true }));
+
+  if (checkProduccion) checkProduccion.checked = false;
+  if (checkPedidos) checkPedidos.checked = false;
+
+  actualizarTarjetaDiaPedidos();
+}
+
+function iniciarSincronizacionDia() {
+  const selectorProduccion = $("diaProduccion");
+  const selectorPedidos = $("diaProduccionPedidos");
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkPedidos = $("checkDiaPedidos");
+
+  if (selectorProduccion) {
+    selectorProduccion.addEventListener("change", sincronizarDiaDesdeProduccion);
+  }
+
+  if (selectorPedidos) {
+    selectorPedidos.addEventListener("change", sincronizarDiaDesdePedidos);
+  }
 
   if (checkProduccion) {
     checkProduccion.addEventListener("change", () => {
@@ -51,7 +100,6 @@ function iniciarSincronizacionDia() {
 
   actualizarTarjetaDiaPedidos();
 }
-
 
 function mostrarInicioFratello() {
   const inicio = document.getElementById("panelInicio");

@@ -125,11 +125,18 @@
       <div id="tarjetaDiaPedidos" class="daySyncCard pendiente">
         <div class="daySyncHeader">
           <span class="daySyncIcon">📅</span>
-          <div>
+          <div class="daySyncInfo">
             <strong id="estadoDiaPedidos">Producción seleccionada</strong>
-            <span id="nombreDiaPedidos">Lunes a jueves</span>
+            <label for="diaProduccionPedidos">Día de producción</label>
+            <select id="diaProduccionPedidos">
+              <option value="lunes_jueves">Lunes a jueves</option>
+              <option value="viernes">Viernes</option>
+              <option value="sabado">Sábado</option>
+              <option value="domingo">Domingo</option>
+            </select>
           </div>
         </div>
+
         <label class="checkControl daySyncCheck">
           <input type="checkbox" id="checkDiaPedidos">
           Confirmo que este es el día correcto
