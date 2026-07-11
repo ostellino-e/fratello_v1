@@ -101,6 +101,126 @@ function iniciarSincronizacionDia() {
   actualizarTarjetaDiaPedidos();
 }
 
+
+function normalizarTelefonoCliente(telefono) {
+  return String(telefono || "").replace(/\D/g, "");
+}
+
+function limpiarFormularioClienteCompleto() {
+  const nombre = $("nuevoClienteNombre");
+  const telefono = $("nuevoClienteTelefono");
+  const recordatorio = $("nuevoClienteRecordatorio");
+
+  if (nombre) nombre.value = "";
+  if (telefono) telefono.value = "";
+  if (recordatorio) recordatorio.checked = false;
+}
+
+function mostrarMensajeClienteCompleto(texto, error = false) {
+  const el = $("mensajeClienteCompleto");
+  if (!el) return;
+
+  el.textContent = texto;
+  el.style.display = "block";
+  el.style.background = error ? "#ffe1de" : "#eaf7eb";
+  el.style.color = error ? "#9b1c1c" : "#1f7a35";
+
+  setTimeout(() => {
+    el.style.display = "none";
+  }, 2500);
+}
+
+function guardarClienteCompleto() {
+  const nombre = $("nuevoClienteNombre")?.value.trim() || "";
+  const telefono = normalizarTelefonoCliente($("nuevoClienteTelefono")?.value || "");
+  const recordatorio = Boolean($("nuevoClienteRecordatorio")?.checked);
+
+  if (!nombre) {
+    mostrarMensajeClienteCompleto("Escribí el nombre del cliente.", true);
+    return;
+  }
+
+  const existente = clientes.find(c => normalizar(c) === normalizar(nombre));
+  const nombreFinal = existente || nombre;
+
+  if (!existente) {
+    clientes.push(nombreFinal);
+  }
+
+  datosClientesCompletos[nombreFinal] = {
+    nombre: nombreFinal,
+    telefono,
+    enviarRecordatorio: recordatorio,
+    actualizado: new Date().toISOString()
+  };
+
+  guardarTodo();
+  renderClientes(nombreFinal);
+  renderListaClientesCompleta();
+  limpiarFormularioClienteCompleto();
+  mostrarMensajeClienteCompleto("Cliente guardado correctamente.");
+}
+
+function editarClienteCompleto(nombre) {
+  const datos = datosClientesCompletos[nombre] || {
+    nombre,
+    telefono: "",
+    enviarRecordatorio: false
+  };
+
+  $("nuevoClienteNombre").value = datos.nombre || nombre;
+  $("nuevoClienteTelefono").value = datos.telefono || "";
+  $("nuevoClienteRecordatorio").checked = Boolean(datos.enviarRecordatorio);
+
+  abrirSeccionFratello("seccionClientes");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function eliminarClienteCompleto(nombre) {
+  if (!confirm(`¿Seguro que querés eliminar a ${nombre}?`)) return;
+
+  clientes = clientes.filter(c => c !== nombre);
+  delete datosClientesCompletos[nombre];
+
+  guardarTodo();
+  renderClientes();
+  renderListaClientesCompleta();
+}
+
+function renderListaClientesCompleta() {
+  const cont = $("listaClientesCompleta");
+  if (!cont) return;
+
+  if (!clientes.length) {
+    cont.innerHTML = "<p>No hay clientes cargados.</p>";
+    return;
+  }
+
+  let html = "";
+
+  clientes.forEach(nombre => {
+    const datos = datosClientesCompletos[nombre] || {};
+    const telefono = datos.telefono || "Sin teléfono";
+    const recordatorio = datos.enviarRecordatorio
+      ? "🔔 Recordatorio activado"
+      : "🔕 Sin recordatorio";
+
+    html += `<div class="clienteCompletoCard">
+      <div>
+        <strong>${nombre}</strong>
+        <span>${telefono}</span>
+        <small>${recordatorio}</small>
+      </div>
+      <div class="clienteCompletoActions">
+        <button type="button" onclick="editarClienteCompleto('${nombre.replace(/'/g, "\\'")}')">✏️ Editar</button>
+        <button type="button" class="dangerBtn" onclick="eliminarClienteCompleto('${nombre.replace(/'/g, "\\'")}')">🗑️ Eliminar</button>
+      </div>
+    </div>`;
+  });
+
+  cont.innerHTML = html;
+}
+
 function mostrarInicioFratello() {
   const inicio = document.getElementById("panelInicio");
   const contenido = document.getElementById("contenidoApp");
@@ -311,6 +431,8 @@ async function cargarDesdeNube() {
       pedidos = data.pedidos || pedidos;
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = (Array.isArray(data.clientes) && data.clientes.length > 0) ? data.clientes : clientes;
+    datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
+      datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
       validarClientes();
     productosExtra = data.productosExtra || productosExtra;
     pedidosConfirmados = data.pedidosConfirmados || false;
@@ -354,8 +476,12 @@ function escucharCambiosNube() {
     guardarTodo();
 
     if (typeof renderClientes === "function") renderClientes();
+    if (typeof renderListaClientesCompleta === "function") renderListaClientesCompleta();
   iniciarNavegacionFratello();
   iniciarSincronizacionDia();
+  if ($("btnGuardarClienteCompleto")) $("btnGuardarClienteCompleto").onclick = guardarClienteCompleto;
+  if ($("btnLimpiarClienteCompleto")) $("btnLimpiarClienteCompleto").onclick = limpiarFormularioClienteCompleto;
+  renderListaClientesCompleta();
   if ($("btnInstalarApp")) $("btnInstalarApp").onclick = instalarFratello;
     if (typeof renderProduccion === "function") renderProduccion();
     if (typeof renderCorrespondePedido === "function")
@@ -372,6 +498,7 @@ function guardarTodo() {
   localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
   localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
   localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
+  localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
   localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
   localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
   guardarEnNube();
@@ -382,6 +509,7 @@ let produccion = JSON.parse(localStorage.getItem("fratello_produccion") || "{}")
 let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
 let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas") || "null") || crearPredeterminadasIniciales();
 let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") || [...clientesIniciales];
+let datosClientesCompletos = JSON.parse(localStorage.getItem("fratello_clientes_completos") || "{}");
 let productosExtra = JSON.parse(localStorage.getItem("fratello_productos_extra") || "[]");
 productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); });
 let correspondePedido = JSON.parse(localStorage.getItem("fratello_corresponde") || "{}");

@@ -780,3 +780,77 @@ body {
 .daySyncHeader {
   align-items: flex-start;
 }
+
+/* ===== FRATELLO v0.73 - CLIENTES ===== */
+.clienteFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.clienteCompletoCard {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  margin: 10px 0;
+  border-radius: 16px;
+  background: #fffaf4;
+  border: 1px solid #e6d7c4;
+}
+
+.clienteCompletoCard > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clienteCompletoCard strong {
+  font-size: 17px;
+}
+
+.clienteCompletoCard span {
+  font-size: 14px;
+}
+
+.clienteCompletoCard small {
+  font-weight: 700;
+}
+
+.clienteCompletoActions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.clienteCompletoActions button {
+  width: auto;
+  margin: 0;
+  padding: 8px 10px;
+}
+
+.dangerBtn {
+  background: #ffe1de !important;
+  color: #9b1c1c !important;
+}
+
+@media (max-width: 620px) {
+  .clienteFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .clienteCompletoCard {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .clienteCompletoActions {
+    width: 100%;
+  }
+
+  .clienteCompletoActions button {
+    flex: 1;
+  }
+}

@@ -66,7 +66,7 @@
 
     <div class="quickTitle">Acciones rápidas</div>
     <div class="quickActions">
-      <button type="button" data-seccion="seccionPedidos">👥<span>Clientes</span></button>
+      <button type="button" data-seccion="seccionClientes">👥<span>Clientes</span></button>
       <button type="button" data-seccion="seccionProduccion">📦<span>Productos</span></button>
       <button type="button" data-seccion="seccionResumen">⚙️<span>Resumen</span></button>
       <button type="button" id="btnBorrarRapido">🗑️<span>Borrar datos</span></button>
@@ -195,6 +195,40 @@
       <h3>Resumen para panadero</h3>
       <pre id="resumenPanadero"></pre>
     </section>
+  
+    <section class="card appSection" id="seccionClientes">
+      <button class="volverInicio" type="button">← Volver</button>
+      <h2>Clientes</h2>
+      <p class="hint">Cargá el nombre, teléfono y definí si debe recibir recordatorio de pedido.</p>
+
+      <div class="clienteFormGrid">
+        <div>
+          <label>Nombre del cliente</label>
+          <input id="nuevoClienteNombre" type="text" placeholder="Ej: Giuliano">
+        </div>
+
+        <div>
+          <label>Teléfono</label>
+          <input id="nuevoClienteTelefono" type="tel" inputmode="numeric" placeholder="Ej: 2657545599">
+        </div>
+      </div>
+
+      <label class="checkControl">
+        <input type="checkbox" id="nuevoClienteRecordatorio">
+        Enviar recordatorio de pedido a este contacto
+      </label>
+
+      <div class="toolbar">
+        <button id="btnGuardarClienteCompleto" class="primary" type="button">Guardar cliente</button>
+        <button id="btnLimpiarClienteCompleto" type="button">Limpiar</button>
+      </div>
+
+      <div id="mensajeClienteCompleto" class="mensajePedido"></div>
+
+      <h3>Clientes cargados</h3>
+      <div id="listaClientesCompleta"></div>
+    </section>
+
   </main>
 <div id="vistaPedidosModal" class="hidden">
 <div id="vistaPedidosContenido"></div>
