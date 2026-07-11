@@ -746,3 +746,12 @@ body {
     padding: 16px;
   }
 }
+
+.daySyncCard{margin:14px 0 18px;padding:14px;border-radius:18px;border:1px solid #e3c878;background:linear-gradient(135deg,#fff7d8,#fce9ad)}
+.daySyncCard.confirmada{border-color:#8fc283;background:linear-gradient(135deg,#edf8e8,#dcefd5)}
+.daySyncHeader{display:flex;align-items:center;gap:12px}
+.daySyncIcon{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:rgba(255,255,255,.8);font-size:25px}
+.daySyncHeader div{display:flex;flex-direction:column;gap:3px}
+.daySyncHeader strong{font-size:17px}
+.daySyncHeader span{font-size:15px;font-weight:700}
+.daySyncCheck{margin-bottom:0}

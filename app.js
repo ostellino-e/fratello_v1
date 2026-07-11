@@ -1,4 +1,58 @@
 
+function nombreDiaProduccion(valor) {
+  const nombres = {
+    lunes_jueves: "Lunes a jueves",
+    viernes: "Viernes",
+    sabado: "Sábado",
+    domingo: "Domingo"
+  };
+  return nombres[valor] || "Sin seleccionar";
+}
+
+function actualizarTarjetaDiaPedidos() {
+  const selector = $("diaProduccion");
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkPedidos = $("checkDiaPedidos");
+  const nombre = $("nombreDiaPedidos");
+  const estado = $("estadoDiaPedidos");
+  const tarjeta = $("tarjetaDiaPedidos");
+
+  if (!selector || !checkProduccion || !checkPedidos) return;
+
+  checkPedidos.checked = checkProduccion.checked;
+  if (nombre) nombre.textContent = nombreDiaProduccion(selector.value);
+  if (estado) estado.textContent = checkProduccion.checked ? "Producción confirmada" : "Producción seleccionada";
+  if (tarjeta) {
+    tarjeta.classList.toggle("confirmada", checkProduccion.checked);
+    tarjeta.classList.toggle("pendiente", !checkProduccion.checked);
+  }
+}
+
+function iniciarSincronizacionDia() {
+  const selector = $("diaProduccion");
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkPedidos = $("checkDiaPedidos");
+
+  if (selector) selector.addEventListener("change", actualizarTarjetaDiaPedidos);
+
+  if (checkProduccion) {
+    checkProduccion.addEventListener("change", () => {
+      if (checkPedidos) checkPedidos.checked = checkProduccion.checked;
+      actualizarTarjetaDiaPedidos();
+    });
+  }
+
+  if (checkPedidos) {
+    checkPedidos.addEventListener("change", () => {
+      if (checkProduccion) checkProduccion.checked = checkPedidos.checked;
+      actualizarTarjetaDiaPedidos();
+    });
+  }
+
+  actualizarTarjetaDiaPedidos();
+}
+
+
 function mostrarInicioFratello() {
   const inicio = document.getElementById("panelInicio");
   const contenido = document.getElementById("contenidoApp");
@@ -253,6 +307,7 @@ function escucharCambiosNube() {
 
     if (typeof renderClientes === "function") renderClientes();
   iniciarNavegacionFratello();
+  iniciarSincronizacionDia();
   if ($("btnInstalarApp")) $("btnInstalarApp").onclick = instalarFratello;
     if (typeof renderProduccion === "function") renderProduccion();
     if (typeof renderCorrespondePedido === "function")
@@ -1116,10 +1171,15 @@ function abrirWhatsApp(numero, mensaje) {
 
 function verificarChecksAntesDeWhatsApp() {
   const checkProduccion = $("checkProduccionCompleta");
+  const checkDiaPedidos = $("checkDiaPedidos");
   const checkPedido = $("checkPedidoCompleto");
 
-  if (checkProduccion && !checkProduccion.checked) {
-    alert("Primero tildá que el día seleccionado es correcto.");
+  const diaConfirmado =
+    (checkProduccion && checkProduccion.checked) ||
+    (checkDiaPedidos && checkDiaPedidos.checked);
+
+  if (!diaConfirmado) {
+    alert("Primero confirmá que el día seleccionado es correcto.");
     return false;
   }
 

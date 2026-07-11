@@ -121,6 +121,21 @@
     <section class="card appSection" id="seccionPedidos">
       <button class="volverInicio" type="button">← Volver</button>
       <h2>2. Pegar pedido de WhatsApp</h2>
+
+      <div id="tarjetaDiaPedidos" class="daySyncCard pendiente">
+        <div class="daySyncHeader">
+          <span class="daySyncIcon">📅</span>
+          <div>
+            <strong id="estadoDiaPedidos">Producción seleccionada</strong>
+            <span id="nombreDiaPedidos">Lunes a jueves</span>
+          </div>
+        </div>
+        <label class="checkControl daySyncCheck">
+          <input type="checkbox" id="checkDiaPedidos">
+          Confirmo que este es el día correcto
+        </label>
+      </div>
+
       <label>Fecha de entrega</label>
       <input id="fechaPedido" type="date" />
 
