@@ -1160,74 +1160,105 @@ function copiarResumen() {
 }
 
 
+
 function textoPedidosClientes() {
   if (!pedidos.length) return "No hay pedidos cargados.";
-
   let texto = "FRATELLO - Pedidos clientes\n\n";
-
   pedidos.forEach(p => {
     texto += `${p.cliente}:\n`;
-    const items = p.items.filter(i => i.estado !== "NO PEDIDO");
-
-    if (!items.length) {
-      texto += "- Sin productos detectados\n";
-    } else {
-      items.forEach(i => {
-        texto += `- ${fmt(i.cantidad)} ${i.unidad} ${i.producto}\n`;
-      });
-    }
-
+    p.items.filter(i => i.estado !== "NO PEDIDO").forEach(i => {
+      texto += `- ${fmt(i.cantidad)} ${i.unidad} ${i.producto}\n`;
+    });
     texto += "\n";
   });
-
   return texto;
 }
 
-function compartirVistaPedidosWhatsApp() {
-  if (!verificarChecksAntesDeWhatsApp()) return;
-
-  abrirWhatsApp("", textoPedidosClientes());
+function abrirModalImpresion() {
+  $("modalImpresion")?.classList.remove("hidden");
+  document.body.classList.add("modalAbierto");
 }
+function cerrarModalImpresion() {
+  $("modalImpresion")?.classList.add("hidden");
+  document.body.classList.remove("modalAbierto");
+}
+function dibujarPunteada(ctx,x1,y1,x2,y2){
+  ctx.save();ctx.setLineDash([8,7]);ctx.strokeStyle="#777";ctx.lineWidth=1.4;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore();
+}
+function cargarImagen(src){
+  return new Promise((ok,fail)=>{const img=new Image();img.onload=()=>ok(img);img.onerror=fail;img.src=src;});
+}
+async function generarVistaPedidos(){
+  if(!pedidos.length){alert("No hay pedidos cargados.");return;}
+  const canvas=$("canvasPedidosImpresion");
+  const W=1240,H=1754,top=170,cols=3,rows=4;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle="#555";ctx.strokeRect(12,12,W-24,H-24);
 
-function generarVistaPedidos(){
-  const cont = $("vistaPedidosInline");
-  if (!cont) return;
+  try{const logo=await cargarImagen("icon-192.png");ctx.drawImage(logo,38,30,120,120);}catch(e){}
 
-  if (!pedidos.length) {
-    cont.innerHTML = "<p>No hay pedidos cargados.</p>";
-    return;
+  const fecha=$("fechaPedido")?.value||"";
+  let fechaTitulo="SIN FECHA";
+  if(fecha){
+    fechaTitulo=new Date(fecha+"T12:00:00").toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"}).toUpperCase();
   }
+  ctx.fillStyle="#2b2118";ctx.textAlign="center";ctx.font="bold 44px Arial";
+  ctx.fillText(`PEDIDOS - ${fechaTitulo}`,W/2,80);
+  ctx.textAlign="right";ctx.font="22px Arial";ctx.fillText(fecha,W-42,65);
+  ctx.fillText(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}),W-42,98);
 
-  let html = `<div class="vistaPedidosCard" id="vistaPedidosCard">
-    <h2>FRATELLO - PEDIDOS</h2>
-    <p>Pedidos cargados para producción/reparto</p>`;
+  const cellW=(W-24)/cols,cellH=(H-top-24)/rows;
+  for(let c=1;c<cols;c++)dibujarPunteada(ctx,12+c*cellW,top,12+c*cellW,H-12);
+  for(let r=1;r<rows;r++)dibujarPunteada(ctx,12,top+r*cellH,W-12,top+r*cellH);
+  dibujarPunteada(ctx,12,top,W-12,top);
 
-  pedidos.forEach(p => {
-    const items = p.items.filter(i => i.estado !== "NO PEDIDO");
+  pedidos.slice(0,12).forEach((pedido,index)=>{
+    const col=index%cols,row=Math.floor(index/cols),x=12+col*cellW,y=top+row*cellH,pad=24;
+    const items=pedido.items.filter(i=>i.estado!=="NO PEDIDO");
+    ctx.fillStyle="#111";ctx.textAlign="left";ctx.font="bold 28px Arial";
+    ctx.fillText(`${index+1}. ${pedido.cliente.toUpperCase()}`,x+pad,y+42);
+    ctx.textAlign="right";ctx.font="20px Arial";ctx.fillText("06:00",x+cellW-pad,y+42);
+    ctx.strokeStyle="#999";ctx.beginPath();ctx.moveTo(x+pad,y+58);ctx.lineTo(x+cellW-pad,y+58);ctx.stroke();
 
-    html += `<div class="vistaCliente">
-      <h3>${p.cliente}</h3>`;
-
-    if (!items.length) {
-      html += "<p>Sin productos detectados</p>";
-    } else {
-      html += "<table><thead><tr><th>Producto</th><th>Cantidad</th></tr></thead><tbody>";
-      items.forEach(i => {
-        html += `<tr><td>${i.producto}</td><td>${fmt(i.cantidad)} ${i.unidad}</td></tr>`;
-      });
-      html += "</tbody></table>";
-    }
-
-    html += "</div>";
+    let yy=y+92;
+    items.slice(0,7).forEach(it=>{
+      ctx.textAlign="left";ctx.font="20px Arial";ctx.fillText(it.producto,x+pad,yy);
+      ctx.textAlign="right";ctx.font="bold 20px Arial";ctx.fillText(`${fmt(it.cantidad)} ${it.unidad}`,x+cellW-pad,yy);
+      ctx.strokeStyle="#d0d0d0";ctx.beginPath();ctx.moveTo(x+pad,yy+10);ctx.lineTo(x+cellW-pad,yy+10);ctx.stroke();
+      yy+=39;
+    });
+    const by=y+cellH-72;
+    ctx.strokeStyle="#666";ctx.beginPath();ctx.moveTo(x+pad,by-34);ctx.lineTo(x+cellW-pad,by-34);ctx.stroke();
+    ctx.textAlign="left";ctx.font="18px Arial";
+    ctx.fillText("Entregado: ____/____/______   ____:____",x+pad,by);
+    ctx.fillText("Firma: ____________________________",x+pad,by+33);
   });
 
-  html += `</div>
-    <div class="vistaPedidosActions">
-      <button type="button" onclick="window.print()">🖨 Imprimir</button>
-      <button type="button" onclick="compartirVistaPedidosWhatsApp()">📲 Compartir por WhatsApp</button>
-    </div>`;
-
-  cont.innerHTML = html;
+  abrirModalImpresion();
+}
+function guardarImagenPedidos(){
+  const canvas=$("canvasPedidosImpresion"); if(!canvas)return;
+  const a=document.createElement("a");a.download="pedidos-fratello.jpg";a.href=canvas.toDataURL("image/jpeg",0.95);a.click();
+}
+async function compartirImagenPedidos(){
+  const canvas=$("canvasPedidosImpresion"); if(!canvas)return;
+  const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.95));
+  const file=new File([blob],"pedidos-fratello.jpg",{type:"image/jpeg"});
+  if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+    try{await navigator.share({title:"Pedidos Fratello",files:[file]});return;}catch(e){if(e.name==="AbortError")return;}
+  }
+  guardarImagenPedidos();
+}
+function imprimirImagenPedidos(){
+  const canvas=$("canvasPedidosImpresion"); if(!canvas)return;
+  const data=canvas.toDataURL("image/png");
+  const w=window.open("","_blank");
+  if(!w){alert("Permití ventanas emergentes para imprimir.");return;}
+  w.document.write(`<html><head><style>@page{size:A4 portrait;margin:0}body{margin:0}img{width:100%}</style></head><body><img src="${data}" onload="window.print();window.close()"></body></html>`);
+  w.document.close();
 }
 
 function resetDatos() {
@@ -1531,6 +1562,12 @@ async function init() {
   $("btnExportar").onclick = copiarResumen;
   $("btnReset").onclick = resetDatos;
   $("btnVistaPedidos").onclick = generarVistaPedidos;
+  if ($("btnCerrarModalImpresion")) $("btnCerrarModalImpresion").onclick = cerrarModalImpresion;
+  if ($("btnCerrarModalImpresion2")) $("btnCerrarModalImpresion2").onclick = cerrarModalImpresion;
+  if ($("cerrarModalBackdrop")) $("cerrarModalBackdrop").onclick = cerrarModalImpresion;
+  if ($("btnImprimirImagenPedidos")) $("btnImprimirImagenPedidos").onclick = imprimirImagenPedidos;
+  if ($("btnCompartirImagenPedidos")) $("btnCompartirImagenPedidos").onclick = compartirImagenPedidos;
+  if ($("btnGuardarImagenPedidos")) $("btnGuardarImagenPedidos").onclick = guardarImagenPedidos;
   if ($("btnBorrarSeleccionados")) $("btnBorrarSeleccionados").onclick = borrarPedidosSeleccionados;
 
   renderProduccion();

@@ -1,9 +1,5 @@
-# Fratello v0.74
+# Fratello v0.75
 
-Cambios:
-- Después de enviar al grupo de WhatsApp, se limpia la jornada.
-- Se borran los pedidos cargados.
-- Se destildan las confirmaciones.
-- El día seleccionado vuelve a quedar en blanco.
-- Se limpia la vista, comparador y resumen.
-- Antes de enviar exige elegir y confirmar un día.
+- Vista de impresión dentro de la misma app.
+- Hoja A4 con hasta 12 pedidos y líneas punteadas.
+- Botones Imprimir, Compartir, Guardar JPG y Cerrar.

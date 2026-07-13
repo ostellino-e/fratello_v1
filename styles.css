@@ -854,3 +854,14 @@ body {
     flex: 1;
   }
 }
+
+.modalAbierto{overflow:hidden}
+.printModal{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:14px}
+.printModalBackdrop{position:absolute;inset:0;background:rgba(20,14,10,.72);backdrop-filter:blur(3px)}
+.printModalPanel{position:relative;width:min(96vw,1100px);max-height:94vh;display:flex;flex-direction:column;background:#fffaf3;border-radius:22px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35)}
+.printModalHeader{display:flex;justify-content:space-between;gap:12px;padding:16px 18px;background:linear-gradient(135deg,#fff2d4,#f4deb6)}
+.printModalHeader h2{margin:0}.printModalHeader p{margin:4px 0 0}
+.printModalBody{flex:1;overflow:auto;padding:14px;background:#e9e4dd}
+#canvasPedidosImpresion{width:min(100%,850px);height:auto;display:block;margin:auto;background:white;box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.printModalActions{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;padding:14px}
+@media(max-width:700px){.printModal{padding:0}.printModalPanel{width:100vw;height:100vh;max-height:none;border-radius:0}.printModalActions{grid-template-columns:1fr 1fr}}

@@ -244,5 +244,23 @@
       window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(console.error));
     }
   </script>
+
+<div id="modalImpresion" class="printModal hidden">
+  <div id="cerrarModalBackdrop" class="printModalBackdrop"></div>
+  <div class="printModalPanel">
+    <div class="printModalHeader">
+      <div><h2>Vista previa de impresión</h2><p>Pedidos listos para imprimir y cortar.</p></div>
+      <button id="btnCerrarModalImpresion" type="button">✕</button>
+    </div>
+    <div class="printModalBody"><canvas id="canvasPedidosImpresion"></canvas></div>
+    <div class="printModalActions">
+      <button id="btnImprimirImagenPedidos" type="button">🖨 Imprimir</button>
+      <button id="btnCompartirImagenPedidos" type="button">📤 Compartir</button>
+      <button id="btnGuardarImagenPedidos" type="button">💾 Guardar JPG</button>
+      <button id="btnCerrarModalImpresion2" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
