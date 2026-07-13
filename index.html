@@ -14,6 +14,7 @@
 </head>
 <body>
   <header class="appHeader">
+    <button id="btnInicio" class="menuButton" type="button" aria-label="Volver al inicio">☰</button>
     <div class="brandWrap">
       <img src="icon-192.png" alt="Logo Fratello" class="brandLogo">
       <div>
@@ -21,7 +22,7 @@
         <p>Sistema de pedidos y producción</p>
       </div>
     </div>
-    <button id="btnInicio" class="menuButton" type="button" aria-label="Volver al inicio">☰</button>
+    <div class="headerSpacer" aria-hidden="true"></div>
   </header>
   <section class="installPanel">
     <button id="btnInstalarApp" type="button" class="hidden">📲 Instalar Fratello en el celular</button>
@@ -34,6 +35,28 @@
   </section>
 
   <section id="panelInicio" class="dashboard">
+
+    <div id="tarjetaDiaInicio" class="daySyncCard pendiente homeDayCard">
+      <div class="daySyncHeader">
+        <span class="daySyncIcon">📅</span>
+        <div class="daySyncInfo">
+          <strong id="estadoDiaInicio">Producción seleccionada</strong>
+          <label for="diaProduccionInicio">Día de producción</label>
+          <select id="diaProduccionInicio">
+            <option value="">Seleccionar día</option>
+            <option value="lunes_jueves">Lunes a jueves</option>
+            <option value="viernes">Viernes</option>
+            <option value="sabado">Sábado</option>
+            <option value="domingo">Domingo</option>
+          </select>
+        </div>
+      </div>
+      <label class="checkControl daySyncCheck">
+        <input type="checkbox" id="checkDiaInicio">
+        Confirmo que este es el día correcto
+      </label>
+    </div>
+
     <button class="dashboardCard produccionCard" type="button" data-seccion="seccionProduccion">
       <span class="dashboardIcon">🥖</span>
       <span class="dashboardText">
@@ -162,6 +185,19 @@
 <button id="btnProcesar" class="primary">Procesar pedido</button>
       <button id="btnLimpiarPedido">Limpiar cuadro</button>
 
+      
+      <div id="panelClientesPendientes" class="pendingClientsPanel">
+        <div class="pendingClientsHeader">
+          <div>
+            <strong>Clientes pendientes</strong>
+            <span id="contadorClientesPendientes">0 pendientes</span>
+          </div>
+          <button id="btnActualizarPendientes" type="button">Actualizar</button>
+        </div>
+        <div id="listaClientesPendientes"></div>
+        <button id="btnRecordarPendientes" type="button">📲 Recordar solo a pendientes</button>
+      </div>
+
       <h3>Pedidos cargados</h3>
       <div id="pedidosCargados"></div>
 
@@ -169,6 +205,10 @@
         <input type="checkbox" id="checkPedidoCompleto">
         Confirmo que todos los pedidos cargados están correctos
       </label>
+
+      <button id="btnContinuarResumen" class="primary continueButton" type="button">
+        Continuar al resumen →
+      </button>
     </section>
 
     <section class="card wide appSection" id="seccionResumen">

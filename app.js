@@ -12,26 +12,38 @@ function nombreDiaProduccion(valor) {
 function actualizarTarjetaDiaPedidos() {
   const selectorProduccion = $("diaProduccion");
   const selectorPedidos = $("diaProduccionPedidos");
+  const selectorInicio = $("diaProduccionInicio");
+
   const checkProduccion = $("checkProduccionCompleta");
   const checkPedidos = $("checkDiaPedidos");
-  const estado = $("estadoDiaPedidos");
-  const tarjeta = $("tarjetaDiaPedidos");
+  const checkInicio = $("checkDiaInicio");
 
-  if (!selectorProduccion || !selectorPedidos || !checkProduccion || !checkPedidos) return;
+  const estadoPedidos = $("estadoDiaPedidos");
+  const estadoInicio = $("estadoDiaInicio");
 
-  selectorPedidos.value = selectorProduccion.value;
-  checkPedidos.checked = checkProduccion.checked;
+  const tarjetaPedidos = $("tarjetaDiaPedidos");
+  const tarjetaInicio = $("tarjetaDiaInicio");
 
-  if (estado) {
-    estado.textContent = checkProduccion.checked
-      ? "Producción confirmada"
-      : "Producción seleccionada";
-  }
+  if (!selectorProduccion || !checkProduccion) return;
 
-  if (tarjeta) {
+  if (selectorPedidos) selectorPedidos.value = selectorProduccion.value;
+  if (selectorInicio) selectorInicio.value = selectorProduccion.value;
+
+  if (checkPedidos) checkPedidos.checked = checkProduccion.checked;
+  if (checkInicio) checkInicio.checked = checkProduccion.checked;
+
+  const textoEstado = checkProduccion.checked
+    ? "Producción confirmada"
+    : "Producción seleccionada";
+
+  if (estadoPedidos) estadoPedidos.textContent = textoEstado;
+  if (estadoInicio) estadoInicio.textContent = textoEstado;
+
+  [tarjetaPedidos, tarjetaInicio].forEach(tarjeta => {
+    if (!tarjeta) return;
     tarjeta.classList.toggle("confirmada", checkProduccion.checked);
     tarjeta.classList.toggle("pendiente", !checkProduccion.checked);
-  }
+  });
 }
 
 function sincronizarDiaDesdeProduccion() {
@@ -73,152 +85,147 @@ function sincronizarDiaDesdePedidos() {
 function iniciarSincronizacionDia() {
   const selectorProduccion = $("diaProduccion");
   const selectorPedidos = $("diaProduccionPedidos");
+  const selectorInicio = $("diaProduccionInicio");
+
   const checkProduccion = $("checkProduccionCompleta");
   const checkPedidos = $("checkDiaPedidos");
+  const checkInicio = $("checkDiaInicio");
+
+  function cambiarDiaDesde(valor) {
+    if (!selectorProduccion) return;
+
+    selectorProduccion.value = valor;
+    if (selectorPedidos) selectorPedidos.value = valor;
+    if (selectorInicio) selectorInicio.value = valor;
+
+    if (checkProduccion) checkProduccion.checked = false;
+    if (checkPedidos) checkPedidos.checked = false;
+    if (checkInicio) checkInicio.checked = false;
+
+    selectorProduccion.dispatchEvent(new Event("change", { bubbles: true }));
+    actualizarTarjetaDiaPedidos();
+  }
 
   if (selectorProduccion) {
-    selectorProduccion.addEventListener("change", sincronizarDiaDesdeProduccion);
+    selectorProduccion.addEventListener("change", () => {
+      if (selectorPedidos) selectorPedidos.value = selectorProduccion.value;
+      if (selectorInicio) selectorInicio.value = selectorProduccion.value;
+
+      if (checkProduccion) checkProduccion.checked = false;
+      if (checkPedidos) checkPedidos.checked = false;
+      if (checkInicio) checkInicio.checked = false;
+
+      actualizarTarjetaDiaPedidos();
+    });
   }
 
   if (selectorPedidos) {
-    selectorPedidos.addEventListener("change", sincronizarDiaDesdePedidos);
+    selectorPedidos.addEventListener("change", () => cambiarDiaDesde(selectorPedidos.value));
   }
 
-  if (checkProduccion) {
-    checkProduccion.addEventListener("change", () => {
-      if (checkPedidos) checkPedidos.checked = checkProduccion.checked;
-      actualizarTarjetaDiaPedidos();
-    });
+  if (selectorInicio) {
+    selectorInicio.addEventListener("change", () => cambiarDiaDesde(selectorInicio.value));
   }
 
-  if (checkPedidos) {
-    checkPedidos.addEventListener("change", () => {
-      if (checkProduccion) checkProduccion.checked = checkPedidos.checked;
-      actualizarTarjetaDiaPedidos();
-    });
+  function sincronizarChecks(origen) {
+    const valor = origen?.checked || false;
+    if (checkProduccion) checkProduccion.checked = valor;
+    if (checkPedidos) checkPedidos.checked = valor;
+    if (checkInicio) checkInicio.checked = valor;
+    actualizarTarjetaDiaPedidos();
   }
+
+  if (checkProduccion) checkProduccion.addEventListener("change", () => sincronizarChecks(checkProduccion));
+  if (checkPedidos) checkPedidos.addEventListener("change", () => sincronizarChecks(checkPedidos));
+  if (checkInicio) checkInicio.addEventListener("change", () => sincronizarChecks(checkInicio));
 
   actualizarTarjetaDiaPedidos();
 }
 
 
-function normalizarTelefonoCliente(telefono) {
-  return String(telefono || "").replace(/\D/g, "");
+function clientesConRecordatorioActivo() {
+  return clientes.filter(nombre => {
+    const datos = datosClientesCompletos[nombre];
+    return datos && datos.enviarRecordatorio;
+  });
 }
 
-function limpiarFormularioClienteCompleto() {
-  const nombre = $("nuevoClienteNombre");
-  const telefono = $("nuevoClienteTelefono");
-  const recordatorio = $("nuevoClienteRecordatorio");
-
-  if (nombre) nombre.value = "";
-  if (telefono) telefono.value = "";
-  if (recordatorio) recordatorio.checked = false;
+function clientesQueYaPidieron() {
+  return new Set(
+    pedidos
+      .filter(p => p && p.cliente)
+      .map(p => normalizar(p.cliente))
+  );
 }
 
-function mostrarMensajeClienteCompleto(texto, error = false) {
-  const el = $("mensajeClienteCompleto");
-  if (!el) return;
+function obtenerClientesPendientes() {
+  const enviados = clientesQueYaPidieron();
 
-  el.textContent = texto;
-  el.style.display = "block";
-  el.style.background = error ? "#ffe1de" : "#eaf7eb";
-  el.style.color = error ? "#9b1c1c" : "#1f7a35";
-
-  setTimeout(() => {
-    el.style.display = "none";
-  }, 2500);
+  return clientesConRecordatorioActivo().filter(nombre => {
+    return !enviados.has(normalizar(nombre));
+  });
 }
 
-function guardarClienteCompleto() {
-  const nombre = $("nuevoClienteNombre")?.value.trim() || "";
-  const telefono = normalizarTelefonoCliente($("nuevoClienteTelefono")?.value || "");
-  const recordatorio = Boolean($("nuevoClienteRecordatorio")?.checked);
+function renderClientesPendientes() {
+  const cont = $("listaClientesPendientes");
+  const contador = $("contadorClientesPendientes");
+  if (!cont || !contador) return;
 
-  if (!nombre) {
-    mostrarMensajeClienteCompleto("Escribí el nombre del cliente.", true);
+  const pendientes = obtenerClientesPendientes();
+  contador.textContent = `${pendientes.length} pendiente${pendientes.length === 1 ? "" : "s"}`;
+
+  if (!pendientes.length) {
+    cont.innerHTML = '<p class="pendingOk">✅ Todos los clientes con recordatorio ya enviaron pedido.</p>';
     return;
   }
 
-  const existente = clientes.find(c => normalizar(c) === normalizar(nombre));
-  const nombreFinal = existente || nombre;
-
-  if (!existente) {
-    clientes.push(nombreFinal);
-  }
-
-  datosClientesCompletos[nombreFinal] = {
-    nombre: nombreFinal,
-    telefono,
-    enviarRecordatorio: recordatorio,
-    actualizado: new Date().toISOString()
-  };
-
-  guardarTodo();
-  renderClientes(nombreFinal);
-  renderListaClientesCompleta();
-  limpiarFormularioClienteCompleto();
-  mostrarMensajeClienteCompleto("Cliente guardado correctamente.");
-}
-
-function editarClienteCompleto(nombre) {
-  const datos = datosClientesCompletos[nombre] || {
-    nombre,
-    telefono: "",
-    enviarRecordatorio: false
-  };
-
-  $("nuevoClienteNombre").value = datos.nombre || nombre;
-  $("nuevoClienteTelefono").value = datos.telefono || "";
-  $("nuevoClienteRecordatorio").checked = Boolean(datos.enviarRecordatorio);
-
-  abrirSeccionFratello("seccionClientes");
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function eliminarClienteCompleto(nombre) {
-  if (!confirm(`¿Seguro que querés eliminar a ${nombre}?`)) return;
-
-  clientes = clientes.filter(c => c !== nombre);
-  delete datosClientesCompletos[nombre];
-
-  guardarTodo();
-  renderClientes();
-  renderListaClientesCompleta();
-}
-
-function renderListaClientesCompleta() {
-  const cont = $("listaClientesCompleta");
-  if (!cont) return;
-
-  if (!clientes.length) {
-    cont.innerHTML = "<p>No hay clientes cargados.</p>";
-    return;
-  }
-
-  let html = "";
-
-  clientes.forEach(nombre => {
+  cont.innerHTML = pendientes.map(nombre => {
     const datos = datosClientesCompletos[nombre] || {};
     const telefono = datos.telefono || "Sin teléfono";
-    const recordatorio = datos.enviarRecordatorio
-      ? "🔔 Recordatorio activado"
-      : "🔕 Sin recordatorio";
 
-    html += `<div class="clienteCompletoCard">
+    return `<div class="pendingClientRow">
       <div>
         <strong>${nombre}</strong>
         <span>${telefono}</span>
-        <small>${recordatorio}</small>
       </div>
-      <div class="clienteCompletoActions">
-        <button type="button" onclick="editarClienteCompleto('${nombre.replace(/'/g, "\\'")}')">✏️ Editar</button>
-        <button type="button" class="dangerBtn" onclick="eliminarClienteCompleto('${nombre.replace(/'/g, "\\'")}')">🗑️ Eliminar</button>
-      </div>
+      <button type="button" onclick="recordarClientePendiente('${nombre.replace(/'/g, "\\'")}')">Recordar</button>
     </div>`;
-  });
+  }).join("");
+}
 
-  cont.innerHTML = html;
+function linkFormularioPedido() {
+  const base = window.location.origin + window.location.pathname.replace("index.html", "");
+  return base + "pedido.html";
+}
+
+function recordarClientePendiente(nombre) {
+  const datos = datosClientesCompletos[nombre] || {};
+  const telefono = normalizarTelefonoCliente(datos.telefono || "");
+
+  if (!telefono) {
+    alert("Este cliente no tiene teléfono cargado.");
+    return;
+  }
+
+  const mensaje = `Hola ${nombre}! Te recordamos cargar tu pedido para la próxima entrega:
+
+${linkFormularioPedido()}
+
+Gracias, Fratello.`;
+
+  abrirWhatsApp(telefono.startsWith("549") ? telefono : `549${telefono}`, mensaje);
+}
+
+function recordarTodosLosPendientes() {
+  const pendientes = obtenerClientesPendientes();
+
+  if (!pendientes.length) {
+    alert("No hay clientes pendientes.");
+    return;
+  }
+
+  alert(`Hay ${pendientes.length} cliente(s) pendiente(s). Se abrirá WhatsApp uno por uno.`);
+  recordarClientePendiente(pendientes[0]);
 }
 
 function mostrarInicioFratello() {
@@ -477,6 +484,11 @@ function escucharCambiosNube() {
 
     if (typeof renderClientes === "function") renderClientes();
     if (typeof renderListaClientesCompleta === "function") renderListaClientesCompleta();
+  renderClientesPendientes();
+  if ($("btnContinuarResumen")) $("btnContinuarResumen").onclick = () => abrirSeccionFratello("seccionResumen");
+  if ($("btnActualizarPendientes")) $("btnActualizarPendientes").onclick = renderClientesPendientes;
+  if ($("btnRecordarPendientes")) $("btnRecordarPendientes").onclick = recordarTodosLosPendientes;
+  if (typeof renderClientesPendientes === "function") renderClientesPendientes();
   iniciarNavegacionFratello();
   iniciarSincronizacionDia();
   if ($("btnGuardarClienteCompleto")) $("btnGuardarClienteCompleto").onclick = guardarClienteCompleto;
@@ -1038,6 +1050,7 @@ function renderPedidosCargados() {
   });
 
   $("pedidosCargados").innerHTML = html;
+  renderClientesPendientes();
 }
 
 
