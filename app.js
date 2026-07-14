@@ -228,6 +228,23 @@ function recordarTodosLosPendientes() {
   recordarClientePendiente(pendientes[0]);
 }
 
+
+function continuarAlResumenSiEstaConfirmado() {
+  const checkPedidos = $("checkPedidoCompleto");
+
+  if (!pedidos.length) {
+    alert("Todavía no hay pedidos cargados.");
+    return;
+  }
+
+  if (!checkPedidos || !checkPedidos.checked) {
+    alert("Primero tildá que todos los pedidos cargados están correctos.");
+    return;
+  }
+
+  abrirSeccionFratello("seccionResumen");
+}
+
 function mostrarInicioFratello() {
   const inicio = document.getElementById("panelInicio");
   const contenido = document.getElementById("contenidoApp");
@@ -485,7 +502,7 @@ function escucharCambiosNube() {
     if (typeof renderClientes === "function") renderClientes();
     if (typeof renderListaClientesCompleta === "function") renderListaClientesCompleta();
   renderClientesPendientes();
-  if ($("btnContinuarResumen")) $("btnContinuarResumen").onclick = () => abrirSeccionFratello("seccionResumen");
+  if ($("btnContinuarResumen")) $("btnContinuarResumen").onclick = continuarAlResumenSiEstaConfirmado;
   if ($("btnActualizarPendientes")) $("btnActualizarPendientes").onclick = renderClientesPendientes;
   if ($("btnRecordarPendientes")) $("btnRecordarPendientes").onclick = recordarTodosLosPendientes;
   if (typeof renderClientesPendientes === "function") renderClientesPendientes();
