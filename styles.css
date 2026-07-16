@@ -1135,3 +1135,70 @@ body {
   .notificationsTitleRow button{width:100%}
   .notificationHistoryHeader{flex-direction:column;gap:3px}
 }
+
+
+/* ===== FRATELLO v0.81.5 — NAVEGACIÓN SIN JAVASCRIPT ===== */
+
+/* Los enlaces conservan exactamente la apariencia de los botones. */
+a.dashboardCard,
+a.notificationBellCard {
+  color: inherit;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.quickActions a {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+a.volverInicio,
+a.menuButton {
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+/* Estado normal: se ve el inicio y las secciones permanecen ocultas. */
+#panelInicio {
+  display: block;
+}
+
+#contenidoApp {
+  display: none;
+}
+
+.appSection {
+  display: none !important;
+}
+
+/* Al tocar un enlace, el hash activa directamente la sección. */
+body:has(.appSection:target) #panelInicio {
+  display: none !important;
+}
+
+body:has(.appSection:target) #contenidoApp {
+  display: block !important;
+}
+
+.appSection:target {
+  display: block !important;
+}
+
+/* Compatibilidad adicional para navegadores sin :has:
+   la sección elegida igual se muestra, aunque el inicio quede arriba. */
+.appSection:target {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Evita que capas auxiliares invisibles intercepten clics. */
+#vistaPedidosModal.hidden,
+#printModal.hidden,
+.printModal.hidden {
+  display: none !important;
+  pointer-events: none !important;
+}

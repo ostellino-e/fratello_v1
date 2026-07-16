@@ -1,7 +1,10 @@
-# Fratello v0.81.4 — Hotfix definitivo de navegación
+# Fratello v0.81.5 — Navegación sin JavaScript
 
-- La navegación ya no depende de app.js, Firebase ni del historial.
-- Un script independiente captura todos los botones de secciones.
-- Producción, Pedidos, Resumen, Clientes y Notificaciones quedan operativos aunque otro módulo falle.
-- Incluye marcador visible v0.81.4 para verificar que la versión nueva cargó.
-- Fuerza app.js y Service Worker v0.81.4.
+Esta versión fue corregida sobre la carpeta real enviada por Emi.
+
+Cambio principal:
+- Producción, Pedidos, Resumen, Clientes y Notificaciones ahora se abren con enlaces HTML y CSS `:target`.
+- La navegación ya no depende de Firebase, app.js, listeners ni eventos de clic.
+- Los botones Volver y Menú regresan al inicio con enlaces reales.
+- Se eliminaron capas invisibles como posible bloqueo de clics.
+- Marcador visible v0.81.5.
