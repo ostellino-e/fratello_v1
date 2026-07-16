@@ -433,20 +433,26 @@ function mostrarInicioFratello() {
 }
 
 
-let unsubscribeHistorialNotificaciones = null;
 let notificacionesHistorial = [];
-let ultimaNotificacionVista = localStorage.getItem("fratello_ultima_notificacion_vista") || "";
+let unsubscribeHistorialNotificaciones = null;
+let ultimaNotificacionVista =
+  localStorage.getItem("fratello_ultima_notificacion_vista") || "";
 
-function formatearFechaNotificacion(valor) {
-  if (!valor) return "";
+function fechaNotificacionISO(notificacion) {
+  const valor = notificacion?.fechaISO || notificacion?.creadoEn || "";
+  if (valor && typeof valor.toDate === "function") {
+    return valor.toDate().toISOString();
+  }
 
-  const fecha = valor.toDate
-    ? valor.toDate()
-    : new Date(valor);
+  const fecha = new Date(valor);
+  return Number.isNaN(fecha.getTime()) ? "" : fecha.toISOString();
+}
 
-  if (Number.isNaN(fecha.getTime())) return "";
+function mostrarFechaNotificacion(notificacion) {
+  const iso = fechaNotificacionISO(notificacion);
+  if (!iso) return "";
 
-  return fecha.toLocaleString("es-AR", {
+  return new Date(iso).toLocaleString("es-AR", {
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
@@ -454,17 +460,9 @@ function formatearFechaNotificacion(valor) {
   });
 }
 
-function fechaComparableNotificacion(notificacion) {
-  const valor = notificacion.creadoEn || notificacion.fechaISO || "";
-  if (valor?.toDate) return valor.toDate().toISOString();
-
-  const fecha = new Date(valor);
-  return Number.isNaN(fecha.getTime()) ? "" : fecha.toISOString();
-}
-
-function notificacionesNoLeidas() {
-  return notificacionesHistorial.filter(n => {
-    const fecha = fechaComparableNotificacion(n);
+function cantidadNotificacionesNoLeidas() {
+  return notificacionesHistorial.filter(notificacion => {
+    const fecha = fechaNotificacionISO(notificacion);
     return fecha && (!ultimaNotificacionVista || fecha > ultimaNotificacionVista);
   }).length;
 }
@@ -472,17 +470,18 @@ function notificacionesNoLeidas() {
 function actualizarCampanaNotificaciones() {
   const badge = $("badgeNotificaciones");
   const resumen = $("resumenNotificacionesInicio");
-  const noLeidas = notificacionesNoLeidas();
+  const cantidad = cantidadNotificacionesNoLeidas();
 
   if (badge) {
-    badge.textContent = String(noLeidas);
-    badge.classList.toggle("hidden", noLeidas === 0);
+    badge.textContent = String(cantidad);
+    badge.classList.toggle("hidden", cantidad === 0);
   }
 
   if (resumen) {
-    if (noLeidas > 0) {
-      resumen.textContent = `${noLeidas} aviso${noLeidas === 1 ? "" : "s"} sin leer`;
-    } else if (notificacionesHistorial.length) {
+    if (cantidad > 0) {
+      resumen.textContent =
+        `${cantidad} aviso${cantidad === 1 ? "" : "s"} sin leer`;
+    } else if (notificacionesHistorial.length > 0) {
       resumen.textContent = "No hay avisos nuevos";
     } else {
       resumen.textContent = "Todavía no hay notificaciones";
@@ -502,21 +501,19 @@ function renderHistorialNotificaciones() {
     return;
   }
 
-  estado.textContent = `${notificacionesHistorial.length} notificación${
-    notificacionesHistorial.length === 1 ? "" : "es"
-  }`;
+  estado.textContent =
+    `${notificacionesHistorial.length} notificación${
+      notificacionesHistorial.length === 1 ? "" : "es"
+    }`;
 
   lista.innerHTML = notificacionesHistorial.map(notificacion => {
     const titulo = notificacion.titulo || "Notificación de Fratello";
     const mensaje = notificacion.mensaje || notificacion.cuerpo || "";
     const cliente = notificacion.cliente || "";
-    const fecha = formatearFechaNotificacion(
-      notificacion.creadoEn || notificacion.fechaISO
-    );
-    const tipo = notificacion.tipo || "aviso";
+    const fecha = mostrarFechaNotificacion(notificacion);
 
     return `<article class="notificationHistoryCard">
-      <div class="notificationHistoryIcon">${tipo === "pedido_nuevo" ? "📦" : "🔔"}</div>
+      <div class="notificationHistoryIcon">📦</div>
       <div class="notificationHistoryContent">
         <div class="notificationHistoryHeader">
           <strong>${titulo}</strong>
@@ -533,6 +530,7 @@ function renderHistorialNotificaciones() {
 
 async function cargarHistorialNotificaciones() {
   const estado = $("estadoListaNotificaciones");
+
   if (!db) {
     if (estado) estado.textContent = "Firebase no está conectado.";
     return;
@@ -541,7 +539,8 @@ async function cargarHistorialNotificaciones() {
   if (estado) estado.textContent = "Actualizando notificaciones...";
 
   try {
-    const snapshot = await db.collection("fratello_historial_notificaciones")
+    const snapshot = await db
+      .collection("fratello_historial_notificaciones")
       .orderBy("fechaISO", "desc")
       .limit(50)
       .get();
@@ -553,8 +552,10 @@ async function cargarHistorialNotificaciones() {
 
     renderHistorialNotificaciones();
   } catch (error) {
-    console.error("Error cargando historial de notificaciones:", error);
-    if (estado) estado.textContent = "No se pudieron cargar las notificaciones.";
+    console.error("Error cargando historial:", error);
+    if (estado) {
+      estado.textContent = "No se pudieron cargar las notificaciones.";
+    }
   }
 }
 
@@ -578,9 +579,11 @@ function escucharHistorialNotificaciones() {
 }
 
 function marcarNotificacionesComoVistas() {
-  const ahora = new Date().toISOString();
-  ultimaNotificacionVista = ahora;
-  localStorage.setItem("fratello_ultima_notificacion_vista", ahora);
+  ultimaNotificacionVista = new Date().toISOString();
+  localStorage.setItem(
+    "fratello_ultima_notificacion_vista",
+    ultimaNotificacionVista
+  );
   actualizarCampanaNotificaciones();
 }
 
@@ -606,22 +609,15 @@ function abrirSeccionFratello(idSeccion) {
 
 function iniciarNavegacionFratello() {
   document.querySelectorAll("[data-seccion]").forEach(boton => {
-    if (boton.dataset.navegacionLista === "1") return;
-    boton.dataset.navegacionLista = "1";
     boton.addEventListener("click", () => abrirSeccionFratello(boton.dataset.seccion));
   });
 
   document.querySelectorAll(".volverInicio").forEach(boton => {
-    if (boton.dataset.volverListo === "1") return;
-    boton.dataset.volverListo = "1";
     boton.addEventListener("click", mostrarInicioFratello);
   });
 
   const btnInicio = document.getElementById("btnInicio");
-  if (btnInicio && btnInicio.dataset.inicioListo !== "1") {
-    btnInicio.dataset.inicioListo = "1";
-    btnInicio.addEventListener("click", mostrarInicioFratello);
-  }
+  if (btnInicio) btnInicio.addEventListener("click", mostrarInicioFratello);
 
   const btnBorrarRapido = document.getElementById("btnBorrarRapido");
   if (btnBorrarRapido) {
@@ -632,6 +628,25 @@ function iniciarNavegacionFratello() {
   }
 
   mostrarInicioFratello();
+}
+
+let eventoInstalacion = null;
+window.addEventListener("beforeinstallprompt", (evento) => {
+  evento.preventDefault();
+  eventoInstalacion = evento;
+  const boton = document.getElementById("btnInstalarApp");
+  if (boton) boton.classList.remove("hidden");
+});
+async function instalarFratello() {
+  if (!eventoInstalacion) {
+    alert("En iPhone usá Compartir y elegí Agregar a pantalla de inicio.");
+    return;
+  }
+  eventoInstalacion.prompt();
+  await eventoInstalacion.userChoice;
+  eventoInstalacion = null;
+  const boton = document.getElementById("btnInstalarApp");
+  if (boton) boton.classList.add("hidden");
 }
 
 const productos = [
@@ -2377,33 +2392,15 @@ Gracias, Fratello.`;
 }
 
 
-
-function asignarClickSeguro(id, handler) {
-  const elemento = $(id);
-  if (!elemento) {
-    console.warn(`No se encontró el elemento #${id}`);
-    return;
-  }
-  elemento.onclick = handler;
-}
-
-function asignarCambioSeguro(id, handler) {
-  const elemento = $(id);
-  if (!elemento) {
-    console.warn(`No se encontró el elemento #${id}`);
-    return;
-  }
-  elemento.onchange = handler;
-}
-
 async function init() {
-  // La navegación se activa primero para que los botones funcionen
-  // aunque otra parte de la app tenga un error posterior.
   iniciarNavegacionFratello();
 
   const btnActualizarNotificaciones = $("btnActualizarNotificaciones");
   if (btnActualizarNotificaciones) {
-    btnActualizarNotificaciones.addEventListener("click", cargarHistorialNotificaciones);
+    btnActualizarNotificaciones.addEventListener(
+      "click",
+      cargarHistorialNotificaciones
+    );
   }
 
   const btnActivarNotificaciones = $("btnActivarNotificaciones");
@@ -2448,27 +2445,27 @@ async function init() {
   if ($("btnAgregarCliente")) $("btnAgregarCliente").onclick = agregarCliente;
   if ($("btnModificarCliente")) $("btnModificarCliente").onclick = modificarCliente;
 
-  asignarCambioSeguro("diaProduccion", () => {
+  $("diaProduccion").onchange = () => {
     renderProduccion();
     calcularDiferencias();
-  });
+  };
 
-  asignarClickSeguro("btnDesbloquearProduccion", desbloquearProduccion);
-  asignarClickSeguro("btnBloquearProduccion", bloquearProduccion);
-  asignarClickSeguro("btnGuardarProduccion", guardarProduccion);
-  asignarClickSeguro("btnEditarPredeterminada", activarEdicionPredeterminada);
-  asignarClickSeguro("btnGuardarPredeterminada", guardarPredeterminada);
-  asignarClickSeguro("btnCancelarPredeterminada", cancelarEdicionPredeterminada);
+  $("btnDesbloquearProduccion").onclick = desbloquearProduccion;
+  $("btnBloquearProduccion").onclick = bloquearProduccion;
+  $("btnGuardarProduccion").onclick = guardarProduccion;
+  $("btnEditarPredeterminada").onclick = activarEdicionPredeterminada;
+  $("btnGuardarPredeterminada").onclick = guardarPredeterminada;
+  $("btnCancelarPredeterminada").onclick = cancelarEdicionPredeterminada;
 
-  asignarClickSeguro("btnProcesar", () => procesarPedidoActual());
-  asignarClickSeguro("btnLimpiarPedido", () => { const campo = $("pedidoCrudo"); if (campo) campo.value = ""; });
-  asignarClickSeguro("btnCalcular", calcularDiferencias);
+  $("btnProcesar").onclick = () => procesarPedidoActual();
+  $("btnLimpiarPedido").onclick = () => $("pedidoCrudo").value = "";
+  $("btnCalcular").onclick = calcularDiferencias;
   if ($("btnWhatsAppGrupo")) $("btnWhatsAppGrupo").onclick = generarMensajeGrupoFratello;
   if ($("btnRecordarCliente")) $("btnRecordarCliente").onclick = recordarPedidoCliente;
   if ($("btnBorrarMemoriaEnvio")) $("btnBorrarMemoriaEnvio").onclick = borrarMemoriaEnvio;
-  asignarClickSeguro("btnExportar", copiarResumen);
-  asignarClickSeguro("btnReset", resetDatos);
-  asignarClickSeguro("btnVistaPedidos", generarVistaPedidos);
+  $("btnExportar").onclick = copiarResumen;
+  $("btnReset").onclick = resetDatos;
+  $("btnVistaPedidos").onclick = generarVistaPedidos;
   if ($("btnCerrarModalImpresion")) $("btnCerrarModalImpresion").onclick = cerrarModalImpresion;
   if ($("btnCerrarModalImpresion2")) $("btnCerrarModalImpresion2").onclick = cerrarModalImpresion;
   if ($("cerrarModalBackdrop")) $("cerrarModalBackdrop").onclick = cerrarModalImpresion;
@@ -2486,7 +2483,6 @@ async function init() {
   renderListaClientesCompleta();
   renderClientesPendientes();
   actualizarPanelMemoriaEnvio();
-  actualizarEstadoNotificaciones();
   actualizarCampanaNotificaciones();
 
   renderProduccion();
@@ -2499,11 +2495,11 @@ async function init() {
 
 window.editarClienteCompleto = editarClienteCompleto;
 window.eliminarClienteCompleto = eliminarClienteCompleto;
-
+ 
 init().catch(error => {
   console.error("Error iniciando Fratello:", error);
   const estado = document.getElementById("estadoSync");
-  if (estado) estado.textContent = "La app inició con un error parcial";
+  if (estado) estado.textContent = "Error parcial al iniciar";
 });
 
 if (messaging) {

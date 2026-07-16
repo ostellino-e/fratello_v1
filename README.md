@@ -1,8 +1,10 @@
-# Fratello v0.81.2 — Inicio robusto
+# Fratello v0.81.3 — Reconstrucción estable
 
-Correcciones:
-- La navegación se activa antes que Firebase y el resto de los módulos.
-- Aunque falle una sección, los botones principales siguen funcionando.
-- Todos los botones internos se enlazan de forma segura.
-- Se muestra en consola el error exacto si algún módulo falla.
-- Se fuerza la descarga de app.js v0.81.2 para evitar caché vieja.
+- Reconstruida desde la última versión estable v0.80.
+- HTML corregido sin etiquetas sobrantes.
+- Navegación activada al comienzo.
+- Botones con onclick de respaldo.
+- Centro de notificaciones e historial.
+- Panel de activación pequeño al final.
+- Sin cartel de instalación.
+- Service Worker y app.js forzados a v0.81.3.
