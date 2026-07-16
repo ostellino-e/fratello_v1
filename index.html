@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="styles.css" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Fratello" />
   <link rel="manifest" href="manifest.json" />
@@ -350,12 +351,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=081")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=0811")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=081", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=0811", {
             scope: "./",
             updateViaCache: "none"
           });

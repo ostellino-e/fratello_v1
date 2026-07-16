@@ -1,11 +1,8 @@
-# Fratello — Cloud Functions v2
+# Fratello v0.81.1 — Corrección de botones
 
-Además de enviar la notificación push:
-- Guarda cada aviso en `fratello_historial_notificaciones`.
-- Al tocar la notificación abre `#notificaciones`.
-- El historial muestra cliente, pedido, fecha y hora.
-
-Deploy:
-```powershell
-firebase.cmd deploy --only functions
-```
+Corrección:
+- Restaurada la inicialización de navegación.
+- Los botones de Producción, Pedidos, Resumen, Clientes y Notificaciones vuelven a responder.
+- Restaurada la sincronización del día.
+- Se evita registrar eventos duplicados.
+- Actualizado el Service Worker para forzar la nueva versión.

@@ -606,15 +606,22 @@ function abrirSeccionFratello(idSeccion) {
 
 function iniciarNavegacionFratello() {
   document.querySelectorAll("[data-seccion]").forEach(boton => {
+    if (boton.dataset.navegacionLista === "1") return;
+    boton.dataset.navegacionLista = "1";
     boton.addEventListener("click", () => abrirSeccionFratello(boton.dataset.seccion));
   });
 
   document.querySelectorAll(".volverInicio").forEach(boton => {
+    if (boton.dataset.volverListo === "1") return;
+    boton.dataset.volverListo = "1";
     boton.addEventListener("click", mostrarInicioFratello);
   });
 
   const btnInicio = document.getElementById("btnInicio");
-  if (btnInicio) btnInicio.addEventListener("click", mostrarInicioFratello);
+  if (btnInicio && btnInicio.dataset.inicioListo !== "1") {
+    btnInicio.dataset.inicioListo = "1";
+    btnInicio.addEventListener("click", mostrarInicioFratello);
+  }
 
   const btnBorrarRapido = document.getElementById("btnBorrarRapido");
   if (btnBorrarRapido) {
@@ -2446,6 +2453,19 @@ async function init() {
   if ($("btnCompartirImagenPedidos")) $("btnCompartirImagenPedidos").onclick = compartirImagenPedidos;
   if ($("btnGuardarImagenPedidos")) $("btnGuardarImagenPedidos").onclick = guardarImagenPedidos;
   if ($("btnBorrarSeleccionados")) $("btnBorrarSeleccionados").onclick = borrarPedidosSeleccionados;
+
+  iniciarNavegacionFratello();
+  iniciarSincronizacionDia();
+
+  if (window.location.hash === "#notificaciones") {
+    abrirSeccionFratello("seccionNotificaciones");
+  }
+
+  renderListaClientesCompleta();
+  renderClientesPendientes();
+  actualizarPanelMemoriaEnvio();
+  actualizarEstadoNotificaciones();
+  actualizarCampanaNotificaciones();
 
   renderProduccion();
   renderPedidosCargados();
