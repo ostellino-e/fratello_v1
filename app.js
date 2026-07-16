@@ -2521,3 +2521,122 @@ if (messaging) {
     }
   });
 }
+
+
+/* ===== FRATELLO v0.81.8 - NAVEGACIÓN FORZADA =====
+   Se instala fuera de init() para que funcione aunque Firebase u otro módulo fallen.
+*/
+(function instalarNavegacionForzada() {
+  function abrir(idSeccion) {
+    const inicio = document.getElementById("panelInicio");
+    const contenido = document.getElementById("contenidoApp");
+    const destino = document.getElementById(idSeccion);
+
+    if (!destino) {
+      console.error("Fratello: no existe la sección", idSeccion);
+      return;
+    }
+
+    if (inicio) inicio.classList.add("hidden");
+    if (contenido) contenido.classList.add("contenidoVisible");
+
+    document.querySelectorAll(".appSection").forEach(seccion => {
+      seccion.classList.toggle("seccionActiva", seccion === destino);
+    });
+
+    if (idSeccion === "seccionNotificaciones") {
+      if (typeof cargarHistorialNotificaciones === "function") {
+        cargarHistorialNotificaciones();
+      }
+      if (typeof marcarNotificacionesComoVistas === "function") {
+        marcarNotificacionesComoVistas();
+      }
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function inicio() {
+    const panelInicio = document.getElementById("panelInicio");
+    const contenido = document.getElementById("contenidoApp");
+
+    document.querySelectorAll(".appSection").forEach(seccion => {
+      seccion.classList.remove("seccionActiva");
+    });
+
+    if (panelInicio) panelInicio.classList.remove("hidden");
+    if (contenido) contenido.classList.remove("contenidoVisible");
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // Sobrescribe las funciones globales con versiones independientes y estables.
+  window.abrirSeccionFratello = abrir;
+  window.mostrarInicioFratello = inicio;
+
+  function detectarSeccion(elemento) {
+    const boton = elemento.closest("[data-seccion]");
+    if (boton) return boton.getAttribute("data-seccion");
+
+    if (elemento.closest(".produccionCard")) return "seccionProduccion";
+    if (elemento.closest(".pedidosCard")) return "seccionPedidos";
+    if (elemento.closest(".resumenCard")) return "seccionResumen";
+    if (elemento.closest(".notificationBellCard")) return "seccionNotificaciones";
+
+    const accionRapida = elemento.closest(".quickActions button, .quickActions a");
+    if (accionRapida) {
+      const texto = (accionRapida.textContent || "").toLowerCase();
+      if (texto.includes("cliente")) return "seccionClientes";
+      if (texto.includes("producto")) return "seccionProduccion";
+      if (texto.includes("resumen")) return "seccionResumen";
+    }
+
+    return "";
+  }
+
+  function manejarNavegacion(evento) {
+    const objetivo = evento.target instanceof Element ? evento.target : null;
+    if (!objetivo) return;
+
+    const volver = objetivo.closest(".volverInicio, #btnInicio");
+    if (volver) {
+      evento.preventDefault();
+      evento.stopImmediatePropagation();
+      inicio();
+      return;
+    }
+
+    const idSeccion = detectarSeccion(objetivo);
+    if (!idSeccion) return;
+
+    evento.preventDefault();
+    evento.stopImmediatePropagation();
+    abrir(idSeccion);
+  }
+
+  function activar() {
+    // Captura antes que cualquier otro listener de la aplicación.
+    document.addEventListener("click", manejarNavegacion, true);
+    document.addEventListener("pointerup", manejarNavegacion, true);
+    document.addEventListener("touchend", manejarNavegacion, { capture: true, passive: false });
+
+    document.querySelectorAll(
+      "[data-seccion], .produccionCard, .pedidosCard, .resumenCard, " +
+      ".notificationBellCard, .quickActions button, .quickActions a, " +
+      ".volverInicio, #btnInicio"
+    ).forEach(elemento => {
+      elemento.style.pointerEvents = "auto";
+      elemento.style.touchAction = "manipulation";
+      elemento.disabled = false;
+    });
+
+    console.log("Fratello v0.81.8: navegación forzada activa");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", activar, { once: true });
+  } else {
+    activar();
+  }
+})();
+
