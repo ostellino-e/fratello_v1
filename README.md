@@ -1,9 +1,10 @@
-# Fratello v0.81.6 — Clic directo
+# Fratello v0.81.7 — Navegación final
 
-Corregida sobre la carpeta real enviada por Emi.
+Esta versión se armó desde la carpeta real enviada.
 
-- Cada botón ejecuta directamente `abrirSeccionFratello(...)`.
-- El clic ya no depende de delegación de eventos.
-- Los elementos internos del botón no interceptan el clic.
-- Volver y menú usan `mostrarInicioFratello()` directamente.
-- Marcador visible v0.81.6.
+- Botones convertidos en enlaces HTML reales.
+- Acción directa onclick.
+- Respaldo pointerup para mouse y pantalla táctil.
+- Respaldo CSS :target si JavaScript falla.
+- Marcador visible v0.81.7.
+- ZIP sin carpeta interna: los archivos están directamente en la raíz.

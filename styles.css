@@ -1137,20 +1137,51 @@ body {
 }
 
 
-/* ===== FRATELLO v0.81.6 — CLIC DIRECTO ===== */
-.dashboardCard,
-.notificationBellCard,
-.quickActions button,
-.volverInicio,
-#btnInicio {
-  position: relative;
+/* ===== FRATELLO v0.81.7 — NAVEGACIÓN FINAL ===== */
+
+a.dashboardCard,
+a.notificationBellCard {
+  color: inherit;
+  text-decoration: none;
+  box-sizing: border-box;
   pointer-events: auto !important;
   touch-action: manipulation;
   cursor: pointer;
 }
 
-.dashboardCard > *,
-.notificationBellCard > *,
-.quickActions button > * {
+.quickActions a {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
+a.dashboardCard > *,
+a.notificationBellCard > *,
+.quickActions a > * {
   pointer-events: none !important;
+}
+
+a.volverInicio,
+a.menuButton {
+  text-decoration: none;
+  box-sizing: border-box;
+  pointer-events: auto !important;
+}
+
+/* Respaldo sin JavaScript mediante el hash de la URL. */
+.appSection:target {
+  display: block !important;
+}
+
+body:has(.appSection:target) #panelInicio {
+  display: none !important;
+}
+
+body:has(.appSection:target) #contenidoApp {
+  display: block !important;
 }
