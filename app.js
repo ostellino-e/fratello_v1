@@ -586,6 +586,180 @@ if (FIREBASE_ACTIVO && typeof firebase !== "undefined") {
   db = firebase.firestore();
 }
 
+
+const CLAVE_VAPID_NOTIFICACIONES = "BG6gYJciGDS2YKNz1pIUx_Y1qMauuao5J3PY5uinZ1zLLbG7rY5ZQyO_fXbJPoY4kaXECH7EunZPq4EeBmct2QU";
+let messaging = null;
+let tokenNotificaciones = localStorage.getItem("fratello_token_notificaciones") || "";
+
+if (FIREBASE_ACTIVO && typeof firebase !== "undefined" && firebase.messaging) {
+  try {
+    messaging = firebase.messaging();
+  } catch (error) {
+    console.error("No se pudo iniciar Firebase Messaging:", error);
+  }
+}
+
+function actualizarEstadoNotificaciones() {
+  const estado = $("estadoNotificaciones");
+  const btnActivar = $("btnActivarNotificaciones");
+  const btnProbar = $("btnProbarNotificacion");
+
+  if (!estado) return;
+
+  if (!("Notification" in window)) {
+    estado.textContent = "Este dispositivo no admite notificaciones web.";
+    if (btnActivar) btnActivar.disabled = true;
+    if (btnProbar) btnProbar.disabled = true;
+    return;
+  }
+
+  if (Notification.permission === "denied") {
+    estado.textContent = "Notificaciones bloqueadas. Habilitalas desde Ajustes del iPhone.";
+    if (btnActivar) btnActivar.disabled = true;
+    if (btnProbar) btnProbar.disabled = true;
+    return;
+  }
+
+  if (Notification.permission === "granted" && tokenNotificaciones) {
+    estado.textContent = "✅ Notificaciones activadas en este dispositivo.";
+    if (btnActivar) btnActivar.textContent = "Notificaciones activadas";
+    if (btnProbar) btnProbar.disabled = false;
+    return;
+  }
+
+  if (Notification.permission === "granted") {
+    estado.textContent = "Permiso concedido. Falta registrar el dispositivo.";
+    if (btnProbar) btnProbar.disabled = true;
+    return;
+  }
+
+  estado.textContent = "Todavía no están activadas.";
+  if (btnProbar) btnProbar.disabled = true;
+}
+
+async function obtenerRegistroServiceWorkerNotificaciones() {
+  if (!("serviceWorker" in navigator)) {
+    throw new Error("El navegador no admite Service Worker.");
+  }
+
+  let registro = await navigator.serviceWorker.getRegistration("./");
+
+  if (!registro) {
+    registro = await navigator.serviceWorker.register("service-worker.js?v=080", {
+      scope: "./",
+      updateViaCache: "none"
+    });
+  }
+
+  await navigator.serviceWorker.ready;
+  return registro;
+}
+
+async function guardarTokenNotificaciones(token) {
+  if (!db || !token) return;
+
+  const idSeguro = token.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 120);
+  const datos = {
+    token,
+    plataforma: navigator.userAgent,
+    pwa: window.matchMedia("(display-mode: standalone)").matches || Boolean(navigator.standalone),
+    activo: true,
+    actualizado: new Date().toISOString()
+  };
+
+  await db.collection("fratello_notificaciones").doc(idSeguro).set(datos, { merge: true });
+}
+
+async function activarNotificacionesFratello() {
+  const boton = $("btnActivarNotificaciones");
+  const estado = $("estadoNotificaciones");
+
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = "Activando...";
+  }
+  if (estado) estado.textContent = "Solicitando permiso...";
+
+  try {
+    if (!messaging) {
+      throw new Error("Firebase Messaging no está disponible.");
+    }
+
+    const permiso = await Notification.requestPermission();
+
+    if (permiso !== "granted") {
+      throw new Error("No se concedió permiso para notificaciones.");
+    }
+
+    const registro = await obtenerRegistroServiceWorkerNotificaciones();
+
+    const token = await messaging.getToken({
+      vapidKey: CLAVE_VAPID_NOTIFICACIONES,
+      serviceWorkerRegistration: registro
+    });
+
+    if (!token) {
+      throw new Error("Firebase no devolvió un token para este dispositivo.");
+    }
+
+    tokenNotificaciones = token;
+    localStorage.setItem("fratello_token_notificaciones", token);
+    await guardarTokenNotificaciones(token);
+
+    actualizarEstadoNotificaciones();
+
+    if (estado) estado.textContent = "✅ Dispositivo registrado correctamente.";
+    if (boton) boton.textContent = "Notificaciones activadas";
+  } catch (error) {
+    console.error("Error activando notificaciones:", error);
+    if (estado) estado.textContent = "❌ " + (error.message || "No se pudieron activar.");
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = "Reintentar activación";
+    }
+    return;
+  }
+
+  if (boton) boton.disabled = false;
+}
+
+async function probarNotificacionFratello() {
+  const boton = $("btnProbarNotificacion");
+  const estado = $("estadoNotificaciones");
+
+  if (Notification.permission !== "granted") {
+    alert("Primero activá las notificaciones.");
+    return;
+  }
+
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = "Enviando prueba...";
+  }
+
+  try {
+    const registro = await obtenerRegistroServiceWorkerNotificaciones();
+
+    await registro.showNotification("Fratello", {
+      body: "✅ Las notificaciones funcionan correctamente.",
+      icon: "icon-192.png",
+      badge: "icon-192.png",
+      tag: "fratello-prueba",
+      data: { url: "./index.html" }
+    });
+
+    if (estado) estado.textContent = "✅ Notificación de prueba enviada.";
+  } catch (error) {
+    console.error("Error mostrando notificación de prueba:", error);
+    if (estado) estado.textContent = "❌ No se pudo mostrar la prueba.";
+  } finally {
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = "Enviar prueba";
+    }
+  }
+}
+
 function setEstadoSync(texto) {
   const el = $("estadoSync");
   if (el) el.textContent = texto;
@@ -2059,6 +2233,19 @@ Gracias, Fratello.`;
 
 
 async function init() {
+  const btnActivarNotificaciones = $("btnActivarNotificaciones");
+  const btnProbarNotificacion = $("btnProbarNotificacion");
+
+  if (btnActivarNotificaciones) {
+    btnActivarNotificaciones.addEventListener("click", activarNotificacionesFratello);
+  }
+
+  if (btnProbarNotificacion) {
+    btnProbarNotificacion.addEventListener("click", probarNotificacionFratello);
+  }
+
+  actualizarEstadoNotificaciones();
+
   const btnActualizarDatos = $("btnActualizarDatos");
   if (btnActualizarDatos) {
     btnActualizarDatos.addEventListener("click", actualizarDatosManual);
@@ -2128,3 +2315,22 @@ window.editarClienteCompleto = editarClienteCompleto;
 window.eliminarClienteCompleto = eliminarClienteCompleto;
 
 init();
+
+if (messaging) {
+  messaging.onMessage(async payload => {
+    const titulo = payload.notification?.title || "Fratello";
+    const cuerpo = payload.notification?.body || "Tenés una nueva notificación.";
+
+    try {
+      const registro = await obtenerRegistroServiceWorkerNotificaciones();
+      await registro.showNotification(titulo, {
+        body: cuerpo,
+        icon: "icon-192.png",
+        badge: "icon-192.png",
+        data: payload.data || { url: "./index.html" }
+      });
+    } catch (error) {
+      console.error("Error mostrando notificación recibida:", error);
+    }
+  });
+}

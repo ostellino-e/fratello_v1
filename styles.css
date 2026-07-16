@@ -1043,3 +1043,34 @@ body {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ===== FRATELLO v0.80 - NOTIFICACIONES ===== */
+.notificationPanel{
+  margin:0 0 12px;
+  padding:14px;
+  border-radius:18px;
+  background:linear-gradient(135deg,#f0eaff,#e1d7f8);
+  border:1px solid #c4b0e8;
+}
+.notificationPanelHeader{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.notificationPanelHeader>div{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.notificationPanelHeader strong{font-size:18px}
+.notificationPanelHeader span{font-size:14px}
+.notificationActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+}
+.notificationActions button{margin:0}
+@media(max-width:620px){
+  .notificationActions{grid-template-columns:1fr}
+}

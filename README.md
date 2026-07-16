@@ -1,7 +1,10 @@
-# Fratello v0.79.2
+# Fratello v0.80 — Notificaciones fase 1
 
-Corrección:
-- Elimina registros viejos del Service Worker.
-- Fuerza registro de la versión nueva sin usar caché vieja.
-- El Service Worker solo intercepta archivos propios de Fratello.
-- Ignora por completo solicitudes chrome-extension y otros protocolos.
+- Botón Activar notificaciones.
+- Solicita permiso en el dispositivo.
+- Registra el token FCM en Firestore.
+- Botón Enviar prueba.
+- La prueba usa el Service Worker y funciona con Fratello instalado.
+- Preparado para recibir notificaciones en primer y segundo plano.
+
+Nota: el envío automático por pedido nuevo requiere una función segura del servidor.

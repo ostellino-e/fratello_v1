@@ -40,6 +40,20 @@
       <span id="estadoActualizacionManual">Sin actualizar</span>
     </div>
 
+    
+    <div class="notificationPanel">
+      <div class="notificationPanelHeader">
+        <div>
+          <strong>🔔 Notificaciones</strong>
+          <span id="estadoNotificaciones">Todavía no están activadas.</span>
+        </div>
+      </div>
+      <div class="notificationActions">
+        <button id="btnActivarNotificaciones" type="button">Activar notificaciones</button>
+        <button id="btnProbarNotificacion" type="button" disabled>Enviar prueba</button>
+      </div>
+    </div>
+
     <div id="tarjetaDiaInicio" class="daySyncCard pendiente homeDayCard">
       <div class="daySyncHeader">
         <span class="daySyncIcon">📅</span>
@@ -296,6 +310,7 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="app.js"></script>
   <script>
     if ("serviceWorker" in navigator) {
@@ -310,12 +325,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=0792")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=080")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=0792", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=080", {
             scope: "./",
             updateViaCache: "none"
           });
