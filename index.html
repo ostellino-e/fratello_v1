@@ -337,7 +337,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=0812"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", async () => {
@@ -351,12 +351,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=0811")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=0812")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=0811", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=0812", {
             scope: "./",
             updateViaCache: "none"
           });

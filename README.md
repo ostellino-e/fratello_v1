@@ -1,8 +1,8 @@
-# Fratello v0.81.1 — Corrección de botones
+# Fratello v0.81.2 — Inicio robusto
 
-Corrección:
-- Restaurada la inicialización de navegación.
-- Los botones de Producción, Pedidos, Resumen, Clientes y Notificaciones vuelven a responder.
-- Restaurada la sincronización del día.
-- Se evita registrar eventos duplicados.
-- Actualizado el Service Worker para forzar la nueva versión.
+Correcciones:
+- La navegación se activa antes que Firebase y el resto de los módulos.
+- Aunque falle una sección, los botones principales siguen funcionando.
+- Todos los botones internos se enlazan de forma segura.
+- Se muestra en consola el error exacto si algún módulo falla.
+- Se fuerza la descarga de app.js v0.81.2 para evitar caché vieja.

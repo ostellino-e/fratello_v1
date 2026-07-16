@@ -2377,7 +2377,30 @@ Gracias, Fratello.`;
 }
 
 
+
+function asignarClickSeguro(id, handler) {
+  const elemento = $(id);
+  if (!elemento) {
+    console.warn(`No se encontró el elemento #${id}`);
+    return;
+  }
+  elemento.onclick = handler;
+}
+
+function asignarCambioSeguro(id, handler) {
+  const elemento = $(id);
+  if (!elemento) {
+    console.warn(`No se encontró el elemento #${id}`);
+    return;
+  }
+  elemento.onchange = handler;
+}
+
 async function init() {
+  // La navegación se activa primero para que los botones funcionen
+  // aunque otra parte de la app tenga un error posterior.
+  iniciarNavegacionFratello();
+
   const btnActualizarNotificaciones = $("btnActualizarNotificaciones");
   if (btnActualizarNotificaciones) {
     btnActualizarNotificaciones.addEventListener("click", cargarHistorialNotificaciones);
@@ -2418,34 +2441,34 @@ async function init() {
   escucharCambiosNube();
   escucharHistorialNotificaciones();
   aplicarPermisosUsuario();
-  $("fechaPedido").value = hoyISO();
+  if ($("fechaPedido")) $("fechaPedido").value = hoyISO();
   renderClientes();
 
   if ($("cliente")) $("cliente").onchange = limpiarPedidoCrudo;
   if ($("btnAgregarCliente")) $("btnAgregarCliente").onclick = agregarCliente;
   if ($("btnModificarCliente")) $("btnModificarCliente").onclick = modificarCliente;
 
-  $("diaProduccion").onchange = () => {
+  asignarCambioSeguro("diaProduccion", () => {
     renderProduccion();
     calcularDiferencias();
-  };
+  });
 
-  $("btnDesbloquearProduccion").onclick = desbloquearProduccion;
-  $("btnBloquearProduccion").onclick = bloquearProduccion;
-  $("btnGuardarProduccion").onclick = guardarProduccion;
-  $("btnEditarPredeterminada").onclick = activarEdicionPredeterminada;
-  $("btnGuardarPredeterminada").onclick = guardarPredeterminada;
-  $("btnCancelarPredeterminada").onclick = cancelarEdicionPredeterminada;
+  asignarClickSeguro("btnDesbloquearProduccion", desbloquearProduccion);
+  asignarClickSeguro("btnBloquearProduccion", bloquearProduccion);
+  asignarClickSeguro("btnGuardarProduccion", guardarProduccion);
+  asignarClickSeguro("btnEditarPredeterminada", activarEdicionPredeterminada);
+  asignarClickSeguro("btnGuardarPredeterminada", guardarPredeterminada);
+  asignarClickSeguro("btnCancelarPredeterminada", cancelarEdicionPredeterminada);
 
-  $("btnProcesar").onclick = () => procesarPedidoActual();
-  $("btnLimpiarPedido").onclick = () => $("pedidoCrudo").value = "";
-  $("btnCalcular").onclick = calcularDiferencias;
+  asignarClickSeguro("btnProcesar", () => procesarPedidoActual());
+  asignarClickSeguro("btnLimpiarPedido", () => { const campo = $("pedidoCrudo"); if (campo) campo.value = ""; });
+  asignarClickSeguro("btnCalcular", calcularDiferencias);
   if ($("btnWhatsAppGrupo")) $("btnWhatsAppGrupo").onclick = generarMensajeGrupoFratello;
   if ($("btnRecordarCliente")) $("btnRecordarCliente").onclick = recordarPedidoCliente;
   if ($("btnBorrarMemoriaEnvio")) $("btnBorrarMemoriaEnvio").onclick = borrarMemoriaEnvio;
-  $("btnExportar").onclick = copiarResumen;
-  $("btnReset").onclick = resetDatos;
-  $("btnVistaPedidos").onclick = generarVistaPedidos;
+  asignarClickSeguro("btnExportar", copiarResumen);
+  asignarClickSeguro("btnReset", resetDatos);
+  asignarClickSeguro("btnVistaPedidos", generarVistaPedidos);
   if ($("btnCerrarModalImpresion")) $("btnCerrarModalImpresion").onclick = cerrarModalImpresion;
   if ($("btnCerrarModalImpresion2")) $("btnCerrarModalImpresion2").onclick = cerrarModalImpresion;
   if ($("cerrarModalBackdrop")) $("cerrarModalBackdrop").onclick = cerrarModalImpresion;
@@ -2454,7 +2477,6 @@ async function init() {
   if ($("btnGuardarImagenPedidos")) $("btnGuardarImagenPedidos").onclick = guardarImagenPedidos;
   if ($("btnBorrarSeleccionados")) $("btnBorrarSeleccionados").onclick = borrarPedidosSeleccionados;
 
-  iniciarNavegacionFratello();
   iniciarSincronizacionDia();
 
   if (window.location.hash === "#notificaciones") {
@@ -2478,7 +2500,11 @@ async function init() {
 window.editarClienteCompleto = editarClienteCompleto;
 window.eliminarClienteCompleto = eliminarClienteCompleto;
 
-init();
+init().catch(error => {
+  console.error("Error iniciando Fratello:", error);
+  const estado = document.getElementById("estadoSync");
+  if (estado) estado.textContent = "La app inició con un error parcial";
+});
 
 if (messaging) {
   messaging.onMessage(async payload => {
