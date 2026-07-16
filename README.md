@@ -1,10 +1,7 @@
-# Fratello v0.81.3 — Reconstrucción estable
+# Fratello v0.81.4 — Hotfix definitivo de navegación
 
-- Reconstruida desde la última versión estable v0.80.
-- HTML corregido sin etiquetas sobrantes.
-- Navegación activada al comienzo.
-- Botones con onclick de respaldo.
-- Centro de notificaciones e historial.
-- Panel de activación pequeño al final.
-- Sin cartel de instalación.
-- Service Worker y app.js forzados a v0.81.3.
+- La navegación ya no depende de app.js, Firebase ni del historial.
+- Un script independiente captura todos los botones de secciones.
+- Producción, Pedidos, Resumen, Clientes y Notificaciones quedan operativos aunque otro módulo falle.
+- Incluye marcador visible v0.81.4 para verificar que la versión nueva cargó.
+- Fuerza app.js y Service Worker v0.81.4.

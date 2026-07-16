@@ -15,7 +15,7 @@
 </head>
 <body>
   <header class="appHeader">
-    <button id="btnInicio" class="menuButton" type="button" onclick="mostrarInicioFratello()" aria-label="Volver al inicio">☰</button>
+    <button id="btnInicio" class="menuButton" type="button" aria-label="Volver al inicio">☰</button>
     <div class="brandWrap">
       <img src="icon-192.png" alt="Logo Fratello" class="brandLogo">
       <div>
@@ -27,7 +27,7 @@
   </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v0.81.4</small>
   </section>
 
   <section id="panelInicio" class="dashboard">
@@ -37,8 +37,7 @@
     </div>
 
     <button class="notificationBellCard" type="button"
-      data-seccion="seccionNotificaciones"
-      onclick="abrirSeccionFratello('seccionNotificaciones')">
+      data-seccion="seccionNotificaciones">
       <span class="notificationBellIcon">🔔</span>
       <span class="notificationBellText">
         <strong>Notificaciones</strong>
@@ -69,7 +68,7 @@
       </label>
     </div>
 
-    <button class="dashboardCard produccionCard" type="button" data-seccion="seccionProduccion" onclick="abrirSeccionFratello('seccionProduccion')">
+    <button class="dashboardCard produccionCard" type="button" data-seccion="seccionProduccion">
       <span class="dashboardIcon">🥖</span>
       <span class="dashboardText">
         <strong>1. PRODUCCIÓN</strong>
@@ -79,7 +78,7 @@
       <span class="dashboardArrow">›</span>
     </button>
 
-    <button class="dashboardCard pedidosCard" type="button" data-seccion="seccionPedidos" onclick="abrirSeccionFratello('seccionPedidos')">
+    <button class="dashboardCard pedidosCard" type="button" data-seccion="seccionPedidos">
       <span class="dashboardIcon">🛒</span>
       <span class="dashboardText">
         <strong>2. PEDIDOS</strong>
@@ -89,7 +88,7 @@
       <span class="dashboardArrow">›</span>
     </button>
 
-    <button class="dashboardCard resumenCard" type="button" data-seccion="seccionResumen" onclick="abrirSeccionFratello('seccionResumen')">
+    <button class="dashboardCard resumenCard" type="button" data-seccion="seccionResumen">
       <span class="dashboardIcon">📊</span>
       <span class="dashboardText">
         <strong>3. RESUMEN</strong>
@@ -114,16 +113,16 @@
 
     <div class="quickTitle">Acciones rápidas</div>
     <div class="quickActions">
-      <button type="button" data-seccion="seccionClientes" onclick="abrirSeccionFratello('seccionClientes')">👥<span>Clientes</span></button>
-      <button type="button" data-seccion="seccionProduccion" onclick="abrirSeccionFratello('seccionProduccion')">📦<span>Productos</span></button>
-      <button type="button" data-seccion="seccionResumen" onclick="abrirSeccionFratello('seccionResumen')">⚙️<span>Resumen</span></button>
+      <button type="button" data-seccion="seccionClientes">👥<span>Clientes</span></button>
+      <button type="button" data-seccion="seccionProduccion">📦<span>Productos</span></button>
+      <button type="button" data-seccion="seccionResumen">⚙️<span>Resumen</span></button>
       <button type="button" id="btnBorrarRapido">🗑️<span>Borrar datos</span></button>
     </div>
   </section>
 
 <main class="layout" id="contenidoApp">
     <section class="card appSection" id="seccionProduccion">
-      <button class="volverInicio" type="button" onclick="mostrarInicioFratello()">← Volver</button>
+      <button class="volverInicio" type="button">← Volver</button>
       <h2>1. Producción estibada/realizada</h2>
       <p class="hint">
         Elegí el día y el sistema carga la producción base. Solo cambiás algo si ese día fue distinto.
@@ -168,7 +167,7 @@
       </details>
     </section>
     <section class="card appSection" id="seccionPedidos">
-      <button class="volverInicio" type="button" onclick="mostrarInicioFratello()">← Volver</button>
+      <button class="volverInicio" type="button">← Volver</button>
       <h2>2. Pegar pedido de WhatsApp</h2>
 
       <div id="tarjetaDiaPedidos" class="daySyncCard pendiente">
@@ -237,7 +236,7 @@
     </section>
 
     <section class="card wide appSection" id="seccionResumen">
-      <button class="volverInicio" type="button" onclick="mostrarInicioFratello()">← Volver</button>
+      <button class="volverInicio" type="button">← Volver</button>
       <h2>3. Resultado final</h2>
 
       <div id="panelMemoriaEnvio" class="memoryPanel">
@@ -273,7 +272,7 @@
     </section>
   
     <section class="card appSection" id="seccionClientes">
-      <button class="volverInicio" type="button" onclick="mostrarInicioFratello()">← Volver</button>
+      <button class="volverInicio" type="button">← Volver</button>
       <h2>Clientes</h2>
       <p class="hint">Cargá el nombre, teléfono y definí si debe recibir recordatorio de pedido.</p>
 
@@ -312,7 +311,7 @@
 
   
     <section class="card appSection" id="seccionNotificaciones">
-      <button class="volverInicio" type="button" onclick="mostrarInicioFratello()">← Volver</button>
+      <button class="volverInicio" type="button">← Volver</button>
 
       <div class="notificationsTitleRow">
         <div>
@@ -336,7 +335,89 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
-  <script src="app.js?v=0813"></script>
+  <script src="app.js?v=0814"></script>
+
+  <script>
+    (function () {
+      function abrirSeccionSegura(idSeccion) {
+        var inicio = document.getElementById("panelInicio");
+        var contenido = document.getElementById("contenidoApp");
+        var destino = document.getElementById(idSeccion);
+
+        if (!destino) {
+          console.error("No existe la sección:", idSeccion);
+          return;
+        }
+
+        if (inicio) inicio.classList.add("hidden");
+        if (contenido) contenido.classList.add("contenidoVisible");
+
+        document.querySelectorAll(".appSection").forEach(function (seccion) {
+          seccion.classList.toggle("seccionActiva", seccion.id === idSeccion);
+        });
+
+        if (idSeccion === "seccionNotificaciones" &&
+            typeof window.cargarHistorialNotificaciones === "function") {
+          window.cargarHistorialNotificaciones();
+        }
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function mostrarInicioSeguro() {
+        var inicio = document.getElementById("panelInicio");
+        var contenido = document.getElementById("contenidoApp");
+
+        if (inicio) inicio.classList.remove("hidden");
+        if (contenido) contenido.classList.remove("contenidoVisible");
+
+        document.querySelectorAll(".appSection").forEach(function (seccion) {
+          seccion.classList.remove("seccionActiva");
+        });
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      // Exponerlas para los onclick del HTML.
+      window.abrirSeccionFratello = abrirSeccionSegura;
+      window.mostrarInicioFratello = mostrarInicioSeguro;
+
+      function conectarNavegacion() {
+        document.addEventListener("click", function (evento) {
+          var botonSeccion = evento.target.closest("[data-seccion]");
+          if (botonSeccion) {
+            evento.preventDefault();
+            evento.stopPropagation();
+            abrirSeccionSegura(botonSeccion.getAttribute("data-seccion"));
+            return;
+          }
+
+          var volver = evento.target.closest(".volverInicio, #btnInicio");
+          if (volver) {
+            evento.preventDefault();
+            evento.stopPropagation();
+            mostrarInicioSeguro();
+          }
+        }, true);
+
+        // Asegurar estado inicial.
+        mostrarInicioSeguro();
+
+        if (window.location.hash === "#notificaciones") {
+          abrirSeccionSegura("seccionNotificaciones");
+        }
+
+        console.log("Fratello v0.81.4: navegación independiente activada");
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", conectarNavegacion, { once: true });
+      } else {
+        conectarNavegacion();
+      }
+    })();
+  </script>
+
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", async () => {
@@ -350,12 +431,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=0813")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=0814")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=0813", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=0814", {
             scope: "./",
             updateViaCache: "none"
           });
