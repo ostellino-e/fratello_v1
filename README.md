@@ -1,7 +1,8 @@
-# Fratello v0.78 — Memoria de envíos
+# Fratello v0.79 — Velocidad y actualización
 
-- Guarda el cálculo enviado por fecha.
-- Si entra un pedido tardío, genera un mensaje incremental.
-- Informa únicamente cuánto agregar o reducir respecto del mensaje anterior.
-- Conserva pedidos acumulados, diferencias, clientes y hora.
-- Incluye panel de memoria y botón Nueva jornada / borrar memoria.
+- El formulario muestra Enviando pedido inmediatamente.
+- El botón queda bloqueado para evitar pedidos duplicados.
+- Guardado mediante transacción de Firebase.
+- Sincronización en tiempo real reparada.
+- Botón Actualizar datos en la pantalla principal.
+- Muestra hora de la última actualización.

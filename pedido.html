@@ -271,6 +271,7 @@ Bizcocho hojaldre 1,5 kg</pre>
       const fecha = document.getElementById("fechaEntrega").value || hoyISO();
       const texto = document.getElementById("pedidoCrudoCliente").value.trim();
       const confirmado = document.getElementById("confirmoPedidoCliente").checked;
+      const boton = document.getElementById("btnEnviarPedidoCliente");
 
       if (!cliente) {
         alert("Escribí el nombre del cliente o sucursal.");
@@ -294,34 +295,49 @@ Bizcocho hojaldre 1,5 kg</pre>
         return;
       }
 
+      const nuevoPedido = {
+        id: Date.now(),
+        fecha,
+        cliente,
+        textoOriginal: texto,
+        origen: "formulario_cliente",
+        items
+      };
+
+      if (boton) {
+        boton.disabled = true;
+        boton.textContent = "Enviando...";
+      }
+
+      mostrarMensaje("Enviando pedido...");
+
       try {
         const estadoRef = db.collection("fratello").doc("estado");
-        const doc = await estadoRef.get();
-        const data = doc.exists ? doc.data() : {};
-        const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
 
-        pedidos.push({
-          id: Date.now(),
-          fecha,
-          cliente,
-          textoOriginal: texto,
-          origen: "formulario_cliente",
-          items
-        });
+        await db.runTransaction(async transaction => {
+          const doc = await transaction.get(estadoRef);
+          const data = doc.exists ? doc.data() : {};
+          const pedidosActuales = Array.isArray(data.pedidos) ? data.pedidos : [];
 
-        await estadoRef.set({
-          ...data,
-          pedidos,
-          pedidosConfirmados: false,
-          actualizado: new Date().toISOString()
+          transaction.set(estadoRef, {
+            ...data,
+            pedidos: [...pedidosActuales, nuevoPedido],
+            pedidosConfirmados: false,
+            actualizado: new Date().toISOString()
+          });
         });
 
         document.getElementById("pedidoCrudoCliente").value = "";
         document.getElementById("confirmoPedidoCliente").checked = false;
-        mostrarMensaje("Pedido enviado correctamente. Gracias.");
+        mostrarMensaje("Pedido cargado correctamente. Gracias.");
       } catch (error) {
         console.error(error);
         mostrarMensaje("No se pudo enviar el pedido. Intentá nuevamente.", true);
+      } finally {
+        if (boton) {
+          boton.disabled = false;
+          boton.textContent = "Enviar pedido";
+        }
       }
     }
 

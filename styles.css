@@ -973,3 +973,31 @@ body {
   .memoryPanel{align-items:flex-start;flex-direction:column}
   .memoryPanel button{width:100%}
 }
+
+.refreshPanel{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:0 0 12px;
+  padding:12px 14px;
+  border-radius:16px;
+  background:#ffffffcc;
+  border:1px solid #e5d7c6;
+}
+.refreshPanel button{
+  width:auto;
+  margin:0;
+}
+.refreshPanel span{
+  font-size:13px;
+  font-weight:700;
+  color:#6d5a4b;
+}
+@media(max-width:620px){
+  .refreshPanel{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .refreshPanel button{width:100%}
+}

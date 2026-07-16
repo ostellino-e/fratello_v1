@@ -654,6 +654,47 @@ async function cargarDesdeNube() {
   }
 }
 
+
+async function actualizarDatosManual() {
+  const boton = $("btnActualizarDatos");
+  const estado = $("estadoActualizacionManual");
+
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = "Actualizando...";
+  }
+  if (estado) estado.textContent = "Consultando Firebase...";
+
+  try {
+    await cargarDesdeNube();
+
+    renderClientes();
+    renderListaClientesCompleta();
+    renderClientesPendientes();
+    renderProduccion();
+    renderPedidosCargados();
+    calcularDiferencias();
+    actualizarPanelMemoriaEnvio();
+    actualizarTarjetaDiaPedidos();
+
+    if (estado) {
+      estado.textContent = "Actualizado " + new Date().toLocaleTimeString("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+  } catch (error) {
+    console.error("Error actualizando datos:", error);
+    if (estado) estado.textContent = "Error al actualizar";
+    alert("No se pudieron actualizar los datos.");
+  } finally {
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = "🔄 Actualizar datos";
+    }
+  }
+}
+
 function escucharCambiosNube() {
   if (!db) return;
 
@@ -661,43 +702,64 @@ function escucharCambiosNube() {
     if (!doc.exists) return;
 
     cargandoDesdeNube = true;
-    const data = doc.data();
 
-    produccion = data.produccion || produccion;
-    pedidos = data.pedidos || pedidos;
-    predeterminadas = data.predeterminadas || predeterminadas;
-    clientes = (Array.isArray(data.clientes) && data.clientes.length > 0) ? data.clientes : clientes;
-      validarClientes();
+    try {
+      const data = doc.data();
+
+      produccion = data.produccion || produccion;
+      pedidos = Array.isArray(data.pedidos) ? data.pedidos : pedidos;
+      predeterminadas = data.predeterminadas || predeterminadas;
+      clientes = Array.isArray(data.clientes) && data.clientes.length
+        ? data.clientes
+        : clientes;
+      datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
       productosExtra = data.productosExtra || productosExtra;
-      pedidosConfirmados = data.pedidosConfirmados || false;
-      productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); } );
-    correspondePedido = data.correspondePedido || correspondePedido;
-    memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
+      pedidosConfirmados = Boolean(data.pedidosConfirmados);
+      correspondePedido = data.correspondePedido || correspondePedido;
+      memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
 
-    guardarTodo();
-    guardarTodo();
-    guardarTodo();
-    guardarTodo();
+      validarClientes();
 
-    if (typeof renderClientes === "function") renderClientes();
-    if (typeof renderListaClientesCompleta === "function") renderListaClientesCompleta();
-  renderClientesPendientes();
-  if ($("btnContinuarResumen")) $("btnContinuarResumen").onclick = continuarAlResumenSiEstaConfirmado;
-  if ($("btnActualizarPendientes")) $("btnActualizarPendientes").onclick = renderClientesPendientes;
-  if ($("btnRecordarPendientes")) $("btnRecordarPendientes").onclick = recordarTodosLosPendientes;
-  if (typeof renderClientesPendientes === "function") renderClientesPendientes();
-  iniciarNavegacionFratello();
-  iniciarSincronizacionDia();
-  renderListaClientesCompleta();
-  if ($("btnInstalarApp")) $("btnInstalarApp").onclick = instalarFratello;
-    if (typeof renderProduccion === "function") renderProduccion();
-    if (typeof renderCorrespondePedido === "function")
-    if (typeof renderPedidosCargados === "function") renderPedidosCargados();
-    if (typeof calcularDiferencias === "function") calcularDiferencias();
+      productosExtra.forEach(p => {
+        if (!productos.find(x => x.id === p.id)) productos.push(p);
+      });
 
-    cargandoDesdeNube = false;
-    actualizarPanelMemoriaEnvio();
-    setEstadoSync("Online actualizado");
+      localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
+      localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+      localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
+      localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
+      localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+      localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
+      localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+      localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+
+      renderClientes();
+      renderListaClientesCompleta();
+      renderClientesPendientes();
+      renderProduccion();
+      renderPedidosCargados();
+      calcularDiferencias();
+      actualizarPanelMemoriaEnvio();
+      actualizarTarjetaDiaPedidos();
+
+      const estado = $("estadoActualizacionManual");
+      if (estado) {
+        estado.textContent = "Actualizado " + new Date().toLocaleTimeString("es-AR", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      setEstadoSync("Online actualizado");
+    } catch (error) {
+      console.error("Error procesando actualización en tiempo real:", error);
+      setEstadoSync("Error al actualizar");
+    } finally {
+      cargandoDesdeNube = false;
+    }
+  }, (error) => {
+    console.error("Error escuchando Firebase:", error);
+    setEstadoSync("Error de sincronización");
   });
 }
 
