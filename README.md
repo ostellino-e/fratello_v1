@@ -1,10 +1,9 @@
-# Fratello v0.81.5 — Navegación sin JavaScript
+# Fratello v0.81.6 — Clic directo
 
-Esta versión fue corregida sobre la carpeta real enviada por Emi.
+Corregida sobre la carpeta real enviada por Emi.
 
-Cambio principal:
-- Producción, Pedidos, Resumen, Clientes y Notificaciones ahora se abren con enlaces HTML y CSS `:target`.
-- La navegación ya no depende de Firebase, app.js, listeners ni eventos de clic.
-- Los botones Volver y Menú regresan al inicio con enlaces reales.
-- Se eliminaron capas invisibles como posible bloqueo de clics.
-- Marcador visible v0.81.5.
+- Cada botón ejecuta directamente `abrirSeccionFratello(...)`.
+- El clic ya no depende de delegación de eventos.
+- Los elementos internos del botón no interceptan el clic.
+- Volver y menú usan `mostrarInicioFratello()` directamente.
+- Marcador visible v0.81.6.
