@@ -382,6 +382,7 @@ function eliminarClienteCompleto(nombre) {
 
   guardarTodo();
   renderClientes();
+  actualizarPanelMemoriaEnvio();
   renderListaClientesCompleta();
   if (typeof renderClientesPendientes === "function") renderClientesPendientes();
   abrirSeccionFratello("seccionClientes");
@@ -596,7 +597,11 @@ function datosActuales() {
     pedidos,
     predeterminadas,
     clientes,
+    datosClientesCompletos,
+    productosExtra,
+    pedidosConfirmados,
     correspondePedido,
+    memoriaUltimoEnvio,
     actualizado: new Date().toISOString()
   };
 }
@@ -638,6 +643,7 @@ async function cargarDesdeNube() {
       pedidosConfirmados = data.pedidosConfirmados || false;
       productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); } );
     correspondePedido = data.correspondePedido || correspondePedido;
+    memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
       correspondePedido = data.correspondePedido || correspondePedido;
     }
 
@@ -666,6 +672,7 @@ function escucharCambiosNube() {
       pedidosConfirmados = data.pedidosConfirmados || false;
       productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); } );
     correspondePedido = data.correspondePedido || correspondePedido;
+    memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
 
     guardarTodo();
     guardarTodo();
@@ -689,6 +696,7 @@ function escucharCambiosNube() {
     if (typeof calcularDiferencias === "function") calcularDiferencias();
 
     cargandoDesdeNube = false;
+    actualizarPanelMemoriaEnvio();
     setEstadoSync("Online actualizado");
   });
 }
@@ -701,6 +709,7 @@ function guardarTodo() {
   localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
   localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
   localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
   guardarEnNube();
 }
 
@@ -715,6 +724,7 @@ productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos
 let correspondePedido = JSON.parse(localStorage.getItem("fratello_corresponde") || "{}");
 let modoEdicionPredeterminada = false;
 let pedidosConfirmados = JSON.parse(localStorage.getItem("fratello_pedidos_confirmados") || "false");
+let memoriaUltimoEnvio = JSON.parse(localStorage.getItem("fratello_memoria_envio") || "null");
 let produccionDesbloqueada = false;
 
 const $ = (id) => document.getElementById(id);
@@ -1534,6 +1544,168 @@ function confirmarPedidos() {
 
 
 
+
+function fechaJornadaActual() {
+  return $("fechaPedido")?.value || hoyISO();
+}
+
+function diaJornadaActual() {
+  return $("diaProduccion")?.value || $("diaProduccionPedidos")?.value || "";
+}
+
+function totalesPedidosDe(listaPedidos) {
+  const totales = {};
+  (listaPedidos || []).forEach(pedido => {
+    (pedido.items || []).forEach(it => {
+      if (it.estado === "NO PEDIDO") return;
+      const id = it.productoId;
+      if (!id) return;
+      totales[id] = (totales[id] || 0) + Number(it.cantidad || 0);
+    });
+  });
+  return totales;
+}
+
+function sumarTotales(a, b) {
+  const salida = {...(a || {})};
+  Object.entries(b || {}).forEach(([id, cantidad]) => {
+    salida[id] = Number(salida[id] || 0) + Number(cantidad || 0);
+  });
+  return salida;
+}
+
+function mapaProduccionActual() {
+  const salida = {};
+  productos.forEach(p => {
+    salida[p.id] = Number(produccion[claveProduccion(p.id)] || 0);
+  });
+  return salida;
+}
+
+function diferenciasDesde(produccionMapa, pedidosMapa) {
+  const salida = {};
+  const ids = new Set([
+    ...Object.keys(produccionMapa || {}),
+    ...Object.keys(pedidosMapa || {})
+  ]);
+
+  ids.forEach(id => {
+    salida[id] = Number(produccionMapa?.[id] || 0) - Number(pedidosMapa?.[id] || 0);
+  });
+
+  return salida;
+}
+
+function productoPorIdMemoria(id) {
+  return productos.find(p => p.id === id) || {
+    id,
+    nombre: id.replace(/^EXTRA_/, "").replace(/_/g, " "),
+    unidad: "unidad"
+  };
+}
+
+function memoriaCorrespondeAJornadaActual() {
+  if (!memoriaUltimoEnvio) return false;
+  return memoriaUltimoEnvio.fecha === fechaJornadaActual();
+}
+
+function actualizarPanelMemoriaEnvio() {
+  const estado = $("estadoMemoriaEnvio");
+  if (!estado) return;
+
+  if (!memoriaUltimoEnvio) {
+    estado.textContent = "No hay un envío guardado.";
+    return;
+  }
+
+  const cantidadClientes = (memoriaUltimoEnvio.clientes || []).length;
+  estado.textContent =
+    `${memoriaUltimoEnvio.fecha} · ${memoriaUltimoEnvio.hora || ""} · ` +
+    `${cantidadClientes} cliente${cantidadClientes === 1 ? "" : "s"} incluidos.`;
+}
+
+function borrarMemoriaEnvio() {
+  if (!memoriaUltimoEnvio) {
+    alert("No hay memoria de envío para borrar.");
+    return;
+  }
+
+  if (!confirm("¿Seguro que querés comenzar una jornada nueva y borrar la memoria del último envío?")) return;
+
+  memoriaUltimoEnvio = null;
+  localStorage.removeItem("fratello_memoria_envio");
+  guardarEnNube();
+  actualizarPanelMemoriaEnvio();
+}
+
+function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencias, clientesAcumulados) {
+  memoriaUltimoEnvio = {
+    fecha: fechaJornadaActual(),
+    dia: diaJornadaActual(),
+    produccion: produccionMapa,
+    pedidosTotales: pedidosAcumulados,
+    diferencias,
+    clientes: clientesAcumulados,
+    hora: new Date().toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"}),
+    actualizado: new Date().toISOString()
+  };
+
+  localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+  actualizarPanelMemoriaEnvio();
+}
+
+function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, diferenciasNuevas) {
+  let mensaje = "FRATELLO - ACTUALIZACIÓN DE PEDIDOS\n\n";
+
+  mensaje += "PEDIDOS NUEVOS / TARDÍOS:\n\n";
+  pedidosNuevos.forEach(pedido => {
+    mensaje += `${pedido.cliente}:\n`;
+    const items = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO");
+    if (!items.length) {
+      mensaje += "- Sin productos detectados\n";
+    } else {
+      items.forEach(it => {
+        mensaje += `- ${fmt(it.cantidad)} ${it.unidad} ${it.producto}\n`;
+      });
+    }
+    mensaje += "\n";
+  });
+
+  mensaje += "--------------------\n";
+  mensaje += "CAMBIOS SOBRE EL MENSAJE ANTERIOR:\n\n";
+
+  const ids = new Set([
+    ...Object.keys(diferenciasAnteriores || {}),
+    ...Object.keys(diferenciasNuevas || {})
+  ]);
+
+  const cambios = [];
+  ids.forEach(id => {
+    const anterior = Number(diferenciasAnteriores?.[id] || 0);
+    const nuevo = Number(diferenciasNuevas?.[id] || 0);
+    const delta = nuevo - anterior;
+    if (Math.abs(delta) < 0.0001) return;
+
+    const producto = productoPorIdMemoria(id);
+    cambios.push({producto, delta});
+  });
+
+  if (!cambios.length) {
+    mensaje += "- El pedido no modifica las cantidades informadas anteriormente.\n";
+  } else {
+    cambios.forEach(({producto, delta}) => {
+      if (delta < 0) {
+        mensaje += `🔴 AGREGAR ${fmt(Math.abs(delta))} ${producto.unidad} ${producto.nombre}\n`;
+      } else {
+        mensaje += `🟢 REDUCIR / GUARDAR ${fmt(delta)} ${producto.unidad} ${producto.nombre}\n`;
+      }
+    });
+  }
+
+  mensaje += "\nEste mensaje complementa el envío anterior.";
+  return mensaje;
+}
+
 function obtenerFilasComparador() {
   const totalesPedido = {};
 
@@ -1655,39 +1827,64 @@ function verificarChecksAntesDeWhatsApp() {
 function generarMensajeGrupoFratello() {
   if (!verificarChecksAntesDeWhatsApp()) return;
 
-  const filas = obtenerFilasComparador();
-  const faltan = filas.filter(f => f.dif < 0);
-  const sobran = filas.filter(f => f.dif > 0);
+  const pedidosNuevos = [...pedidos];
+  const totalesNuevos = totalesPedidosDe(pedidosNuevos);
+  const esActualizacion = memoriaCorrespondeAJornadaActual();
 
-  let mensaje = "FRATELLO - Resumen de producción y pedidos\n\n";
+  let produccionMapa;
+  let pedidosAcumulados;
+  let diferenciasNuevas;
+  let clientesAcumulados;
+  let mensaje;
 
-  mensaje += "🔴 FALTA HACER:\n";
-  if (!faltan.length) {
-    mensaje += "- Nada\n";
+  if (esActualizacion) {
+    produccionMapa = memoriaUltimoEnvio.produccion || mapaProduccionActual();
+    pedidosAcumulados = sumarTotales(memoriaUltimoEnvio.pedidosTotales, totalesNuevos);
+    diferenciasNuevas = diferenciasDesde(produccionMapa, pedidosAcumulados);
+    clientesAcumulados = [
+      ...(memoriaUltimoEnvio.clientes || []),
+      ...pedidosNuevos.map(p => p.cliente)
+    ];
+
+    mensaje = construirMensajeActualizacion(
+      pedidosNuevos,
+      memoriaUltimoEnvio.diferencias || {},
+      diferenciasNuevas
+    );
   } else {
-    faltan.forEach(f => {
-      mensaje += `🔴 ${fmt(Math.abs(f.dif))} ${f.unidad} ${f.producto}\n`;
-    });
-  }
+    produccionMapa = mapaProduccionActual();
+    pedidosAcumulados = totalesNuevos;
+    diferenciasNuevas = diferenciasDesde(produccionMapa, pedidosAcumulados);
+    clientesAcumulados = pedidosNuevos.map(p => p.cliente);
 
-  mensaje += "\n🟢 SOBRA / GUARDAR:\n";
-  if (!sobran.length) {
-    mensaje += "- Nada\n";
-  } else {
-    sobran.forEach(f => {
-      mensaje += `🟢 ${fmt(f.dif)} ${f.unidad} ${f.producto}\n`;
-    });
-  }
+    const filas = obtenerFilasComparador();
+    const faltan = filas.filter(f => f.dif < 0);
+    const sobran = filas.filter(f => f.dif > 0);
 
-  mensaje += "\n--------------------\n";
-  mensaje += "PEDIDOS DE CLIENTES:\n\n";
+    mensaje = "FRATELLO - Resumen de producción y pedidos\n\n";
 
-  if (!pedidos.length) {
-    mensaje += "No hay pedidos cargados.\n";
-  } else {
-    pedidos.forEach(pedido => {
-      const itemsValidos = pedido.items.filter(i => i.estado !== "NO PEDIDO");
+    mensaje += "🔴 FALTA HACER:\n";
+    if (!faltan.length) {
+      mensaje += "- Nada\n";
+    } else {
+      faltan.forEach(f => {
+        mensaje += `🔴 ${fmt(Math.abs(f.dif))} ${f.unidad} ${f.producto}\n`;
+      });
+    }
 
+    mensaje += "\n🟢 SOBRA / GUARDAR:\n";
+    if (!sobran.length) {
+      mensaje += "- Nada\n";
+    } else {
+      sobran.forEach(f => {
+        mensaje += `🟢 ${fmt(f.dif)} ${f.unidad} ${f.producto}\n`;
+      });
+    }
+
+    mensaje += "\n--------------------\nPEDIDOS DE CLIENTES:\n\n";
+
+    pedidosNuevos.forEach(pedido => {
+      const itemsValidos = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO");
       mensaje += `${pedido.cliente}:\n`;
 
       if (!itemsValidos.length) {
@@ -1697,17 +1894,23 @@ function generarMensajeGrupoFratello() {
           mensaje += `- ${fmt(it.cantidad)} ${it.unidad} ${it.producto}\n`;
         });
       }
-
       mensaje += "\n";
     });
+
+    mensaje += "Enviado desde sistema Fratello.";
   }
 
-  mensaje += "Enviado desde sistema Fratello.";
+  guardarMemoriaEnvio(
+    produccionMapa,
+    pedidosAcumulados,
+    diferenciasNuevas,
+    [...new Set(clientesAcumulados)]
+  );
 
+  guardarEnNube();
   limpiarJornadaDespuesDeEnviar();
   abrirWhatsApp("", mensaje);
 }
-
 
 
 const WHATSAPP_CLIENTE_PRUEBA = "5492657545599";
@@ -1771,6 +1974,7 @@ async function init() {
   $("btnCalcular").onclick = calcularDiferencias;
   if ($("btnWhatsAppGrupo")) $("btnWhatsAppGrupo").onclick = generarMensajeGrupoFratello;
   if ($("btnRecordarCliente")) $("btnRecordarCliente").onclick = recordarPedidoCliente;
+  if ($("btnBorrarMemoriaEnvio")) $("btnBorrarMemoriaEnvio").onclick = borrarMemoriaEnvio;
   $("btnExportar").onclick = copiarResumen;
   $("btnReset").onclick = resetDatos;
   $("btnVistaPedidos").onclick = generarVistaPedidos;

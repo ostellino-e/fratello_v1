@@ -1,7 +1,7 @@
-# Fratello v0.77.2
+# Fratello v0.78 — Memoria de envíos
 
-Corrección:
-- Eliminado error guardarClienteCompleto is not defined.
-- La sección Clientes vuelve a abrir normalmente.
-- El botón Agregar cliente usa un evento registrado después de cargar la página.
-- Editar y eliminar siguen funcionando.
+- Guarda el cálculo enviado por fecha.
+- Si entra un pedido tardío, genera un mensaje incremental.
+- Informa únicamente cuánto agregar o reducir respecto del mensaje anterior.
+- Conserva pedidos acumulados, diferencias, clientes y hora.
+- Incluye panel de memoria y botón Nueva jornada / borrar memoria.

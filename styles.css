@@ -958,3 +958,18 @@ body {
 }
 
 .clienteDireccionField{grid-column:1/-1}
+
+/* ===== FRATELLO v0.78 - MEMORIA DE ENVÍOS ===== */
+.memoryPanel{
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  margin:12px 0 18px;padding:14px;border-radius:16px;
+  background:linear-gradient(135deg,#eef5ff,#dceafb);border:1px solid #abc7e6
+}
+.memoryPanel>div{display:flex;flex-direction:column;gap:4px}
+.memoryPanel strong{font-size:17px}
+.memoryPanel span{font-size:14px}
+.memoryPanel button{width:auto;margin:0;padding:9px 12px}
+@media(max-width:620px){
+  .memoryPanel{align-items:flex-start;flex-direction:column}
+  .memoryPanel button{width:100%}
+}
