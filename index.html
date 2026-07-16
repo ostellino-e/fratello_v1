@@ -24,12 +24,7 @@
     </div>
     <div class="headerSpacer" aria-hidden="true"></div>
   </header>
-  <section class="installPanel">
-    <button id="btnInstalarApp" type="button" class="hidden">📲 Instalar Fratello en el celular</button>
-    <p class="hint">En iPhone: Compartir → Agregar a pantalla de inicio.</p>
-  </section>
-
-  <section class="syncPanel">
+<section class="syncPanel">
     <strong>Sincronización:</strong>
     <span id="estadoSync">Modo local</span>
   </section>
@@ -40,15 +35,17 @@
       <span id="estadoActualizacionManual">Sin actualizar</span>
     </div>
 
-    
-    <div class="notificationPanel">
-      <div class="notificationPanelHeader">
-        <div>
-          <strong>🔔 Notificaciones</strong>
-          <span id="estadoNotificaciones">Todavía no están activadas.</span>
-        </div>
-      </div>
-      <div class="notificationActions">
+    <button class="notificationBellCard" type="button" data-seccion="seccionNotificaciones">
+      <span class="notificationBellIcon">🔔</span>
+      <span class="notificationBellText">
+        <strong>Notificaciones</strong>
+        <small id="resumenNotificacionesInicio">Revisá los avisos de Fratello</small>
+      </span>
+      <span id="badgeNotificaciones" class="notificationBadge hidden">0</span>
+      <span class="dashboardArrow">›</span>
+    </button>
+
+<div class="notificationActions">
         <button id="btnActivarNotificaciones" type="button">Activar notificaciones</button>
         <button id="btnProbarNotificacion" type="button" disabled>Enviar prueba</button>
       </div>
@@ -106,6 +103,18 @@
     </button>
 
     <div class="quickTitle">Acciones rápidas</div>
+    
+    <div class="notificationMiniPanel">
+      <div>
+        <strong>🔔 Avisos en este dispositivo</strong>
+        <span id="estadoNotificaciones">Todavía no están activadas.</span>
+      </div>
+      <div class="notificationMiniActions">
+        <button id="btnActivarNotificaciones" type="button">Activar</button>
+        <button id="btnProbarNotificacion" type="button" disabled>Probar</button>
+      </div>
+    </div>
+
     <div class="quickActions">
       <button type="button" data-seccion="seccionClientes">👥<span>Clientes</span></button>
       <button type="button" data-seccion="seccionProduccion">📦<span>Productos</span></button>
@@ -303,6 +312,22 @@
       <div id="listaClientesCompleta"></div>
     </section>
 
+  
+    <section class="card appSection" id="seccionNotificaciones">
+      <button class="volverInicio" type="button">← Volver</button>
+
+      <div class="notificationsTitleRow">
+        <div>
+          <h2>🔔 Notificaciones</h2>
+          <p class="hint">Acá quedan guardados los avisos importantes de Fratello.</p>
+        </div>
+        <button id="btnActualizarNotificaciones" type="button">Actualizar</button>
+      </div>
+
+      <div id="estadoListaNotificaciones" class="notificationsStatus">Cargando avisos...</div>
+      <div id="listaNotificaciones" class="notificationsList"></div>
+    </section>
+
   </main>
 <div id="vistaPedidosModal" class="hidden">
 <div id="vistaPedidosContenido"></div>
@@ -325,12 +350,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=080")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=081")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=080", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=081", {
             scope: "./",
             updateViaCache: "none"
           });

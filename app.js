@@ -432,6 +432,158 @@ function mostrarInicioFratello() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+
+let unsubscribeHistorialNotificaciones = null;
+let notificacionesHistorial = [];
+let ultimaNotificacionVista = localStorage.getItem("fratello_ultima_notificacion_vista") || "";
+
+function formatearFechaNotificacion(valor) {
+  if (!valor) return "";
+
+  const fecha = valor.toDate
+    ? valor.toDate()
+    : new Date(valor);
+
+  if (Number.isNaN(fecha.getTime())) return "";
+
+  return fecha.toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function fechaComparableNotificacion(notificacion) {
+  const valor = notificacion.creadoEn || notificacion.fechaISO || "";
+  if (valor?.toDate) return valor.toDate().toISOString();
+
+  const fecha = new Date(valor);
+  return Number.isNaN(fecha.getTime()) ? "" : fecha.toISOString();
+}
+
+function notificacionesNoLeidas() {
+  return notificacionesHistorial.filter(n => {
+    const fecha = fechaComparableNotificacion(n);
+    return fecha && (!ultimaNotificacionVista || fecha > ultimaNotificacionVista);
+  }).length;
+}
+
+function actualizarCampanaNotificaciones() {
+  const badge = $("badgeNotificaciones");
+  const resumen = $("resumenNotificacionesInicio");
+  const noLeidas = notificacionesNoLeidas();
+
+  if (badge) {
+    badge.textContent = String(noLeidas);
+    badge.classList.toggle("hidden", noLeidas === 0);
+  }
+
+  if (resumen) {
+    if (noLeidas > 0) {
+      resumen.textContent = `${noLeidas} aviso${noLeidas === 1 ? "" : "s"} sin leer`;
+    } else if (notificacionesHistorial.length) {
+      resumen.textContent = "No hay avisos nuevos";
+    } else {
+      resumen.textContent = "Todavía no hay notificaciones";
+    }
+  }
+}
+
+function renderHistorialNotificaciones() {
+  const lista = $("listaNotificaciones");
+  const estado = $("estadoListaNotificaciones");
+  if (!lista || !estado) return;
+
+  if (!notificacionesHistorial.length) {
+    estado.textContent = "Todavía no hay notificaciones guardadas.";
+    lista.innerHTML = "";
+    actualizarCampanaNotificaciones();
+    return;
+  }
+
+  estado.textContent = `${notificacionesHistorial.length} notificación${
+    notificacionesHistorial.length === 1 ? "" : "es"
+  }`;
+
+  lista.innerHTML = notificacionesHistorial.map(notificacion => {
+    const titulo = notificacion.titulo || "Notificación de Fratello";
+    const mensaje = notificacion.mensaje || notificacion.cuerpo || "";
+    const cliente = notificacion.cliente || "";
+    const fecha = formatearFechaNotificacion(
+      notificacion.creadoEn || notificacion.fechaISO
+    );
+    const tipo = notificacion.tipo || "aviso";
+
+    return `<article class="notificationHistoryCard">
+      <div class="notificationHistoryIcon">${tipo === "pedido_nuevo" ? "📦" : "🔔"}</div>
+      <div class="notificationHistoryContent">
+        <div class="notificationHistoryHeader">
+          <strong>${titulo}</strong>
+          <time>${fecha}</time>
+        </div>
+        ${cliente ? `<span class="notificationClient">${cliente}</span>` : ""}
+        <p>${mensaje}</p>
+      </div>
+    </article>`;
+  }).join("");
+
+  actualizarCampanaNotificaciones();
+}
+
+async function cargarHistorialNotificaciones() {
+  const estado = $("estadoListaNotificaciones");
+  if (!db) {
+    if (estado) estado.textContent = "Firebase no está conectado.";
+    return;
+  }
+
+  if (estado) estado.textContent = "Actualizando notificaciones...";
+
+  try {
+    const snapshot = await db.collection("fratello_historial_notificaciones")
+      .orderBy("fechaISO", "desc")
+      .limit(50)
+      .get();
+
+    notificacionesHistorial = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    renderHistorialNotificaciones();
+  } catch (error) {
+    console.error("Error cargando historial de notificaciones:", error);
+    if (estado) estado.textContent = "No se pudieron cargar las notificaciones.";
+  }
+}
+
+function escucharHistorialNotificaciones() {
+  if (!db || unsubscribeHistorialNotificaciones) return;
+
+  unsubscribeHistorialNotificaciones = db
+    .collection("fratello_historial_notificaciones")
+    .orderBy("fechaISO", "desc")
+    .limit(50)
+    .onSnapshot(snapshot => {
+      notificacionesHistorial = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      renderHistorialNotificaciones();
+    }, error => {
+      console.error("Error escuchando historial:", error);
+    });
+}
+
+function marcarNotificacionesComoVistas() {
+  const ahora = new Date().toISOString();
+  ultimaNotificacionVista = ahora;
+  localStorage.setItem("fratello_ultima_notificacion_vista", ahora);
+  actualizarCampanaNotificaciones();
+}
+
 function abrirSeccionFratello(idSeccion) {
   const inicio = document.getElementById("panelInicio");
   const contenido = document.getElementById("contenidoApp");
@@ -443,6 +595,11 @@ function abrirSeccionFratello(idSeccion) {
   document.querySelectorAll(".appSection").forEach(seccion => {
     seccion.classList.toggle("seccionActiva", seccion === destino);
   });
+
+  if (idSeccion === "seccionNotificaciones") {
+    cargarHistorialNotificaciones();
+    marcarNotificacionesComoVistas();
+  }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -468,25 +625,6 @@ function iniciarNavegacionFratello() {
   }
 
   mostrarInicioFratello();
-}
-
-let eventoInstalacion = null;
-window.addEventListener("beforeinstallprompt", (evento) => {
-  evento.preventDefault();
-  eventoInstalacion = evento;
-  const boton = document.getElementById("btnInstalarApp");
-  if (boton) boton.classList.remove("hidden");
-});
-async function instalarFratello() {
-  if (!eventoInstalacion) {
-    alert("En iPhone usá Compartir y elegí Agregar a pantalla de inicio.");
-    return;
-  }
-  eventoInstalacion.prompt();
-  await eventoInstalacion.userChoice;
-  eventoInstalacion = null;
-  const boton = document.getElementById("btnInstalarApp");
-  if (boton) boton.classList.add("hidden");
 }
 
 const productos = [
@@ -2233,6 +2371,11 @@ Gracias, Fratello.`;
 
 
 async function init() {
+  const btnActualizarNotificaciones = $("btnActualizarNotificaciones");
+  if (btnActualizarNotificaciones) {
+    btnActualizarNotificaciones.addEventListener("click", cargarHistorialNotificaciones);
+  }
+
   const btnActivarNotificaciones = $("btnActivarNotificaciones");
   const btnProbarNotificacion = $("btnProbarNotificacion");
 
@@ -2266,6 +2409,7 @@ async function init() {
   await cargarDesdeNube();
   validarClientes();
   escucharCambiosNube();
+  escucharHistorialNotificaciones();
   aplicarPermisosUsuario();
   $("fechaPedido").value = hoyISO();
   renderClientes();
@@ -2318,6 +2462,7 @@ init();
 
 if (messaging) {
   messaging.onMessage(async payload => {
+    cargarHistorialNotificaciones();
     const titulo = payload.notification?.title || "Fratello";
     const cuerpo = payload.notification?.body || "Tenés una nueva notificación.";
 

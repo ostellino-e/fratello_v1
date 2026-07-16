@@ -357,12 +357,12 @@ Bizcocho hojaldre 1,5 kg</pre>
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=080")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=081")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=080", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=081", {
             scope: "./",
             updateViaCache: "none"
           });

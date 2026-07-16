@@ -11,7 +11,7 @@ messaging.onBackgroundMessage(payload => {
     icon: "./icon-192.png",
     badge: "./icon-192.png",
     tag: payload.data?.tag || "fratello-notificacion",
-    data: payload.data || { url: "./index.html" }
+    data: payload.data || { url: "./index.html#notificaciones" }
   };
 
   self.registration.showNotification(titulo, opciones);
@@ -19,7 +19,7 @@ messaging.onBackgroundMessage(payload => {
 
 self.addEventListener("notificationclick", event => {
   event.notification.close();
-  const destino = event.notification.data?.url || "./index.html";
+  const destino = event.notification.data?.url || "./index.html#notificaciones";
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then(lista => {
@@ -37,7 +37,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v080";
+const CACHE_NAME = "fratello-v081";
 const ARCHIVOS = [
   "./",
   "./index.html",

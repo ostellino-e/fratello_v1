@@ -1,10 +1,11 @@
-# Fratello v0.80 — Notificaciones fase 1
+# Fratello — Cloud Functions v2
 
-- Botón Activar notificaciones.
-- Solicita permiso en el dispositivo.
-- Registra el token FCM en Firestore.
-- Botón Enviar prueba.
-- La prueba usa el Service Worker y funciona con Fratello instalado.
-- Preparado para recibir notificaciones en primer y segundo plano.
+Además de enviar la notificación push:
+- Guarda cada aviso en `fratello_historial_notificaciones`.
+- Al tocar la notificación abre `#notificaciones`.
+- El historial muestra cliente, pedido, fecha y hora.
 
-Nota: el envío automático por pedido nuevo requiere una función segura del servidor.
+Deploy:
+```powershell
+firebase.cmd deploy --only functions
+```
