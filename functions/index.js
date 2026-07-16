@@ -77,13 +77,27 @@ async function enviarNotificacionPedido(pedido) {
   const cliente = String(pedido?.cliente || "Cliente");
   const fecha = String(pedido?.fecha || "");
   const cuerpo = resumenPedido(pedido);
+  const fechaISO = new Date().toISOString();
+
+  const historialRef = db.collection("fratello_historial_notificaciones").doc();
+
+  await historialRef.set({
+    tipo: "pedido_nuevo",
+    titulo: "📦 Nuevo pedido recibido",
+    mensaje: `${cliente}${fecha ? ` · ${fecha}` : ""}. ${cuerpo}`,
+    cliente,
+    pedidoId: String(pedido?.id || ""),
+    fechaPedido: fecha,
+    fechaISO,
+    creadoEn: FieldValue.serverTimestamp(),
+  });
 
   const message = {
     tokens: dispositivos.map((d) => d.token),
     data: {
       title: "📦 Nuevo pedido recibido",
       body: `${cliente}${fecha ? ` · ${fecha}` : ""}\n${cuerpo}`,
-      url: "./index.html#pedidos",
+      url: "./index.html#notificaciones",
       tag: `pedido-${String(pedido?.id || Date.now())}`,
       cliente,
       pedidoId: String(pedido?.id || ""),
@@ -94,7 +108,7 @@ async function enviarNotificacionPedido(pedido) {
         Urgency: "high",
       },
       fcmOptions: {
-        link: "https://fratello-v1.vercel.app/#pedidos",
+        link: "https://fratello-v1.vercel.app/#notificaciones",
       },
     },
   };
