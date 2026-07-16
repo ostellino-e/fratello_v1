@@ -508,8 +508,6 @@ function escucharCambiosNube() {
   if (typeof renderClientesPendientes === "function") renderClientesPendientes();
   iniciarNavegacionFratello();
   iniciarSincronizacionDia();
-  if ($("btnGuardarClienteCompleto")) $("btnGuardarClienteCompleto").onclick = guardarClienteCompleto;
-  if ($("btnLimpiarClienteCompleto")) $("btnLimpiarClienteCompleto").onclick = limpiarFormularioClienteCompleto;
   renderListaClientesCompleta();
   if ($("btnInstalarApp")) $("btnInstalarApp").onclick = instalarFratello;
     if (typeof renderProduccion === "function") renderProduccion();
@@ -1604,5 +1602,9 @@ async function init() {
   renderPedidosCargados();
   calcularDiferencias();
 }
+
+
+window.guardarClienteCompleto = guardarClienteCompleto;
+window.limpiarFormularioClienteCompleto = limpiarFormularioClienteCompleto;
 
 init();
