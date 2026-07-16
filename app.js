@@ -657,16 +657,58 @@ async function cargarDesdeNube() {
 
 async function actualizarDatosManual() {
   const boton = $("btnActualizarDatos");
+  const texto = boton?.querySelector(".refreshText");
+  const icono = boton?.querySelector(".refreshIcon");
   const estado = $("estadoActualizacionManual");
 
-  if (boton) {
-    boton.disabled = true;
-    boton.textContent = "Actualizando...";
-  }
+  if (!boton) return;
+
+  boton.disabled = true;
+  boton.classList.add("actualizando");
+  if (texto) texto.textContent = "Actualizando...";
   if (estado) estado.textContent = "Consultando Firebase...";
 
   try {
-    await cargarDesdeNube();
+    if (!db) {
+      throw new Error("Firebase no está conectado.");
+    }
+
+    const doc = await db.collection("fratello").doc("estado").get();
+
+    if (!doc.exists) {
+      throw new Error("No hay datos guardados en Firebase.");
+    }
+
+    const data = doc.data();
+
+    cargandoDesdeNube = true;
+
+    produccion = data.produccion || produccion;
+    pedidos = Array.isArray(data.pedidos) ? data.pedidos : pedidos;
+    predeterminadas = data.predeterminadas || predeterminadas;
+    clientes = Array.isArray(data.clientes) && data.clientes.length
+      ? data.clientes
+      : clientes;
+    datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
+    productosExtra = data.productosExtra || productosExtra;
+    pedidosConfirmados = Boolean(data.pedidosConfirmados);
+    correspondePedido = data.correspondePedido || correspondePedido;
+    memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
+
+    validarClientes();
+
+    productosExtra.forEach(p => {
+      if (!productos.find(x => x.id === p.id)) productos.push(p);
+    });
+
+    localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
+    localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+    localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
+    localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
+    localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+    localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
+    localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+    localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
 
     renderClientes();
     renderListaClientesCompleta();
@@ -677,21 +719,42 @@ async function actualizarDatosManual() {
     actualizarPanelMemoriaEnvio();
     actualizarTarjetaDiaPedidos();
 
-    if (estado) {
-      estado.textContent = "Actualizado " + new Date().toLocaleTimeString("es-AR", {
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    }
+    const hora = new Date().toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+    if (estado) estado.textContent = `✅ Datos actualizados a las ${hora}`;
+
+    boton.classList.remove("actualizando");
+    boton.classList.add("actualizado");
+    if (icono) icono.textContent = "✅";
+    if (texto) texto.textContent = "Actualizado";
+
+    setTimeout(() => {
+      boton.classList.remove("actualizado");
+      if (icono) icono.textContent = "🔄";
+      if (texto) texto.textContent = "Actualizar datos";
+    }, 1800);
+
+    setEstadoSync("Online actualizado");
   } catch (error) {
     console.error("Error actualizando datos:", error);
-    if (estado) estado.textContent = "Error al actualizar";
-    alert("No se pudieron actualizar los datos.");
+
+    if (estado) estado.textContent = "❌ No se pudieron actualizar los datos";
+    boton.classList.remove("actualizando");
+    boton.classList.add("errorActualizacion");
+    if (icono) icono.textContent = "⚠️";
+    if (texto) texto.textContent = "Reintentar";
+
+    setTimeout(() => {
+      boton.classList.remove("errorActualizacion");
+      if (icono) icono.textContent = "🔄";
+      if (texto) texto.textContent = "Actualizar datos";
+    }, 2200);
   } finally {
-    if (boton) {
-      boton.disabled = false;
-      boton.textContent = "🔄 Actualizar datos";
-    }
+    cargandoDesdeNube = false;
+    boton.disabled = false;
   }
 }
 
@@ -1996,6 +2059,11 @@ Gracias, Fratello.`;
 
 
 async function init() {
+  const btnActualizarDatos = $("btnActualizarDatos");
+  if (btnActualizarDatos) {
+    btnActualizarDatos.addEventListener("click", actualizarDatosManual);
+  }
+
   const btnGuardarClienteCompleto = $("btnGuardarClienteCompleto");
   const btnLimpiarClienteCompleto = $("btnLimpiarClienteCompleto");
 

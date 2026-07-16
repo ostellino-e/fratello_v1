@@ -1001,3 +1001,45 @@ body {
   }
   .refreshPanel button{width:100%}
 }
+
+
+/* ===== FRATELLO v0.79.1 - ACTUALIZACIÓN INTERACTIVA ===== */
+#btnActualizarDatos {
+  position: relative;
+  overflow: hidden;
+  transition: transform .15s ease, background .2s ease, color .2s ease;
+}
+
+#btnActualizarDatos:active {
+  transform: scale(.98);
+}
+
+#btnActualizarDatos .refreshIcon {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+#btnActualizarDatos.actualizando {
+  background: #dbeafe;
+  color: #1e3a8a;
+  cursor: wait;
+}
+
+#btnActualizarDatos.actualizando .refreshIcon {
+  animation: girarActualizar .8s linear infinite;
+}
+
+#btnActualizarDatos.actualizado {
+  background: #dff5df;
+  color: #176b2c;
+}
+
+#btnActualizarDatos.errorActualizacion {
+  background: #ffe1de;
+  color: #9b1c1c;
+}
+
+@keyframes girarActualizar {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
