@@ -1,8 +1,7 @@
-# Fratello v0.79.1
+# Fratello v0.79.2
 
-Correcciones:
-- Botón Actualizar datos reparado.
-- Lee Firebase directamente.
-- Animación de giro mientras actualiza.
-- Muestra estados: Actualizando, Actualizado o Reintentar.
-- El service worker ya no intenta guardar solicitudes chrome-extension.
+Corrección:
+- Elimina registros viejos del Service Worker.
+- Fuerza registro de la versión nueva sin usar caché vieja.
+- El Service Worker solo intercepta archivos propios de Fratello.
+- Ignora por completo solicitudes chrome-extension y otros protocolos.

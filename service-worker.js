@@ -1,8 +1,19 @@
-const CACHE_NAME="fratello-v0791";
-const ARCHIVOS=["./","./index.html","./pedido.html","./styles.css","./app.js","./manifest.json","./icon-192.png","./icon-512.png","./apple-touch-icon.png"];
+const CACHE_NAME = "fratello-v0792";
+const ARCHIVOS = [
+  "./",
+  "./index.html",
+  "./pedido.html",
+  "./styles.css",
+  "./app.js",
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./apple-touch-icon.png"
+];
 
 self.addEventListener("install", event => {
   self.skipWaiting();
+
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(ARCHIVOS))
   );
@@ -16,33 +27,54 @@ self.addEventListener("activate", event => {
           .filter(key => key !== CACHE_NAME)
           .map(key => caches.delete(key))
       )
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", event => {
-  const url = new URL(event.request.url);
+  const request = event.request;
 
-  if (
-    event.request.method !== "GET" ||
-    (url.protocol !== "http:" && url.protocol !== "https:") ||
-    url.origin !== self.location.origin
-  ) {
+  if (request.method !== "GET") return;
+
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
     return;
   }
 
+  if (url.protocol !== "http:" && url.protocol !== "https:") return;
+  if (url.origin !== self.location.origin) return;
+
+  const rutasPermitidas = new Set([
+    "/",
+    "/index.html",
+    "/pedido.html",
+    "/styles.css",
+    "/app.js",
+    "/manifest.json",
+    "/icon-192.png",
+    "/icon-512.png",
+    "/apple-touch-icon.png"
+  ]);
+
+  if (!rutasPermitidas.has(url.pathname)) return;
+
   event.respondWith(
-    fetch(event.request)
+    fetch(request)
       .then(response => {
-        if (!response || response.status !== 200 || response.type === "opaque") {
+        if (!response || !response.ok || response.type === "opaque") {
           return response;
         }
 
         const copia = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copia));
+
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(request, copia).catch(() => {});
+        });
+
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(request))
   );
 });

@@ -346,7 +346,32 @@ Bizcocho hojaldre 1,5 kg</pre>
   </script>
   <script>
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(console.error));
+      window.addEventListener("load", async () => {
+        try {
+          const registros = await navigator.serviceWorker.getRegistrations();
+
+          for (const registro of registros) {
+            const urlActiva =
+              registro.active?.scriptURL ||
+              registro.waiting?.scriptURL ||
+              registro.installing?.scriptURL ||
+              "";
+
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=0792")) {
+              await registro.unregister();
+            }
+          }
+
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=0792", {
+            scope: "./",
+            updateViaCache: "none"
+          });
+
+          await registro.update();
+        } catch (error) {
+          console.error("Error registrando Service Worker:", error);
+        }
+      });
     }
   </script>
 </body>
