@@ -245,6 +245,179 @@ function continuarAlResumenSiEstaConfirmado() {
   abrirSeccionFratello("seccionResumen");
 }
 
+
+function normalizarTelefonoCliente(telefono) {
+  return String(telefono || "").replace(/\D/g, "");
+}
+
+function limpiarFormularioClienteCompleto() {
+  const nombre = $("nuevoClienteNombre");
+  const telefono = $("nuevoClienteTelefono");
+  const direccion = $("nuevoClienteDireccion");
+  const recordatorio = $("nuevoClienteRecordatorio");
+  const boton = $("btnGuardarClienteCompleto");
+
+  if (nombre) {
+    nombre.value = "";
+    delete nombre.dataset.editando;
+  }
+  if (telefono) telefono.value = "";
+  if (direccion) direccion.value = "";
+  if (recordatorio) recordatorio.checked = false;
+  if (boton) boton.textContent = "➕ Agregar cliente";
+}
+
+function mostrarMensajeClienteCompleto(texto, error = false) {
+  const el = $("mensajeClienteCompleto");
+  if (!el) return;
+
+  el.textContent = texto;
+  el.style.display = "block";
+  el.style.background = error ? "#ffe1de" : "#eaf7eb";
+  el.style.color = error ? "#9b1c1c" : "#1f7a35";
+}
+
+function guardarClienteCompleto() {
+  try {
+    const nombreInput = $("nuevoClienteNombre");
+    const telefonoInput = $("nuevoClienteTelefono");
+    const direccionInput = $("nuevoClienteDireccion");
+    const recordatorioInput = $("nuevoClienteRecordatorio");
+
+    if (!nombreInput) {
+      alert("No se encontró el formulario de clientes.");
+      return;
+    }
+
+    const nombre = nombreInput.value.trim();
+    const telefono = normalizarTelefonoCliente(telefonoInput?.value || "");
+    const direccion = direccionInput?.value.trim() || "";
+    const enviarRecordatorio = Boolean(recordatorioInput?.checked);
+    const nombreAnterior = nombreInput.dataset.editando || "";
+
+    if (!nombre) {
+      mostrarMensajeClienteCompleto("Escribí el nombre del cliente.", true);
+      return;
+    }
+
+    if (!Array.isArray(clientes)) clientes = [];
+    if (!datosClientesCompletos || typeof datosClientesCompletos !== "object") {
+      datosClientesCompletos = {};
+    }
+
+    const duplicado = clientes.find(c =>
+      normalizar(c) === normalizar(nombre) &&
+      normalizar(c) !== normalizar(nombreAnterior)
+    );
+
+    if (duplicado) {
+      mostrarMensajeClienteCompleto("Ya existe un cliente con ese nombre.", true);
+      return;
+    }
+
+    if (nombreAnterior && nombreAnterior !== nombre) {
+      clientes = clientes.map(c => c === nombreAnterior ? nombre : c);
+      delete datosClientesCompletos[nombreAnterior];
+
+      pedidos.forEach(p => {
+        if (p.cliente === nombreAnterior) p.cliente = nombre;
+        if (Array.isArray(p.items)) {
+          p.items.forEach(i => {
+            if (i.cliente === nombreAnterior) i.cliente = nombre;
+          });
+        }
+      });
+    } else if (!clientes.some(c => normalizar(c) === normalizar(nombre))) {
+      clientes.push(nombre);
+    }
+
+    datosClientesCompletos[nombre] = {
+      nombre,
+      telefono,
+      direccion,
+      enviarRecordatorio,
+      actualizado: new Date().toISOString()
+    };
+
+    guardarTodo();
+    renderClientes(nombre);
+    renderListaClientesCompleta();
+    if (typeof renderClientesPendientes === "function") renderClientesPendientes();
+
+    limpiarFormularioClienteCompleto();
+    mostrarMensajeClienteCompleto("Cliente guardado correctamente.");
+  } catch (error) {
+    console.error("Error al guardar cliente:", error);
+    alert("No se pudo guardar el cliente.");
+  }
+}
+
+function editarClienteCompleto(nombre) {
+  const datos = datosClientesCompletos[nombre] || {
+    nombre,
+    telefono: "",
+    direccion: "",
+    enviarRecordatorio: false
+  };
+
+  const nombreInput = $("nuevoClienteNombre");
+  if (nombreInput) {
+    nombreInput.value = datos.nombre || nombre;
+    nombreInput.dataset.editando = nombre;
+  }
+
+  if ($("nuevoClienteTelefono")) $("nuevoClienteTelefono").value = datos.telefono || "";
+  if ($("nuevoClienteDireccion")) $("nuevoClienteDireccion").value = datos.direccion || "";
+  if ($("nuevoClienteRecordatorio")) $("nuevoClienteRecordatorio").checked = Boolean(datos.enviarRecordatorio);
+  if ($("btnGuardarClienteCompleto")) $("btnGuardarClienteCompleto").textContent = "💾 Guardar cambios";
+
+  abrirSeccionFratello("seccionClientes");
+}
+
+function eliminarClienteCompleto(nombre) {
+  if (!confirm(`¿Seguro que querés eliminar a ${nombre}?`)) return;
+
+  clientes = clientes.filter(c => c !== nombre);
+  delete datosClientesCompletos[nombre];
+
+  guardarTodo();
+  renderClientes();
+  renderListaClientesCompleta();
+  if (typeof renderClientesPendientes === "function") renderClientesPendientes();
+  abrirSeccionFratello("seccionClientes");
+}
+
+function renderListaClientesCompleta() {
+  const cont = $("listaClientesCompleta");
+  if (!cont) return;
+
+  if (!clientes.length) {
+    cont.innerHTML = "<p>No hay clientes cargados.</p>";
+    return;
+  }
+
+  cont.innerHTML = clientes.map(nombre => {
+    const datos = datosClientesCompletos[nombre] || {};
+    const tel = datos.telefono || "Sin teléfono";
+    const dir = datos.direccion || "Sin dirección";
+    const rec = datos.enviarRecordatorio ? "🔔 Recordatorio activado" : "🔕 Sin recordatorio";
+    const seguro = nombre.replace(/'/g, "\\'");
+
+    return `<div class="clienteCompletoCard">
+      <div>
+        <strong>${nombre}</strong>
+        <span>📞 ${tel}</span>
+        <span>📍 ${dir}</span>
+        <small>${rec}</small>
+      </div>
+      <div class="clienteCompletoActions">
+        <button type="button" onclick="editarClienteCompleto('${seguro}')">✏️ Editar</button>
+        <button type="button" class="dangerBtn" onclick="eliminarClienteCompleto('${seguro}')">🗑️ Eliminar</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
 function mostrarInicioFratello() {
   const inicio = document.getElementById("panelInicio");
   const contenido = document.getElementById("contenidoApp");
@@ -1558,6 +1731,17 @@ Gracias, Fratello.`;
 
 
 async function init() {
+  const btnGuardarClienteCompleto = $("btnGuardarClienteCompleto");
+  const btnLimpiarClienteCompleto = $("btnLimpiarClienteCompleto");
+
+  if (btnGuardarClienteCompleto) {
+    btnGuardarClienteCompleto.addEventListener("click", guardarClienteCompleto);
+  }
+
+  if (btnLimpiarClienteCompleto) {
+    btnLimpiarClienteCompleto.addEventListener("click", limpiarFormularioClienteCompleto);
+  }
+
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   await cargarDesdeNube();
   validarClientes();
@@ -1604,7 +1788,9 @@ async function init() {
 }
 
 
-window.guardarClienteCompleto = guardarClienteCompleto;
-window.limpiarFormularioClienteCompleto = limpiarFormularioClienteCompleto;
+
+
+window.editarClienteCompleto = editarClienteCompleto;
+window.eliminarClienteCompleto = eliminarClienteCompleto;
 
 init();

@@ -1,10 +1,7 @@
-# Fratello v0.77.1
+# Fratello v0.77.2
 
 Corrección:
-- Arreglado definitivamente el botón Agregar cliente.
-- Usa evento directo y respaldo global.
-- Guarda nombre, teléfono, dirección y recordatorio.
-- El cliente aparece inmediatamente en la lista.
-- Al editar, el botón cambia a Guardar cambios.
-- Al limpiar o guardar, vuelve a Agregar cliente.
-- Incluye manejo visible de errores.
+- Eliminado error guardarClienteCompleto is not defined.
+- La sección Clientes vuelve a abrir normalmente.
+- El botón Agregar cliente usa un evento registrado después de cargar la página.
+- Editar y eliminar siguen funcionando.
