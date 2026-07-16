@@ -433,26 +433,20 @@ function mostrarInicioFratello() {
 }
 
 
-let notificacionesHistorial = [];
 let unsubscribeHistorialNotificaciones = null;
-let ultimaNotificacionVista =
-  localStorage.getItem("fratello_ultima_notificacion_vista") || "";
+let notificacionesHistorial = [];
+let ultimaNotificacionVista = localStorage.getItem("fratello_ultima_notificacion_vista") || "";
 
-function fechaNotificacionISO(notificacion) {
-  const valor = notificacion?.fechaISO || notificacion?.creadoEn || "";
-  if (valor && typeof valor.toDate === "function") {
-    return valor.toDate().toISOString();
-  }
+function formatearFechaNotificacion(valor) {
+  if (!valor) return "";
 
-  const fecha = new Date(valor);
-  return Number.isNaN(fecha.getTime()) ? "" : fecha.toISOString();
-}
+  const fecha = valor.toDate
+    ? valor.toDate()
+    : new Date(valor);
 
-function mostrarFechaNotificacion(notificacion) {
-  const iso = fechaNotificacionISO(notificacion);
-  if (!iso) return "";
+  if (Number.isNaN(fecha.getTime())) return "";
 
-  return new Date(iso).toLocaleString("es-AR", {
+  return fecha.toLocaleString("es-AR", {
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
@@ -460,9 +454,17 @@ function mostrarFechaNotificacion(notificacion) {
   });
 }
 
-function cantidadNotificacionesNoLeidas() {
-  return notificacionesHistorial.filter(notificacion => {
-    const fecha = fechaNotificacionISO(notificacion);
+function fechaComparableNotificacion(notificacion) {
+  const valor = notificacion.creadoEn || notificacion.fechaISO || "";
+  if (valor?.toDate) return valor.toDate().toISOString();
+
+  const fecha = new Date(valor);
+  return Number.isNaN(fecha.getTime()) ? "" : fecha.toISOString();
+}
+
+function notificacionesNoLeidas() {
+  return notificacionesHistorial.filter(n => {
+    const fecha = fechaComparableNotificacion(n);
     return fecha && (!ultimaNotificacionVista || fecha > ultimaNotificacionVista);
   }).length;
 }
@@ -470,18 +472,17 @@ function cantidadNotificacionesNoLeidas() {
 function actualizarCampanaNotificaciones() {
   const badge = $("badgeNotificaciones");
   const resumen = $("resumenNotificacionesInicio");
-  const cantidad = cantidadNotificacionesNoLeidas();
+  const noLeidas = notificacionesNoLeidas();
 
   if (badge) {
-    badge.textContent = String(cantidad);
-    badge.classList.toggle("hidden", cantidad === 0);
+    badge.textContent = String(noLeidas);
+    badge.classList.toggle("hidden", noLeidas === 0);
   }
 
   if (resumen) {
-    if (cantidad > 0) {
-      resumen.textContent =
-        `${cantidad} aviso${cantidad === 1 ? "" : "s"} sin leer`;
-    } else if (notificacionesHistorial.length > 0) {
+    if (noLeidas > 0) {
+      resumen.textContent = `${noLeidas} aviso${noLeidas === 1 ? "" : "s"} sin leer`;
+    } else if (notificacionesHistorial.length) {
       resumen.textContent = "No hay avisos nuevos";
     } else {
       resumen.textContent = "Todavía no hay notificaciones";
@@ -501,19 +502,21 @@ function renderHistorialNotificaciones() {
     return;
   }
 
-  estado.textContent =
-    `${notificacionesHistorial.length} notificación${
-      notificacionesHistorial.length === 1 ? "" : "es"
-    }`;
+  estado.textContent = `${notificacionesHistorial.length} notificación${
+    notificacionesHistorial.length === 1 ? "" : "es"
+  }`;
 
   lista.innerHTML = notificacionesHistorial.map(notificacion => {
     const titulo = notificacion.titulo || "Notificación de Fratello";
     const mensaje = notificacion.mensaje || notificacion.cuerpo || "";
     const cliente = notificacion.cliente || "";
-    const fecha = mostrarFechaNotificacion(notificacion);
+    const fecha = formatearFechaNotificacion(
+      notificacion.creadoEn || notificacion.fechaISO
+    );
+    const tipo = notificacion.tipo || "aviso";
 
     return `<article class="notificationHistoryCard">
-      <div class="notificationHistoryIcon">📦</div>
+      <div class="notificationHistoryIcon">${tipo === "pedido_nuevo" ? "📦" : "🔔"}</div>
       <div class="notificationHistoryContent">
         <div class="notificationHistoryHeader">
           <strong>${titulo}</strong>
@@ -530,7 +533,6 @@ function renderHistorialNotificaciones() {
 
 async function cargarHistorialNotificaciones() {
   const estado = $("estadoListaNotificaciones");
-
   if (!db) {
     if (estado) estado.textContent = "Firebase no está conectado.";
     return;
@@ -539,8 +541,7 @@ async function cargarHistorialNotificaciones() {
   if (estado) estado.textContent = "Actualizando notificaciones...";
 
   try {
-    const snapshot = await db
-      .collection("fratello_historial_notificaciones")
+    const snapshot = await db.collection("fratello_historial_notificaciones")
       .orderBy("fechaISO", "desc")
       .limit(50)
       .get();
@@ -552,10 +553,8 @@ async function cargarHistorialNotificaciones() {
 
     renderHistorialNotificaciones();
   } catch (error) {
-    console.error("Error cargando historial:", error);
-    if (estado) {
-      estado.textContent = "No se pudieron cargar las notificaciones.";
-    }
+    console.error("Error cargando historial de notificaciones:", error);
+    if (estado) estado.textContent = "No se pudieron cargar las notificaciones.";
   }
 }
 
@@ -579,11 +578,9 @@ function escucharHistorialNotificaciones() {
 }
 
 function marcarNotificacionesComoVistas() {
-  ultimaNotificacionVista = new Date().toISOString();
-  localStorage.setItem(
-    "fratello_ultima_notificacion_vista",
-    ultimaNotificacionVista
-  );
+  const ahora = new Date().toISOString();
+  ultimaNotificacionVista = ahora;
+  localStorage.setItem("fratello_ultima_notificacion_vista", ahora);
   actualizarCampanaNotificaciones();
 }
 
@@ -628,25 +625,6 @@ function iniciarNavegacionFratello() {
   }
 
   mostrarInicioFratello();
-}
-
-let eventoInstalacion = null;
-window.addEventListener("beforeinstallprompt", (evento) => {
-  evento.preventDefault();
-  eventoInstalacion = evento;
-  const boton = document.getElementById("btnInstalarApp");
-  if (boton) boton.classList.remove("hidden");
-});
-async function instalarFratello() {
-  if (!eventoInstalacion) {
-    alert("En iPhone usá Compartir y elegí Agregar a pantalla de inicio.");
-    return;
-  }
-  eventoInstalacion.prompt();
-  await eventoInstalacion.userChoice;
-  eventoInstalacion = null;
-  const boton = document.getElementById("btnInstalarApp");
-  if (boton) boton.classList.add("hidden");
 }
 
 const productos = [
@@ -2393,14 +2371,9 @@ Gracias, Fratello.`;
 
 
 async function init() {
-  iniciarNavegacionFratello();
-
   const btnActualizarNotificaciones = $("btnActualizarNotificaciones");
   if (btnActualizarNotificaciones) {
-    btnActualizarNotificaciones.addEventListener(
-      "click",
-      cargarHistorialNotificaciones
-    );
+    btnActualizarNotificaciones.addEventListener("click", cargarHistorialNotificaciones);
   }
 
   const btnActivarNotificaciones = $("btnActivarNotificaciones");
@@ -2438,7 +2411,7 @@ async function init() {
   escucharCambiosNube();
   escucharHistorialNotificaciones();
   aplicarPermisosUsuario();
-  if ($("fechaPedido")) $("fechaPedido").value = hoyISO();
+  $("fechaPedido").value = hoyISO();
   renderClientes();
 
   if ($("cliente")) $("cliente").onchange = limpiarPedidoCrudo;
@@ -2474,17 +2447,6 @@ async function init() {
   if ($("btnGuardarImagenPedidos")) $("btnGuardarImagenPedidos").onclick = guardarImagenPedidos;
   if ($("btnBorrarSeleccionados")) $("btnBorrarSeleccionados").onclick = borrarPedidosSeleccionados;
 
-  iniciarSincronizacionDia();
-
-  if (window.location.hash === "#notificaciones") {
-    abrirSeccionFratello("seccionNotificaciones");
-  }
-
-  renderListaClientesCompleta();
-  renderClientesPendientes();
-  actualizarPanelMemoriaEnvio();
-  actualizarCampanaNotificaciones();
-
   renderProduccion();
   renderPedidosCargados();
   calcularDiferencias();
@@ -2495,12 +2457,8 @@ async function init() {
 
 window.editarClienteCompleto = editarClienteCompleto;
 window.eliminarClienteCompleto = eliminarClienteCompleto;
- 
-init().catch(error => {
-  console.error("Error iniciando Fratello:", error);
-  const estado = document.getElementById("estadoSync");
-  if (estado) estado.textContent = "Error parcial al iniciar";
-});
+
+init();
 
 if (messaging) {
   messaging.onMessage(async payload => {

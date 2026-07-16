@@ -1,9 +1,9 @@
-# Fratello v0.81.6 — Clic directo
+# Fratello v0.81 — Centro de notificaciones
 
-Corregida sobre la carpeta real enviada por Emi.
-
-- Cada botón ejecuta directamente `abrirSeccionFratello(...)`.
-- El clic ya no depende de delegación de eventos.
-- Los elementos internos del botón no interceptan el clic.
-- Volver y menú usan `mostrarInicioFratello()` directamente.
-- Marcador visible v0.81.6.
+- Campanita de Notificaciones al inicio.
+- Historial de avisos dentro de la app.
+- Contador de avisos no leídos.
+- Al tocar una push abre la sección Notificaciones.
+- Se quitó el cartel para instalar la app.
+- Activar/Probar notificaciones quedó pequeño al final del inicio.
+- Requiere desplegar Fratello Functions v2 para guardar el historial.
