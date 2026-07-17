@@ -176,21 +176,28 @@ function renderClientesPendientes() {
 
   if (!pendientes.length) {
     cont.innerHTML = '<p class="pendingOk">✅ Todos los clientes con recordatorio ya enviaron pedido.</p>';
+    actualizarEstadoColaRecordatorios();
     return;
   }
 
   cont.innerHTML = pendientes.map(nombre => {
     const datos = datosClientesCompletos[nombre] || {};
     const telefono = datos.telefono || "Sin teléfono";
+    const seguro = nombre.replace(/'/g, "\\'");
 
     return `<div class="pendingClientRow">
-      <div>
-        <strong>${nombre}</strong>
-        <span>${telefono}</span>
-      </div>
-      <button type="button" onclick="recordarClientePendiente('${nombre.replace(/'/g, "\\'")}')">Recordar</button>
+      <label class="pendingClientSelect">
+        <input type="checkbox" class="checkRecordatorioPendiente" value="${nombre}" checked>
+        <span>
+          <strong>${nombre}</strong>
+          <small>📞 ${telefono}</small>
+        </span>
+      </label>
+      <button type="button" onclick="recordarClientePendiente('${seguro}')">Recordar</button>
     </div>`;
   }).join("");
+
+  actualizarEstadoColaRecordatorios();
 }
 
 function linkFormularioPedido() {
@@ -198,34 +205,129 @@ function linkFormularioPedido() {
   return base + "pedido.html";
 }
 
-function recordarClientePendiente(nombre) {
+function telefonoWhatsAppCliente(nombre) {
   const datos = datosClientesCompletos[nombre] || {};
   const telefono = normalizarTelefonoCliente(datos.telefono || "");
 
-  if (!telefono) {
-    alert("Este cliente no tiene teléfono cargado.");
-    return;
-  }
+  if (!telefono) return "";
+  if (telefono.startsWith("549")) return telefono;
+  if (telefono.startsWith("54")) return "549" + telefono.slice(2);
+  return "549" + telefono;
+}
 
-  const mensaje = `Hola ${nombre}! Te recordamos cargar tu pedido para la próxima entrega:
+function mensajeRecordatorioCliente(nombre) {
+  return `Hola ${nombre}! Te recordamos cargar tu pedido para la próxima entrega:
 
 ${linkFormularioPedido()}
 
 Gracias, Fratello.`;
-
-  abrirWhatsApp(telefono.startsWith("549") ? telefono : `549${telefono}`, mensaje);
 }
 
-function recordarTodosLosPendientes() {
-  const pendientes = obtenerClientesPendientes();
+function recordarClientePendiente(nombre) {
+  const telefono = telefonoWhatsAppCliente(nombre);
 
-  if (!pendientes.length) {
-    alert("No hay clientes pendientes.");
+  if (!telefono) {
+    alert(`El cliente ${nombre} no tiene teléfono cargado.`);
     return;
   }
 
-  alert(`Hay ${pendientes.length} cliente(s) pendiente(s). Se abrirá WhatsApp uno por uno.`);
-  recordarClientePendiente(pendientes[0]);
+  abrirWhatsApp(telefono, mensajeRecordatorioCliente(nombre));
+}
+
+function leerColaRecordatorios() {
+  try {
+    return JSON.parse(localStorage.getItem("fratello_cola_recordatorios") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function guardarColaRecordatorios(cola) {
+  localStorage.setItem("fratello_cola_recordatorios", JSON.stringify(cola || []));
+  actualizarEstadoColaRecordatorios();
+}
+
+function actualizarEstadoColaRecordatorios() {
+  const estado = $("estadoColaRecordatorios");
+  const boton = $("btnRecordarPendientes");
+  if (!estado || !boton) return;
+
+  const cola = leerColaRecordatorios();
+
+  if (!cola.length) {
+    estado.classList.add("hidden");
+    estado.textContent = "";
+    boton.textContent = "📲 Enviar recordatorios seleccionados";
+    return;
+  }
+
+  estado.classList.remove("hidden");
+  estado.textContent = `Quedan ${cola.length} cliente${cola.length === 1 ? "" : "s"} por contactar.`;
+  boton.textContent = `📲 Enviar siguiente (${cola.length})`;
+}
+
+function enviarSiguienteRecordatorioPendiente() {
+  const cola = leerColaRecordatorios();
+
+  if (!cola.length) {
+    alert("No quedan recordatorios pendientes en la cola.");
+    actualizarEstadoColaRecordatorios();
+    return;
+  }
+
+  const siguiente = cola.shift();
+  guardarColaRecordatorios(cola);
+
+  abrirWhatsApp(
+    siguiente.telefono,
+    mensajeRecordatorioCliente(siguiente.nombre)
+  );
+}
+
+function recordarTodosLosPendientes() {
+  const colaExistente = leerColaRecordatorios();
+
+  if (colaExistente.length) {
+    enviarSiguienteRecordatorioPendiente();
+    return;
+  }
+
+  const seleccionados = Array.from(
+    document.querySelectorAll(".checkRecordatorioPendiente:checked")
+  ).map(check => check.value);
+
+  const nombres = seleccionados.length
+    ? seleccionados
+    : obtenerClientesPendientes();
+
+  if (!nombres.length) {
+    alert("No hay clientes pendientes seleccionados.");
+    return;
+  }
+
+  const sinTelefono = [];
+  const cola = [];
+
+  nombres.forEach(nombre => {
+    const telefono = telefonoWhatsAppCliente(nombre);
+    if (!telefono) {
+      sinTelefono.push(nombre);
+      return;
+    }
+    cola.push({ nombre, telefono });
+  });
+
+  if (sinTelefono.length) {
+    alert(
+      "Estos clientes no tienen teléfono cargado y no se incluirán:\n\n" +
+      sinTelefono.join("\n")
+    );
+  }
+
+  if (!cola.length) return;
+
+  guardarColaRecordatorios(cola);
+  enviarSiguienteRecordatorioPendiente();
 }
 
 
@@ -526,6 +628,59 @@ function renderHistorialNotificaciones() {
   }).join("");
 
   actualizarCampanaNotificaciones();
+}
+
+
+async function borrarTodasLasNotificaciones() {
+  if (!db) {
+    alert("Firebase no está conectado.");
+    return;
+  }
+
+  if (!confirm("¿Seguro que querés borrar todo el historial de notificaciones?")) {
+    return;
+  }
+
+  const boton = $("btnBorrarNotificaciones");
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = "Borrando...";
+  }
+
+  try {
+    const snapshot = await db
+      .collection("fratello_historial_notificaciones")
+      .limit(200)
+      .get();
+
+    if (snapshot.empty) {
+      alert("No hay notificaciones para borrar.");
+      return;
+    }
+
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+
+    notificacionesHistorial = [];
+    ultimaNotificacionVista = new Date().toISOString();
+    localStorage.setItem(
+      "fratello_ultima_notificacion_vista",
+      ultimaNotificacionVista
+    );
+
+    renderHistorialNotificaciones();
+    actualizarCampanaNotificaciones();
+    alert("Notificaciones borradas correctamente.");
+  } catch (error) {
+    console.error("Error borrando notificaciones:", error);
+    alert("No se pudieron borrar las notificaciones.");
+  } finally {
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = "🗑 Borrar notificaciones";
+    }
+  }
 }
 
 async function cargarHistorialNotificaciones() {
@@ -2393,6 +2548,28 @@ Gracias, Fratello.`;
 
 
 async function init() {
+  const btnContinuarResumen = $("btnContinuarResumen");
+  if (btnContinuarResumen) {
+    btnContinuarResumen.onclick = continuarAlResumenSiEstaConfirmado;
+  }
+
+  const btnRecordarPendientes = $("btnRecordarPendientes");
+  if (btnRecordarPendientes) {
+    btnRecordarPendientes.onclick = recordarTodosLosPendientes;
+  }
+
+  const btnActualizarPendientes = $("btnActualizarPendientes");
+  if (btnActualizarPendientes) {
+    btnActualizarPendientes.onclick = renderClientesPendientes;
+  }
+
+  const btnBorrarNotificaciones = $("btnBorrarNotificaciones");
+  if (btnBorrarNotificaciones) {
+    btnBorrarNotificaciones.onclick = borrarTodasLasNotificaciones;
+  }
+
+  actualizarEstadoColaRecordatorios();
+
   iniciarNavegacionFratello();
 
   const btnActualizarNotificaciones = $("btnActualizarNotificaciones");
@@ -2502,6 +2679,12 @@ init().catch(error => {
   if (estado) estado.textContent = "Error parcial al iniciar";
 });
 
+
+window.recordarClientePendiente = recordarClientePendiente;
+window.recordarTodosLosPendientes = recordarTodosLosPendientes;
+window.enviarSiguienteRecordatorioPendiente = enviarSiguienteRecordatorioPendiente;
+window.borrarTodasLasNotificaciones = borrarTodasLasNotificaciones;
+
 if (messaging) {
   messaging.onMessage(async payload => {
     cargarHistorialNotificaciones();
@@ -2521,122 +2704,3 @@ if (messaging) {
     }
   });
 }
-
-
-/* ===== FRATELLO v0.81.8 - NAVEGACIÓN FORZADA =====
-   Se instala fuera de init() para que funcione aunque Firebase u otro módulo fallen.
-*/
-(function instalarNavegacionForzada() {
-  function abrir(idSeccion) {
-    const inicio = document.getElementById("panelInicio");
-    const contenido = document.getElementById("contenidoApp");
-    const destino = document.getElementById(idSeccion);
-
-    if (!destino) {
-      console.error("Fratello: no existe la sección", idSeccion);
-      return;
-    }
-
-    if (inicio) inicio.classList.add("hidden");
-    if (contenido) contenido.classList.add("contenidoVisible");
-
-    document.querySelectorAll(".appSection").forEach(seccion => {
-      seccion.classList.toggle("seccionActiva", seccion === destino);
-    });
-
-    if (idSeccion === "seccionNotificaciones") {
-      if (typeof cargarHistorialNotificaciones === "function") {
-        cargarHistorialNotificaciones();
-      }
-      if (typeof marcarNotificacionesComoVistas === "function") {
-        marcarNotificacionesComoVistas();
-      }
-    }
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function inicio() {
-    const panelInicio = document.getElementById("panelInicio");
-    const contenido = document.getElementById("contenidoApp");
-
-    document.querySelectorAll(".appSection").forEach(seccion => {
-      seccion.classList.remove("seccionActiva");
-    });
-
-    if (panelInicio) panelInicio.classList.remove("hidden");
-    if (contenido) contenido.classList.remove("contenidoVisible");
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  // Sobrescribe las funciones globales con versiones independientes y estables.
-  window.abrirSeccionFratello = abrir;
-  window.mostrarInicioFratello = inicio;
-
-  function detectarSeccion(elemento) {
-    const boton = elemento.closest("[data-seccion]");
-    if (boton) return boton.getAttribute("data-seccion");
-
-    if (elemento.closest(".produccionCard")) return "seccionProduccion";
-    if (elemento.closest(".pedidosCard")) return "seccionPedidos";
-    if (elemento.closest(".resumenCard")) return "seccionResumen";
-    if (elemento.closest(".notificationBellCard")) return "seccionNotificaciones";
-
-    const accionRapida = elemento.closest(".quickActions button, .quickActions a");
-    if (accionRapida) {
-      const texto = (accionRapida.textContent || "").toLowerCase();
-      if (texto.includes("cliente")) return "seccionClientes";
-      if (texto.includes("producto")) return "seccionProduccion";
-      if (texto.includes("resumen")) return "seccionResumen";
-    }
-
-    return "";
-  }
-
-  function manejarNavegacion(evento) {
-    const objetivo = evento.target instanceof Element ? evento.target : null;
-    if (!objetivo) return;
-
-    const volver = objetivo.closest(".volverInicio, #btnInicio");
-    if (volver) {
-      evento.preventDefault();
-      evento.stopImmediatePropagation();
-      inicio();
-      return;
-    }
-
-    const idSeccion = detectarSeccion(objetivo);
-    if (!idSeccion) return;
-
-    evento.preventDefault();
-    evento.stopImmediatePropagation();
-    abrir(idSeccion);
-  }
-
-  function activar() {
-    // Captura antes que cualquier otro listener de la aplicación.
-    document.addEventListener("click", manejarNavegacion, true);
-    document.addEventListener("pointerup", manejarNavegacion, true);
-    document.addEventListener("touchend", manejarNavegacion, { capture: true, passive: false });
-
-    document.querySelectorAll(
-      "[data-seccion], .produccionCard, .pedidosCard, .resumenCard, " +
-      ".notificationBellCard, .quickActions button, .quickActions a, " +
-      ".volverInicio, #btnInicio"
-    ).forEach(elemento => {
-      elemento.style.pointerEvents = "auto";
-      elemento.style.touchAction = "manipulation";
-      elemento.disabled = false;
-    });
-
-    console.log("Fratello v0.81.8: navegación forzada activa");
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", activar, { once: true });
-  } else {
-    activar();
-  }
-})();
-

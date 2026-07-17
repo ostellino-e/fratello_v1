@@ -1,10 +1,7 @@
-# Fratello v0.81.7 — Navegación final
+# Fratello v0.82
 
-Esta versión se armó desde la carpeta real enviada.
-
-- Botones convertidos en enlaces HTML reales.
-- Acción directa onclick.
-- Respaldo pointerup para mouse y pantalla táctil.
-- Respaldo CSS :target si JavaScript falla.
-- Marcador visible v0.81.7.
-- ZIP sin carpeta interna: los archivos están directamente en la raíz.
+- Recordatorios enviados al número guardado de cada cliente.
+- Selección de clientes pendientes y cola para enviar uno por uno por WhatsApp.
+- Botón Continuar al resumen reparado.
+- Botón Borrar notificaciones.
+- Preparada para las notificaciones programadas de las 19:00 y 21:00.

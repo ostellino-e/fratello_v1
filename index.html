@@ -27,7 +27,7 @@
   </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v0.81.7</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v0.82</small>
   </section>
 
   <section id="panelInicio" class="dashboard">
@@ -219,7 +219,8 @@
           <button id="btnActualizarPendientes" type="button">Actualizar</button>
         </div>
         <div id="listaClientesPendientes"></div>
-        <button id="btnRecordarPendientes" type="button">📲 Recordar solo a pendientes</button>
+        <button id="btnRecordarPendientes" type="button">📲 Enviar recordatorios seleccionados</button>
+        <div id="estadoColaRecordatorios" class="reminderQueueStatus hidden"></div>
       </div>
 
       <h3>Pedidos cargados</h3>
@@ -318,7 +319,10 @@
           <h2>🔔 Notificaciones</h2>
           <p class="hint">Acá quedan guardados los avisos importantes de Fratello.</p>
         </div>
-        <button id="btnActualizarNotificaciones" type="button">Actualizar</button>
+        <div class="notificationSectionActions">
+          <button id="btnActualizarNotificaciones" type="button">Actualizar</button>
+          <button id="btnBorrarNotificaciones" type="button" class="dangerBtn">🗑 Borrar notificaciones</button>
+        </div>
       </div>
 
       <div id="estadoListaNotificaciones" class="notificationsStatus">
@@ -335,7 +339,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
-  <script src="app.js?v=0817"></script>
+  <script src="app.js?v=082"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -370,12 +374,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=0817")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=082")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=0817", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=082", {
             scope: "./",
             updateViaCache: "none"
           });

@@ -1185,3 +1185,51 @@ body:has(.appSection:target) #panelInicio {
 body:has(.appSection:target) #contenidoApp {
   display: block !important;
 }
+
+/* ===== FRATELLO v0.82 ===== */
+.pendingClientSelect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  flex: 1;
+}
+.pendingClientSelect input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+.pendingClientSelect span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pendingClientSelect small {
+  font-size: 13px;
+  color: #6d5a4b;
+}
+.reminderQueueStatus {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff3cd;
+  border: 1px solid #e7ca70;
+  font-weight: 700;
+}
+.notificationSectionActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.notificationSectionActions button {
+  width: auto;
+  margin: 0;
+}
+@media (max-width: 620px) {
+  .notificationSectionActions {
+    width: 100%;
+  }
+  .notificationSectionActions button {
+    flex: 1;
+  }
+}
