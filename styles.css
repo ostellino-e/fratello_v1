@@ -1295,3 +1295,7 @@ body:has(.appSection:target) #contenidoApp {
   .catalogProductFields{grid-template-columns:1fr}
   .productResolution button{flex:1}
 }
+
+.accionesPedido{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.accionesPedido button{width:auto}
+@media(max-width:680px){.accionesPedido button{flex:1}}

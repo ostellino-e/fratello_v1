@@ -288,20 +288,15 @@ Bizcocho hojaldre 1,5 kg</pre>
         return;
       }
 
-      const items = procesarPedidoCrudo(texto, cliente, fecha);
-
-      if (!items.length) {
-        mostrarMensaje("No se detectaron productos con cantidad. Usá el formato: Producto + cantidad + unidad.", true);
-        return;
-      }
-
       const nuevoPedido = {
         id: Date.now(),
         fecha,
         cliente,
         textoOriginal: texto,
         origen: "formulario_cliente",
-        items
+        pendienteInterpretacion: true,
+        versionInterpretador: "central_v101",
+        items: []
       };
 
       if (boton) {
@@ -329,7 +324,7 @@ Bizcocho hojaldre 1,5 kg</pre>
 
         document.getElementById("pedidoCrudoCliente").value = "";
         document.getElementById("confirmoPedidoCliente").checked = false;
-        mostrarMensaje("Pedido cargado correctamente. Gracias.");
+        mostrarMensaje("Pedido enviado correctamente. Fratello lo revisará y confirmará.");
       } catch (error) {
         console.error(error);
         mostrarMensaje("No se pudo enviar el pedido. Intentá nuevamente.", true);

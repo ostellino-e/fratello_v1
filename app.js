@@ -1264,6 +1264,86 @@ async function actualizarDatosManual() {
   }
 }
 
+
+let guardandoInterpretacionFormulario = false;
+
+function interpretarPedidosFormularioPendientes(listaPedidos) {
+  let huboCambios = false;
+
+  const interpretados = (Array.isArray(listaPedidos) ? listaPedidos : []).map(pedido => {
+    const esFormulario = pedido?.origen === "formulario_cliente";
+    const necesitaInterpretacion =
+      pedido?.pendienteInterpretacion === true ||
+      (esFormulario && pedido?.textoOriginal && (!Array.isArray(pedido.items) || pedido.items.length === 0));
+
+    if (!necesitaInterpretacion) return pedido;
+
+    const items = procesarTextoPedido(
+      pedido.textoOriginal || "",
+      pedido.cliente || "",
+      pedido.fecha || hoyISO()
+    );
+
+    huboCambios = true;
+
+    return {
+      ...pedido,
+      items,
+      pendienteInterpretacion: false,
+      versionInterpretador: "motor_central_v101",
+      interpretadoEn: new Date().toISOString()
+    };
+  });
+
+  return { pedidos: interpretados, huboCambios };
+}
+
+async function guardarInterpretacionFormularioEnNube() {
+  if (!db || guardandoInterpretacionFormulario) return;
+  guardandoInterpretacionFormulario = true;
+
+  try {
+    await db.collection("fratello").doc("estado").set({
+      pedidos,
+      productosExtra,
+      catalogoProductos: productos,
+      pedidosConfirmados: false,
+      actualizado: new Date().toISOString()
+    }, { merge: true });
+  } catch (error) {
+    console.error("No se pudo guardar la interpretación del formulario:", error);
+  } finally {
+    guardandoInterpretacionFormulario = false;
+  }
+}
+
+function reprocesarPedidoFormulario(pedidoId) {
+  const pedido = pedidos.find(p => Number(p.id) === Number(pedidoId));
+  if (!pedido || !pedido.textoOriginal) {
+    alert("Este pedido no tiene el texto original para volver a interpretarlo.");
+    return;
+  }
+
+  pedido.items = procesarTextoPedido(
+    pedido.textoOriginal,
+    pedido.cliente || "",
+    pedido.fecha || hoyISO()
+  );
+  pedido.pendienteInterpretacion = false;
+  pedido.versionInterpretador = "motor_central_v101";
+  pedido.interpretadoEn = new Date().toISOString();
+  pedidosConfirmados = false;
+
+  guardarTodo();
+  renderPedidosCargados();
+  renderUltimoProcesado();
+  calcularDiferencias();
+  actualizarAvisoUnidadesAmbiguas();
+  actualizarEstadoConfirmacion();
+
+  alert("Pedido reinterpretado con el motor inteligente.");
+}
+
 function escucharCambiosNube() {
   if (!db) return;
 
@@ -1276,7 +1356,12 @@ function escucharCambiosNube() {
       const data = doc.data();
 
       produccion = data.produccion || produccion;
-      pedidos = Array.isArray(data.pedidos) ? data.pedidos : pedidos;
+
+      const resultadoInterpretacion = interpretarPedidosFormularioPendientes(
+        Array.isArray(data.pedidos) ? data.pedidos : pedidos
+      );
+      pedidos = resultadoInterpretacion.pedidos;
+
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = Array.isArray(data.clientes) && data.clientes.length
         ? data.clientes
@@ -1310,6 +1395,10 @@ function escucharCambiosNube() {
       calcularDiferencias();
       actualizarPanelMemoriaEnvio();
       actualizarTarjetaDiaPedidos();
+
+      if (resultadoInterpretacion.huboCambios) {
+        guardarInterpretacionFormularioEnNube();
+      }
 
       const estado = $("estadoActualizacionManual");
       if (estado) {
@@ -2500,7 +2589,10 @@ function renderPedidosCargados() {
       html += "</tbody></table>";
     }
 
-    html += `<button type="button" class="btnEliminarPedido" onclick="borrarPedido(${pedido.id})">Eliminar este pedido</button>`;
+    html += `<div class="accionesPedido">
+      <button type="button" onclick="reprocesarPedidoFormulario(${pedido.id})">🔄 Reinterpretar pedido</button>
+      <button type="button" class="btnEliminarPedido" onclick="borrarPedido(${pedido.id})">Eliminar este pedido</button>
+    </div>`;
     html += `</div>`;
   });
 
@@ -3326,6 +3418,7 @@ async function init() {
 
 
 
+window.reprocesarPedidoFormulario = reprocesarPedidoFormulario;
 window.resolverProductoPedido = resolverProductoPedido;
 window.resolverUnidadPedido = resolverUnidadPedido;
 window.editarClienteCompleto = editarClienteCompleto;
