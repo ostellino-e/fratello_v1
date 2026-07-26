@@ -1,4 +1,5 @@
 const {onDocumentUpdated} = require("firebase-functions/v2/firestore");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {setGlobalOptions} = require("firebase-functions/v2");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
@@ -169,3 +170,101 @@ exports.notificarPedidoNuevo = onDocumentUpdated(
     }
   }
 );
+
+async function enviarRecordatorioProgramado(hora) {
+  const dispositivos = await tokensActivos();
+  const titulo = "⏰ Recordatorio de pedidos";
+  const mensaje =
+    "Recordar revisar pedidos cargados y enviar recordatorios a clientes.";
+  const fechaISO = new Date().toISOString();
+
+  await db.collection("fratello_historial_notificaciones").add({
+    tipo: "recordatorio_programado",
+    titulo,
+    mensaje,
+    horaProgramada: hora,
+    fechaISO,
+    creadoEn: FieldValue.serverTimestamp(),
+  });
+
+  if (!dispositivos.length) {
+    console.log(`Recordatorio ${hora}: no hay dispositivos activos.`);
+    return;
+  }
+
+  const message = {
+    tokens: dispositivos.map((d) => d.token),
+    data: {
+      title: titulo,
+      body: mensaje,
+      url: "./index.html#notificaciones",
+      tag: `recordatorio-pedidos-${hora.replace(":", "")}`,
+      hora,
+    },
+    webpush: {
+      headers: {
+        TTL: "7200",
+        Urgency: "high",
+      },
+      fcmOptions: {
+        link: "https://fratello-v1.vercel.app/#notificaciones",
+      },
+    },
+  };
+
+  const respuesta = await getMessaging().sendEachForMulticast(message);
+
+  console.log(
+    `Recordatorio ${hora}: ${respuesta.successCount} enviado(s), ` +
+      `${respuesta.failureCount} fallido(s).`
+  );
+
+  const desactivaciones = [];
+
+  respuesta.responses.forEach((resultado, index) => {
+    if (resultado.success) return;
+
+    const codigo = resultado.error?.code || "";
+
+    if (
+      codigo === "messaging/registration-token-not-registered" ||
+      codigo === "messaging/invalid-registration-token"
+    ) {
+      desactivaciones.push(
+        dispositivos[index].ref.set(
+          {
+            activo: false,
+            errorToken: codigo,
+            desactivado: FieldValue.serverTimestamp(),
+          },
+          {merge: true}
+        )
+      );
+    }
+  });
+
+  await Promise.all(desactivaciones);
+}
+
+exports.recordatorioPedidos1900 = onSchedule(
+  {
+    schedule: "0 19 * * *",
+    timeZone: "America/Argentina/Buenos_Aires",
+    retryCount: 0,
+  },
+  async () => {
+    await enviarRecordatorioProgramado("19:00");
+  }
+);
+
+exports.recordatorioPedidos2100 = onSchedule(
+  {
+    schedule: "0 21 * * *",
+    timeZone: "America/Argentina/Buenos_Aires",
+    retryCount: 0,
+  },
+  async () => {
+    await enviarRecordatorioProgramado("21:00");
+  }
+);
+

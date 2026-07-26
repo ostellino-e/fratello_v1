@@ -27,7 +27,7 @@
   </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v0.82</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v0.83</small>
   </section>
 
   <section id="panelInicio" class="dashboard">
@@ -156,6 +156,24 @@
         <button id="btnCancelarPredeterminada" class="hidden">Cancelar</button>
       </div>
       <p id="ayudaEditarBase" class="hint">Para cambiar las cantidades que se cargan automáticamente cada día, tocá “Editar producción base”.</p>
+
+      <details class="catalogAdminBox" id="administradorProductos">
+        <summary>⚙️ Administrar productos predeterminados</summary>
+        <p class="hint">Agregá, modificá, ocultá o eliminá productos de la producción base.</p>
+        <div class="catalogAddForm">
+          <input id="nuevoProductoNombre" type="text" placeholder="Nombre del producto">
+          <select id="nuevoProductoUnidad">
+            <option value="unidad">unidad</option>
+            <option value="kg">kg</option>
+            <option value="docena">docena</option>
+            <option value="bandeja">bandeja</option>
+            <option value="bolsa">bolsa</option>
+          </select>
+          <button id="btnAgregarProductoCatalogo" type="button" class="primary">➕ Agregar producto</button>
+        </div>
+        <div id="listaAdministradorProductos"></div>
+      </details>
+
 
       <div id="modoProduccion" class="modo">Modo actual: producción realizada</div>
 <div id="produccionLista" class="table-like"></div>
@@ -339,7 +357,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
-  <script src="app.js?v=082"></script>
+  <script src="app.js?v=083"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -374,12 +392,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=082")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=083")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=082", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=083", {
             scope: "./",
             updateViaCache: "none"
           });

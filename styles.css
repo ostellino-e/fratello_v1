@@ -1233,3 +1233,17 @@ body:has(.appSection:target) #contenidoApp {
     flex: 1;
   }
 }
+
+/* ===== FRATELLO v0.83 - CATÁLOGO ===== */
+.catalogAdminBox{margin-top:16px;padding:14px;border:1px solid #d7c2aa;border-radius:14px;background:#fffaf4}
+.catalogAdminBox>summary{cursor:pointer;font-weight:800;font-size:16px}
+.catalogAddForm{display:grid;grid-template-columns:minmax(180px,1fr) 130px auto;gap:8px;margin:14px 0}
+.catalogAddForm input,.catalogAddForm select,.catalogAddForm button{margin:0}
+.catalogProductRow{padding:12px 0;border-top:1px solid #eadccd}
+.catalogProductFields{display:grid;grid-template-columns:minmax(180px,1fr) 120px auto auto;align-items:center;gap:8px}
+.catalogProductFields input,.catalogProductFields select{margin:0}
+.catalogCheck{display:inline-flex;align-items:center;gap:5px;margin:0;white-space:nowrap}
+.catalogCheck input{width:18px;height:18px;margin:0}
+.catalogProductActions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.catalogProductActions button{width:auto;margin:0}
+@media(max-width:680px){.catalogAddForm,.catalogProductFields{grid-template-columns:1fr}.catalogProductActions{justify-content:stretch}.catalogProductActions button{flex:1}}

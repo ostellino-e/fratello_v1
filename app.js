@@ -1196,6 +1196,7 @@ async function actualizarDatosManual() {
     localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
     localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
     localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
+  localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
     localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
     localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
 
@@ -1335,6 +1336,24 @@ let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") |
 let datosClientesCompletos = JSON.parse(localStorage.getItem("fratello_clientes_completos") || "{}");
 let productosExtra = JSON.parse(localStorage.getItem("fratello_productos_extra") || "[]");
 productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); });
+
+const catalogoProductosGuardado = JSON.parse(localStorage.getItem("fratello_catalogo_productos") || "null");
+if (Array.isArray(catalogoProductosGuardado) && catalogoProductosGuardado.length) {
+  productos.splice(0, productos.length, ...catalogoProductosGuardado.map((p, indice) => ({
+    id: String(p.id || `PRODUCTO_${indice + 1}`),
+    nombre: String(p.nombre || "Producto"),
+    unidad: String(p.unidad || "unidad"),
+    visible: p.visible !== false,
+    activo: p.activo !== false,
+    nuevo: Boolean(p.nuevo),
+  })));
+}
+productos.forEach(producto => {
+  dias.forEach(dia => {
+    if (!predeterminadas[dia]) predeterminadas[dia] = {};
+    if (predeterminadas[dia][producto.id] === undefined) predeterminadas[dia][producto.id] = 0;
+  });
+});
 let correspondePedido = JSON.parse(localStorage.getItem("fratello_corresponde") || "{}");
 let modoEdicionPredeterminada = false;
 let pedidosConfirmados = JSON.parse(localStorage.getItem("fratello_pedidos_confirmados") || "false");
@@ -1394,7 +1413,7 @@ function valorProduccion(id) {
 }
 
 function renderProduccion() {
-  const visibles = productos.filter(p => p.visible);
+  const visibles = productos.filter(p => p.visible && p.activo !== false);
   const dia = diaActual();
 
   let html = "<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Unidad</th></tr></thead><tbody>";
@@ -1582,6 +1601,113 @@ function cancelarEdicionPredeterminada() {
   renderProduccion();
 }
 
+
+
+function escaparHtmlCatalogo(valor) {
+  return String(valor ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+function crearIdProductoCatalogo(nombre) {
+  const base = normalizar(nombre).replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "").toUpperCase() || "PRODUCTO";
+  let id = base;
+  let numero = 2;
+  while (productos.some(p => p.id === id)) id = `${base}_${numero++}`;
+  return id;
+}
+function guardarCatalogoProductos() {
+  localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
+  localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
+  localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
+  guardarEnNube();
+}
+function renderAdministradorProductos() {
+  const contenedor = $("listaAdministradorProductos");
+  if (!contenedor) return;
+  contenedor.innerHTML = productos.map(producto => {
+    const visible = producto.visible !== false;
+    const activo = producto.activo !== false;
+    return `<div class="catalogProductRow" data-catalog-id="${escaparHtmlCatalogo(producto.id)}">
+      <div class="catalogProductFields">
+        <input type="text" data-catalog-nombre value="${escaparHtmlCatalogo(producto.nombre)}">
+        <select data-catalog-unidad>
+          ${["unidad","kg","docena","bandeja","bolsa"].map(unidad =>
+            `<option value="${unidad}" ${producto.unidad === unidad ? "selected" : ""}>${unidad}</option>`
+          ).join("")}
+        </select>
+        <label class="catalogCheck"><input type="checkbox" data-catalog-visible ${visible ? "checked" : ""}> Mostrar</label>
+        <label class="catalogCheck"><input type="checkbox" data-catalog-activo ${activo ? "checked" : ""}> Activo</label>
+      </div>
+      <div class="catalogProductActions">
+        <button type="button" data-catalog-guardar="${escaparHtmlCatalogo(producto.id)}">💾 Guardar</button>
+        <button type="button" class="dangerBtn" data-catalog-eliminar="${escaparHtmlCatalogo(producto.id)}">🗑 Eliminar</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+function agregarProductoCatalogo() {
+  const nombre = $("nuevoProductoNombre")?.value.trim();
+  const unidad = $("nuevoProductoUnidad")?.value || "unidad";
+  if (!nombre) return alert("Escribí el nombre del producto.");
+  if (productos.some(p => normalizar(p.nombre) === normalizar(nombre))) {
+    return alert("Ya existe un producto con ese nombre.");
+  }
+  const nuevo = { id: crearIdProductoCatalogo(nombre), nombre, unidad, visible: true, activo: true, nuevo: true };
+  productos.push(nuevo);
+  productosExtra.push(nuevo);
+  dias.forEach(dia => {
+    if (!predeterminadas[dia]) predeterminadas[dia] = {};
+    predeterminadas[dia][nuevo.id] = 0;
+  });
+  guardarCatalogoProductos();
+  $("nuevoProductoNombre").value = "";
+  renderAdministradorProductos();
+  renderProduccion();
+  alert(`Producto "${nombre}" agregado. Asignale cantidades desde “Editar producción base”.`);
+}
+function guardarProductoCatalogo(id) {
+  const fila = document.querySelector(`[data-catalog-id="${CSS.escape(id)}"]`);
+  const producto = productos.find(p => p.id === id);
+  if (!fila || !producto) return;
+  const nombre = fila.querySelector("[data-catalog-nombre]").value.trim();
+  if (!nombre) return alert("El nombre no puede quedar vacío.");
+  if (productos.some(p => p.id !== id && normalizar(p.nombre) === normalizar(nombre))) {
+    return alert("Ya existe otro producto con ese nombre.");
+  }
+  producto.nombre = nombre;
+  producto.unidad = fila.querySelector("[data-catalog-unidad]").value;
+  producto.visible = fila.querySelector("[data-catalog-visible]").checked;
+  producto.activo = fila.querySelector("[data-catalog-activo]").checked;
+  const extra = productosExtra.find(p => p.id === id);
+  if (extra) Object.assign(extra, producto);
+  guardarCatalogoProductos();
+  renderAdministradorProductos();
+  renderProduccion();
+  calcularDiferencias();
+  alert(`Producto "${nombre}" actualizado.`);
+}
+function eliminarProductoCatalogo(id) {
+  const producto = productos.find(p => p.id === id);
+  if (!producto) return;
+  if (!confirm(`¿Eliminar "${producto.nombre}" de la producción predeterminada?\n\nLos pedidos históricos no se borrarán.`)) return;
+  productos.splice(productos.findIndex(p => p.id === id), 1);
+  productosExtra = productosExtra.filter(p => p.id !== id);
+  dias.forEach(dia => {
+    if (predeterminadas[dia]) delete predeterminadas[dia][id];
+    delete produccion[`${dia}_${id}`];
+  });
+  guardarTodo();
+  renderAdministradorProductos();
+  renderProduccion();
+  calcularDiferencias();
+  alert(`Producto "${producto.nombre}" eliminado.`);
+}
+function manejarClicksAdministradorProductos(evento) {
+  const guardar = evento.target.closest("[data-catalog-guardar]");
+  if (guardar) return guardarProductoCatalogo(guardar.dataset.catalogGuardar);
+  const eliminar = evento.target.closest("[data-catalog-eliminar]");
+  if (eliminar) eliminarProductoCatalogo(eliminar.dataset.catalogEliminar);
+}
 
 function detectarUnidad(texto, unidadDefault = "unidad") {
   const t = normalizar(texto);
@@ -2548,6 +2674,10 @@ Gracias, Fratello.`;
 
 
 async function init() {
+  if ($("btnAgregarProductoCatalogo")) $("btnAgregarProductoCatalogo").onclick = agregarProductoCatalogo;
+  if ($("listaAdministradorProductos")) $("listaAdministradorProductos").onclick = manejarClicksAdministradorProductos;
+  renderAdministradorProductos();
+
   const btnContinuarResumen = $("btnContinuarResumen");
   if (btnContinuarResumen) {
     btnContinuarResumen.onclick = continuarAlResumenSiEstaConfirmado;
