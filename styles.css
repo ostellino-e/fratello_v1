@@ -1247,3 +1247,16 @@ body:has(.appSection:target) #contenidoApp {
 .catalogProductActions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 .catalogProductActions button{width:auto;margin:0}
 @media(max-width:680px){.catalogAddForm,.catalogProductFields{grid-template-columns:1fr}.catalogProductActions{justify-content:stretch}.catalogProductActions button{flex:1}}
+
+/* ===== FRATELLO v0.84 - UNIDADES AMBIGUAS ===== */
+.catalogAddForm{grid-template-columns:minmax(160px,1fr) 115px minmax(170px,1fr) auto}
+.catalogProductFields{grid-template-columns:minmax(170px,1fr) 105px minmax(170px,1fr) auto auto}
+.ambiguousSummary{margin:14px 0;padding:12px 14px;border-radius:12px;background:#fff3cd;border:1px solid #e0b84f;color:#624800;font-weight:700}
+.ambiguousRow{background:#fff8dc}
+.unitResolution{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding:8px;border-radius:10px;background:#fff3cd;border:1px solid #e0b84f}
+.unitResolution span{font-weight:800;font-size:13px}
+.unitResolution button{width:auto;margin:0;padding:7px 10px}
+@media(max-width:680px){
+  .catalogAddForm,.catalogProductFields{grid-template-columns:1fr}
+  .unitResolution button{flex:1}
+}

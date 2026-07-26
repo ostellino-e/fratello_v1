@@ -339,6 +339,13 @@ function continuarAlResumenSiEstaConfirmado() {
     return;
   }
 
+  const ambiguos = pedidosConUnidadAmbigua();
+  if (ambiguos.length) {
+    alert(`Hay ${ambiguos.length} producto(s) con unidad sin confirmar. Revisalos antes de continuar.`);
+    abrirSeccionFratello("seccionPedidos");
+    return;
+  }
+
   if (!checkPedidos || !checkPedidos.checked) {
     alert("Primero tildá que todos los pedidos cargados están correctos.");
     return;
@@ -1088,6 +1095,7 @@ function datosActuales() {
     clientes,
     datosClientesCompletos,
     productosExtra,
+    catalogoProductos: productos,
     pedidosConfirmados,
     correspondePedido,
     memoriaUltimoEnvio,
@@ -1126,6 +1134,9 @@ async function cargarDesdeNube() {
       datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
       validarClientes();
     productosExtra = data.productosExtra || productosExtra;
+    if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
+      productos.splice(0, productos.length, ...data.catalogoProductos);
+    }
     pedidosConfirmados = data.pedidosConfirmados || false;
     productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); } );
       productosExtra = data.productosExtra || productosExtra;
@@ -1180,6 +1191,9 @@ async function actualizarDatosManual() {
       : clientes;
     datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
     productosExtra = data.productosExtra || productosExtra;
+    if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
+      productos.splice(0, productos.length, ...data.catalogoProductos);
+    }
     pedidosConfirmados = Boolean(data.pedidosConfirmados);
     correspondePedido = data.correspondePedido || correspondePedido;
     memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
@@ -1337,12 +1351,24 @@ let datosClientesCompletos = JSON.parse(localStorage.getItem("fratello_clientes_
 let productosExtra = JSON.parse(localStorage.getItem("fratello_productos_extra") || "[]");
 productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); });
 
+function formaVentaPredeterminada(unidad) {
+  const u = String(unidad || "unidad").toLowerCase();
+  if (u === "docena") return "unidad_docena";
+  if (u === "kg") return "unidad_kg";
+  return "solo_unidad";
+}
+
+productos.forEach(producto => {
+  if (!producto.formaVenta) producto.formaVenta = formaVentaPredeterminada(producto.unidad);
+});
+
 const catalogoProductosGuardado = JSON.parse(localStorage.getItem("fratello_catalogo_productos") || "null");
 if (Array.isArray(catalogoProductosGuardado) && catalogoProductosGuardado.length) {
   productos.splice(0, productos.length, ...catalogoProductosGuardado.map((p, indice) => ({
     id: String(p.id || `PRODUCTO_${indice + 1}`),
     nombre: String(p.nombre || "Producto"),
     unidad: String(p.unidad || "unidad"),
+    formaVenta: String(p.formaVenta || formaVentaPredeterminada(p.unidad)),
     visible: p.visible !== false,
     activo: p.activo !== false,
     nuevo: Boolean(p.nuevo),
@@ -1635,6 +1661,19 @@ function renderAdministradorProductos() {
             `<option value="${unidad}" ${producto.unidad === unidad ? "selected" : ""}>${unidad}</option>`
           ).join("")}
         </select>
+        <select data-catalog-forma-venta title="Cómo interpretar números sin unidad">
+          ${[
+            ["solo_unidad","Solo unidad"],
+            ["solo_docena","Solo docena"],
+            ["solo_kg","Solo kilo"],
+            ["unidad_docena","Unidad o docena"],
+            ["unidad_kg","Unidad o kilo"],
+            ["kg_paquete","Kilo o paquete"],
+            ["revisar_siempre","Revisar siempre"]
+          ].map(([valor, etiqueta]) =>
+            `<option value="${valor}" ${(producto.formaVenta || formaVentaPredeterminada(producto.unidad)) === valor ? "selected" : ""}>${etiqueta}</option>`
+          ).join("")}
+        </select>
         <label class="catalogCheck"><input type="checkbox" data-catalog-visible ${visible ? "checked" : ""}> Mostrar</label>
         <label class="catalogCheck"><input type="checkbox" data-catalog-activo ${activo ? "checked" : ""}> Activo</label>
       </div>
@@ -1648,11 +1687,12 @@ function renderAdministradorProductos() {
 function agregarProductoCatalogo() {
   const nombre = $("nuevoProductoNombre")?.value.trim();
   const unidad = $("nuevoProductoUnidad")?.value || "unidad";
+  const formaVenta = $("nuevoProductoFormaVenta")?.value || formaVentaPredeterminada(unidad);
   if (!nombre) return alert("Escribí el nombre del producto.");
   if (productos.some(p => normalizar(p.nombre) === normalizar(nombre))) {
     return alert("Ya existe un producto con ese nombre.");
   }
-  const nuevo = { id: crearIdProductoCatalogo(nombre), nombre, unidad, visible: true, activo: true, nuevo: true };
+  const nuevo = { id: crearIdProductoCatalogo(nombre), nombre, unidad, formaVenta, visible: true, activo: true, nuevo: true };
   productos.push(nuevo);
   productosExtra.push(nuevo);
   dias.forEach(dia => {
@@ -1676,6 +1716,7 @@ function guardarProductoCatalogo(id) {
   }
   producto.nombre = nombre;
   producto.unidad = fila.querySelector("[data-catalog-unidad]").value;
+  producto.formaVenta = fila.querySelector("[data-catalog-forma-venta]").value;
   producto.visible = fila.querySelector("[data-catalog-visible]").checked;
   producto.activo = fila.querySelector("[data-catalog-activo]").checked;
   const extra = productosExtra.find(p => p.id === id);
@@ -1709,12 +1750,65 @@ function manejarClicksAdministradorProductos(evento) {
   if (eliminar) eliminarProductoCatalogo(eliminar.dataset.catalogEliminar);
 }
 
+function detectarUnidadExplicita(texto) {
+  const t = ` ${normalizar(texto)} `;
+  if (/\b(kg|kilo|kilos)\b/.test(t)) return "kg";
+  if (/\b(doc|docena|docenas)\b/.test(t)) return "docena";
+  if (/\b(unid|unidad|unidades|u)\b/.test(t)) return "unidad";
+  if (/\b(paquete|paquetes|paq)\b/.test(t)) return "paquete";
+  if (/\b(bolsa|bolsas)\b/.test(t)) return "bolsa";
+  if (/\b(bandeja|bandejas)\b/.test(t)) return "bandeja";
+  return "";
+}
+
 function detectarUnidad(texto, unidadDefault = "unidad") {
-  const t = normalizar(texto);
-  if (t.includes("kg") || t.includes("kilo")) return "kg";
-  if (t.includes("doc")) return "docena";
-  if (t.includes("unid") || t.includes("unidad") || t.includes("unidades") || t.includes(" u")) return "unidad";
-  return unidadDefault || "unidad";
+  return detectarUnidadExplicita(texto) || unidadDefault || "unidad";
+}
+
+function opcionesUnidadPorFormaVenta(formaVenta, unidadProducto) {
+  switch (formaVenta) {
+    case "solo_docena": return ["docena"];
+    case "solo_kg": return ["kg"];
+    case "unidad_docena": return ["unidad", "docena"];
+    case "unidad_kg": return ["unidad", "kg"];
+    case "kg_paquete": return ["kg", "paquete"];
+    case "revisar_siempre":
+      return [...new Set(["unidad", unidadProducto || "unidad"])];
+    case "solo_unidad":
+    default:
+      return ["unidad"];
+  }
+}
+
+function interpretarUnidadProducto(original, producto) {
+  const explicita = detectarUnidadExplicita(original);
+  if (explicita) {
+    return {
+      unidad: explicita,
+      ambiguo: false,
+      opciones: [explicita],
+      razon: ""
+    };
+  }
+
+  const formaVenta = producto.formaVenta || formaVentaPredeterminada(producto.unidad);
+  const opciones = opcionesUnidadPorFormaVenta(formaVenta, producto.unidad);
+
+  if (opciones.length === 1 && formaVenta !== "revisar_siempre") {
+    return {
+      unidad: opciones[0],
+      ambiguo: false,
+      opciones,
+      razon: ""
+    };
+  }
+
+  return {
+    unidad: producto.unidad || opciones[0] || "unidad",
+    ambiguo: true,
+    opciones,
+    razon: "El cliente escribió una cantidad sin aclarar la unidad."
+  };
 }
 
 function nombreProductoDesdeLinea(original) {
@@ -1735,7 +1829,15 @@ function crearProductoExtra(nombre, unidad) {
   let existente = productos.find(p => p.id === id || normalizar(p.nombre.replace("*","")) === normalizar(nombre));
   if (existente) return existente;
 
-  const nuevo = { id, nombre: nombre + " *", unidad, visible: false, activo: false, nuevo: true };
+  const nuevo = {
+    id,
+    nombre: nombre + " *",
+    unidad,
+    formaVenta: formaVentaPredeterminada(unidad),
+    visible: false,
+    activo: false,
+    nuevo: true
+  };
   productos.push(nuevo);
   productosExtra.push(nuevo);
 
@@ -1779,9 +1881,14 @@ function procesarTextoPedido(texto, cliente, fecha) {
     if (!id) return [];
 
     const producto = productoPorId(id);
-    const unidad = detectarUnidad(original, producto.unidad);
-    let estado = cantidad === 0 ? "NO PEDIDO" : "OK";
-    let observacion = cantidad === 0 ? "Línea sin cantidad: se toma como 0" : "";
+    const interpretacionUnidad = interpretarUnidadProducto(original, producto);
+    const unidad = interpretacionUnidad.unidad;
+    let estado = cantidad === 0
+      ? "NO PEDIDO"
+      : (interpretacionUnidad.ambiguo ? "REVISAR UNIDAD" : "OK");
+    let observacion = cantidad === 0
+      ? "Línea sin cantidad: se toma como 0"
+      : (interpretacionUnidad.ambiguo ? interpretacionUnidad.razon : "");
 
     if (producto.nuevo || producto.activo === false) {
       observacion = "Producto nuevo/no habitual";
@@ -1792,8 +1899,88 @@ function procesarTextoPedido(texto, cliente, fecha) {
       observacion = observacion ? observacion + " - cantidad variable" : "Cantidad variable: se toma el mínimo detectado";
     }
 
-    return [{ fecha, cliente, productoId: id, producto: producto.nombre, cantidad, unidad, estado, observacion, original }];
+    return [{
+      itemId: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      fecha,
+      cliente,
+      productoId: id,
+      producto: producto.nombre,
+      cantidad,
+      unidad,
+      unidadAmbigua: interpretacionUnidad.ambiguo,
+      opcionesUnidad: interpretacionUnidad.opciones,
+      estado,
+      observacion,
+      original
+    }];
   });
+}
+
+
+function pedidosConUnidadAmbigua() {
+  return pedidos.flatMap(pedido =>
+    (pedido.items || [])
+      .filter(item => item.unidadAmbigua || item.estado === "REVISAR UNIDAD")
+      .map(item => ({ pedido, item }))
+  );
+}
+
+function actualizarAvisoUnidadesAmbiguas() {
+  const aviso = $("avisoUnidadesAmbiguas");
+  const check = $("checkPedidoCompleto");
+  if (!aviso) return;
+
+  const ambiguos = pedidosConUnidadAmbigua();
+
+  if (!ambiguos.length) {
+    aviso.classList.add("hidden");
+    aviso.innerHTML = "";
+    if (check) check.disabled = false;
+    return;
+  }
+
+  aviso.classList.remove("hidden");
+  aviso.innerHTML = `⚠️ Hay <strong>${ambiguos.length}</strong> producto${ambiguos.length === 1 ? "" : "s"} con unidad sin confirmar. Elegí la unidad antes de confirmar los pedidos.`;
+  if (check) {
+    check.checked = false;
+    check.disabled = true;
+  }
+}
+
+function resolverUnidadPedido(pedidoId, itemId, unidad) {
+  const pedido = pedidos.find(p => Number(p.id) === Number(pedidoId));
+  if (!pedido) return;
+
+  const item = (pedido.items || []).find(i => String(i.itemId) === String(itemId));
+  if (!item) return;
+
+  item.unidad = unidad;
+  item.unidadAmbigua = false;
+  item.estado = "OK";
+  item.observacion = `Unidad confirmada manualmente: ${unidad}`;
+
+  pedidosConfirmados = false;
+  guardarTodo();
+  renderPedidosCargados();
+  renderUltimoProcesado();
+  calcularDiferencias();
+  actualizarAvisoUnidadesAmbiguas();
+  actualizarEstadoConfirmacion();
+}
+
+function botonesResolverUnidad(pedidoId, item) {
+  if (!(item.unidadAmbigua || item.estado === "REVISAR UNIDAD")) return "";
+
+  const opciones = Array.isArray(item.opcionesUnidad) && item.opcionesUnidad.length
+    ? item.opcionesUnidad
+    : ["unidad", item.unidad || "unidad"];
+
+  return `<div class="unitResolution">
+    <span>⚠️ Elegir unidad:</span>
+    ${[...new Set(opciones)].map(unidad =>
+      `<button type="button" onclick="resolverUnidadPedido(${pedidoId}, '${item.itemId}', '${unidad}')">${fmt(item.cantidad)} ${unidad}</button>`
+    ).join("")}
+  </div>`;
 }
 
 function mostrarMensajePedido(texto) {
@@ -1937,20 +2124,33 @@ function procesarPedidoActual() {
   mostrarMensajePedido("Pedido cargado correctamente");
 }
 
-function renderUltimoProcesado(items) {
-  items = pedidos.flatMap(p=>p.items.map(i=>({...i,cliente:p.cliente})));
-  if (!items || !items.length) {
+function renderUltimoProcesado() {
+  const filas = pedidos.flatMap(pedido =>
+    (pedido.items || []).map(item => ({ pedidoId: pedido.id, ...item, cliente: pedido.cliente }))
+  );
+
+  if (!filas.length) {
     $("ultimoProcesado").innerHTML = "<p>No se detectaron productos.</p>";
+    actualizarAvisoUnidadesAmbiguas();
     return;
   }
 
   let html = "<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Unidad</th><th>Cliente</th><th>Estado</th><th>Texto leído</th></tr></thead><tbody>";
 
-  for (const it of items) {
-    html += `<tr><td>${it.producto}</td><td>${fmt(it.cantidad)}</td><td>${it.unidad}</td><td>${it.cliente}</td><td>${it.estado}</td><td>${it.original}</td></tr>`;
+  for (const it of filas) {
+    const clase = (it.unidadAmbigua || it.estado === "REVISAR UNIDAD") ? "ambiguousRow" : "";
+    html += `<tr class="${clase}">
+      <td>${it.producto}${botonesResolverUnidad(it.pedidoId, it)}</td>
+      <td>${fmt(it.cantidad)}</td>
+      <td>${it.unidad}</td>
+      <td>${it.cliente}</td>
+      <td>${it.estado}</td>
+      <td>${it.original}</td>
+    </tr>`;
   }
 
   $("ultimoProcesado").innerHTML = html + "</tbody></table>";
+  actualizarAvisoUnidadesAmbiguas();
 }
 
 function renderPedidosCargados() {
@@ -1978,7 +2178,12 @@ function renderPedidosCargados() {
     } else {
       html += "<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Unidad</th></tr></thead><tbody>";
       itemsValidos.forEach(it => {
-        html += `<tr><td>${it.producto}</td><td>${fmt(it.cantidad)}</td><td>${it.unidad}</td></tr>`;
+        const clase = (it.unidadAmbigua || it.estado === "REVISAR UNIDAD") ? "ambiguousRow" : "";
+        html += `<tr class="${clase}">
+          <td>${it.producto}${botonesResolverUnidad(pedido.id, it)}</td>
+          <td>${fmt(it.cantidad)}</td>
+          <td>${it.unidad}</td>
+        </tr>`;
       });
       html += "</tbody></table>";
     }
@@ -1988,6 +2193,7 @@ function renderPedidosCargados() {
   });
 
   $("pedidosCargados").innerHTML = html;
+  actualizarAvisoUnidadesAmbiguas();
   renderClientesPendientes();
 }
 
@@ -2272,6 +2478,12 @@ function confirmarPedidos() {
 
   if (!pedidos.length) {
     alert("Todavía no hay pedidos cargados.");
+    return;
+  }
+
+  const ambiguos = pedidosConUnidadAmbigua();
+  if (ambiguos.length) {
+    alert(`Hay ${ambiguos.length} producto(s) con unidad sin confirmar.`);
     return;
   }
 
@@ -2800,6 +3012,7 @@ async function init() {
 
 
 
+window.resolverUnidadPedido = resolverUnidadPedido;
 window.editarClienteCompleto = editarClienteCompleto;
 window.eliminarClienteCompleto = eliminarClienteCompleto;
  
