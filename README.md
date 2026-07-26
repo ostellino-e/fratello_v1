@@ -1,7 +1,10 @@
-# Fratello v1.01
+# Fratello v1.02 — Corrección del resumen por unidades
 
-- El formulario público ya no interpreta pedidos con su motor viejo.
-- Envía el texto original al panel.
-- El panel lo procesa con el motor inteligente principal.
-- Las dudas de producto y unidad aparecen para revisión.
-- Se agregó “Reinterpretar pedido” para pedidos anteriores.
+Corrección:
+- El resumen ya no usa siempre la unidad predeterminada del producto.
+- Convierte correctamente docenas y unidades antes de comparar.
+- Ejemplos:
+  - 6 unidades → 6 unid
+  - 12 unidades → 1 doc
+  - 18 unidades → 1 doc + 6 unid
+- La tabla comparadora y el resumen para WhatsApp muestran la cantidad correcta.

@@ -2640,41 +2640,97 @@ function borrarPedidosSeleccionados() {
   if (vista) vista.innerHTML = "";
 }
 
+function productoAdmiteUnidadDocena(producto) {
+  const forma = producto?.formaVenta || "";
+  return forma === "unidad_docena" ||
+    producto?.unidad === "docena" ||
+    producto?.unidad === "unidad";
+}
+
+function cantidadAUnidadBase(cantidad, unidad, producto) {
+  const valor = Number(cantidad || 0);
+  const u = String(unidad || producto?.unidad || "unidad").toLowerCase();
+
+  if (productoAdmiteUnidadDocena(producto)) {
+    if (u === "docena" || u === "docenas") return valor * 12;
+    if (u === "unidad" || u === "unidades" || u === "unid") return valor;
+  }
+
+  return valor;
+}
+
+function formatearCantidadResumen(cantidadBase, producto) {
+  const valor = Number(cantidadBase || 0);
+
+  if (productoAdmiteUnidadDocena(producto)) {
+    const signo = valor < 0 ? "-" : "";
+    const absoluto = Math.abs(valor);
+    const docenas = Math.floor(absoluto / 12);
+    const unidades = Math.round((absoluto - docenas * 12) * 1000) / 1000;
+    const partes = [];
+
+    if (docenas > 0) partes.push(`${fmt(docenas)} doc`);
+    if (unidades > 0 || !partes.length) partes.push(`${fmt(unidades)} unid`);
+
+    return signo + partes.join(" + ");
+  }
+
+  return `${fmt(valor)} ${producto?.unidad || "unidad"}`;
+}
+
 function calcularDiferencias() {
   const totalesPedido = {};
 
   for (const pedido of pedidos) {
-    for (const it of pedido.items) {
-      if (it.estado !== "NO PEDIDO") {
-        totalesPedido[it.productoId] = (totalesPedido[it.productoId] || 0) + Number(it.cantidad || 0);
-      }
+    for (const it of pedido.items || []) {
+      if (it.estado === "NO PEDIDO") continue;
+
+      const producto = productoPorId(it.productoId);
+      if (!producto) continue;
+
+      const cantidadBase = cantidadAUnidadBase(it.cantidad, it.unidad, producto);
+      totalesPedido[it.productoId] =
+        (totalesPedido[it.productoId] || 0) + cantidadBase;
     }
   }
 
   const filas = [];
 
   for (const p of productos) {
-    const prod = Number(produccion[claveProduccion(p.id)] || 0);
-    const ped = Number(totalesPedido[p.id] || 0);
+    const produccionCargada = Number(produccion[claveProduccion(p.id)] || 0);
+    const prodBase = cantidadAUnidadBase(produccionCargada, p.unidad, p);
+    const pedBase = Number(totalesPedido[p.id] || 0);
 
-    if ((p.activo === false || p.nuevo) && prod === 0 && ped === 0) continue;
-    if (prod === 0 && ped === 0) continue;
+    if ((p.activo === false || p.nuevo) && prodBase === 0 && pedBase === 0) continue;
+    if (prodBase === 0 && pedBase === 0) continue;
 
-    const dif = prod - ped;
+    const difBase = prodBase - pedBase;
     let estado = "JUSTO";
     let accion = "No hacer nada";
 
-    if (dif > 0) {
+    if (difBase > 0) {
       estado = "SOBRA";
-      accion = `Sobran ${fmt(dif)} ${p.unidad}`;
+      accion = `Sobran ${formatearCantidadResumen(difBase, p)}`;
     }
 
-    if (dif < 0) {
+    if (difBase < 0) {
       estado = "FALTA";
-      accion = `HACER ${fmt(Math.abs(dif))} ${p.unidad}`;
+      accion = `HACER ${formatearCantidadResumen(Math.abs(difBase), p)}`;
     }
 
-    filas.push({ producto: p.nombre, unidad: p.unidad, prod, ped, dif, estado, accion });
+    filas.push({
+      producto: p.nombre,
+      unidad: p.unidad,
+      productoConfig: p,
+      prod: prodBase,
+      ped: pedBase,
+      dif: difBase,
+      prodTexto: formatearCantidadResumen(prodBase, p),
+      pedTexto: formatearCantidadResumen(pedBase, p),
+      difTexto: formatearCantidadResumen(Math.abs(difBase), p),
+      estado,
+      accion
+    });
   }
 
   renderComparador(filas);
@@ -2691,7 +2747,7 @@ function renderComparador(filas) {
 
   for (const f of filas) {
     const cls = f.estado === "FALTA" ? "estado-falta" : f.estado === "SOBRA" ? "estado-sobra" : "estado-justo";
-    html += `<tr><td>${f.producto}</td><td>${fmt(f.prod)} ${f.unidad}</td><td>${fmt(f.ped)} ${f.unidad}</td><td class="${cls}">${f.estado}</td><td>${f.accion}</td></tr>`;
+    html += `<tr><td>${f.producto}</td><td>${f.prodTexto}</td><td>${f.pedTexto}</td><td class="${cls}">${f.estado}</td><td>${f.accion}</td></tr>`;
   }
 
   $("comparador").innerHTML = html + "</tbody></table>";
@@ -2702,10 +2758,10 @@ function renderResumenPanadero(filas) {
   const sobras = filas.filter(f => f.estado === "SOBRA");
 
   let txt = "FRATELLO - RESUMEN PARA PANADERO\n--------------------------------\n\n🔴 FALTANTES A PRODUCIR\n";
-  txt += faltas.length ? faltas.map(f => `- ${f.producto}: HACER ${fmt(Math.abs(f.dif))} ${f.unidad}`).join("\n") : "No falta producir nada.";
+  txt += faltas.length ? faltas.map(f => `- ${f.producto}: HACER ${f.difTexto}`).join("\n") : "No falta producir nada.";
 
   txt += "\n\n🟢 SOBRANTES / NO HACER MÁS\n";
-  txt += sobras.length ? sobras.map(f => `- ${f.producto}: sobran ${fmt(f.dif)} ${f.unidad}`).join("\n") : "No hay sobrantes.";
+  txt += sobras.length ? sobras.map(f => `- ${f.producto}: sobran ${f.difTexto}`).join("\n") : "No hay sobrantes.";
 
   $("resumenPanadero").textContent = txt;
 }
