@@ -2953,7 +2953,7 @@ function confirmarPedidos() {
   guardarTodo();
   actualizarEstadoConfirmacion();
   destildarCasillasConfirmacion();
-  alert("Pedidos confirmados correctamente.");
+  alert("Pedidos confirmados correctamente. Se conservarán hasta iniciar una nueva jornada.");
 }
 
 
@@ -3048,8 +3048,12 @@ function borrarMemoriaEnvio() {
 
   memoriaUltimoEnvio = null;
   localStorage.removeItem("fratello_memoria_envio");
-  guardarEnNube();
+
+  // La limpieza completa ocurre únicamente al comenzar una jornada nueva.
+  limpiarJornadaDespuesDeEnviar();
   actualizarPanelMemoriaEnvio();
+
+  alert("Nueva jornada iniciada. Se borraron los pedidos y la memoria del envío anterior.");
 }
 
 function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencias, clientesAcumulados) {
@@ -3322,7 +3326,9 @@ function generarMensajeGrupoFratello() {
   );
 
   guardarEnNube();
-  limpiarJornadaDespuesDeEnviar();
+
+  // v1.03: enviar el mensaje NO borra los pedidos.
+  // Se conservan para poder corregirlos o reenviarlos.
   abrirWhatsApp("", mensaje);
 }
 

@@ -1,10 +1,8 @@
-# Fratello v1.02 — Corrección del resumen por unidades
+# Fratello v1.03 — Conservar pedidos
 
-Corrección:
-- El resumen ya no usa siempre la unidad predeterminada del producto.
-- Convierte correctamente docenas y unidades antes de comparar.
-- Ejemplos:
-  - 6 unidades → 6 unid
-  - 12 unidades → 1 doc
-  - 18 unidades → 1 doc + 6 unid
-- La tabla comparadora y el resumen para WhatsApp muestran la cantidad correcta.
+Cambios:
+- Confirmar pedidos no los borra.
+- Enviar el mensaje al grupo de WhatsApp no los borra.
+- Los pedidos siguen visibles para corregirlos y volver a enviar el resumen.
+- Solo se borran al presionar “Nueva jornada / Borrar memoria”.
+- Al iniciar la nueva jornada también se limpia la memoria del envío anterior.

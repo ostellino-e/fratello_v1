@@ -27,7 +27,7 @@
   </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v1.02</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v1.03</small>
   </section>
 
   <section id="panelInicio" class="dashboard">
@@ -255,6 +255,11 @@
 
       <div id="avisoUnidadesAmbiguas" class="ambiguousSummary hidden"></div>
 
+      <p class="hint keepOrdersHint">
+        Los pedidos confirmados y enviados se conservan. Solo se borran con “Nueva jornada / Borrar memoria”.
+      </p>
+
+
       <label class="checkControl">
         <input type="checkbox" id="checkPedidoCompleto">
         Confirmo que todos los pedidos cargados están correctos
@@ -368,7 +373,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
-  <script src="app.js?v=102"></script>
+  <script src="app.js?v=103"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -403,12 +408,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=102")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=103")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=102", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=103", {
             scope: "./",
             updateViaCache: "none"
           });

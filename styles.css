@@ -1299,3 +1299,12 @@ body:has(.appSection:target) #contenidoApp {
 .accionesPedido{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .accionesPedido button{width:auto}
 @media(max-width:680px){.accionesPedido button{flex:1}}
+
+.keepOrdersHint{
+  margin:12px 0;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#eef7ee;
+  border:1px solid #b7d7b7;
+  font-weight:700;
+}
