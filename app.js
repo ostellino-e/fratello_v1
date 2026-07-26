@@ -339,9 +339,11 @@ function continuarAlResumenSiEstaConfirmado() {
     return;
   }
 
-  const ambiguos = pedidosConUnidadAmbigua();
-  if (ambiguos.length) {
-    alert(`Hay ${ambiguos.length} producto(s) con unidad sin confirmar. Revisalos antes de continuar.`);
+  const ambiguosUnidad = pedidosConUnidadAmbigua();
+  const ambiguosProducto = pedidosConProductoAmbiguo();
+  const totalAmbiguos = ambiguosUnidad.length + ambiguosProducto.length;
+  if (totalAmbiguos) {
+    alert(`Hay ${totalAmbiguos} revisión(es) pendiente(s) de producto o unidad. Revisalas antes de continuar.`);
     abrirSeccionFratello("seccionPedidos");
     return;
   }
@@ -1360,6 +1362,7 @@ function formaVentaPredeterminada(unidad) {
 
 productos.forEach(producto => {
   if (!producto.formaVenta) producto.formaVenta = formaVentaPredeterminada(producto.unidad);
+  if (!Array.isArray(producto.sinonimos)) producto.sinonimos = [];
 });
 
 const catalogoProductosGuardado = JSON.parse(localStorage.getItem("fratello_catalogo_productos") || "null");
@@ -1369,6 +1372,7 @@ if (Array.isArray(catalogoProductosGuardado) && catalogoProductosGuardado.length
     nombre: String(p.nombre || "Producto"),
     unidad: String(p.unidad || "unidad"),
     formaVenta: String(p.formaVenta || formaVentaPredeterminada(p.unidad)),
+    sinonimos: Array.isArray(p.sinonimos) ? p.sinonimos : [],
     visible: p.visible !== false,
     activo: p.activo !== false,
     nuevo: Boolean(p.nuevo),
@@ -1674,6 +1678,7 @@ function renderAdministradorProductos() {
             `<option value="${valor}" ${(producto.formaVenta || formaVentaPredeterminada(producto.unidad)) === valor ? "selected" : ""}>${etiqueta}</option>`
           ).join("")}
         </select>
+        <textarea data-catalog-sinonimos rows="2" placeholder="Sinónimos separados por coma">${escaparHtmlCatalogo((producto.sinonimos || []).join(", "))}</textarea>
         <label class="catalogCheck"><input type="checkbox" data-catalog-visible ${visible ? "checked" : ""}> Mostrar</label>
         <label class="catalogCheck"><input type="checkbox" data-catalog-activo ${activo ? "checked" : ""}> Activo</label>
       </div>
@@ -1688,11 +1693,21 @@ function agregarProductoCatalogo() {
   const nombre = $("nuevoProductoNombre")?.value.trim();
   const unidad = $("nuevoProductoUnidad")?.value || "unidad";
   const formaVenta = $("nuevoProductoFormaVenta")?.value || formaVentaPredeterminada(unidad);
+  const sinonimos = [];
   if (!nombre) return alert("Escribí el nombre del producto.");
   if (productos.some(p => normalizar(p.nombre) === normalizar(nombre))) {
     return alert("Ya existe un producto con ese nombre.");
   }
-  const nuevo = { id: crearIdProductoCatalogo(nombre), nombre, unidad, formaVenta, visible: true, activo: true, nuevo: true };
+  const nuevo = {
+    id: crearIdProductoCatalogo(nombre),
+    nombre,
+    unidad,
+    formaVenta,
+    sinonimos,
+    visible: true,
+    activo: true,
+    nuevo: true
+  };
   productos.push(nuevo);
   productosExtra.push(nuevo);
   dias.forEach(dia => {
@@ -1717,6 +1732,10 @@ function guardarProductoCatalogo(id) {
   producto.nombre = nombre;
   producto.unidad = fila.querySelector("[data-catalog-unidad]").value;
   producto.formaVenta = fila.querySelector("[data-catalog-forma-venta]").value;
+  producto.sinonimos = fila.querySelector("[data-catalog-sinonimos]").value
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
   producto.visible = fila.querySelector("[data-catalog-visible]").checked;
   producto.activo = fila.querySelector("[data-catalog-activo]").checked;
   const extra = productosExtra.find(p => p.id === id);
@@ -1748,6 +1767,172 @@ function manejarClicksAdministradorProductos(evento) {
   if (guardar) return guardarProductoCatalogo(guardar.dataset.catalogGuardar);
   const eliminar = evento.target.closest("[data-catalog-eliminar]");
   if (eliminar) eliminarProductoCatalogo(eliminar.dataset.catalogEliminar);
+}
+
+
+function normalizarPedidoInteligente(texto) {
+  let t = String(texto || "").toLowerCase();
+
+  t = t
+    .replace(/(\d)\s*k\b/g, "$1 kg")
+    .replace(/(\d)\s*kg\b/g, "$1 kg")
+    .replace(/(\d)\s*gr\b/g, "$1 gramos")
+    .replace(/(\d)\s*g\b/g, "$1 gramos")
+    .replace(/\bc\s*\/\s*/g, " con ")
+    .replace(/\bs\s*\/\s*/g, " sin ")
+    .replace(/\bdd l\b/g, " dulce de leche ")
+    .replace(/\bddl\b/g, " dulce de leche ")
+    .replace(/\bdulces\b/g, " dulce ")
+    .replace(/\bdoc\b/g, " docena ")
+    .replace(/\bdocs\b/g, " docenas ")
+    .replace(/\bunid\b/g, " unidad ")
+    .replace(/\bu\b/g, " unidad ")
+    .replace(/[.,;:()[\]{}]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return t;
+}
+
+function singularizarPalabra(palabra) {
+  const p = String(palabra || "");
+  if (p.length <= 3) return p;
+  if (p.endsWith("ces")) return p.slice(0, -3) + "z";
+  if (p.endsWith("es") && p.length > 5) return p.slice(0, -2);
+  if (p.endsWith("s") && p.length > 4) return p.slice(0, -1);
+  return p;
+}
+
+function tokensProducto(texto) {
+  const ignorar = new Set([
+    "de","del","la","las","el","los","con","sin","para","por","y",
+    "kg","kilo","kilos","gramo","gramos","docena","docenas",
+    "unidad","unidades","paquete","paquetes","bolsa","bolsas",
+    "bandeja","bandejas"
+  ]);
+
+  return normalizarPedidoInteligente(texto)
+    .split(/\s+/)
+    .map(singularizarPalabra)
+    .filter(token => token && !ignorar.has(token) && !/^\d+(?:[.,]\d+)?$/.test(token));
+}
+
+function similitudTokens(a, b) {
+  const aa = new Set(tokensProducto(a));
+  const bb = new Set(tokensProducto(b));
+
+  if (!aa.size || !bb.size) return 0;
+
+  let inter = 0;
+  aa.forEach(token => {
+    if (bb.has(token)) inter += 1;
+  });
+
+  const precision = inter / aa.size;
+  const cobertura = inter / bb.size;
+  return (precision * 0.55) + (cobertura * 0.45);
+}
+
+function variantesProducto(producto) {
+  const variantes = [producto.nombre];
+  if (Array.isArray(producto.sinonimos)) variantes.push(...producto.sinonimos);
+  return variantes.filter(Boolean);
+}
+
+function puntuarProductoTexto(textoLinea, producto) {
+  const textoNormalizado = normalizarPedidoInteligente(textoLinea);
+  let mejor = 0;
+  let varianteGanadora = producto.nombre;
+
+  for (const variante of variantesProducto(producto)) {
+    const varianteNormalizada = normalizarPedidoInteligente(variante);
+    let puntaje = similitudTokens(textoNormalizado, varianteNormalizada);
+
+    const tokensVariante = tokensProducto(varianteNormalizada);
+    const tokensTexto = new Set(tokensProducto(textoNormalizado));
+    const todosPresentes = tokensVariante.length > 0 && tokensVariante.every(t => tokensTexto.has(t));
+
+    if (todosPresentes) {
+      // Una coincidencia específica de varias palabras gana frente a una genérica.
+      const bonoEspecificidad = Math.min(0.09, Math.max(0, tokensVariante.length - 1) * 0.035);
+      puntaje = Math.max(puntaje, 0.91 + bonoEspecificidad);
+    }
+
+    if (textoNormalizado === varianteNormalizada) {
+      puntaje = 1;
+    }
+
+    if (puntaje > mejor) {
+      mejor = puntaje;
+      varianteGanadora = variante;
+    }
+  }
+
+  return { producto, puntaje: mejor, variante: varianteGanadora };
+}
+
+function buscarCoincidenciasProducto(textoLinea) {
+  return productos
+    .filter(p => p.activo !== false)
+    .map(p => puntuarProductoTexto(textoLinea, p))
+    .sort((a, b) => b.puntaje - a.puntaje);
+}
+
+function resolverProductoInteligente(textoLinea) {
+  const coincidencias = buscarCoincidenciasProducto(textoLinea);
+  const mejor = coincidencias[0];
+  const segundo = coincidencias[1];
+
+  if (!mejor || mejor.puntaje < 0.48) {
+    return {
+      producto: null,
+      confianza: mejor?.puntaje || 0,
+      revisar: true,
+      sugerencias: coincidencias.slice(0, 3)
+    };
+  }
+
+  const diferencia = mejor.puntaje - (segundo?.puntaje || 0);
+  const revisar = mejor.puntaje < 0.72 || diferencia < 0.10;
+
+  return {
+    producto: mejor.producto,
+    confianza: mejor.puntaje,
+    revisar,
+    sugerencias: coincidencias.slice(0, 3)
+  };
+}
+
+function extraerCantidadYUnidadInteligente(original) {
+  const texto = normalizarPedidoInteligente(original);
+  const match = texto.match(/(\d+(?:[.,]\d+)?)\s*(kg|kilo|kilos|gramos|gramo|docena|docenas|unidad|unidades|paquete|paquetes|bolsa|bolsas|bandeja|bandejas)?/);
+
+  if (!match) {
+    return { cantidad: 0, unidadExplicita: "", textoLimpio: texto };
+  }
+
+  let cantidad = Number(match[1].replace(",", "."));
+  let unidadExplicita = match[2] || "";
+
+  if (unidadExplicita === "gramo" || unidadExplicita === "gramos") {
+    cantidad = cantidad / 1000;
+    unidadExplicita = "kg";
+  } else if (unidadExplicita === "kilo" || unidadExplicita === "kilos") {
+    unidadExplicita = "kg";
+  } else if (unidadExplicita === "docenas") {
+    unidadExplicita = "docena";
+  } else if (unidadExplicita === "unidades") {
+    unidadExplicita = "unidad";
+  } else if (unidadExplicita === "paquetes") {
+    unidadExplicita = "paquete";
+  } else if (unidadExplicita === "bolsas") {
+    unidadExplicita = "bolsa";
+  } else if (unidadExplicita === "bandejas") {
+    unidadExplicita = "bandeja";
+  }
+
+  const textoLimpio = texto.replace(match[0], " ").replace(/\s+/g, " ").trim();
+  return { cantidad, unidadExplicita, textoLimpio };
 }
 
 function detectarUnidadExplicita(texto) {
@@ -1834,6 +2019,7 @@ function crearProductoExtra(nombre, unidad) {
     nombre: nombre + " *",
     unidad,
     formaVenta: formaVentaPredeterminada(unidad),
+    sinonimos: [],
     visible: false,
     activo: false,
     nuevo: true
@@ -1857,65 +2043,186 @@ function esProductoGenericoPan(lineaNormalizada, prodId) {
 }
 
 function procesarTextoPedido(texto, cliente, fecha) {
-  return texto.split(/\r?\n/).map(linea => linea.trim()).filter(Boolean).flatMap(original => {
-    const normal = normalizar(original);
-    if (normal.includes("pedido") || normal.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/)) return [];
+  return texto
+    .split(/\r?\n/)
+    .map(linea => linea.trim())
+    .filter(Boolean)
+    .flatMap(original => {
+      const normal = normalizarPedidoInteligente(original);
 
-    let id = buscarProducto(normal);
-    const cantidad = extraerCantidad(normal);
+      if (
+        normal.includes("pedido") ||
+        normal.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/)
+      ) {
+        return [];
+      }
 
-    if (!id && cantidad > 0) {
-      const unidadNueva = detectarUnidad(original, "unidad");
-      const nombreNuevo = nombreProductoDesdeLinea(original);
-      const nuevo = crearProductoExtra(nombreNuevo, unidadNueva);
-      id = nuevo.id;
-    }
+      const lectura = extraerCantidadYUnidadInteligente(original);
+      const cantidad = lectura.cantidad;
+      const textoProducto = lectura.textoLimpio || original;
+      const reconocimiento = resolverProductoInteligente(textoProducto);
 
-    if (id && esProductoGenericoPan(normal, id)) {
-      const unidadNueva = detectarUnidad(original, "unidad");
-      const nombreNuevo = nombreProductoDesdeLinea(original);
-      const nuevo = crearProductoExtra(nombreNuevo, unidadNueva);
-      id = nuevo.id;
-    }
+      let producto = reconocimiento.producto;
+      let productoNoReconocido = false;
 
-    if (!id) return [];
+      if (!producto && cantidad > 0) {
+        const nombreNuevo = nombreProductoDesdeLinea(original);
+        const unidadNueva = lectura.unidadExplicita || detectarUnidad(original, "unidad");
+        producto = crearProductoExtra(nombreNuevo, unidadNueva);
+        productoNoReconocido = true;
+      }
 
-    const producto = productoPorId(id);
-    const interpretacionUnidad = interpretarUnidadProducto(original, producto);
-    const unidad = interpretacionUnidad.unidad;
-    let estado = cantidad === 0
-      ? "NO PEDIDO"
-      : (interpretacionUnidad.ambiguo ? "REVISAR UNIDAD" : "OK");
-    let observacion = cantidad === 0
-      ? "Línea sin cantidad: se toma como 0"
-      : (interpretacionUnidad.ambiguo ? interpretacionUnidad.razon : "");
+      if (!producto) return [];
 
-    if (producto.nuevo || producto.activo === false) {
-      observacion = "Producto nuevo/no habitual";
-    }
+      const originalParaUnidad = lectura.unidadExplicita
+        ? `${cantidad} ${lectura.unidadExplicita} ${textoProducto}`
+        : original;
 
-    if (normal.includes(" o ")) {
-      estado = "VARIABLE";
-      observacion = observacion ? observacion + " - cantidad variable" : "Cantidad variable: se toma el mínimo detectado";
-    }
+      const interpretacionUnidad = interpretarUnidadProducto(
+        originalParaUnidad,
+        producto
+      );
 
-    return [{
-      itemId: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      fecha,
-      cliente,
-      productoId: id,
-      producto: producto.nombre,
-      cantidad,
-      unidad,
-      unidadAmbigua: interpretacionUnidad.ambiguo,
-      opcionesUnidad: interpretacionUnidad.opciones,
-      estado,
-      observacion,
-      original
-    }];
-  });
+      const unidad = interpretacionUnidad.unidad;
+
+      let estado = cantidad === 0
+        ? "NO PEDIDO"
+        : (
+            productoNoReconocido || reconocimiento.revisar
+              ? "REVISAR PRODUCTO"
+              : (
+                  interpretacionUnidad.ambiguo
+                    ? "REVISAR UNIDAD"
+                    : "OK"
+                )
+          );
+
+      let observacion = cantidad === 0
+        ? "Línea sin cantidad: se toma como 0"
+        : (
+            productoNoReconocido
+              ? "Producto no reconocido."
+              : (
+                  reconocimiento.revisar
+                    ? `Coincidencia con confianza ${Math.round(reconocimiento.confianza * 100)}%.`
+                    : (
+                        interpretacionUnidad.ambiguo
+                          ? interpretacionUnidad.razon
+                          : ""
+                      )
+                )
+          );
+
+      if (producto.nuevo || producto.activo === false) {
+        observacion = observacion
+          ? `${observacion} Producto nuevo/no habitual.`
+          : "Producto nuevo/no habitual";
+      }
+
+      if (normal.includes(" o ")) {
+        estado = "VARIABLE";
+        observacion = observacion
+          ? `${observacion} - cantidad variable`
+          : "Cantidad variable: se toma el mínimo detectado";
+      }
+
+      return [{
+        itemId: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        fecha,
+        cliente,
+        productoId: producto.id,
+        producto: producto.nombre,
+        cantidad,
+        unidad,
+        unidadAmbigua: interpretacionUnidad.ambiguo,
+        opcionesUnidad: interpretacionUnidad.opciones,
+        productoAmbiguo: productoNoReconocido || reconocimiento.revisar,
+        confianzaProducto: reconocimiento.confianza,
+        sugerenciasProducto: (reconocimiento.sugerencias || []).map(s => ({
+          id: s.producto.id,
+          nombre: s.producto.nombre,
+          puntaje: s.puntaje
+        })),
+        estado,
+        observacion,
+        original
+      }];
+    });
 }
 
+
+function pedidosConProductoAmbiguo() {
+  return pedidos.flatMap(pedido =>
+    (pedido.items || [])
+      .filter(item => item.productoAmbiguo || item.estado === "REVISAR PRODUCTO")
+      .map(item => ({ pedido, item }))
+  );
+}
+
+function resolverProductoPedido(pedidoId, itemId, productoId) {
+  const pedido = pedidos.find(p => Number(p.id) === Number(pedidoId));
+  if (!pedido) return;
+
+  const item = (pedido.items || []).find(i => String(i.itemId) === String(itemId));
+  const producto = productoPorId(productoId);
+  if (!item || !producto) return;
+
+  const textoOriginal = item.original || "";
+  const alias = normalizarPedidoInteligente(
+    extraerCantidadYUnidadInteligente(textoOriginal).textoLimpio
+  );
+
+  item.productoId = producto.id;
+  item.producto = producto.nombre;
+  item.productoAmbiguo = false;
+  item.confianzaProducto = 1;
+  item.sugerenciasProducto = [];
+  item.estado = item.unidadAmbigua ? "REVISAR UNIDAD" : "OK";
+  item.observacion = item.unidadAmbigua
+    ? "Producto confirmado. Falta confirmar la unidad."
+    : "Producto confirmado manualmente.";
+
+  if (alias && !variantesProducto(producto).some(v => normalizarPedidoInteligente(v) === alias)) {
+    producto.sinonimos = Array.isArray(producto.sinonimos) ? producto.sinonimos : [];
+    producto.sinonimos.push(alias);
+
+    const extra = productosExtra.find(p => p.id === producto.id);
+    if (extra) extra.sinonimos = [...producto.sinonimos];
+
+    guardarCatalogoProductos();
+  }
+
+  pedidosConfirmados = false;
+  guardarTodo();
+  renderPedidosCargados();
+  renderUltimoProcesado();
+  calcularDiferencias();
+  actualizarAvisoUnidadesAmbiguas();
+  actualizarEstadoConfirmacion();
+}
+
+function botonesResolverProducto(pedidoId, item) {
+  if (!(item.productoAmbiguo || item.estado === "REVISAR PRODUCTO")) return "";
+
+  const sugerencias = Array.isArray(item.sugerenciasProducto)
+    ? item.sugerenciasProducto.filter(s => s && s.id)
+    : [];
+
+  if (!sugerencias.length) {
+    return `<div class="productResolution">
+      <span>⚠️ Producto no reconocido. Revisalo en el administrador.</span>
+    </div>`;
+  }
+
+  return `<div class="productResolution">
+    <span>⚠️ ¿Qué producto es?</span>
+    ${sugerencias.slice(0, 3).map(s =>
+      `<button type="button" onclick="resolverProductoPedido(${pedidoId}, '${item.itemId}', '${s.id}')">
+        ${s.nombre} ${s.puntaje ? `(${Math.round(s.puntaje * 100)}%)` : ""}
+      </button>`
+    ).join("")}
+  </div>`;
+}
 
 function pedidosConUnidadAmbigua() {
   return pedidos.flatMap(pedido =>
@@ -1930,9 +2237,11 @@ function actualizarAvisoUnidadesAmbiguas() {
   const check = $("checkPedidoCompleto");
   if (!aviso) return;
 
-  const ambiguos = pedidosConUnidadAmbigua();
+  const ambiguosUnidad = pedidosConUnidadAmbigua();
+  const ambiguosProducto = pedidosConProductoAmbiguo();
+  const totalAmbiguos = ambiguosUnidad.length + ambiguosProducto.length;
 
-  if (!ambiguos.length) {
+  if (!totalAmbiguos) {
     aviso.classList.add("hidden");
     aviso.innerHTML = "";
     if (check) check.disabled = false;
@@ -1940,7 +2249,10 @@ function actualizarAvisoUnidadesAmbiguas() {
   }
 
   aviso.classList.remove("hidden");
-  aviso.innerHTML = `⚠️ Hay <strong>${ambiguos.length}</strong> producto${ambiguos.length === 1 ? "" : "s"} con unidad sin confirmar. Elegí la unidad antes de confirmar los pedidos.`;
+  const partes = [];
+  if (ambiguosProducto.length) partes.push(`${ambiguosProducto.length} producto(s) sin reconocer`);
+  if (ambiguosUnidad.length) partes.push(`${ambiguosUnidad.length} unidad(es) sin confirmar`);
+  aviso.innerHTML = `⚠️ Hay <strong>${totalAmbiguos}</strong> revisión(es) pendiente(s): ${partes.join(" y ")}.`;
   if (check) {
     check.checked = false;
     check.disabled = true;
@@ -2140,7 +2452,7 @@ function renderUltimoProcesado() {
   for (const it of filas) {
     const clase = (it.unidadAmbigua || it.estado === "REVISAR UNIDAD") ? "ambiguousRow" : "";
     html += `<tr class="${clase}">
-      <td>${it.producto}${botonesResolverUnidad(it.pedidoId, it)}</td>
+      <td>${it.producto}${botonesResolverProducto(it.pedidoId, it)}${botonesResolverUnidad(it.pedidoId, it)}</td>
       <td>${fmt(it.cantidad)}</td>
       <td>${it.unidad}</td>
       <td>${it.cliente}</td>
@@ -2180,7 +2492,7 @@ function renderPedidosCargados() {
       itemsValidos.forEach(it => {
         const clase = (it.unidadAmbigua || it.estado === "REVISAR UNIDAD") ? "ambiguousRow" : "";
         html += `<tr class="${clase}">
-          <td>${it.producto}${botonesResolverUnidad(pedido.id, it)}</td>
+          <td>${it.producto}${botonesResolverProducto(pedido.id, it)}${botonesResolverUnidad(pedido.id, it)}</td>
           <td>${fmt(it.cantidad)}</td>
           <td>${it.unidad}</td>
         </tr>`;
@@ -2481,9 +2793,11 @@ function confirmarPedidos() {
     return;
   }
 
-  const ambiguos = pedidosConUnidadAmbigua();
-  if (ambiguos.length) {
-    alert(`Hay ${ambiguos.length} producto(s) con unidad sin confirmar.`);
+  const ambiguosUnidad = pedidosConUnidadAmbigua();
+  const ambiguosProducto = pedidosConProductoAmbiguo();
+  const totalAmbiguos = ambiguosUnidad.length + ambiguosProducto.length;
+  if (totalAmbiguos) {
+    alert(`Hay ${totalAmbiguos} revisión(es) pendiente(s) de producto o unidad.`);
     return;
   }
 
@@ -3012,6 +3326,7 @@ async function init() {
 
 
 
+window.resolverProductoPedido = resolverProductoPedido;
 window.resolverUnidadPedido = resolverUnidadPedido;
 window.editarClienteCompleto = editarClienteCompleto;
 window.eliminarClienteCompleto = eliminarClienteCompleto;

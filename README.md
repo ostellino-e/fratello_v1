@@ -1,12 +1,19 @@
-# Fratello v0.84
+# Fratello v1.0 — Motor inteligente de pedidos
 
-Mejoras:
-- Forma de venta configurable por producto.
-- Opciones: solo unidad, solo docena, solo kilo, unidad o docena,
-  unidad o kilo, kilo o paquete y revisar siempre.
-- Si el cliente no aclara unidad:
-  - productos de solo unidad se interpretan automáticamente como unidades;
-  - productos ambiguos quedan marcados para revisión.
-- Botones para elegir la unidad correcta antes de confirmar.
-- No permite confirmar ni pasar al resumen mientras existan unidades ambiguas.
-- Conserva todas las mejoras de v0.83.
+Incluye:
+- Normalización de textos reales de WhatsApp.
+- Reconoce 1k como 1 kg.
+- Reconoce gramos y los convierte a kg.
+- Reconoce c/ como “con”.
+- Maneja singular/plural.
+- Sinónimos configurables por producto.
+- Coincidencia por similitud.
+- Sugerencias cuando no está seguro.
+- Al confirmar manualmente un producto, guarda esa forma de escribir como sinónimo.
+- Mantiene el control de unidades ambiguas de v0.84.
+
+Ejemplos esperados:
+- “6 Medialunas C/ dulces de leche” → Medialunas con dulce de leche.
+- “1k de pan” → 1 kg de Pan.
+- “1 kg bizcocho de hojaldre” → Bizcochos de hojaldre.
+- “3 rasquetas saladas” → Rasquetas saladas.

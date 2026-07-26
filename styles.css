@@ -1260,3 +1260,38 @@ body:has(.appSection:target) #contenidoApp {
   .catalogAddForm,.catalogProductFields{grid-template-columns:1fr}
   .unitResolution button{flex:1}
 }
+
+/* ===== FRATELLO v1.0 - MOTOR INTELIGENTE ===== */
+.catalogProductFields{
+  grid-template-columns:minmax(160px,1fr) 95px minmax(160px,1fr) minmax(220px,1.4fr) auto auto
+}
+.catalogProductFields textarea{
+  width:100%;
+  min-height:48px;
+  resize:vertical;
+  margin:0;
+}
+.productResolution{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top:8px;
+  padding:8px;
+  border-radius:10px;
+  background:#fde8e8;
+  border:1px solid #d88;
+}
+.productResolution span{
+  font-weight:800;
+  font-size:13px;
+}
+.productResolution button{
+  width:auto;
+  margin:0;
+  padding:7px 10px;
+}
+@media(max-width:680px){
+  .catalogProductFields{grid-template-columns:1fr}
+  .productResolution button{flex:1}
+}
