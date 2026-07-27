@@ -2784,16 +2784,47 @@ function aplicarFechaDetectadaAlPedido(texto) {
 }
 
 
+function normalizarProgramacionPedidoFijo(fijo) {
+  return {
+    ...fijo,
+    nombre: fijo.nombre || "Pedido fijo",
+    prioridad: Number(fijo.prioridad || 1),
+    activo: fijo.activo !== false,
+    dias: Array.isArray(fijo.dias) ? fijo.dias.map(Number) : []
+  };
+}
+
+function programacionesAplicablesParaFecha(fecha) {
+  const diaSemana = new Date(fecha + "T12:00:00").getDay();
+  const candidatas = (pedidosFijos || [])
+    .map(normalizarProgramacionPedidoFijo)
+    .filter(fijo => fijo.activo && fijo.dias.includes(diaSemana));
+
+  const porCliente = {};
+
+  candidatas.forEach(fijo => {
+    const clave = normalizar(fijo.cliente || "");
+    const actual = porCliente[clave];
+
+    if (
+      !actual ||
+      Number(fijo.prioridad || 1) > Number(actual.prioridad || 1) ||
+      (
+        Number(fijo.prioridad || 1) === Number(actual.prioridad || 1) &&
+        Number(fijo.id || 0) > Number(actual.id || 0)
+      )
+    ) {
+      porCliente[clave] = fijo;
+    }
+  });
+
+  return Object.values(porCliente);
+}
+
 function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
   if (!fecha || !Array.isArray(pedidosFijos)) return 0;
 
-  const diaSemana = new Date(fecha + "T12:00:00").getDay();
-  const aplicables = pedidosFijos.filter(fijo =>
-    fijo.activo !== false &&
-    Array.isArray(fijo.dias) &&
-    fijo.dias.includes(diaSemana)
-  );
-
+  const aplicables = programacionesAplicablesParaFecha(fecha);
   let agregados = 0;
 
   aplicables.forEach(fijo => {
@@ -2814,6 +2845,8 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
       textoFijoOriginal: fijo.texto,
       origen: "pedido_fijo",
       pedidoFijoId: fijo.id,
+      programacionNombre: fijo.nombre || "Pedido fijo",
+      programacionPrioridad: Number(fijo.prioridad || 1),
       modificadoDesdeFijo: false,
       items: procesarTextoPedido(fijo.texto, fijo.cliente, fecha)
     };
@@ -2831,8 +2864,8 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
   if (mostrarAviso) {
     alert(
       agregados > 0
-        ? `${agregados} pedido(s) fijo(s) incorporado(s) a la fecha seleccionada.`
-        : "Los pedidos fijos de esa fecha ya estaban cargados o no hay ninguno configurado."
+        ? `${agregados} programación(es) incorporada(s) a la fecha seleccionada.`
+        : "Las programaciones de esa fecha ya estaban cargadas o no hay ninguna activa."
     );
   }
 
@@ -2856,6 +2889,8 @@ function actualizarPedidoFijoDesdePedido(idPedido) {
 
   fijo.texto = pedido.textoOriginal || "";
   fijo.actualizado = new Date().toISOString();
+  pedido.programacionNombre = fijo.nombre || "Pedido fijo";
+  pedido.programacionPrioridad = Number(fijo.prioridad || 1);
   pedido.textoFijoOriginal = fijo.texto;
   pedido.modificadoDesdeFijo = false;
 
@@ -2987,55 +3022,166 @@ function renderPedidosFuturos() {
 }
 
 function limpiarFormularioPedidoFijo() {
-  if ($("pedidoFijoTexto")) $("pedidoFijoTexto").value="";
-  document.querySelectorAll('input[name="diaFijo"]').forEach(c=>c.checked=false);
+  if ($("pedidoFijoNombre")) $("pedidoFijoNombre").value = "";
+  if ($("pedidoFijoPrioridad")) $("pedidoFijoPrioridad").value = "1";
+  if ($("pedidoFijoTexto")) $("pedidoFijoTexto").value = "";
+  document.querySelectorAll('input[name="diaFijo"]').forEach(c => c.checked = false);
+
   if ($("btnGuardarPedidoFijo")) {
-    $("btnGuardarPedidoFijo").dataset.editando="";
-    $("btnGuardarPedidoFijo").textContent="💾 Guardar pedido fijo";
+    $("btnGuardarPedidoFijo").dataset.editando = "";
+    $("btnGuardarPedidoFijo").textContent = "💾 Guardar programación";
   }
 }
 
 function guardarPedidoFijo() {
-  const cliente=$("pedidoFijoCliente")?.value||"";
-  const texto=$("pedidoFijoTexto")?.value.trim()||"";
-  const dias=[...document.querySelectorAll('input[name="diaFijo"]:checked')].map(c=>Number(c.value));
-  if(!cliente||!texto||!dias.length){alert("Elegí cliente, escribí el pedido y marcá al menos un día.");return;}
-  const idEditando=Number($("btnGuardarPedidoFijo")?.dataset.editando||0);
-  if(idEditando){
-    const fijo=pedidosFijos.find(p=>Number(p.id)===idEditando);
-    if(fijo) Object.assign(fijo,{cliente,texto,dias,activo:true,actualizado:new Date().toISOString()});
-  }else{
-    pedidosFijos.push({id:Date.now(),cliente,texto,dias,activo:true,creado:new Date().toISOString()});
+  const cliente = $("pedidoFijoCliente")?.value || "";
+  const nombre = $("pedidoFijoNombre")?.value.trim() || "Pedido fijo";
+  const prioridad = Math.max(0, Number($("pedidoFijoPrioridad")?.value || 1));
+  const texto = $("pedidoFijoTexto")?.value.trim() || "";
+  const dias = [...document.querySelectorAll('input[name="diaFijo"]:checked')]
+    .map(c => Number(c.value));
+
+  if (!cliente || !texto || !dias.length) {
+    alert("Elegí cliente, escribí el pedido y marcá al menos un día.");
+    return;
   }
-  guardarTodo();limpiarFormularioPedidoFijo();renderPedidosFijos();alert("Pedido fijo guardado.");
+
+  const idEditando = Number($("btnGuardarPedidoFijo")?.dataset.editando || 0);
+
+  if (idEditando) {
+    const fijo = pedidosFijos.find(p => Number(p.id) === idEditando);
+    if (fijo) {
+      Object.assign(fijo, {
+        cliente,
+        nombre,
+        prioridad,
+        texto,
+        dias,
+        activo: fijo.activo !== false,
+        actualizado: new Date().toISOString()
+      });
+    }
+  } else {
+    pedidosFijos.push({
+      id: Date.now(),
+      cliente,
+      nombre,
+      prioridad,
+      texto,
+      dias,
+      activo: true,
+      creado: new Date().toISOString()
+    });
+  }
+
+  guardarTodo();
+  limpiarFormularioPedidoFijo();
+  renderPedidosFijos();
+  alert("Programación guardada.");
 }
 
-function editarPedidoFijo(id){
-  const fijo=pedidosFijos.find(p=>Number(p.id)===Number(id));if(!fijo)return;
-  $("pedidoFijoCliente").value=fijo.cliente;$("pedidoFijoTexto").value=fijo.texto;
-  document.querySelectorAll('input[name="diaFijo"]').forEach(c=>c.checked=fijo.dias.includes(Number(c.value)));
-  $("btnGuardarPedidoFijo").dataset.editando=String(id);$("btnGuardarPedidoFijo").textContent="💾 Guardar cambios";
+function editarPedidoFijo(id) {
+  const fijo = pedidosFijos.find(p => Number(p.id) === Number(id));
+  if (!fijo) return;
+
+  $("pedidoFijoCliente").value = fijo.cliente;
+  if ($("pedidoFijoNombre")) $("pedidoFijoNombre").value = fijo.nombre || "Pedido fijo";
+  if ($("pedidoFijoPrioridad")) $("pedidoFijoPrioridad").value = String(Number(fijo.prioridad || 1));
+  $("pedidoFijoTexto").value = fijo.texto;
+
+  document.querySelectorAll('input[name="diaFijo"]').forEach(c => {
+    c.checked = Array.isArray(fijo.dias) && fijo.dias.includes(Number(c.value));
+  });
+
+  $("btnGuardarPedidoFijo").dataset.editando = String(id);
+  $("btnGuardarPedidoFijo").textContent = "💾 Guardar cambios";
+  $("pedidosFijosClientes")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function alternarPedidoFijo(id){
-  const fijo=pedidosFijos.find(p=>Number(p.id)===Number(id));if(!fijo)return;
-  fijo.activo=!fijo.activo;guardarTodo();renderPedidosFijos();
+function duplicarPedidoFijo(id) {
+  const fijo = pedidosFijos.find(p => Number(p.id) === Number(id));
+  if (!fijo) return;
+
+  pedidosFijos.push({
+    ...fijo,
+    id: Date.now(),
+    nombre: `${fijo.nombre || "Pedido fijo"} - copia`,
+    dias: [...(fijo.dias || [])],
+    creado: new Date().toISOString(),
+    actualizado: undefined
+  });
+
+  guardarTodo();
+  renderPedidosFijos();
+  alert("Programación duplicada. Ahora podés editar sus días y cantidades.");
 }
 
-function eliminarPedidoFijo(id){
-  if(!confirm("¿Eliminar este pedido fijo?"))return;
-  pedidosFijos=pedidosFijos.filter(p=>Number(p.id)!==Number(id));guardarTodo();renderPedidosFijos();
+function alternarPedidoFijo(id) {
+  const fijo = pedidosFijos.find(p => Number(p.id) === Number(id));
+  if (!fijo) return;
+  fijo.activo = fijo.activo === false;
+  guardarTodo();
+  renderPedidosFijos();
 }
 
-function renderPedidosFijos(){
-  const cont=$("listaPedidosFijos");if(!cont)return;
-  if(!pedidosFijos.length){cont.innerHTML="<p>No hay pedidos fijos cargados.</p>";return;}
-  const nombres=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-  cont.innerHTML=pedidosFijos.map(f=>`<div class="fixedOrderCard ${f.activo?"":"paused"}">
-    <div><strong>${escaparHtmlCatalogo(f.cliente)}</strong><span>${f.dias.map(d=>nombres[d]).join(", ")}</span></div>
-    <pre>${escaparHtmlCatalogo(f.texto)}</pre>
-    <div class="toolbar"><button onclick="editarPedidoFijo(${f.id})">✏️ Editar</button><button onclick="alternarPedidoFijo(${f.id})">${f.activo?"⏸ Pausar":"▶ Activar"}</button><button class="dangerBtn" onclick="eliminarPedidoFijo(${f.id})">🗑 Eliminar</button></div>
-  </div>`).join("");
+function eliminarPedidoFijo(id) {
+  if (!confirm("¿Eliminar esta programación de pedido fijo?")) return;
+  pedidosFijos = pedidosFijos.filter(p => Number(p.id) !== Number(id));
+  guardarTodo();
+  renderPedidosFijos();
+}
+
+function renderPedidosFijos() {
+  const cont = $("listaPedidosFijos");
+  if (!cont) return;
+
+  if (!pedidosFijos.length) {
+    cont.innerHTML = "<p>No hay programaciones cargadas.</p>";
+    return;
+  }
+
+  const nombres = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const grupos = {};
+
+  pedidosFijos
+    .map(normalizarProgramacionPedidoFijo)
+    .sort((a, b) =>
+      String(a.cliente).localeCompare(String(b.cliente), "es") ||
+      Number(b.prioridad) - Number(a.prioridad)
+    )
+    .forEach(fijo => {
+      (grupos[fijo.cliente] ||= []).push(fijo);
+    });
+
+  cont.innerHTML = Object.entries(grupos).map(([cliente, programaciones]) => `
+    <section class="fixedClientSchedules">
+      <div class="fixedClientSchedulesHeader">
+        <strong>${escaparHtmlCatalogo(cliente)}</strong>
+        <span>${programaciones.length} programación(es)</span>
+      </div>
+
+      ${programaciones.map(f => `
+        <div class="fixedOrderCard ${f.activo ? "" : "paused"}">
+          <div class="fixedScheduleTitle">
+            <div>
+              <strong>${escaparHtmlCatalogo(f.nombre || "Pedido fijo")}</strong>
+              <span>${f.dias.map(d => nombres[d]).join(", ")}</span>
+            </div>
+            <b>Prioridad ${Number(f.prioridad || 1)}</b>
+          </div>
+
+          <pre>${escaparHtmlCatalogo(f.texto)}</pre>
+
+          <div class="toolbar">
+            <button onclick="editarPedidoFijo(${f.id})">✏️ Editar</button>
+            <button onclick="duplicarPedidoFijo(${f.id})">📋 Duplicar</button>
+            <button onclick="alternarPedidoFijo(${f.id})">${f.activo ? "⏸ Pausar" : "▶ Activar"}</button>
+            <button class="dangerBtn" onclick="eliminarPedidoFijo(${f.id})">🗑 Eliminar</button>
+          </div>
+        </div>
+      `).join("")}
+    </section>
+  `).join("");
 }
 
 function cargarPedidosFijosParaFecha(){
@@ -3167,7 +3313,7 @@ function renderPedidosCargados() {
         <span>${itemsValidos.length} ítems · Entrega ${new Date(fechaEntregaPedido(pedido)+"T12:00:00").toLocaleDateString("es-AR")}</span>
       </div>
       <div class="orderOriginBadges">
-        ${esFijo ? '<span class="originFixed">🔁 Pedido fijo</span>' : '<span class="originManual">✍️ Pedido cargado</span>'}
+        ${esFijo ? `<span class="originFixed">🔁 ${escaparHtmlCatalogo(pedido.programacionNombre || "Pedido fijo")}</span>` : '<span class="originManual">✍️ Pedido cargado</span>'}
         ${fueModificado ? '<span class="originModified">🟠 Modificado para esta entrega</span>' : ""}
       </div>`;
 
@@ -4350,6 +4496,7 @@ async function init() {
 
 window.configurarPedidoFijoCliente=configurarPedidoFijoCliente;
 window.actualizarPedidoFijoDesdePedido=actualizarPedidoFijoDesdePedido;
+window.duplicarPedidoFijo=duplicarPedidoFijo;
 window.editarPedidoCargado=editarPedidoCargado;
 window.repetirPedidoHistorial=repetirPedidoHistorial;
 window.editarPedidoFijo=editarPedidoFijo;

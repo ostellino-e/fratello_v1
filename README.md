@@ -1,10 +1,10 @@
-# Fratello v2.4 — Producción predeterminada
+# Fratello v2.5 — Programaciones de pedidos fijos
 
 Cambios:
-- Vuelven las pestañas desplegables individuales para cada artículo.
-- Dentro de cada artículo se puede editar nombre, unidad, forma de venta y sinónimos.
-- Se puede elegir unidad, kg, docena o combinaciones como unidad y kg.
-- Nuevo botón: Agregar artículo a producción predeterminada.
-- Permite definir cantidades habituales para Lunes a jueves, Viernes, Sábado y Domingo.
-- El artículo queda visible automáticamente en la producción diaria correspondiente.
-- Los productos sólo por encargo continúan disponibles sin formar parte de la producción base.
+- Un mismo cliente puede tener varias programaciones de pedido fijo.
+- Ejemplo: una programación de lunes a jueves y otra distinta para el viernes.
+- Cada programación tiene nombre, días, pedido, prioridad y estado activo/pausado.
+- Si dos programaciones del mismo cliente coinciden en un día, se usa la de mayor prioridad.
+- Se puede duplicar una programación para crear rápidamente una variante.
+- En Pedidos cargados se muestra el nombre de la programación aplicada.
+- Los pedidos fijos anteriores siguen siendo compatibles y aparecen como “Pedido fijo”.

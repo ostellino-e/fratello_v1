@@ -1435,3 +1435,20 @@ body:has(.appSection:target) #contenidoApp {
   .catalogProductAccordion>summary{align-items:flex-start;flex-direction:column}
   .catalogSummaryBadges{justify-content:flex-start}
 }
+
+/* ===== FRATELLO v2.5: múltiples programaciones por cliente ===== */
+.fixedScheduleHeader{display:grid;grid-template-columns:1.1fr 1.4fr .7fr;gap:10px}
+.fixedScheduleHeader label{display:flex;flex-direction:column;gap:5px}
+.fixedScheduleHeader small{font-size:10px;color:#75675d;font-weight:400}
+.fixedClientSchedules{border:1px solid #dfc9ae;border-radius:15px;padding:12px;margin:14px 0;background:#fffaf5}
+.fixedClientSchedulesHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.fixedClientSchedulesHeader strong{font-size:17px}
+.fixedClientSchedulesHeader span{font-size:11px;padding:5px 9px;border-radius:12px;background:#eee2d4}
+.fixedScheduleTitle{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.fixedScheduleTitle>div strong{display:block;font-size:15px}
+.fixedScheduleTitle>div span{display:block;margin-top:4px;font-size:11px;color:#76665c}
+.fixedScheduleTitle>b{font-size:10px;padding:5px 8px;border-radius:12px;background:#e5eadf;color:#38542f;white-space:nowrap}
+@media(max-width:760px){
+  .fixedScheduleHeader{grid-template-columns:1fr}
+  .fixedScheduleTitle{flex-direction:column}
+}
