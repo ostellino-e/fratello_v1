@@ -1477,7 +1477,7 @@ function reprocesarPedidoFormulario(pedidoId) {
     pedido.fecha || hoyISO()
   );
   pedido.pendienteInterpretacion = false;
-  pedido.versionInterpretador = "motor_central_v101";
+  pedido.versionInterpretador = "parser_v311_decimales";
   pedido.interpretadoEn = new Date().toISOString();
   pedidosConfirmados = false;
 
@@ -2487,8 +2487,15 @@ function dividirPedidoEnLineas(texto) {
 }
 
 function extraerDatosLineaPedido(original) {
-  const texto = normalizarPedidoInteligente(original);
-  const coincidencia = texto.match(
+  // IMPORTANTE: acá no usamos normalizarPedidoInteligente porque esa función
+  // elimina comas y puntos. Eso convertía 0,5 en "0 5" y el pedido quedaba en 0.
+  const textoOriginal = String(original || "").trim();
+  const textoBusqueda = textoOriginal
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const coincidencia = textoBusqueda.match(
     /(\d+(?:[.,]\d+)?)\s*(kg|kilo|kilos|g|gr|gramo|gramos|doc|docena|docenas|unid|unidad|unidades|u|paquete|paquetes|bolsa|bolsas|bandeja|bandejas)?\b/i
   );
 
@@ -2496,7 +2503,7 @@ function extraerDatosLineaPedido(original) {
     return {
       cantidad: 0,
       unidad: "",
-      productoTexto: texto,
+      productoTexto: normalizarPedidoInteligente(textoOriginal),
       tieneCantidad: false
     };
   }
@@ -2521,19 +2528,21 @@ function extraerDatosLineaPedido(original) {
     unidad = "bandeja";
   }
 
-  const productoTexto = texto
-    .slice(0, coincidencia.index)
-    .concat(" ", texto.slice((coincidencia.index || 0) + coincidencia[0].length))
-    .replace(/\s+/g, " ")
-    .trim();
+  const inicio = coincidencia.index || 0;
+  const fin = inicio + coincidencia[0].length;
+
+  const productoTexto = normalizarPedidoInteligente(
+    textoOriginal.slice(0, inicio) + " " + textoOriginal.slice(fin)
+  );
 
   return {
     cantidad,
     unidad,
     productoTexto,
-    tieneCantidad: true
+    tieneCantidad: Number.isFinite(cantidad) && cantidad > 0
   };
 }
+
 
 function procesarLineaPedidoRobusta(original, cliente, fecha) {
   const normal = normalizarPedidoInteligente(original);
@@ -4665,34 +4674,47 @@ Gracias, Fratello.`;
 }
 
 
-function repararPedidosFijosConParserV310() {
+function repararPedidosConParserV311() {
   let reparados = 0;
 
-  pedidos
-    .filter(pedido => pedido.origen === "pedido_fijo" && !pedido.modificadoDesdeFijo)
-    .forEach(pedido => {
-      const fijo = pedidosFijos.find(f => Number(f.id) === Number(pedido.pedidoFijoId));
-      const texto = fijo?.texto || pedido.textoOriginal || "";
-      const nuevosItems = procesarTextoPedido(texto, pedido.cliente, fechaEntregaPedido(pedido));
+  pedidos.forEach(pedido => {
+    const texto = String(pedido.textoOriginal || "").trim();
+    if (!texto) return;
 
-      const firmaAnterior = JSON.stringify(
-        (pedido.items || []).map(item => [item.productoId, Number(item.cantidad || 0), item.unidad])
-      );
-      const firmaNueva = JSON.stringify(
-        nuevosItems.map(item => [item.productoId, Number(item.cantidad || 0), item.unidad])
-      );
+    const nuevosItems = procesarTextoPedido(
+      texto,
+      pedido.cliente || "",
+      fechaEntregaPedido(pedido)
+    );
 
-      if (firmaAnterior !== firmaNueva || pedido.textoOriginal !== texto) {
-        pedido.textoOriginal = texto;
-        pedido.textoFijoOriginal = texto;
-        pedido.items = nuevosItems;
-        reparados += 1;
-      }
-    });
+    const firmaAnterior = JSON.stringify(
+      (pedido.items || []).map(item => [
+        item.productoId,
+        Number(item.cantidad || 0),
+        item.unidad
+      ])
+    );
+
+    const firmaNueva = JSON.stringify(
+      nuevosItems.map(item => [
+        item.productoId,
+        Number(item.cantidad || 0),
+        item.unidad
+      ])
+    );
+
+    if (firmaAnterior !== firmaNueva) {
+      pedido.items = nuevosItems;
+      pedido.versionInterpretador = "parser_v311_decimales";
+      pedido.interpretadoEn = new Date().toISOString();
+      reparados += 1;
+    }
+  });
 
   if (reparados > 0) guardarTodo();
   return reparados;
 }
+
 
 async function init() {
   // v3.0.1: los pedidos fijos se guardan desde cada tarjeta del cliente.
@@ -4835,7 +4857,7 @@ async function init() {
   renderProduccion();
   renderPedidosCargados();
   migrarPedidosFijosV301();
-  repararPedidosFijosConParserV310();
+  repararPedidosConParserV311();
   renderSelectorClientesPedidoFijo();
   renderPedidosFijos();
   renderPedidosFuturos();
