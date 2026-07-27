@@ -2427,180 +2427,211 @@ function esProductoGenericoPan(lineaNormalizada, prodId) {
   return prodId === "PAN" && lineaNormalizada !== "pan";
 }
 
-function escaparRegexPedido(texto) {
-  return String(texto || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function normalizarNombreProductoPedido(texto) {
+  const palabrasIgnoradas = new Set(["de", "del", "la", "las", "el", "los", "con"]);
+
+  return normalizarPedidoInteligente(texto)
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter(palabra => !palabrasIgnoradas.has(palabra))
+    .map(palabra => singularizarPalabra(palabra))
+    .join(" ")
+    .trim();
 }
 
-function segmentarTextoPedido(texto) {
-  const lineasOriginales = String(texto || "")
-    .replace(/\r/g, "")
-    .split("\n")
-    .map(linea => linea.trim())
+function variantesNormalizadasProducto(producto) {
+  return [producto.nombre, ...(producto.sinonimos || [])]
+    .map(variante => normalizarNombreProductoPedido(String(variante || "").replace("*", "")))
     .filter(Boolean);
+}
 
-  const variantes = productos
-    .flatMap(producto => [producto.nombre, ...(producto.sinonimos || [])])
-    .map(nombre => String(nombre || "").trim())
-    .filter(nombre => nombre.length >= 3)
-    .sort((a, b) => b.length - a.length);
+function buscarProductoExactoPedido(textoProducto) {
+  const buscado = normalizarNombreProductoPedido(textoProducto);
+  if (!buscado) return null;
 
-  if (!variantes.length) return lineasOriginales;
-
-  const patron = new RegExp(
-    variantes.map(escaparRegexPedido).join("|"),
-    "gi"
+  const exactos = productos.filter(producto =>
+    variantesNormalizadasProducto(producto).includes(buscado)
   );
 
-  const resultado = [];
+  if (exactos.length === 1) return exactos[0];
 
-  lineasOriginales.forEach(linea => {
-    const coincidencias = [...linea.matchAll(patron)]
-      .map(match => ({ indice: match.index || 0, texto: match[0] }))
-      .filter((match, indice, lista) =>
-        indice === 0 || match.indice !== lista[indice - 1].indice
+  // Segunda pasada: permite variantes como "bizcocho de grasa" /
+  // "bizcochos de grasa", sin confundir productos distintos.
+  const contenidos = productos
+    .map(producto => ({
+      producto,
+      variantes: variantesNormalizadasProducto(producto)
+    }))
+    .filter(item =>
+      item.variantes.some(variante =>
+        variante === buscado ||
+        (variante.length >= 5 && buscado.length >= 5 &&
+          (variante.includes(buscado) || buscado.includes(variante)))
       )
-      .sort((a, b) => a.indice - b.indice);
+    )
+    .sort((a, b) => {
+      const mejorA = Math.max(...a.variantes.map(v => Math.min(v.length, buscado.length)));
+      const mejorB = Math.max(...b.variantes.map(v => Math.min(v.length, buscado.length)));
+      return mejorB - mejorA;
+    });
 
-    if (coincidencias.length <= 1) {
-      // También admite separaciones simples con punto y coma o barra.
-      const partes = linea.split(/\s*[;|]\s*/).map(p => p.trim()).filter(Boolean);
-      resultado.push(...partes);
-      return;
-    }
+  return contenidos.length === 1 ? contenidos[0].producto : null;
+}
 
-    for (let i = 0; i < coincidencias.length; i++) {
-      const inicio = i === 0 ? 0 : coincidencias[i].indice;
-      const fin = i + 1 < coincidencias.length
-        ? coincidencias[i + 1].indice
-        : linea.length;
-      const segmento = linea.slice(inicio, fin).trim();
-      if (segmento) resultado.push(segmento);
-    }
-  });
+function dividirPedidoEnLineas(texto) {
+  return String(texto || "")
+    .replace(/\r/g, "")
+    .split(/\n|;|\|/)
+    .map(linea => linea.trim())
+    .filter(Boolean);
+}
 
-  return resultado;
+function extraerDatosLineaPedido(original) {
+  const texto = normalizarPedidoInteligente(original);
+  const coincidencia = texto.match(
+    /(\d+(?:[.,]\d+)?)\s*(kg|kilo|kilos|g|gr|gramo|gramos|doc|docena|docenas|unid|unidad|unidades|u|paquete|paquetes|bolsa|bolsas|bandeja|bandejas)?\b/i
+  );
+
+  if (!coincidencia) {
+    return {
+      cantidad: 0,
+      unidad: "",
+      productoTexto: texto,
+      tieneCantidad: false
+    };
+  }
+
+  let cantidad = Number(String(coincidencia[1]).replace(",", "."));
+  let unidad = String(coincidencia[2] || "").toLowerCase();
+
+  if (["g", "gr", "gramo", "gramos"].includes(unidad)) {
+    cantidad = cantidad / 1000;
+    unidad = "kg";
+  } else if (["kilo", "kilos"].includes(unidad)) {
+    unidad = "kg";
+  } else if (["doc", "docenas"].includes(unidad)) {
+    unidad = "docena";
+  } else if (["unid", "u", "unidades"].includes(unidad)) {
+    unidad = "unidad";
+  } else if (unidad === "paquetes") {
+    unidad = "paquete";
+  } else if (unidad === "bolsas") {
+    unidad = "bolsa";
+  } else if (unidad === "bandejas") {
+    unidad = "bandeja";
+  }
+
+  const productoTexto = texto
+    .slice(0, coincidencia.index)
+    .concat(" ", texto.slice((coincidencia.index || 0) + coincidencia[0].length))
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return {
+    cantidad,
+    unidad,
+    productoTexto,
+    tieneCantidad: true
+  };
+}
+
+function procesarLineaPedidoRobusta(original, cliente, fecha) {
+  const normal = normalizarPedidoInteligente(original);
+
+  if (!normal || normal.match(/^\s*pedido\b/) || normal.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/)) {
+    return null;
+  }
+
+  const lectura = extraerDatosLineaPedido(original);
+  if (!lectura.tieneCantidad || lectura.cantidad <= 0) return null;
+
+  let producto = buscarProductoExactoPedido(lectura.productoTexto);
+  let reconocimiento = {
+    producto,
+    confianza: producto ? 1 : 0,
+    revisar: false,
+    sugerencias: []
+  };
+
+  if (!producto) {
+    reconocimiento = resolverProductoInteligente(lectura.productoTexto);
+    producto = reconocimiento.producto;
+  }
+
+  let productoNoReconocido = false;
+
+  if (!producto) {
+    const nombreNuevo = lectura.productoTexto || nombreProductoDesdeLinea(original);
+    producto = crearProductoExtra(
+      nombreNuevo,
+      lectura.unidad || detectarUnidad(original, "unidad")
+    );
+    productoNoReconocido = true;
+  }
+
+  const unidadInterpretada = lectura.unidad || producto.unidad || "unidad";
+  const unidadAmbigua = !lectura.unidad &&
+    opcionesUnidadPorFormaVenta(
+      producto.formaVenta || formaVentaPredeterminada(producto.unidad),
+      producto.unidad
+    ).length > 1;
+
+  const estado = productoNoReconocido || reconocimiento.revisar
+    ? "REVISAR PRODUCTO"
+    : (unidadAmbigua ? "REVISAR UNIDAD" : "OK");
+
+  return {
+    itemId: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    fecha,
+    cliente,
+    productoId: producto.id,
+    producto: producto.nombre,
+    cantidad: lectura.cantidad,
+    unidad: unidadInterpretada,
+    unidadAmbigua,
+    opcionesUnidad: unidadAmbigua
+      ? opcionesUnidadPorFormaVenta(
+          producto.formaVenta || formaVentaPredeterminada(producto.unidad),
+          producto.unidad
+        )
+      : [unidadInterpretada],
+    productoAmbiguo: productoNoReconocido || reconocimiento.revisar,
+    confianzaProducto: productoNoReconocido ? 0 : reconocimiento.confianza,
+    sugerenciasProducto: (reconocimiento.sugerencias || []).map(s => ({
+      id: s.producto.id,
+      nombre: s.producto.nombre,
+      puntaje: s.puntaje
+    })),
+    estado,
+    observacion: productoNoReconocido
+      ? "Producto no reconocido."
+      : (reconocimiento.revisar
+          ? "Revisar coincidencia del producto."
+          : (unidadAmbigua ? "Falta confirmar la unidad." : "")),
+    original
+  };
 }
 
 function procesarTextoPedido(texto, cliente, fecha) {
-  const lineas = segmentarTextoPedido(texto);
-  return procesarTextoPedidoLineas(lineas.join("\n"), cliente, fecha);
+  return dividirPedidoEnLineas(texto)
+    .map(linea => procesarLineaPedidoRobusta(linea, cliente, fecha))
+    .filter(Boolean);
 }
 
 function procesarTextoPedidoLineas(texto, cliente, fecha) {
-  return texto
-    .split(/\r?\n/)
-    .map(linea => linea.trim())
-    .filter(Boolean)
-    .flatMap(original => {
-      const normal = normalizarPedidoInteligente(original);
-
-      if (
-        normal.includes("pedido") ||
-        normal.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/)
-      ) {
-        return [];
-      }
-
-      const lectura = extraerCantidadYUnidadInteligente(original);
-      const cantidad = lectura.cantidad;
-      const textoProducto = lectura.textoLimpio || original;
-      const reconocimiento = resolverProductoInteligente(textoProducto);
-
-      let producto = reconocimiento.producto;
-      let productoNoReconocido = false;
-
-      if (!producto && cantidad > 0) {
-        const nombreNuevo = nombreProductoDesdeLinea(original);
-        const unidadNueva = lectura.unidadExplicita || detectarUnidad(original, "unidad");
-        producto = crearProductoExtra(nombreNuevo, unidadNueva);
-        productoNoReconocido = true;
-      }
-
-      if (!producto) return [];
-
-      const originalParaUnidad = lectura.unidadExplicita
-        ? `${cantidad} ${lectura.unidadExplicita} ${textoProducto}`
-        : original;
-
-      const interpretacionUnidad = interpretarUnidadProducto(
-        originalParaUnidad,
-        producto
-      );
-
-      const unidad = interpretacionUnidad.unidad;
-
-      let estado = cantidad === 0
-        ? "NO PEDIDO"
-        : (
-            productoNoReconocido || reconocimiento.revisar
-              ? "REVISAR PRODUCTO"
-              : (
-                  interpretacionUnidad.ambiguo
-                    ? "REVISAR UNIDAD"
-                    : "OK"
-                )
-          );
-
-      let observacion = cantidad === 0
-        ? "Línea sin cantidad: se toma como 0"
-        : (
-            productoNoReconocido
-              ? "Producto no reconocido."
-              : (
-                  reconocimiento.revisar
-                    ? `Coincidencia con confianza ${Math.round(reconocimiento.confianza * 100)}%.`
-                    : (
-                        interpretacionUnidad.ambiguo
-                          ? interpretacionUnidad.razon
-                          : ""
-                      )
-                )
-          );
-
-      if (producto.nuevo || producto.activo === false) {
-        observacion = observacion
-          ? `${observacion} Producto nuevo/no habitual.`
-          : "Producto nuevo/no habitual";
-      }
-
-      if (normal.includes(" o ")) {
-        estado = "VARIABLE";
-        observacion = observacion
-          ? `${observacion} - cantidad variable`
-          : "Cantidad variable: se toma el mínimo detectado";
-      }
-
-      return [{
-        itemId: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        fecha,
-        cliente,
-        productoId: producto.id,
-        producto: producto.nombre,
-        cantidad,
-        unidad,
-        unidadAmbigua: interpretacionUnidad.ambiguo,
-        opcionesUnidad: interpretacionUnidad.opciones,
-        productoAmbiguo: productoNoReconocido || reconocimiento.revisar,
-        confianzaProducto: reconocimiento.confianza,
-        sugerenciasProducto: (reconocimiento.sugerencias || []).map(s => ({
-          id: s.producto.id,
-          nombre: s.producto.nombre,
-          puntaje: s.puntaje
-        })),
-        estado,
-        observacion,
-        original
-      }];
-    });
+  return procesarTextoPedido(texto, cliente, fecha);
 }
 
 
 function pedidosConProductoAmbiguo() {
-  return pedidos.flatMap(pedido =>
-    (pedido.items || [])
-      .filter(item => item.productoAmbiguo || item.estado === "REVISAR PRODUCTO")
-      .map(item => ({ pedido, item }))
-  );
+  const fechaActual = $("fechaPedido")?.value || hoyISO();
+  return pedidos
+    .filter(pedido => fechaEntregaPedido(pedido) === fechaActual)
+    .flatMap(pedido =>
+      (pedido.items || [])
+        .filter(item => item.productoAmbiguo || item.estado === "REVISAR PRODUCTO")
+        .map(item => ({ pedido, item }))
+    );
 }
 
 function resolverProductoPedido(pedidoId, itemId, productoId) {
@@ -2669,11 +2700,14 @@ function botonesResolverProducto(pedidoId, item) {
 }
 
 function pedidosConUnidadAmbigua() {
-  return pedidos.flatMap(pedido =>
-    (pedido.items || [])
-      .filter(item => item.unidadAmbigua || item.estado === "REVISAR UNIDAD")
-      .map(item => ({ pedido, item }))
-  );
+  const fechaActual = $("fechaPedido")?.value || hoyISO();
+  return pedidos
+    .filter(pedido => fechaEntregaPedido(pedido) === fechaActual)
+    .flatMap(pedido =>
+      (pedido.items || [])
+        .filter(item => item.unidadAmbigua || item.estado === "REVISAR UNIDAD")
+        .map(item => ({ pedido, item }))
+    );
 }
 
 function actualizarAvisoUnidadesAmbiguas() {
@@ -2953,13 +2987,34 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
     const itemsCorrectos = procesarTextoPedido(fijo.texto || "", fijo.cliente, fecha);
 
     if (pedido) {
-      // Repara automáticamente pedidos creados por versiones anteriores con 0 ítems.
-      if (!(pedido.items || []).length && itemsCorrectos.length) {
-        pedido.textoOriginal = fijo.texto || "";
-        pedido.textoFijoOriginal = fijo.texto || "";
-        pedido.items = itemsCorrectos;
-        pedido.programacionNombre = fijo.nombre || "Pedido fijo";
-        reparados += 1;
+      // Reinterpreta automáticamente pedidos fijos creados por versiones anteriores.
+      // No toca entregas que el usuario modificó manualmente.
+      if (!pedido.modificadoDesdeFijo) {
+        const firmaAnterior = JSON.stringify(
+          (pedido.items || []).map(item => [
+            item.productoId,
+            Number(item.cantidad || 0),
+            item.unidad
+          ])
+        );
+        const firmaNueva = JSON.stringify(
+          itemsCorrectos.map(item => [
+            item.productoId,
+            Number(item.cantidad || 0),
+            item.unidad
+          ])
+        );
+
+        if (
+          pedido.textoOriginal !== (fijo.texto || "") ||
+          firmaAnterior !== firmaNueva
+        ) {
+          pedido.textoOriginal = fijo.texto || "";
+          pedido.textoFijoOriginal = fijo.texto || "";
+          pedido.items = itemsCorrectos;
+          pedido.programacionNombre = fijo.nombre || "Pedido fijo";
+          reparados += 1;
+        }
       }
       return;
     }
@@ -4610,6 +4665,35 @@ Gracias, Fratello.`;
 }
 
 
+function repararPedidosFijosConParserV310() {
+  let reparados = 0;
+
+  pedidos
+    .filter(pedido => pedido.origen === "pedido_fijo" && !pedido.modificadoDesdeFijo)
+    .forEach(pedido => {
+      const fijo = pedidosFijos.find(f => Number(f.id) === Number(pedido.pedidoFijoId));
+      const texto = fijo?.texto || pedido.textoOriginal || "";
+      const nuevosItems = procesarTextoPedido(texto, pedido.cliente, fechaEntregaPedido(pedido));
+
+      const firmaAnterior = JSON.stringify(
+        (pedido.items || []).map(item => [item.productoId, Number(item.cantidad || 0), item.unidad])
+      );
+      const firmaNueva = JSON.stringify(
+        nuevosItems.map(item => [item.productoId, Number(item.cantidad || 0), item.unidad])
+      );
+
+      if (firmaAnterior !== firmaNueva || pedido.textoOriginal !== texto) {
+        pedido.textoOriginal = texto;
+        pedido.textoFijoOriginal = texto;
+        pedido.items = nuevosItems;
+        reparados += 1;
+      }
+    });
+
+  if (reparados > 0) guardarTodo();
+  return reparados;
+}
+
 async function init() {
   // v3.0.1: los pedidos fijos se guardan desde cada tarjeta del cliente.
   if ($("btnCargarPedidosFijosFecha")) $("btnCargarPedidosFijosFecha").onclick=cargarPedidosFijosParaFecha;
@@ -4751,6 +4835,7 @@ async function init() {
   renderProduccion();
   renderPedidosCargados();
   migrarPedidosFijosV301();
+  repararPedidosFijosConParserV310();
   renderSelectorClientesPedidoFijo();
   renderPedidosFijos();
   renderPedidosFuturos();

@@ -1485,3 +1485,8 @@ body:has(.appSection:target) #contenidoApp {
   .fixedClientBlockHeader{align-items:flex-start;flex-direction:column}
   .fixedClientBlockHeader button{width:100%}
 }
+
+/* ===== FRATELLO v3.1: notificaciones en inicio ===== */
+.homeMainCard.notificaciones .homeMainIcon{position:relative}
+.homeNotificationBadge{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;margin-left:5px;border-radius:999px;background:#b9332f;color:#fff;font-size:11px;font-style:normal;vertical-align:middle}
+.homeNotificationBadge.hidden{display:none}

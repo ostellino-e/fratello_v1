@@ -1,8 +1,15 @@
-# Fratello v3.0.1 — Corrección de inicio y clientes
+# Fratello v3.1 — Parser corregido y notificaciones en inicio
 
-Correcciones:
-- Eliminado el error `guardarPedidoFijo is not defined`.
-- La aplicación vuelve a completar correctamente la sincronización inicial.
-- Los clientes guardados vuelven a cargarse y mostrarse.
-- Migración segura de pedidos fijos anteriores al nuevo formato por cliente.
-- Se conservan los pedidos, clientes, productos y configuraciones existentes.
+Correcciones y mejoras:
+- Parser reescrito para procesar cada producto línea por línea.
+- Reconoce correctamente:
+  - Marineras 300 gr
+  - Bizcocho de hojaldre 0,5 kg
+  - Bizcocho de grasa 0,5 kg
+- Convierte gramos a kilos automáticamente.
+- Reconoce singular/plural y palabras como “de”.
+- Reinterpreta automáticamente pedidos fijos viejos que estaban incompletos.
+- No modifica entregas que fueron editadas manualmente.
+- El aviso de revisiones muestra solamente problemas de la fecha seleccionada.
+- Nueva sección Notificaciones visible en la pantalla principal.
+- Badge con cantidad de notificaciones no leídas.
