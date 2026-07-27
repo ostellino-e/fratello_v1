@@ -1128,7 +1128,8 @@ async function guardarEnNube() {
 
 async function cargarDesdeNube() {
   if (!db) {
-    setEstadoSync("Modo local");
+    console.error("Firebase no se inicializó. Revisar scripts o conexión.");
+    setEstadoSync("Modo local — Firebase no inició");
     return;
   }
 

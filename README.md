@@ -1,9 +1,10 @@
-# Fratello v1.06 — Corrección online y catálogo
+# Fratello v1.07 — Actualización forzada
 
 Correcciones:
-- Se restauró el inicio completo de la app.
-- Vuelve a conectar con Firebase y mostrar “Online”.
-- Recupera el catálogo de productos sin reemplazarlo por una lista vacía.
-- La sección de precios se vuelve a dibujar después de descargar los productos.
-- Conserva las listas de precios, clientes, pedidos y catálogo en Firebase y localStorage.
-- Mantiene ticket térmico de 80 mm, dirección, barrio y listas por cliente.
+- Evita que Vercel y el service worker sigan mostrando una versión vieja.
+- Agrega headers no-cache para index.html, app.js y service-worker.js.
+- Agrega actualizar.html para borrar service workers y cachés anteriores.
+- Mantiene sincronización Firebase, catálogo, listas de precios y ticket térmico.
+
+Después de publicar, abrir una sola vez:
+https://fratello-v1.vercel.app/actualizar.html

@@ -37,7 +37,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v106";
+const CACHE_NAME = "fratello-v107";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -70,8 +70,24 @@ self.addEventListener("fetch", event => {
   let url;
   try { url = new URL(request.url); } catch { return; }
 
-  if (url.protocol !== "http:" && url.protocol !== "https:") return;
+  if (!["http:", "https:"].includes(url.protocol)) return;
   if (url.origin !== self.location.origin) return;
+
+  const archivoCritico =
+    url.pathname.endsWith("/") ||
+    url.pathname.endsWith("/index.html") ||
+    url.pathname.endsWith("/app.js") ||
+    url.pathname.endsWith("/service-worker.js") ||
+    url.pathname.endsWith("/actualizar.html");
+
+  if (archivoCritico) {
+    event.respondWith(
+      fetch(new Request(request, { cache: "no-store" }))
+        .then(response => response)
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(request)

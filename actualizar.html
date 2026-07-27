@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <title>Actualizar Fratello</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#fff7ea;margin:0;display:grid;place-items:center;min-height:100vh;color:#2c1c12}
+    .box{max-width:520px;margin:20px;padding:28px;border:1px solid #dfc29f;border-radius:18px;background:white;text-align:center;box-shadow:0 10px 30px #0001}
+    h1{margin-top:0}.estado{padding:14px;border-radius:12px;background:#eef7ee;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Actualizando Fratello</h1>
+    <p class="estado" id="estado">Eliminando la versión anterior…</p>
+  </div>
+  <script>
+    (async () => {
+      const estado = document.getElementById("estado");
+      try {
+        if ("serviceWorker" in navigator) {
+          const registros = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registros.map(registro => registro.unregister()));
+        }
+
+        if ("caches" in window) {
+          const nombres = await caches.keys();
+          await Promise.all(nombres.map(nombre => caches.delete(nombre)));
+        }
+
+        localStorage.setItem("fratello_actualizacion_forzada", new Date().toISOString());
+        estado.textContent = "Actualización completada. Abriendo Fratello v1.07…";
+
+        setTimeout(() => {
+          location.replace("./index.html?v=107&actualizado=" + Date.now());
+        }, 700);
+      } catch (error) {
+        console.error(error);
+        estado.textContent = "No se pudo limpiar automáticamente. Abrí Fratello en una ventana de incógnito.";
+      }
+    })();
+  </script>
+</body>
+</html>
