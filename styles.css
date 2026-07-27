@@ -1414,3 +1414,24 @@ body:has(.appSection:target) #contenidoApp {
   .weekdayGrid{grid-template-columns:repeat(4,1fr)}
   .ordersDateStatus{align-items:flex-start;flex-direction:column}
 }
+
+/* ===== FRATELLO v2.4: artículos desplegables y producción predeterminada ===== */
+.catalogProductAccordion{border:1px solid #ddc6aa;border-radius:14px;background:#fff;margin:10px 0;overflow:hidden}
+.catalogProductAccordion>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px;cursor:pointer;list-style:none}
+.catalogProductAccordion>summary::-webkit-details-marker{display:none}
+.catalogProductAccordion>summary>div:first-child strong{display:block;font-size:16px}
+.catalogProductAccordion>summary>div:first-child span{display:block;margin-top:4px;font-size:11px;color:#75665c}
+.catalogSummaryBadges{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+.catalogSummaryBadges span,.catalogSummaryBadges b{padding:5px 8px;border-radius:12px;background:#eee4d8;font-size:11px}
+.catalogSummaryBadges b{background:#dfead8;color:#345623}
+.catalogSummaryBadges .pendingDefault{background:#f1e5d9;color:#745b45}
+.catalogProductAccordion.inDefaultProduction{border-left:5px solid #6f8f55}
+.catalogProductAccordion .catalogProductRow{border-top:1px solid #eadccc;border-radius:0;margin:0}
+.catalogProductFields label,.catalogPriceFields label{font-weight:700;font-size:12px}
+.catalogProductFields label input,.catalogProductFields label select,.catalogProductFields label textarea{margin-top:5px}
+.catalogSynonymsLabel{grid-column:1/-1}
+.addDefaultProductionBtn{flex-basis:100%}
+@media(max-width:700px){
+  .catalogProductAccordion>summary{align-items:flex-start;flex-direction:column}
+  .catalogSummaryBadges{justify-content:flex-start}
+}

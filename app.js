@@ -1838,50 +1838,106 @@ function guardarCatalogoProductos() {
   localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
   guardarEnNube();
 }
+function productoEstaEnProduccionPredeterminada(productoId) {
+  return dias.some(dia => Number(predeterminadas?.[dia]?.[productoId] || 0) > 0);
+}
+
+function resumenProduccionPredeterminadaProducto(productoId) {
+  const etiquetas = {
+    lunes_jueves: "Lun–Jue",
+    viernes: "Vie",
+    sabado: "Sáb",
+    domingo: "Dom"
+  };
+
+  const partes = dias
+    .map(dia => {
+      const cantidad = Number(predeterminadas?.[dia]?.[productoId] || 0);
+      return cantidad > 0 ? `${etiquetas[dia]}: ${fmt(cantidad)}` : "";
+    })
+    .filter(Boolean);
+
+  return partes.length ? partes.join(" · ") : "No agregado a la producción predeterminada";
+}
+
 function renderAdministradorProductos() {
   const contenedor = $("listaAdministradorProductos");
   if (!contenedor) return;
+
   contenedor.innerHTML = productos.map(producto => {
     const visible = producto.visible !== false;
     const activo = producto.activo !== false;
-    return `<div class="catalogProductRow" data-catalog-id="${escaparHtmlCatalogo(producto.id)}">
-      <div class="catalogProductFields">
-        <input type="text" data-catalog-nombre value="${escaparHtmlCatalogo(producto.nombre)}">
-        <select data-catalog-unidad>
-          ${["unidad","kg","docena","bandeja","bolsa"].map(unidad =>
-            `<option value="${unidad}" ${producto.unidad === unidad ? "selected" : ""}>${unidad}</option>`
-          ).join("")}
-        </select>
-        <select data-catalog-forma-venta title="Cómo interpretar números sin unidad">
-          ${[
-            ["solo_unidad","Solo unidad"],
-            ["solo_docena","Solo docena"],
-            ["solo_kg","Solo kilo"],
-            ["unidad_docena","Unidad o docena"],
-            ["unidad_kg","Unidad o kilo"],
-            ["kg_paquete","Kilo o paquete"],
-            ["revisar_siempre","Revisar siempre"]
-          ].map(([valor, etiqueta]) =>
-            `<option value="${valor}" ${(producto.formaVenta || formaVentaPredeterminada(producto.unidad)) === valor ? "selected" : ""}>${etiqueta}</option>`
-          ).join("")}
-        </select>
-        <textarea data-catalog-sinonimos rows="2" placeholder="Sinónimos separados por coma">${escaparHtmlCatalogo((producto.sinonimos || []).join(", "))}</textarea>
-        <label class="catalogCheck"><input type="checkbox" data-catalog-visible ${visible ? "checked" : ""}> Mostrar</label>
-        <label class="catalogCheck"><input type="checkbox" data-catalog-activo ${activo ? "checked" : ""}> Activo</label>
+    const enPredeterminada = productoEstaEnProduccionPredeterminada(producto.id);
+
+    return `<details class="catalogProductAccordion ${enPredeterminada ? "inDefaultProduction" : ""}" data-catalog-id="${escaparHtmlCatalogo(producto.id)}">
+      <summary>
+        <div>
+          <strong>${escaparHtmlCatalogo(producto.nombre)}</strong>
+          <span>${escaparHtmlCatalogo(resumenProduccionPredeterminadaProducto(producto.id))}</span>
+        </div>
+        <div class="catalogSummaryBadges">
+          <span>${escaparHtmlCatalogo(producto.unidad || "unidad")}</span>
+          ${enPredeterminada ? '<b>✓ Producción base</b>' : '<b class="pendingDefault">Sólo por encargo</b>'}
+        </div>
+      </summary>
+
+      <div class="catalogProductRow">
+        <div class="catalogProductFields">
+          <label>Nombre
+            <input type="text" data-catalog-nombre value="${escaparHtmlCatalogo(producto.nombre)}">
+          </label>
+
+          <label>Unidad principal
+            <select data-catalog-unidad>
+              ${["unidad","kg","docena","bandeja","bolsa"].map(unidad =>
+                `<option value="${unidad}" ${producto.unidad === unidad ? "selected" : ""}>${unidad}</option>`
+              ).join("")}
+            </select>
+          </label>
+
+          <label>Forma de venta
+            <select data-catalog-forma-venta title="Cómo interpretar números sin unidad">
+              ${[
+                ["solo_unidad","Sólo unidad"],
+                ["solo_docena","Sólo docena"],
+                ["solo_kg","Sólo kg"],
+                ["unidad_docena","Unidad y docena"],
+                ["unidad_kg","Unidad y kg"],
+                ["kg_paquete","Kg y paquete"],
+                ["revisar_siempre","Revisar siempre"]
+              ].map(([valor, etiqueta]) =>
+                `<option value="${valor}" ${(producto.formaVenta || formaVentaPredeterminada(producto.unidad)) === valor ? "selected" : ""}>${etiqueta}</option>`
+              ).join("")}
+            </select>
+          </label>
+
+          <label class="catalogSynonymsLabel">Sinónimos
+            <textarea data-catalog-sinonimos rows="2" placeholder="Separados por coma">${escaparHtmlCatalogo((producto.sinonimos || []).join(", "))}</textarea>
+          </label>
+
+          <label class="catalogCheck"><input type="checkbox" data-catalog-visible ${visible ? "checked" : ""}> Mostrar en producción</label>
+          <label class="catalogCheck"><input type="checkbox" data-catalog-activo ${activo ? "checked" : ""}> Producto activo</label>
+        </div>
+
+        <div class="catalogPriceFields">
+          <label>Precio unidad<input type="number" min="0" step="0.01" data-precio-unidad value="${Number(producto.precios?.unidad || 0)}"></label>
+          <label>Precio docena<input type="number" min="0" step="0.01" data-precio-docena value="${Number(producto.precios?.docena || 0)}"></label>
+          <label>Precio kg<input type="number" min="0" step="0.01" data-precio-kg value="${Number(producto.precios?.kg || 0)}"></label>
+          <label>Precio paquete<input type="number" min="0" step="0.01" data-precio-paquete value="${Number(producto.precios?.paquete || 0)}"></label>
+        </div>
+
+        <div class="catalogProductActions">
+          <button type="button" class="primary addDefaultProductionBtn" data-catalog-predeterminada="${escaparHtmlCatalogo(producto.id)}">
+            ➕ Agregar artículo a producción predeterminada
+          </button>
+          <button type="button" data-catalog-guardar="${escaparHtmlCatalogo(producto.id)}">💾 Guardar edición</button>
+          <button type="button" class="dangerBtn" data-catalog-eliminar="${escaparHtmlCatalogo(producto.id)}">🗑 Eliminar</button>
+        </div>
       </div>
-      <div class="catalogPriceFields">
-        <label>Precio unidad<input type="number" min="0" step="0.01" data-precio-unidad value="${Number(producto.precios?.unidad || 0)}"></label>
-        <label>Precio docena<input type="number" min="0" step="0.01" data-precio-docena value="${Number(producto.precios?.docena || 0)}"></label>
-        <label>Precio kg<input type="number" min="0" step="0.01" data-precio-kg value="${Number(producto.precios?.kg || 0)}"></label>
-        <label>Precio paquete<input type="number" min="0" step="0.01" data-precio-paquete value="${Number(producto.precios?.paquete || 0)}"></label>
-      </div>
-      <div class="catalogProductActions">
-        <button type="button" data-catalog-guardar="${escaparHtmlCatalogo(producto.id)}">💾 Guardar</button>
-        <button type="button" class="dangerBtn" data-catalog-eliminar="${escaparHtmlCatalogo(producto.id)}">🗑 Eliminar</button>
-      </div>
-    </div>`;
+    </details>`;
   }).join("");
 }
+
 function agregarProductoCatalogo() {
   const nombre = $("nuevoProductoNombre")?.value.trim();
   const unidad = $("nuevoProductoUnidad")?.value || "unidad";
@@ -1912,7 +1968,7 @@ function agregarProductoCatalogo() {
   $("nuevoProductoNombre").value = "";
   renderAdministradorProductos();
   renderProduccion();
-  alert(`Producto "${nombre}" agregado. Asignale cantidades desde “Editar producción base”.`);
+  alert(`Producto "${nombre}" agregado. Abrí su pestaña y tocá “Agregar artículo a producción predeterminada” para definir las cantidades habituales.`);
 }
 function guardarProductoCatalogo(id) {
   const fila = document.querySelector(`[data-catalog-id="${CSS.escape(id)}"]`);
@@ -1947,6 +2003,62 @@ function guardarProductoCatalogo(id) {
   calcularDiferencias();
   alert(`Producto "${nombre}" actualizado.`);
 }
+function agregarProductoAPredeterminada(id) {
+  const producto = productos.find(p => p.id === id);
+  if (!producto) return;
+
+  const etiquetas = {
+    lunes_jueves: "Lunes a jueves",
+    viernes: "Viernes",
+    sabado: "Sábado",
+    domingo: "Domingo"
+  };
+
+  const nuevosValores = {};
+
+  for (const dia of dias) {
+    const actual = Number(predeterminadas?.[dia]?.[id] || 0);
+    const respuesta = prompt(
+      `${producto.nombre}\n\nCantidad habitual para ${etiquetas[dia]}:\nIngresá 0 si no se produce ese día.`,
+      String(actual)
+    );
+
+    if (respuesta === null) return;
+
+    const cantidad = Number(String(respuesta).replace(",", "."));
+    if (Number.isNaN(cantidad) || cantidad < 0) {
+      alert("Ingresá una cantidad válida, igual o mayor que 0.");
+      return;
+    }
+
+    nuevosValores[dia] = cantidad;
+  }
+
+  dias.forEach(dia => {
+    if (!predeterminadas[dia]) predeterminadas[dia] = {};
+    predeterminadas[dia][id] = nuevosValores[dia];
+  });
+
+  producto.visible = true;
+  producto.activo = true;
+
+  const extra = productosExtra.find(p => p.id === id);
+  if (extra) Object.assign(extra, producto);
+
+  guardarTodo();
+  renderAdministradorProductos();
+  renderProduccion();
+  calcularDiferencias();
+
+  const tieneCantidad = Object.values(nuevosValores).some(valor => Number(valor) > 0);
+
+  alert(
+    tieneCantidad
+      ? `"${producto.nombre}" fue agregado a la producción predeterminada.`
+      : `"${producto.nombre}" quedó disponible, pero todas las cantidades están en 0.`
+  );
+}
+
 function eliminarProductoCatalogo(id) {
   const producto = productos.find(p => p.id === id);
   if (!producto) return;
@@ -1964,8 +2076,14 @@ function eliminarProductoCatalogo(id) {
   alert(`Producto "${producto.nombre}" eliminado.`);
 }
 function manejarClicksAdministradorProductos(evento) {
+  const predeterminada = evento.target.closest("[data-catalog-predeterminada]");
+  if (predeterminada) {
+    return agregarProductoAPredeterminada(predeterminada.dataset.catalogPredeterminada);
+  }
+
   const guardar = evento.target.closest("[data-catalog-guardar]");
   if (guardar) return guardarProductoCatalogo(guardar.dataset.catalogGuardar);
+
   const eliminar = evento.target.closest("[data-catalog-eliminar]");
   if (eliminar) eliminarProductoCatalogo(eliminar.dataset.catalogEliminar);
 }

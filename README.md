@@ -1,11 +1,10 @@
-# Fratello v2.3 — Pedidos fijos integrados
+# Fratello v2.4 — Producción predeterminada
 
-Incluye:
-- Selector de días ordenado y visual.
-- Carga automática de pedidos fijos al elegir la fecha de entrega.
-- Pedidos cargados filtrados por la fecha seleccionada.
-- Los pedidos fijos aparecen dentro de Pedidos cargados y se pueden confirmar.
-- Edición de la entrega del día sin modificar el pedido fijo original.
-- Indicador visual cuando una entrega fija fue modificada.
-- Botón opcional para usar el cambio como nuevo pedido fijo.
-- Conserva pedidos futuros, historial, productos unificados, precios, Firebase y tickets.
+Cambios:
+- Vuelven las pestañas desplegables individuales para cada artículo.
+- Dentro de cada artículo se puede editar nombre, unidad, forma de venta y sinónimos.
+- Se puede elegir unidad, kg, docena o combinaciones como unidad y kg.
+- Nuevo botón: Agregar artículo a producción predeterminada.
+- Permite definir cantidades habituales para Lunes a jueves, Viernes, Sábado y Domingo.
+- El artículo queda visible automáticamente en la producción diaria correspondiente.
+- Los productos sólo por encargo continúan disponibles sin formar parte de la producción base.
