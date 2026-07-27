@@ -3168,6 +3168,24 @@ function renderPedidosFuturos() {
     </div>`).join("");
 }
 
+function migrarPedidosFijosV301() {
+  if (!Array.isArray(pedidosFijos)) pedidosFijos = [];
+
+  pedidosFijos = pedidosFijos
+    .filter(fijo => fijo && fijo.cliente)
+    .map((fijo, indice) => ({
+      ...fijo,
+      id: Number(fijo.id) || (Date.now() + indice),
+      cliente: String(fijo.cliente || "").trim(),
+      nombre: String(fijo.nombre || `Pedido ${indice + 1}`).trim(),
+      texto: String(fijo.texto || fijo.textoOriginal || "").trim(),
+      dias: Array.isArray(fijo.dias) ? fijo.dias.map(Number).filter(d => d >= 0 && d <= 6) : [],
+      activo: fijo.activo !== false
+    }));
+
+  guardarTodo();
+}
+
 function siguienteNumeroPedidoCliente(cliente) {
   return pedidosFijos.filter(f => normalizar(f.cliente) === normalizar(cliente)).length + 1;
 }
@@ -4593,8 +4611,7 @@ Gracias, Fratello.`;
 
 
 async function init() {
-  if ($("btnGuardarPedidoFijo")) $("btnGuardarPedidoFijo").onclick=guardarPedidoFijo;
-  if ($("btnLimpiarPedidoFijo")) $("btnLimpiarPedidoFijo").onclick=limpiarFormularioPedidoFijo;
+  // v3.0.1: los pedidos fijos se guardan desde cada tarjeta del cliente.
   if ($("btnCargarPedidosFijosFecha")) $("btnCargarPedidosFijosFecha").onclick=cargarPedidosFijosParaFecha;
   if ($("btnNuevoPedidoFijoCliente")) $("btnNuevoPedidoFijoCliente").onclick=()=>crearPedidoFijoCliente();
   if ($("fechaPedido")) $("fechaPedido").addEventListener("change", manejarCambioFechaPedidos);
@@ -4733,6 +4750,7 @@ async function init() {
 
   renderProduccion();
   renderPedidosCargados();
+  migrarPedidosFijosV301();
   renderSelectorClientesPedidoFijo();
   renderPedidosFijos();
   renderPedidosFuturos();
