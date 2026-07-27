@@ -533,10 +533,25 @@ function renderListaClientesCompleta() {
       </div>
       <div class="clienteCompletoActions">
         <button type="button" onclick="editarClienteCompleto('${seguro}')">✏️ Editar</button>
+        <button type="button" onclick="configurarPedidoFijoCliente('${seguro}')">🔁 Pedido fijo</button>
         <button type="button" class="dangerBtn" onclick="eliminarClienteCompleto('${seguro}')">🗑️ Eliminar</button>
       </div>
     </div>`;
   }).join("");
+}
+
+
+function configurarPedidoFijoCliente(nombre) {
+  abrirSeccionFratello("seccionClientes");
+  renderSelectorClientesPedidoFijo();
+  const selector = $("pedidoFijoCliente");
+  if (selector) selector.value = nombre;
+  const bloque = $("pedidosFijosClientes");
+  if (bloque) {
+    bloque.open = true;
+    setTimeout(() => bloque.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }
+  if ($("pedidoFijoTexto")) $("pedidoFijoTexto").focus();
 }
 
 function mostrarInicioFratello() {
@@ -4017,6 +4032,7 @@ async function init() {
 
 
 
+window.configurarPedidoFijoCliente=configurarPedidoFijoCliente;
 window.editarPedidoCargado=editarPedidoCargado;
 window.repetirPedidoHistorial=repetirPedidoHistorial;
 window.editarPedidoFijo=editarPedidoFijo;

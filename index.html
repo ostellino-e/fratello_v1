@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "2.0";
-    document.documentElement.dataset.fratelloVersion = "2.0";
+    window.FRATELLO_VERSION = "2.1";
+    document.documentElement.dataset.fratelloVersion = "2.1";
   </script>
 
 </head>
@@ -33,62 +33,57 @@
   </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v2.0</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v2.1</small>
   </section>
 
-  <section id="panelInicio" class="dashboard dashboardV2">
+  <section id="panelInicio" class="dashboard dashboardV21">
     <div class="refreshPanel">
       <button id="btnActualizarDatos" type="button"><span class="refreshIcon">🔄</span><span class="refreshText">Actualizar datos</span></button>
       <span id="estadoActualizacionManual">Sin actualizar</span>
     </div>
 
-    <div class="v2Welcome">
-      <div>
-        <strong>Centro de control Fratello</strong>
-        <span>Elegí el área según la tarea que vas a realizar.</span>
-      </div>
-      <span class="v2Badge">v2.0</span>
+    <div class="homeSimpleHeader">
+      <strong>Panadería Fratello</strong>
+      <span>¿Qué necesitás hacer?</span>
     </div>
 
-    <div class="v2ModuleGrid">
-      <a class="v2ModuleCard pedidos" href="#seccionPedidos" onclick="window.abrirSeccionFratello('seccionPedidos'); return false;">
-        <span>📦</span><strong>PEDIDOS</strong>
-        <small>Cargar, editar, fijos, futuros e historial.</small>
+    <div class="homeMainModules">
+      <a class="homeMainCard pedidos" href="#seccionPedidosCentro" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">
+        <span class="homeMainIcon">📦</span><span><strong>Pedidos</strong><small>Producción, carga de pedidos y resumen.</small></span><b>›</b>
       </a>
-      <a class="v2ModuleCard caja" href="#seccionCaja" onclick="window.abrirSeccionFratello('seccionCaja'); return false;">
-        <span>💰</span><strong>CAJA</strong>
-        <small>Tickets, precios, PDF e impresión.</small>
+      <a class="homeMainCard caja" href="#seccionCaja" onclick="window.abrirSeccionFratello('seccionCaja'); return false;">
+        <span class="homeMainIcon">💰</span><span><strong>Caja</strong><small>Próximamente.</small></span><b>›</b>
       </a>
-      <a class="v2ModuleCard tareas" href="#seccionTareas" onclick="window.abrirSeccionFratello('seccionTareas'); return false;">
-        <span>✅</span><strong>TAREAS</strong>
-        <small>Producción, resumen y recordatorios.</small>
+      <a class="homeMainCard tareas" href="#seccionTareas" onclick="window.abrirSeccionFratello('seccionTareas'); return false;">
+        <span class="homeMainIcon">✅</span><span><strong>Tareas</strong><small>Próximamente.</small></span><b>›</b>
       </a>
-      <a class="v2ModuleCard clientes" href="#seccionClientes" onclick="window.abrirSeccionFratello('seccionClientes'); return false;">
-        <span>👥</span><strong>CLIENTES</strong>
-        <small>Datos, direcciones y listas asignadas.</small>
+      <a class="homeMainCard clientes" href="#seccionClientes" onclick="window.abrirSeccionFratello('seccionClientes'); return false;">
+        <span class="homeMainIcon">👥</span><span><strong>Clientes</strong><small>Base de datos y pedidos fijos.</small></span><b>›</b>
       </a>
-      <a class="v2ModuleCard productos" href="#seccionProductos" onclick="window.abrirSeccionFratello('seccionProductos'); return false;">
-        <span>🥐</span><strong>PRODUCTOS</strong>
-        <small>Catálogo, unidades y sinónimos.</small>
+      <a class="homeMainCard productos" href="#seccionProductos" onclick="window.abrirSeccionFratello('seccionProductos'); return false;">
+        <span class="homeMainIcon">🥐</span><span><strong>Productos</strong><small>Catálogo y precios por lista.</small></span><b>›</b>
       </a>
-    </div>
-
-    <a class="notificationBellCard" href="#seccionNotificaciones" onclick="window.abrirSeccionFratello('seccionNotificaciones'); return false;">
-      <span class="notificationBellIcon">🔔</span>
-      <span class="notificationBellText"><strong>Notificaciones</strong><small id="resumenNotificacionesInicio">Revisá los avisos de Fratello</small></span>
-      <span id="badgeNotificaciones" class="notificationBadge hidden">0</span>
-      <span class="dashboardArrow">›</span>
-    </a>
-
-    <div class="notificationMiniPanel">
-      <div><strong>🔔 Avisos en este dispositivo</strong><span id="estadoNotificaciones">Todavía no están activadas.</span></div>
-      <div class="notificationMiniActions"><button id="btnActivarNotificaciones" type="button">Activar</button><button id="btnProbarNotificacion" type="button" disabled>Probar</button></div>
     </div>
   </section>
 
 <main class="layout" id="contenidoApp">
+    <section class="card appSection moduleCenter" id="seccionPedidosCentro">
+      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver al inicio</a>
+      <h2>📦 Pedidos</h2>
+      <p class="hint">Los tres pasos de la jornada están juntos en esta sección.</p>
+      <div class="workflowSteps">
+        <button type="button" onclick="window.abrirSeccionFratello('seccionProduccion')"><span>1</span><strong>Producción</strong><small>Cargar lo estibado o realizado.</small></button>
+        <button type="button" onclick="window.abrirSeccionFratello('seccionPedidos')"><span>2</span><strong>Pedidos</strong><small>Pegar, revisar y editar pedidos.</small></button>
+        <button type="button" onclick="window.abrirSeccionFratello('seccionResumen')"><span>3</span><strong>Resumen</strong><small>Comparar faltantes y sobrantes.</small></button>
+      </div>
+      <div class="pedidoSecondaryLinks">
+        <button type="button" onclick="window.abrirSeccionFratello('seccionPedidosFuturos')">📅 Pedidos futuros</button>
+        <button type="button" onclick="window.abrirSeccionFratello('seccionHistorialPedidos')">🕘 Historial</button>
+      </div>
+    </section>
+
     <section class="card appSection" id="seccionProduccion">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
+      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">← Volver a Pedidos</a>
       <h2>1. Producción estibada/realizada</h2>
       <p class="hint">
         Elegí el día y el sistema carga la producción base. Solo cambiás algo si ese día fue distinto.
@@ -122,35 +117,7 @@
         <button id="btnCancelarPredeterminada" class="hidden">Cancelar</button>
       </div>
       <p id="ayudaEditarBase" class="hint">Para cambiar las cantidades que se cargan automáticamente cada día, tocá “Editar producción base”.</p>
-
-      <details class="catalogAdminBox" id="administradorProductos">
-        <summary>⚙️ Administrar productos predeterminados</summary>
-        <p class="hint">Agregá, modificá, ocultá o eliminá productos de la producción base.</p>
-        <div class="catalogAddForm">
-          <input id="nuevoProductoNombre" type="text" placeholder="Nombre del producto">
-          <select id="nuevoProductoUnidad">
-            <option value="unidad">unidad</option>
-            <option value="kg">kg</option>
-            <option value="docena">docena</option>
-            <option value="bandeja">bandeja</option>
-            <option value="bolsa">bolsa</option>
-          </select>
-          <select id="nuevoProductoFormaVenta" title="Cómo interpretar números sin unidad">
-            <option value="solo_unidad">Solo unidad</option>
-            <option value="solo_docena">Solo docena</option>
-            <option value="solo_kg">Solo kilo</option>
-            <option value="unidad_docena">Unidad o docena</option>
-            <option value="unidad_kg">Unidad o kilo</option>
-            <option value="kg_paquete">Kilo o paquete</option>
-            <option value="revisar_siempre">Revisar siempre</option>
-          </select>
-          <button id="btnAgregarProductoCatalogo" type="button" class="primary">➕ Agregar producto</button>
-        </div>
-        <div id="listaAdministradorProductos"></div>
-      </details>
-
-
-      <div id="modoProduccion" class="modo">Modo actual: producción realizada</div>
+<div id="modoProduccion" class="modo">Modo actual: producción realizada</div>
 <div id="produccionLista" class="table-like"></div>
 
       <details class="specialBox">
@@ -160,7 +127,7 @@
       </details>
     </section>
     <section class="card appSection" id="seccionPedidos">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
+      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">← Volver a Pedidos</a>
       <h2>2. Pegar pedido de WhatsApp</h2>
 
       <div id="tarjetaDiaPedidos" class="daySyncCard pendiente">
@@ -237,7 +204,7 @@
     </section>
 
     <section class="card wide appSection" id="seccionResumen">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
+      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">← Volver a Pedidos</a>
       <h2>3. Resultado final</h2>
 
       <div id="panelMemoriaEnvio" class="memoryPanel">
@@ -274,8 +241,8 @@
   
     <section class="card appSection" id="seccionClientes">
       <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
-      <h2>Clientes</h2>
-      <p class="hint">Cargá el nombre, teléfono y definí si debe recibir recordatorio de pedido.</p>
+      <h2>👥 Clientes</h2>
+      <p class="hint">Base de datos de clientes, contactos, lista asignada y pedidos fijos.</p>
 
       <div class="clienteFormGrid">
         <div>
@@ -314,58 +281,10 @@
 
       <h3>Clientes cargados</h3>
       <div id="listaClientesCompleta"></div>
-    </section>
 
-  
-    <section class="card appSection" id="seccionListasPrecios">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
-      <h2>💲 Listas de precios</h2>
-      <p class="hint">Cargá los precios por producto y unidad. El ticket selecciona la lista automáticamente.</p>
-      <div class="priceLegend"><span><strong>Clientes:</strong> lista general</span><span><strong>Giuliano:</strong> precio especial</span><span><strong>Bailone/Líbano:</strong> precio compartido</span><span><strong>Fratello:</strong> precio del local</span></div>
-      <div class="toolbar">
-        <button id="btnAgregarListaPrecio" type="button">➕ Agregar cliente / lista especial</button>
-        <button id="btnGuardarListasPrecios" class="primary" type="button">💾 Guardar precios</button>
-      </div>
-      <p class="hint">
-        Al agregar una lista especial, también podrás asignársela a cualquier cliente desde su ficha.
-      </p>
-      <div id="mensajeListasPrecios" class="mensajePedido"></div><div id="tablaListasPrecios" class="priceTableWrap"></div>
-    </section>
-
-    <section class="card appSection" id="seccionCaja">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
-      <h2>💰 Caja</h2>
-      <div class="v2SectionLinks">
-        <button type="button" onclick="window.abrirSeccionFratello('seccionListasPrecios')">💲 Listas de precios</button>
-        <button type="button" onclick="window.abrirSeccionFratello('seccionPedidos')">🧾 Tickets por cliente</button>
-        <button type="button" onclick="window.abrirSeccionFratello('seccionResumen')">📄 Resumen y exportación</button>
-      </div>
-      <p class="hint">Desde cada pedido podés descargar el PDF individual. Desde el resumen podés imprimir o guardar todos los tickets.</p>
-    </section>
-
-    <section class="card appSection" id="seccionTareas">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
-      <h2>✅ Tareas</h2>
-      <div class="v2SectionLinks">
-        <button type="button" onclick="window.abrirSeccionFratello('seccionProduccion')">🥖 Producción</button>
-        <button type="button" onclick="window.abrirSeccionFratello('seccionResumen')">📊 Comparador</button>
-        <button type="button" onclick="window.abrirSeccionFratello('seccionNotificaciones')">🔔 Notificaciones</button>
-      </div>
-    </section>
-
-    <section class="card appSection" id="seccionProductos">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
-      <h2>🥐 Productos</h2>
-      <p class="hint">Administrá el catálogo sin entrar en producción.</p>
-      <div class="v2SectionLinks">
-        <button type="button" onclick="window.abrirSeccionFratello('seccionProduccion'); setTimeout(()=>document.getElementById('administradorProductos')?.setAttribute('open',''),100)">⚙️ Administrar catálogo</button>
-        <button type="button" onclick="window.abrirSeccionFratello('seccionListasPrecios')">💲 Cargar precios</button>
-      </div>
-    </section>
-
-    <section class="card appSection" id="seccionPedidosFijos">
-      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidos'); return false;">← Volver a pedidos</a>
-      <h2>🔁 Pedidos fijos</h2>
+      <details class="clientFixedOrdersBox" id="pedidosFijosClientes">
+        <summary>🔁 Pedidos fijos y días de entrega</summary>
+        <h3>Pedidos fijos</h3>
       <p class="hint">Guardá pedidos que se repiten. Luego cargalos para una fecha específica con un clic.</p>
       <div class="fixedOrderForm">
         <label>Cliente<select id="pedidoFijoCliente"></select></label>
@@ -386,17 +305,88 @@
         <button id="btnCargarPedidosFijosFecha" type="button">➕ Cargar pedidos fijos de esa fecha</button>
       </div>
       <div id="listaPedidosFijos"></div>
+    </details>
     </section>
 
+  
+    
+
+    <section class="card appSection emptyModule" id="seccionCaja">
+      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver al inicio</a>
+      <div class="emptyModuleIcon">💰</div>
+      <h2>Caja</h2>
+      <p>Esta sección queda preparada para las próximas mejoras de caja.</p>
+      <span>Próximamente</span>
+    </section>
+
+    <section class="card appSection emptyModule" id="seccionTareas">
+      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver al inicio</a>
+      <div class="emptyModuleIcon">✅</div>
+      <h2>Tareas</h2>
+      <p>Esta sección queda preparada para las próximas mejoras de tareas.</p>
+      <span>Próximamente</span>
+    </section>
+
+    <section class="card appSection" id="seccionProductos">
+      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver al inicio</a>
+      <h2>🥐 Productos</h2>
+      <p class="hint">Base de datos de productos, unidades, sinónimos y precios según cada lista.</p>
+
+      <div class="productAreaBlock">
+        <h3>Base de datos de productos</h3>
+        <details class="catalogAdminBox" id="administradorProductos">
+        <summary>⚙️ Administrar productos predeterminados</summary>
+        <p class="hint">Agregá, modificá, ocultá o eliminá productos de la producción base.</p>
+        <div class="catalogAddForm">
+          <input id="nuevoProductoNombre" type="text" placeholder="Nombre del producto">
+          <select id="nuevoProductoUnidad">
+            <option value="unidad">unidad</option>
+            <option value="kg">kg</option>
+            <option value="docena">docena</option>
+            <option value="bandeja">bandeja</option>
+            <option value="bolsa">bolsa</option>
+          </select>
+          <select id="nuevoProductoFormaVenta" title="Cómo interpretar números sin unidad">
+            <option value="solo_unidad">Solo unidad</option>
+            <option value="solo_docena">Solo docena</option>
+            <option value="solo_kg">Solo kilo</option>
+            <option value="unidad_docena">Unidad o docena</option>
+            <option value="unidad_kg">Unidad o kilo</option>
+            <option value="kg_paquete">Kilo o paquete</option>
+            <option value="revisar_siempre">Revisar siempre</option>
+          </select>
+          <button id="btnAgregarProductoCatalogo" type="button" class="primary">➕ Agregar producto</button>
+        </div>
+        <div id="listaAdministradorProductos"></div>
+      </details>
+      </div>
+
+      <div class="productAreaBlock productPricesBlock">
+        <h3>Precios por producto y lista</h3>
+        <p class="hint">Cargá los precios por producto y unidad. El ticket selecciona la lista automáticamente.</p>
+      <div class="priceLegend"><span><strong>Clientes:</strong> lista general</span><span><strong>Giuliano:</strong> precio especial</span><span><strong>Bailone/Líbano:</strong> precio compartido</span><span><strong>Fratello:</strong> precio del local</span></div>
+      <div class="toolbar">
+        <button id="btnAgregarListaPrecio" type="button">➕ Agregar cliente / lista especial</button>
+        <button id="btnGuardarListasPrecios" class="primary" type="button">💾 Guardar precios</button>
+      </div>
+      <p class="hint">
+        Al agregar una lista especial, también podrás asignársela a cualquier cliente desde su ficha.
+      </p>
+      <div id="mensajeListasPrecios" class="mensajePedido"></div><div id="tablaListasPrecios" class="priceTableWrap"></div>
+      </div>
+    </section>
+
+    
+
     <section class="card appSection" id="seccionPedidosFuturos">
-      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidos'); return false;">← Volver a pedidos</a>
+      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">← Volver a Pedidos</a>
       <h2>📅 Pedidos futuros</h2>
       <p class="hint">Los pedidos aparecen agrupados por fecha exacta de entrega para que no se mezclen con la jornada actual.</p>
       <div id="listaPedidosFuturos"></div>
     </section>
 
     <section class="card appSection" id="seccionHistorialPedidos">
-      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidos'); return false;">← Volver a pedidos</a>
+      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">← Volver a Pedidos</a>
       <h2>🕘 Historial de pedidos</h2>
       <p class="hint">Podés repetir un pedido anterior sin volver a escribirlo.</p>
       <div id="listaHistorialPedidos"></div>
@@ -431,7 +421,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=200"></script>
+  <script src="app.js?v=210"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -466,12 +456,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=200")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=210")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=200", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=210", {
             scope: "./",
             updateViaCache: "none"
           });

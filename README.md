@@ -1,11 +1,9 @@
-# Fratello v2.0
-Incluye:
-- Inicio dividido en Pedidos, Caja, Tareas, Clientes y Productos.
-- Pedidos fijos por cliente y días.
-- Carga de pedidos fijos para una fecha.
-- Edición de pedidos ya cargados.
-- Fecha de entrega exacta y detección de días escritos.
-- Pedidos futuros agrupados por fecha.
-- Historial y repetir pedido.
-- Listas de precios personalizadas de v1.08.
-- Firebase, tickets térmicos, PDF, impresión y catálogo existentes.
+# Fratello v2.1 — Reorganización principal
+
+- Inicio limpio con cinco áreas: Pedidos, Caja, Tareas, Clientes y Productos.
+- Pedidos contiene el acceso ordenado a los pasos 1 Producción, 2 Pedidos y 3 Resumen.
+- Caja queda vacía y preparada para próximas mejoras.
+- Tareas queda vacía y preparada para próximas mejoras.
+- Clientes contiene la base de datos y la gestión de pedidos fijos por días.
+- Productos contiene el catálogo y los precios por lista.
+- Conserva Firebase, pedidos futuros, historial, tickets y todas las funciones existentes.

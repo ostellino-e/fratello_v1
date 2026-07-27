@@ -1356,3 +1356,21 @@ body:has(.appSection:target) #contenidoApp {
 .fixedOrderCard.paused{opacity:.6}.fixedOrderCard pre,.historyOrderCard pre{white-space:pre-wrap;background:#f8f3ec;padding:10px;border-radius:8px}
 .futureOrderRow{display:flex;align-items:center;gap:10px;padding:8px;border-top:1px solid #eee}.futureOrderRow strong{flex:1}.futureOrderRow button{width:auto}
 @media(max-width:680px){.v2ModuleGrid{grid-template-columns:1fr}.v2ModuleCard.productos{grid-column:auto}.futureOrderRow{flex-wrap:wrap}}
+
+/* ===== FRATELLO v2.1: organización por áreas ===== */
+.dashboardV21{max-width:860px}
+.homeSimpleHeader{padding:18px 4px 10px}.homeSimpleHeader strong{display:block;font-size:25px}.homeSimpleHeader span{display:block;margin-top:5px;color:#765}
+.homeMainModules{display:grid;gap:12px;margin:10px 0 22px}
+.homeMainCard{display:grid;grid-template-columns:52px 1fr 22px;align-items:center;gap:12px;padding:18px;border:1px solid #ddc3a5;border-radius:16px;background:#fff;text-decoration:none;color:inherit}
+.homeMainCard:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(65,38,20,.08)}
+.homeMainIcon{font-size:34px}.homeMainCard strong{display:block;font-size:19px}.homeMainCard small{display:block;margin-top:4px;color:#75675e}.homeMainCard b{font-size:28px}
+.moduleCenter{max-width:900px}.workflowSteps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+.workflowSteps button{display:grid;grid-template-columns:38px 1fr;text-align:left;gap:2px 10px;padding:17px;height:auto}
+.workflowSteps button>span{grid-row:1/3;border-radius:50%;width:34px;height:34px;display:grid;place-items:center;background:#4f2c1d;color:#fff;font-weight:800}
+.workflowSteps button strong{font-size:17px}.workflowSteps button small{font-weight:400}
+.pedidoSecondaryLinks{display:flex;gap:10px;flex-wrap:wrap}.pedidoSecondaryLinks button{width:auto}
+.clientFixedOrdersBox,.productAreaBlock{margin-top:22px;border:1px solid #dec8ad;border-radius:15px;padding:15px;background:#fffaf3}
+.clientFixedOrdersBox>summary{font-size:18px;font-weight:800;cursor:pointer}
+.productAreaBlock .catalogAdminBox{margin-top:8px}.productPricesBlock{margin-top:18px}
+.emptyModule{text-align:center;padding:46px 20px}.emptyModuleIcon{font-size:55px}.emptyModule h2{margin-bottom:8px}.emptyModule>span{display:inline-block;margin-top:10px;padding:7px 12px;border-radius:18px;background:#eee4d8;font-weight:700}
+@media(max-width:700px){.workflowSteps{grid-template-columns:1fr}.homeMainCard{padding:15px}.clienteCompletoActions{flex-wrap:wrap}}
