@@ -1,8 +1,11 @@
-# Fratello v2.2 — Productos unificados
+# Fratello v2.3 — Pedidos fijos integrados
 
-Cambios:
-- Cada producto aparece una sola vez en la tabla de precios.
-- Las distintas formas de venta (unidad, docena, kg, paquete, etc.) se muestran dentro de la misma fila.
-- Cada lista de precios mantiene campos separados por unidad dentro de la misma celda.
-- Se conservan todos los precios ya guardados, porque las claves internas no cambian.
-- Mantiene toda la organización y funciones de Fratello v2.1.
+Incluye:
+- Selector de días ordenado y visual.
+- Carga automática de pedidos fijos al elegir la fecha de entrega.
+- Pedidos cargados filtrados por la fecha seleccionada.
+- Los pedidos fijos aparecen dentro de Pedidos cargados y se pueden confirmar.
+- Edición de la entrega del día sin modificar el pedido fijo original.
+- Indicador visual cuando una entrega fija fue modificada.
+- Botón opcional para usar el cambio como nuevo pedido fijo.
+- Conserva pedidos futuros, historial, productos unificados, precios, Firebase y tickets.

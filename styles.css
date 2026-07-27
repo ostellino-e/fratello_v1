@@ -1391,3 +1391,26 @@ body:has(.appSection:target) #contenidoApp {
   .unifiedPriceMatrix{min-width:850px}
   .unifiedProductName{position:sticky;left:0;background:#fff;z-index:1}
 }
+
+/* ===== FRATELLO v2.3: pedidos fijos integrados ===== */
+.weekdaySelector{padding:14px!important}
+.weekdayGrid{display:grid;grid-template-columns:repeat(7,minmax(65px,1fr));gap:8px}
+.weekdayGrid label{position:relative;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:10px 5px;border:1px solid #d8c0a4;border-radius:12px;background:#fff;cursor:pointer}
+.weekdayGrid label input{position:absolute;opacity:0;pointer-events:none}
+.weekdayGrid label span{font-weight:800;font-size:14px}
+.weekdayGrid label small{font-size:10px;color:#77675d}
+.weekdayGrid label:has(input:checked){background:#4f2c1d;color:#fff;border-color:#4f2c1d}
+.weekdayGrid label:has(input:checked) small{color:#f7e9d8}
+.automaticFixedInfo strong{display:block;font-size:16px}.automaticFixedInfo p{margin:6px 0 12px}
+.ordersDateStatus{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;margin-bottom:10px;border-radius:12px;background:#f4eadf}
+.ordersDateStatus strong{text-transform:capitalize}.ordersDateStatus span{font-size:12px;color:#6f6158}
+.fixedDailyOrder{border-left:5px solid #8a633f}
+.fixedDailyOrderModified{border-left-color:#d68022}
+.orderOriginBadges{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 10px}
+.orderOriginBadges span{padding:5px 9px;border-radius:14px;font-size:11px;font-weight:800}
+.originFixed{background:#ece1d2}.originManual{background:#e5edf3}.originModified{background:#ffe0b8;color:#8a4a00}
+.updateFixedOrderBtn{background:#8a5b24!important;color:#fff!important}
+@media(max-width:760px){
+  .weekdayGrid{grid-template-columns:repeat(4,1fr)}
+  .ordersDateStatus{align-items:flex-start;flex-direction:column}
+}

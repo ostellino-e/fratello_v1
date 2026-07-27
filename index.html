@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "2.2";
-    document.documentElement.dataset.fratelloVersion = "2.2";
+    window.FRATELLO_VERSION = "2.3";
+    document.documentElement.dataset.fratelloVersion = "2.3";
   </script>
 
 </head>
@@ -33,7 +33,7 @@
   </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v2.2</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v2.3</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -183,7 +183,8 @@
         <div id="estadoColaRecordatorios" class="reminderQueueStatus hidden"></div>
       </div>
 
-      <h3>Pedidos cargados</h3>
+      <h3>Pedidos cargados para la fecha elegida</h3>
+      <div id="estadoPedidosFecha" class="ordersDateStatus"></div>
       <div id="pedidosCargados"></div>
 
       <div id="avisoUnidadesAmbiguas" class="ambiguousSummary hidden"></div>
@@ -289,20 +290,24 @@
       <div class="fixedOrderForm">
         <label>Cliente<select id="pedidoFijoCliente"></select></label>
         <label>Pedido<textarea id="pedidoFijoTexto" rows="6" placeholder="Ej: 3 kg pan&#10;1 doc medialunas"></textarea></label>
-        <fieldset><legend>Días de entrega</legend>
-          <label><input type="checkbox" name="diaFijo" value="1"> Lunes</label>
-          <label><input type="checkbox" name="diaFijo" value="2"> Martes</label>
-          <label><input type="checkbox" name="diaFijo" value="3"> Miércoles</label>
-          <label><input type="checkbox" name="diaFijo" value="4"> Jueves</label>
-          <label><input type="checkbox" name="diaFijo" value="5"> Viernes</label>
-          <label><input type="checkbox" name="diaFijo" value="6"> Sábado</label>
-          <label><input type="checkbox" name="diaFijo" value="0"> Domingo</label>
+        <fieldset class="weekdaySelector"><legend>Días de entrega</legend>
+          <div class="weekdayGrid">
+            <label><input type="checkbox" name="diaFijo" value="1"><span>Lun</span><small>Lunes</small></label>
+            <label><input type="checkbox" name="diaFijo" value="2"><span>Mar</span><small>Martes</small></label>
+            <label><input type="checkbox" name="diaFijo" value="3"><span>Mié</span><small>Miércoles</small></label>
+            <label><input type="checkbox" name="diaFijo" value="4"><span>Jue</span><small>Jueves</small></label>
+            <label><input type="checkbox" name="diaFijo" value="5"><span>Vie</span><small>Viernes</small></label>
+            <label><input type="checkbox" name="diaFijo" value="6"><span>Sáb</span><small>Sábado</small></label>
+            <label><input type="checkbox" name="diaFijo" value="0"><span>Dom</span><small>Domingo</small></label>
+          </div>
         </fieldset>
         <div class="toolbar"><button id="btnGuardarPedidoFijo" class="primary" type="button">💾 Guardar pedido fijo</button><button id="btnLimpiarPedidoFijo" type="button">Limpiar</button></div>
       </div>
-      <div class="futureLoadBox">
-        <label>Fecha para cargar pedidos fijos<input id="fechaCargarPedidosFijos" type="date"></label>
-        <button id="btnCargarPedidosFijosFecha" type="button">➕ Cargar pedidos fijos de esa fecha</button>
+      <div class="futureLoadBox automaticFixedInfo">
+        <strong>⚡ Carga automática</strong>
+        <p>Cuando elegís una fecha en Pedidos, Fratello incorpora automáticamente los pedidos fijos correspondientes a ese día.</p>
+        <label>Revisar otra fecha<input id="fechaCargarPedidosFijos" type="date"></label>
+        <button id="btnCargarPedidosFijosFecha" type="button">🔄 Revisar y cargar esa fecha</button>
       </div>
       <div id="listaPedidosFijos"></div>
     </details>
@@ -421,7 +426,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=220"></script>
+  <script src="app.js?v=230"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -456,12 +461,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=220")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=230")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=220", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=230", {
             scope: "./",
             updateViaCache: "none"
           });

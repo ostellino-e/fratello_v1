@@ -792,6 +792,14 @@ function abrirSeccionFratello(idSeccion) {
     marcarNotificacionesComoVistas();
   }
 
+  if (idSeccion === "seccionPedidos") {
+    const fecha = $("fechaPedido")?.value || fechaISOManana();
+    if ($("fechaPedido") && !$("fechaPedido").value) $("fechaPedido").value = fecha;
+    asegurarPedidosFijosParaFecha(fecha, false);
+    renderPedidosCargados();
+    calcularDiferencias();
+  }
+
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -2657,30 +2665,144 @@ function aplicarFechaDetectadaAlPedido(texto) {
   }
 }
 
+
+function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
+  if (!fecha || !Array.isArray(pedidosFijos)) return 0;
+
+  const diaSemana = new Date(fecha + "T12:00:00").getDay();
+  const aplicables = pedidosFijos.filter(fijo =>
+    fijo.activo !== false &&
+    Array.isArray(fijo.dias) &&
+    fijo.dias.includes(diaSemana)
+  );
+
+  let agregados = 0;
+
+  aplicables.forEach(fijo => {
+    const existe = pedidos.some(pedido =>
+      pedido.origen === "pedido_fijo" &&
+      Number(pedido.pedidoFijoId) === Number(fijo.id) &&
+      fechaEntregaPedido(pedido) === fecha
+    );
+
+    if (existe) return;
+
+    const pedido = {
+      id: Date.now() + agregados,
+      cliente: fijo.cliente,
+      fecha,
+      fechaEntrega: fecha,
+      textoOriginal: fijo.texto,
+      textoFijoOriginal: fijo.texto,
+      origen: "pedido_fijo",
+      pedidoFijoId: fijo.id,
+      modificadoDesdeFijo: false,
+      items: procesarTextoPedido(fijo.texto, fijo.cliente, fecha)
+    };
+
+    pedidos.push(pedido);
+    registrarPedidoEnHistorial(pedido);
+    agregados += 1;
+  });
+
+  if (agregados > 0) {
+    pedidosConfirmados = false;
+    guardarTodo();
+  }
+
+  if (mostrarAviso) {
+    alert(
+      agregados > 0
+        ? `${agregados} pedido(s) fijo(s) incorporado(s) a la fecha seleccionada.`
+        : "Los pedidos fijos de esa fecha ya estaban cargados o no hay ninguno configurado."
+    );
+  }
+
+  return agregados;
+}
+
+function actualizarPedidoFijoDesdePedido(idPedido) {
+  const pedido = pedidos.find(p => Number(p.id) === Number(idPedido));
+  if (!pedido || pedido.origen !== "pedido_fijo") return;
+
+  const fijo = pedidosFijos.find(f => Number(f.id) === Number(pedido.pedidoFijoId));
+  if (!fijo) {
+    alert("No se encontró el pedido fijo original.");
+    return;
+  }
+
+  if (!confirm(
+    `¿Actualizar el pedido fijo de ${pedido.cliente} con el contenido de este pedido?\n\n` +
+    "El cambio se aplicará a las próximas fechas, pero no modificará pedidos anteriores."
+  )) return;
+
+  fijo.texto = pedido.textoOriginal || "";
+  fijo.actualizado = new Date().toISOString();
+  pedido.textoFijoOriginal = fijo.texto;
+  pedido.modificadoDesdeFijo = false;
+
+  guardarTodo();
+  renderPedidosFijos();
+  renderPedidosCargados();
+  alert("Pedido fijo actualizado para las próximas entregas.");
+}
+
+function manejarCambioFechaPedidos() {
+  const fecha = $("fechaPedido")?.value;
+  if (!fecha) return;
+
+  asegurarPedidosFijosParaFecha(fecha, false);
+  renderPedidosCargados();
+  calcularDiferencias();
+  actualizarEstadoConfirmacion();
+}
+
 function editarPedidoCargado(id) {
   const pedido = pedidos.find(p => Number(p.id) === Number(id));
   if (!pedido) return;
-  const textoNuevo = prompt("Corregí el texto del pedido:", pedido.textoOriginal || "");
+
+  const textoAnterior = pedido.textoOriginal || "";
+  const fechaAnterior = fechaEntregaPedido(pedido);
+
+  const textoNuevo = prompt("Corregí el texto del pedido:", textoAnterior);
   if (textoNuevo === null) return;
-  const fechaNueva = prompt("Fecha de entrega (AAAA-MM-DD):", fechaEntregaPedido(pedido));
+
+  const fechaNueva = prompt("Fecha de entrega (AAAA-MM-DD):", fechaAnterior);
   if (fechaNueva === null) return;
+
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaNueva)) {
     alert("La fecha debe tener formato AAAA-MM-DD.");
     return;
   }
+
   pedido.textoOriginal = textoNuevo;
   pedido.fecha = fechaNueva;
   pedido.fechaEntrega = fechaNueva;
   pedido.items = procesarTextoPedido(textoNuevo, pedido.cliente, fechaNueva);
   pedido.editadoEn = new Date().toISOString();
+
+  if (pedido.origen === "pedido_fijo") {
+    if (!pedido.textoFijoOriginal) pedido.textoFijoOriginal = textoAnterior;
+    pedido.modificadoDesdeFijo =
+      textoNuevo.trim() !== String(pedido.textoFijoOriginal || "").trim() ||
+      fechaNueva !== fechaAnterior;
+  }
+
   pedidosConfirmados = false;
   registrarPedidoEnHistorial(pedido);
+  asegurarPedidosFijosParaFecha(fechaNueva, false);
   guardarTodo();
+
   renderPedidosCargados();
   renderPedidosFuturos();
   renderHistorialPedidos();
   calcularDiferencias();
-  alert("Pedido actualizado.");
+
+  alert(
+    pedido.origen === "pedido_fijo"
+      ? "Pedido de esta entrega actualizado. El pedido fijo original no cambió."
+      : "Pedido actualizado."
+  );
 }
 
 function repetirPedidoHistorial(id) {
@@ -2799,20 +2921,19 @@ function renderPedidosFijos(){
 }
 
 function cargarPedidosFijosParaFecha(){
-  const fecha=$("fechaCargarPedidosFijos")?.value;
-  if(!fecha){alert("Elegí una fecha.");return;}
-  const dia=new Date(fecha+"T12:00:00").getDay();
-  const aplicables=pedidosFijos.filter(f=>f.activo&&f.dias.includes(dia));
-  if(!aplicables.length){alert("No hay pedidos fijos activos para ese día.");return;}
-  let agregados=0;
-  aplicables.forEach(f=>{
-    const existe=pedidos.some(p=>p.origen==="pedido_fijo"&&p.pedidoFijoId===f.id&&fechaEntregaPedido(p)===fecha);
-    if(existe)return;
-    const pedido={id:Date.now()+agregados,cliente:f.cliente,fecha,fechaEntrega:fecha,textoOriginal:f.texto,origen:"pedido_fijo",pedidoFijoId:f.id,items:procesarTextoPedido(f.texto,f.cliente,fecha)};
-    pedidos.push(pedido);registrarPedidoEnHistorial(pedido);agregados++;
-  });
-  guardarTodo();renderPedidosCargados();renderPedidosFuturos();renderHistorialPedidos();calcularDiferencias();
-  alert(`${agregados} pedido(s) fijo(s) cargado(s).`);
+  const fecha = $("fechaCargarPedidosFijos")?.value;
+  if (!fecha) {
+    alert("Elegí una fecha.");
+    return;
+  }
+
+  asegurarPedidosFijosParaFecha(fecha, true);
+
+  if ($("fechaPedido")) $("fechaPedido").value = fecha;
+  renderPedidosCargados();
+  renderPedidosFuturos();
+  renderHistorialPedidos();
+  calcularDiferencias();
 }
 
 function renderSelectorClientesPedidoFijo(){
@@ -2881,23 +3002,55 @@ function renderUltimoProcesado() {
 }
 
 function renderPedidosCargados() {
-  if (!pedidos.length) {
-    $("pedidosCargados").innerHTML = "<p>No hay pedidos cargados.</p>";
+  const contenedor = $("pedidosCargados");
+  if (!contenedor) return;
+
+  const fechaSeleccionada = $("fechaPedido")?.value || hoyISO();
+  const pedidosFecha = pedidos.filter(
+    pedido => fechaEntregaPedido(pedido) === fechaSeleccionada
+  );
+
+  const estadoFecha = $("estadoPedidosFecha");
+  if (estadoFecha) {
+    const fechaLegible = new Date(fechaSeleccionada + "T12:00:00")
+      .toLocaleDateString("es-AR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+
+    const fijos = pedidosFecha.filter(p => p.origen === "pedido_fijo").length;
+    estadoFecha.innerHTML =
+      `<strong>${fechaLegible}</strong>` +
+      `<span>${pedidosFecha.length} pedido(s) · ${fijos} fijo(s)</span>`;
+  }
+
+  if (!pedidosFecha.length) {
+    contenedor.innerHTML =
+      "<p>No hay pedidos cargados para esta fecha. Los pedidos fijos se agregan automáticamente al elegir el día.</p>";
+    renderClientesPendientes();
     return;
   }
 
   let html = "";
 
-  pedidos.forEach((pedido) => {
-    const itemsValidos = pedido.items.filter(i => i.estado !== "NO PEDIDO");
+  pedidosFecha.forEach((pedido) => {
+    const itemsValidos = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO");
+    const esFijo = pedido.origen === "pedido_fijo";
+    const fueModificado = esFijo && Boolean(pedido.modificadoDesdeFijo);
 
-    html += `<div class="pedidoClienteCard">
+    html += `<div class="pedidoClienteCard ${esFijo ? "fixedDailyOrder" : ""} ${fueModificado ? "fixedDailyOrderModified" : ""}">
       <div class="pedidoClienteHeader">
         <label class="pedidoSelect">
           <input type="checkbox" class="checkPedidoEliminar" value="${pedido.id}">
-          <strong>${pedido.cliente}</strong>
+          <strong>${esFijo ? "🔁 " : ""}${pedido.cliente}</strong>
         </label>
-        <span>${itemsValidos.length} ítems · Entrega ${new Date(fechaEntregaPedido(pedido)+"T12:00:00").toLocaleDateString("es-AR")}${fechaEntregaPedido(pedido)>hoyISO()?" · 📅 Futuro":""}${pedido.origen==="pedido_fijo"?" · 🔁 Fijo":""}</span>
+        <span>${itemsValidos.length} ítems · Entrega ${new Date(fechaEntregaPedido(pedido)+"T12:00:00").toLocaleDateString("es-AR")}</span>
+      </div>
+      <div class="orderOriginBadges">
+        ${esFijo ? '<span class="originFixed">🔁 Pedido fijo</span>' : '<span class="originManual">✍️ Pedido cargado</span>'}
+        ${fueModificado ? '<span class="originModified">🟠 Modificado para esta entrega</span>' : ""}
       </div>`;
 
     if (!itemsValidos.length) {
@@ -2916,15 +3069,18 @@ function renderPedidosCargados() {
     }
 
     html += `<div class="accionesPedido">
-      <button type="button" onclick="editarPedidoCargado(${pedido.id})">✏️ Editar pedido</button>
+      <button type="button" onclick="editarPedidoCargado(${pedido.id})">✏️ Editar esta entrega</button>
+      ${esFijo && fueModificado
+        ? `<button type="button" class="updateFixedOrderBtn" onclick="actualizarPedidoFijoDesdePedido(${pedido.id})">💾 Usar como nuevo pedido fijo</button>`
+        : ""}
       <button type="button" onclick="descargarPdfPedidoIndividual(${pedido.id})">📄 PDF del cliente</button>
       <button type="button" onclick="reprocesarPedidoFormulario(${pedido.id})">🔄 Reinterpretar pedido</button>
-      <button type="button" class="btnEliminarPedido" onclick="borrarPedido(${pedido.id})">Eliminar este pedido</button>
+      <button type="button" class="btnEliminarPedido" onclick="borrarPedido(${pedido.id})">Eliminar esta entrega</button>
     </div>`;
     html += `</div>`;
   });
 
-  $("pedidosCargados").innerHTML = html;
+  contenedor.innerHTML = html;
   actualizarAvisoUnidadesAmbiguas();
   renderClientesPendientes();
 }
@@ -3927,6 +4083,7 @@ async function init() {
   if ($("btnGuardarPedidoFijo")) $("btnGuardarPedidoFijo").onclick=guardarPedidoFijo;
   if ($("btnLimpiarPedidoFijo")) $("btnLimpiarPedidoFijo").onclick=limpiarFormularioPedidoFijo;
   if ($("btnCargarPedidosFijosFecha")) $("btnCargarPedidosFijosFecha").onclick=cargarPedidosFijosParaFecha;
+  if ($("fechaPedido")) $("fechaPedido").addEventListener("change", manejarCambioFechaPedidos);
 
   if ($("btnAgregarListaPrecio")) {
     $("btnAgregarListaPrecio").onclick = agregarListaPrecioPersonalizada;
@@ -4012,6 +4169,7 @@ async function init() {
   aplicarPermisosUsuario();
   if ($("fechaPedido")) $("fechaPedido").value = fechaISOManana();
   if ($("fechaCargarPedidosFijos")) $("fechaCargarPedidosFijos").value = fechaISOManana();
+  asegurarPedidosFijosParaFecha($("fechaPedido")?.value || fechaISOManana(), false);
   renderClientes();
 
   if ($("cliente")) $("cliente").onchange = limpiarPedidoCrudo;
@@ -4073,6 +4231,7 @@ async function init() {
 
 
 window.configurarPedidoFijoCliente=configurarPedidoFijoCliente;
+window.actualizarPedidoFijoDesdePedido=actualizarPedidoFijoDesdePedido;
 window.editarPedidoCargado=editarPedidoCargado;
 window.repetirPedidoHistorial=repetirPedidoHistorial;
 window.editarPedidoFijo=editarPedidoFijo;
