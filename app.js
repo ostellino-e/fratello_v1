@@ -1138,27 +1138,49 @@ async function cargarDesdeNube() {
 
     if (doc.exists) {
       const data = doc.data();
+
       produccion = data.produccion || produccion;
-      pedidos = data.pedidos || pedidos;
+      pedidos = Array.isArray(data.pedidos) ? data.pedidos : pedidos;
       predeterminadas = data.predeterminadas || predeterminadas;
-      clientes = (Array.isArray(data.clientes) && data.clientes.length > 0) ? data.clientes : clientes;
-    datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
+      clientes = Array.isArray(data.clientes) && data.clientes.length
+        ? data.clientes
+        : clientes;
+
+      datosClientesCompletos =
+        data.datosClientesCompletos || datosClientesCompletos;
       listasPrecios = data.listasPrecios || listasPrecios;
-      datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
-      listasPrecios = data.listasPrecios || listasPrecios;
-      validarClientes();
-    productosExtra = data.productosExtra || productosExtra;
-    if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
-      productos.splice(0, productos.length, ...data.catalogoProductos);
-    }
-    pedidosConfirmados = data.pedidosConfirmados || false;
-    productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); } );
-      productosExtra = data.productosExtra || productosExtra;
-      pedidosConfirmados = data.pedidosConfirmados || false;
-      productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); } );
-    correspondePedido = data.correspondePedido || correspondePedido;
-    memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
+      productosExtra = Array.isArray(data.productosExtra)
+        ? data.productosExtra
+        : productosExtra;
+
+      // Nunca vaciar el catálogo si Firebase no trae uno válido.
+      if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
+        productos.splice(0, productos.length, ...data.catalogoProductos);
+      }
+
+      productosExtra.forEach(productoExtra => {
+        if (!productos.find(producto => producto.id === productoExtra.id)) {
+          productos.push(productoExtra);
+        }
+      });
+
+      pedidosConfirmados = Boolean(data.pedidosConfirmados);
       correspondePedido = data.correspondePedido || correspondePedido;
+      memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
+
+      validarClientes();
+
+      localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
+      localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+      localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
+      localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
+      localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+    localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
+      localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
+      localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
+      localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
+      localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+      localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
     }
 
     setEstadoSync("Online");
@@ -1167,7 +1189,6 @@ async function cargarDesdeNube() {
     setEstadoSync("Error online / usando local");
   }
 }
-
 
 async function actualizarDatosManual() {
   const boton = $("btnActualizarDatos");
@@ -2948,3 +2969,653 @@ async function compartirImagenPedidos(){
 }
 function imprimirImagenPedidos(){if(!pedidos.length){alert("No hay pedidos cargados.");return;}const imgs=pedidos.map(p=>crearCanvasTicketIndividual(datosTicketPedido(p)).toDataURL("image/png")),w=window.open("","_blank");if(!w){alert("Permití ventanas emergentes para imprimir.");return;}w.document.write(`<html><head><style>@page{size:80mm auto;margin:0}body{margin:0}.ticket{display:block;width:80mm;height:auto;page-break-after:always}.ticket:last-child{page-break-after:auto}</style></head><body>`);imgs.forEach(src=>w.document.write(`<img class="ticket" src="${src}">`));w.document.write(`<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),300));<\/script></body></html>`);w.document.close();}
 
+
+function resetDatos() {
+  if (!confirm("¿Seguro que querés borrar solo los pedidos cargados?")) return;
+
+  pedidos = [];
+  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+  guardarEnNube();
+
+  renderPedidosCargados();
+  $("ultimoProcesado").innerHTML = "";
+  $("comparador").innerHTML = "";
+  $("resumenPanadero").textContent = "";
+}
+
+
+// --- MODO ADMINISTRADOR ÚNICO ---
+let usuarioActual = "admin";
+
+function aplicarPermisosUsuario() {
+  document.querySelectorAll(".adminOnly").forEach(el => {
+    el.style.display = "";
+  });
+
+  document.querySelectorAll(".normalOnly").forEach(el => {
+    el.style.display = "none";
+  });
+}
+
+
+
+function destildarCasillasConfirmacion() {
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkPedido = $("checkPedidoCompleto");
+
+  if (checkProduccion) checkProduccion.checked = false;
+  if (checkPedido) checkPedido.checked = false;
+}
+
+function actualizarEstadoConfirmacion() {
+  const el = $("estadoConfirmacion");
+  if (!el) return;
+  el.textContent = pedidosConfirmados ? "Pedidos confirmados" : "Pedidos sin confirmar";
+  el.className = pedidosConfirmados ? "estadoConfirmacion confirmado" : "estadoConfirmacion";
+}
+
+function confirmarPedidos() {
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkPedido = $("checkPedidoCompleto");
+
+  if (checkProduccion && !checkProduccion.checked) {
+    alert("Falta tildar que el día seleccionado es correcto.");
+    return;
+  }
+
+  if (checkPedido && !checkPedido.checked) {
+    alert("Falta tildar que todos los pedidos cargados están correctos.");
+    return;
+  }
+
+  if (!pedidos.length) {
+    alert("Todavía no hay pedidos cargados.");
+    return;
+  }
+
+  const ambiguosUnidad = pedidosConUnidadAmbigua();
+  const ambiguosProducto = pedidosConProductoAmbiguo();
+  const totalAmbiguos = ambiguosUnidad.length + ambiguosProducto.length;
+  if (totalAmbiguos) {
+    alert(`Hay ${totalAmbiguos} revisión(es) pendiente(s) de producto o unidad.`);
+    return;
+  }
+
+  pedidosConfirmados = true;
+  guardarTodo();
+  actualizarEstadoConfirmacion();
+  destildarCasillasConfirmacion();
+  alert("Pedidos confirmados correctamente. Se conservarán hasta iniciar una nueva jornada.");
+}
+
+
+
+
+function fechaJornadaActual() {
+  return $("fechaPedido")?.value || hoyISO();
+}
+
+function diaJornadaActual() {
+  return $("diaProduccion")?.value || $("diaProduccionPedidos")?.value || "";
+}
+
+function totalesPedidosDe(listaPedidos) {
+  const totales = {};
+  (listaPedidos || []).forEach(pedido => {
+    (pedido.items || []).forEach(it => {
+      if (it.estado === "NO PEDIDO") return;
+      const id = it.productoId;
+      if (!id) return;
+      totales[id] = (totales[id] || 0) + Number(it.cantidad || 0);
+    });
+  });
+  return totales;
+}
+
+function sumarTotales(a, b) {
+  const salida = {...(a || {})};
+  Object.entries(b || {}).forEach(([id, cantidad]) => {
+    salida[id] = Number(salida[id] || 0) + Number(cantidad || 0);
+  });
+  return salida;
+}
+
+function mapaProduccionActual() {
+  const salida = {};
+  productos.forEach(p => {
+    salida[p.id] = Number(produccion[claveProduccion(p.id)] || 0);
+  });
+  return salida;
+}
+
+function diferenciasDesde(produccionMapa, pedidosMapa) {
+  const salida = {};
+  const ids = new Set([
+    ...Object.keys(produccionMapa || {}),
+    ...Object.keys(pedidosMapa || {})
+  ]);
+
+  ids.forEach(id => {
+    salida[id] = Number(produccionMapa?.[id] || 0) - Number(pedidosMapa?.[id] || 0);
+  });
+
+  return salida;
+}
+
+function productoPorIdMemoria(id) {
+  return productos.find(p => p.id === id) || {
+    id,
+    nombre: id.replace(/^EXTRA_/, "").replace(/_/g, " "),
+    unidad: "unidad"
+  };
+}
+
+function memoriaCorrespondeAJornadaActual() {
+  if (!memoriaUltimoEnvio) return false;
+  return memoriaUltimoEnvio.fecha === fechaJornadaActual();
+}
+
+function actualizarPanelMemoriaEnvio() {
+  const estado = $("estadoMemoriaEnvio");
+  if (!estado) return;
+
+  if (!memoriaUltimoEnvio) {
+    estado.textContent = "No hay un envío guardado.";
+    return;
+  }
+
+  const cantidadClientes = (memoriaUltimoEnvio.clientes || []).length;
+  estado.textContent =
+    `${memoriaUltimoEnvio.fecha} · ${memoriaUltimoEnvio.hora || ""} · ` +
+    `${cantidadClientes} cliente${cantidadClientes === 1 ? "" : "s"} incluidos.`;
+}
+
+function borrarMemoriaEnvio() {
+  if (!memoriaUltimoEnvio) {
+    alert("No hay memoria de envío para borrar.");
+    return;
+  }
+
+  if (!confirm("¿Seguro que querés comenzar una jornada nueva y borrar la memoria del último envío?")) return;
+
+  memoriaUltimoEnvio = null;
+  localStorage.removeItem("fratello_memoria_envio");
+
+  // La limpieza completa ocurre únicamente al comenzar una jornada nueva.
+  limpiarJornadaDespuesDeEnviar();
+  actualizarPanelMemoriaEnvio();
+
+  alert("Nueva jornada iniciada. Se borraron los pedidos y la memoria del envío anterior.");
+}
+
+function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencias, clientesAcumulados) {
+  memoriaUltimoEnvio = {
+    fecha: fechaJornadaActual(),
+    dia: diaJornadaActual(),
+    produccion: produccionMapa,
+    pedidosTotales: pedidosAcumulados,
+    diferencias,
+    clientes: clientesAcumulados,
+    hora: new Date().toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"}),
+    actualizado: new Date().toISOString()
+  };
+
+  localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+  actualizarPanelMemoriaEnvio();
+}
+
+function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, diferenciasNuevas) {
+  let mensaje = "FRATELLO - ACTUALIZACIÓN DE PEDIDOS\n\n";
+
+  mensaje += "PEDIDOS NUEVOS / TARDÍOS:\n\n";
+  pedidosNuevos.forEach(pedido => {
+    mensaje += `${pedido.cliente}:\n`;
+    const items = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO");
+    if (!items.length) {
+      mensaje += "- Sin productos detectados\n";
+    } else {
+      items.forEach(it => {
+        mensaje += `- ${fmt(it.cantidad)} ${it.unidad} ${it.producto}\n`;
+      });
+    }
+    mensaje += "\n";
+  });
+
+  mensaje += "--------------------\n";
+  mensaje += "CAMBIOS SOBRE EL MENSAJE ANTERIOR:\n\n";
+
+  const ids = new Set([
+    ...Object.keys(diferenciasAnteriores || {}),
+    ...Object.keys(diferenciasNuevas || {})
+  ]);
+
+  const cambios = [];
+  ids.forEach(id => {
+    const anterior = Number(diferenciasAnteriores?.[id] || 0);
+    const nuevo = Number(diferenciasNuevas?.[id] || 0);
+    const delta = nuevo - anterior;
+    if (Math.abs(delta) < 0.0001) return;
+
+    const producto = productoPorIdMemoria(id);
+    cambios.push({producto, delta});
+  });
+
+  if (!cambios.length) {
+    mensaje += "- El pedido no modifica las cantidades informadas anteriormente.\n";
+  } else {
+    cambios.forEach(({producto, delta}) => {
+      if (delta < 0) {
+        mensaje += `🔴 AGREGAR ${fmt(Math.abs(delta))} ${producto.unidad} ${producto.nombre}\n`;
+      } else {
+        mensaje += `🟢 REDUCIR / GUARDAR ${fmt(delta)} ${producto.unidad} ${producto.nombre}\n`;
+      }
+    });
+  }
+
+  mensaje += "\nEste mensaje complementa el envío anterior.";
+  return mensaje;
+}
+
+function obtenerFilasComparador() {
+  const totalesPedido = {};
+
+  for (const pedido of pedidos) {
+    for (const it of pedido.items) {
+      if (it.estado !== "NO PEDIDO") {
+        totalesPedido[it.productoId] = (totalesPedido[it.productoId] || 0) + Number(it.cantidad || 0);
+      }
+    }
+  }
+
+  const filas = [];
+
+  for (const p of productos) {
+    const prod = Number(produccion[claveProduccion(p.id)] || 0);
+    const ped = Number(totalesPedido[p.id] || 0);
+
+    if (prod === 0 && ped === 0) continue;
+
+    const dif = prod - ped;
+
+    filas.push({
+      producto: p.nombre,
+      unidad: p.unidad,
+      prod,
+      ped,
+      dif
+    });
+  }
+
+  return filas;
+}
+
+
+function limpiarJornadaDespuesDeEnviar() {
+  pedidos = [];
+  pedidosConfirmados = false;
+
+  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(false));
+
+  const selectorProduccion = $("diaProduccion");
+  const selectorPedidos = $("diaProduccionPedidos");
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkDiaPedidos = $("checkDiaPedidos");
+  const checkPedidos = $("checkPedidoCompleto");
+  const pedidoCrudo = $("pedidoCrudo");
+
+  if (selectorProduccion) selectorProduccion.value = "";
+  if (selectorPedidos) selectorPedidos.value = "";
+  if (checkProduccion) checkProduccion.checked = false;
+  if (checkDiaPedidos) checkDiaPedidos.checked = false;
+  if (checkPedidos) checkPedidos.checked = false;
+  if (pedidoCrudo) pedidoCrudo.value = "";
+
+  const pedidosCargados = $("pedidosCargados");
+  const ultimoProcesado = $("ultimoProcesado");
+  const comparador = $("comparador");
+  const resumenPanadero = $("resumenPanadero");
+  const vistaPedidos = $("vistaPedidosInline");
+  const produccionLista = $("produccionLista");
+  const produccionExtra = $("produccionExtra");
+
+  if (pedidosCargados) pedidosCargados.innerHTML = "<p>No hay pedidos cargados.</p>";
+  if (ultimoProcesado) ultimoProcesado.innerHTML = "";
+  if (comparador) comparador.innerHTML = "";
+  if (resumenPanadero) resumenPanadero.textContent = "";
+  if (vistaPedidos) vistaPedidos.innerHTML = "";
+  if (produccionLista) produccionLista.innerHTML = "";
+  if (produccionExtra) produccionExtra.innerHTML = "";
+
+  actualizarTarjetaDiaPedidos();
+  guardarEnNube();
+}
+
+function abrirWhatsApp(numero, mensaje) {
+  const texto = encodeURIComponent(mensaje);
+  const url = numero
+    ? `https://wa.me/${numero}?text=${texto}`
+    : `https://wa.me/?text=${texto}`;
+
+  window.location.href = url;
+}
+
+
+function verificarChecksAntesDeWhatsApp() {
+  const selectorProduccion = $("diaProduccion");
+  const selectorPedidos = $("diaProduccionPedidos");
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkDiaPedidos = $("checkDiaPedidos");
+  const checkPedido = $("checkPedidoCompleto");
+
+  const diaElegido =
+    (selectorProduccion && selectorProduccion.value) ||
+    (selectorPedidos && selectorPedidos.value);
+
+  if (!diaElegido) {
+    alert("Primero seleccioná el día de producción.");
+    return false;
+  }
+
+  const diaConfirmado =
+    (checkProduccion && checkProduccion.checked) ||
+    (checkDiaPedidos && checkDiaPedidos.checked);
+
+  if (!diaConfirmado) {
+    alert("Primero confirmá que el día seleccionado es correcto.");
+    return false;
+  }
+
+  if (checkPedido && !checkPedido.checked) {
+    alert("Primero tildá que los pedidos cargados están correctos.");
+    return false;
+  }
+
+  return true;
+}
+
+function generarMensajeGrupoFratello() {
+  if (!verificarChecksAntesDeWhatsApp()) return;
+
+  const pedidosNuevos = [...pedidos];
+  const totalesNuevos = totalesPedidosDe(pedidosNuevos);
+  const esActualizacion = memoriaCorrespondeAJornadaActual();
+
+  let produccionMapa;
+  let pedidosAcumulados;
+  let diferenciasNuevas;
+  let clientesAcumulados;
+  let mensaje;
+
+  if (esActualizacion) {
+    produccionMapa = memoriaUltimoEnvio.produccion || mapaProduccionActual();
+    pedidosAcumulados = sumarTotales(memoriaUltimoEnvio.pedidosTotales, totalesNuevos);
+    diferenciasNuevas = diferenciasDesde(produccionMapa, pedidosAcumulados);
+    clientesAcumulados = [
+      ...(memoriaUltimoEnvio.clientes || []),
+      ...pedidosNuevos.map(p => p.cliente)
+    ];
+
+    mensaje = construirMensajeActualizacion(
+      pedidosNuevos,
+      memoriaUltimoEnvio.diferencias || {},
+      diferenciasNuevas
+    );
+  } else {
+    produccionMapa = mapaProduccionActual();
+    pedidosAcumulados = totalesNuevos;
+    diferenciasNuevas = diferenciasDesde(produccionMapa, pedidosAcumulados);
+    clientesAcumulados = pedidosNuevos.map(p => p.cliente);
+
+    const filas = obtenerFilasComparador();
+    const faltan = filas.filter(f => f.dif < 0);
+    const sobran = filas.filter(f => f.dif > 0);
+
+    mensaje = "FRATELLO - Resumen de producción y pedidos\n\n";
+
+    mensaje += "🔴 FALTA HACER:\n";
+    if (!faltan.length) {
+      mensaje += "- Nada\n";
+    } else {
+      faltan.forEach(f => {
+        mensaje += `🔴 ${fmt(Math.abs(f.dif))} ${f.unidad} ${f.producto}\n`;
+      });
+    }
+
+    mensaje += "\n🟢 SOBRA / GUARDAR:\n";
+    if (!sobran.length) {
+      mensaje += "- Nada\n";
+    } else {
+      sobran.forEach(f => {
+        mensaje += `🟢 ${fmt(f.dif)} ${f.unidad} ${f.producto}\n`;
+      });
+    }
+
+    mensaje += "\n--------------------\nPEDIDOS DE CLIENTES:\n\n";
+
+    pedidosNuevos.forEach(pedido => {
+      const itemsValidos = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO");
+      mensaje += `${pedido.cliente}:\n`;
+
+      if (!itemsValidos.length) {
+        mensaje += "- Sin productos detectados\n";
+      } else {
+        itemsValidos.forEach(it => {
+          mensaje += `- ${fmt(it.cantidad)} ${it.unidad} ${it.producto}\n`;
+        });
+      }
+      mensaje += "\n";
+    });
+
+    mensaje += "Enviado desde sistema Fratello.";
+  }
+
+  guardarMemoriaEnvio(
+    produccionMapa,
+    pedidosAcumulados,
+    diferenciasNuevas,
+    [...new Set(clientesAcumulados)]
+  );
+
+  guardarEnNube();
+
+  // v1.03: enviar el mensaje NO borra los pedidos.
+  // Se conservan para poder corregirlos o reenviarlos.
+  abrirWhatsApp("", mensaje);
+}
+
+
+const WHATSAPP_CLIENTE_PRUEBA = "5492657545599";
+
+function generarLinkFormularioCliente() {
+  const base = window.location.origin + window.location.pathname.replace("index.html", "");
+  return base + "pedido.html";
+}
+
+function recordarPedidoCliente() {
+  const link = generarLinkFormularioCliente();
+
+  const mensaje = `Hola! Te recordamos cargar tu pedido para mañana en este formulario:
+
+${link}
+
+Gracias, Fratello.`;
+
+  abrirWhatsApp(WHATSAPP_CLIENTE_PRUEBA, mensaje);
+}
+
+
+async function init() {
+  if ($("btnGuardarListasPrecios")) {
+    $("btnGuardarListasPrecios").onclick = guardarListasPrecios;
+  }
+  if ($("btnAgregarProductoCatalogo")) $("btnAgregarProductoCatalogo").onclick = agregarProductoCatalogo;
+  if ($("listaAdministradorProductos")) $("listaAdministradorProductos").onclick = manejarClicksAdministradorProductos;
+  renderAdministradorProductos();
+
+  const btnContinuarResumen = $("btnContinuarResumen");
+  if (btnContinuarResumen) {
+    btnContinuarResumen.onclick = continuarAlResumenSiEstaConfirmado;
+  }
+
+  const btnRecordarPendientes = $("btnRecordarPendientes");
+  if (btnRecordarPendientes) {
+    btnRecordarPendientes.onclick = recordarTodosLosPendientes;
+  }
+
+  const btnActualizarPendientes = $("btnActualizarPendientes");
+  if (btnActualizarPendientes) {
+    btnActualizarPendientes.onclick = renderClientesPendientes;
+  }
+
+  const btnBorrarNotificaciones = $("btnBorrarNotificaciones");
+  if (btnBorrarNotificaciones) {
+    btnBorrarNotificaciones.onclick = borrarTodasLasNotificaciones;
+  }
+
+  actualizarEstadoColaRecordatorios();
+
+  iniciarNavegacionFratello();
+
+  const btnActualizarNotificaciones = $("btnActualizarNotificaciones");
+  if (btnActualizarNotificaciones) {
+    btnActualizarNotificaciones.addEventListener(
+      "click",
+      cargarHistorialNotificaciones
+    );
+  }
+
+  const btnActivarNotificaciones = $("btnActivarNotificaciones");
+  const btnProbarNotificacion = $("btnProbarNotificacion");
+
+  if (btnActivarNotificaciones) {
+    btnActivarNotificaciones.addEventListener("click", activarNotificacionesFratello);
+  }
+
+  if (btnProbarNotificacion) {
+    btnProbarNotificacion.addEventListener("click", probarNotificacionFratello);
+  }
+
+  actualizarEstadoNotificaciones();
+
+  const btnActualizarDatos = $("btnActualizarDatos");
+  if (btnActualizarDatos) {
+    btnActualizarDatos.addEventListener("click", actualizarDatosManual);
+  }
+
+  const btnGuardarClienteCompleto = $("btnGuardarClienteCompleto");
+  const btnLimpiarClienteCompleto = $("btnLimpiarClienteCompleto");
+
+  if (btnGuardarClienteCompleto) {
+    btnGuardarClienteCompleto.addEventListener("click", guardarClienteCompleto);
+  }
+
+  if (btnLimpiarClienteCompleto) {
+    btnLimpiarClienteCompleto.addEventListener("click", limpiarFormularioClienteCompleto);
+  }
+
+  if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
+  await cargarDesdeNube();
+  validarClientes();
+
+  // v1.06: después de recuperar Firebase, volver a dibujar catálogo y precios.
+  renderAdministradorProductos();
+  renderListasPrecios();
+  escucharCambiosNube();
+  escucharHistorialNotificaciones();
+  aplicarPermisosUsuario();
+  if ($("fechaPedido")) $("fechaPedido").value = hoyISO();
+  renderClientes();
+
+  if ($("cliente")) $("cliente").onchange = limpiarPedidoCrudo;
+  if ($("btnAgregarCliente")) $("btnAgregarCliente").onclick = agregarCliente;
+  if ($("btnModificarCliente")) $("btnModificarCliente").onclick = modificarCliente;
+
+  $("diaProduccion").onchange = () => {
+    renderProduccion();
+    calcularDiferencias();
+  };
+
+  $("btnDesbloquearProduccion").onclick = desbloquearProduccion;
+  $("btnBloquearProduccion").onclick = bloquearProduccion;
+  $("btnGuardarProduccion").onclick = guardarProduccion;
+  $("btnEditarPredeterminada").onclick = activarEdicionPredeterminada;
+  $("btnGuardarPredeterminada").onclick = guardarPredeterminada;
+  $("btnCancelarPredeterminada").onclick = cancelarEdicionPredeterminada;
+
+  $("btnProcesar").onclick = () => procesarPedidoActual();
+  $("btnLimpiarPedido").onclick = () => $("pedidoCrudo").value = "";
+  $("btnCalcular").onclick = calcularDiferencias;
+  if ($("btnWhatsAppGrupo")) $("btnWhatsAppGrupo").onclick = generarMensajeGrupoFratello;
+  if ($("btnRecordarCliente")) $("btnRecordarCliente").onclick = recordarPedidoCliente;
+  if ($("btnBorrarMemoriaEnvio")) $("btnBorrarMemoriaEnvio").onclick = borrarMemoriaEnvio;
+  $("btnExportar").onclick = copiarResumen;
+  $("btnReset").onclick = resetDatos;
+  $("btnVistaPedidos").onclick = generarVistaPedidos;
+  if ($("btnCerrarModalImpresion")) $("btnCerrarModalImpresion").onclick = cerrarModalImpresion;
+  if ($("btnCerrarModalImpresion2")) $("btnCerrarModalImpresion2").onclick = cerrarModalImpresion;
+  if ($("cerrarModalBackdrop")) $("cerrarModalBackdrop").onclick = cerrarModalImpresion;
+  if ($("btnImprimirImagenPedidos")) $("btnImprimirImagenPedidos").onclick = imprimirImagenPedidos;
+  if ($("btnCompartirImagenPedidos")) $("btnCompartirImagenPedidos").onclick = compartirImagenPedidos;
+  if ($("btnGuardarImagenPedidos")) $("btnGuardarImagenPedidos").onclick = guardarImagenPedidos;
+  if ($("btnDescargarPdfPedidos")) $("btnDescargarPdfPedidos").onclick = descargarPdfPedidos;
+  if ($("btnBorrarSeleccionados")) $("btnBorrarSeleccionados").onclick = borrarPedidosSeleccionados;
+
+  iniciarSincronizacionDia();
+
+  if (window.location.hash === "#notificaciones") {
+    abrirSeccionFratello("seccionNotificaciones");
+  }
+
+  renderListaClientesCompleta();
+  renderClientesPendientes();
+  actualizarPanelMemoriaEnvio();
+  actualizarCampanaNotificaciones();
+
+  renderProduccion();
+  renderPedidosCargados();
+  renderListasPrecios();
+  calcularDiferencias();
+}
+
+
+
+
+window.descargarPdfPedidoIndividual = descargarPdfPedidoIndividual;
+window.reprocesarPedidoFormulario = reprocesarPedidoFormulario;
+window.resolverProductoPedido = resolverProductoPedido;
+window.resolverUnidadPedido = resolverUnidadPedido;
+window.editarClienteCompleto = editarClienteCompleto;
+window.eliminarClienteCompleto = eliminarClienteCompleto;
+ 
+init().catch(error => {
+  console.error("Error iniciando Fratello:", error);
+  const estado = document.getElementById("estadoSync");
+  if (estado) estado.textContent = "Error parcial al iniciar";
+});
+
+
+window.recordarClientePendiente = recordarClientePendiente;
+window.recordarTodosLosPendientes = recordarTodosLosPendientes;
+window.enviarSiguienteRecordatorioPendiente = enviarSiguienteRecordatorioPendiente;
+window.borrarTodasLasNotificaciones = borrarTodasLasNotificaciones;
+
+if (messaging) {
+  messaging.onMessage(async payload => {
+    cargarHistorialNotificaciones();
+    const titulo = payload.notification?.title || "Fratello";
+    const cuerpo = payload.notification?.body || "Tenés una nueva notificación.";
+
+    try {
+      const registro = await obtenerRegistroServiceWorkerNotificaciones();
+      await registro.showNotification(titulo, {
+        body: cuerpo,
+        icon: "icon-192.png",
+        badge: "icon-192.png",
+        data: payload.data || { url: "./index.html" }
+      });
+    } catch (error) {
+      console.error("Error mostrando notificación recibida:", error);
+    }
+  });
+}
