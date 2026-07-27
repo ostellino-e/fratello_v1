@@ -1,8 +1,9 @@
-# Fratello v1.03 — Conservar pedidos
+# Fratello v1.04
 
-Cambios:
-- Confirmar pedidos no los borra.
-- Enviar el mensaje al grupo de WhatsApp no los borra.
-- Los pedidos siguen visibles para corregirlos y volver a enviar el resumen.
-- Solo se borran al presionar “Nueva jornada / Borrar memoria”.
-- Al iniciar la nueva jornada también se limpia la memoria del envío anterior.
+- Base de precios por unidad, docena, kilo y paquete.
+- Ticket: descripción, cantidad, precio unitario, total por artículo y total general.
+- Imprimir todos los tickets.
+- Guardar todos como JPG.
+- Descargar todos en PDF.
+- Descargar PDF individual desde cada pedido.
+- Aviso cuando falta cargar un precio.

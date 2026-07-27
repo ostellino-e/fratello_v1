@@ -1452,6 +1452,10 @@ function formaVentaPredeterminada(unidad) {
 productos.forEach(producto => {
   if (!producto.formaVenta) producto.formaVenta = formaVentaPredeterminada(producto.unidad);
   if (!Array.isArray(producto.sinonimos)) producto.sinonimos = [];
+  if (!producto.precios || typeof producto.precios !== "object") producto.precios = {};
+  ["unidad","docena","kg","paquete","bolsa","bandeja"].forEach(u => {
+    producto.precios[u] = Number(producto.precios[u] || 0);
+  });
 });
 
 const catalogoProductosGuardado = JSON.parse(localStorage.getItem("fratello_catalogo_productos") || "null");
@@ -1462,6 +1466,14 @@ if (Array.isArray(catalogoProductosGuardado) && catalogoProductosGuardado.length
     unidad: String(p.unidad || "unidad"),
     formaVenta: String(p.formaVenta || formaVentaPredeterminada(p.unidad)),
     sinonimos: Array.isArray(p.sinonimos) ? p.sinonimos : [],
+    precios: {
+      unidad: Number(p.precios?.unidad || 0),
+      docena: Number(p.precios?.docena || 0),
+      kg: Number(p.precios?.kg || 0),
+      paquete: Number(p.precios?.paquete || 0),
+      bolsa: Number(p.precios?.bolsa || 0),
+      bandeja: Number(p.precios?.bandeja || 0)
+    },
     visible: p.visible !== false,
     activo: p.activo !== false,
     nuevo: Boolean(p.nuevo),
@@ -1771,6 +1783,12 @@ function renderAdministradorProductos() {
         <label class="catalogCheck"><input type="checkbox" data-catalog-visible ${visible ? "checked" : ""}> Mostrar</label>
         <label class="catalogCheck"><input type="checkbox" data-catalog-activo ${activo ? "checked" : ""}> Activo</label>
       </div>
+      <div class="catalogPriceFields">
+        <label>Precio unidad<input type="number" min="0" step="0.01" data-precio-unidad value="${Number(producto.precios?.unidad || 0)}"></label>
+        <label>Precio docena<input type="number" min="0" step="0.01" data-precio-docena value="${Number(producto.precios?.docena || 0)}"></label>
+        <label>Precio kg<input type="number" min="0" step="0.01" data-precio-kg value="${Number(producto.precios?.kg || 0)}"></label>
+        <label>Precio paquete<input type="number" min="0" step="0.01" data-precio-paquete value="${Number(producto.precios?.paquete || 0)}"></label>
+      </div>
       <div class="catalogProductActions">
         <button type="button" data-catalog-guardar="${escaparHtmlCatalogo(producto.id)}">💾 Guardar</button>
         <button type="button" class="dangerBtn" data-catalog-eliminar="${escaparHtmlCatalogo(producto.id)}">🗑 Eliminar</button>
@@ -1793,6 +1811,7 @@ function agregarProductoCatalogo() {
     unidad,
     formaVenta,
     sinonimos,
+    precios: { unidad: 0, docena: 0, kg: 0, paquete: 0, bolsa: 0, bandeja: 0 },
     visible: true,
     activo: true,
     nuevo: true
@@ -1825,6 +1844,13 @@ function guardarProductoCatalogo(id) {
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
+  producto.precios = {
+    ...(producto.precios || {}),
+    unidad: Number(fila.querySelector("[data-precio-unidad]")?.value || 0),
+    docena: Number(fila.querySelector("[data-precio-docena]")?.value || 0),
+    kg: Number(fila.querySelector("[data-precio-kg]")?.value || 0),
+    paquete: Number(fila.querySelector("[data-precio-paquete]")?.value || 0)
+  };
   producto.visible = fila.querySelector("[data-catalog-visible]").checked;
   producto.activo = fila.querySelector("[data-catalog-activo]").checked;
   const extra = productosExtra.find(p => p.id === id);
@@ -2109,6 +2135,7 @@ function crearProductoExtra(nombre, unidad) {
     unidad,
     formaVenta: formaVentaPredeterminada(unidad),
     sinonimos: [],
+    precios: { unidad: 0, docena: 0, kg: 0, paquete: 0, bolsa: 0, bandeja: 0 },
     visible: false,
     activo: false,
     nuevo: true
@@ -2590,6 +2617,7 @@ function renderPedidosCargados() {
     }
 
     html += `<div class="accionesPedido">
+      <button type="button" onclick="descargarPdfPedidoIndividual(${pedido.id})">📄 PDF del cliente</button>
       <button type="button" onclick="reprocesarPedidoFormulario(${pedido.id})">🔄 Reinterpretar pedido</button>
       <button type="button" class="btnEliminarPedido" onclick="borrarPedido(${pedido.id})">Eliminar este pedido</button>
     </div>`;
@@ -2806,75 +2834,208 @@ function dibujarPunteada(ctx,x1,y1,x2,y2){
 function cargarImagen(src){
   return new Promise((ok,fail)=>{const img=new Image();img.onload=()=>ok(img);img.onerror=fail;img.src=src;});
 }
+
+function normalizarUnidadPrecio(unidad) {
+  const u = String(unidad || "unidad").toLowerCase();
+  if (["unid","unidades","u"].includes(u)) return "unidad";
+  if (["doc","docenas"].includes(u)) return "docena";
+  if (["kilo","kilos"].includes(u)) return "kg";
+  if (u === "paquetes") return "paquete";
+  if (u === "bolsas") return "bolsa";
+  if (u === "bandejas") return "bandeja";
+  return u;
+}
+
+function precioUnitarioItem(producto, unidad) {
+  if (!producto) return 0;
+  const u = normalizarUnidadPrecio(unidad);
+  const precios = producto.precios || {};
+  const directo = Number(precios[u] || 0);
+  if (directo > 0) return directo;
+  if (u === "docena" && Number(precios.unidad || 0) > 0) return Number(precios.unidad) * 12;
+  if (u === "unidad" && Number(precios.docena || 0) > 0) return Number(precios.docena) / 12;
+  return 0;
+}
+
+function datosTicketPedido(pedido) {
+  const items = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO").map(item => {
+    const producto = productoPorId(item.productoId);
+    const precioUnitario = precioUnitarioItem(producto, item.unidad);
+    return {
+      descripcion: producto?.nombre || item.producto || "Producto",
+      cantidad: Number(item.cantidad || 0),
+      unidad: normalizarUnidadPrecio(item.unidad),
+      precioUnitario,
+      total: Number(item.cantidad || 0) * precioUnitario
+    };
+  });
+  return {
+    id: pedido.id,
+    cliente: pedido.cliente || "Sin cliente",
+    fecha: pedido.fecha || $("fechaPedido")?.value || hoyISO(),
+    items,
+    total: items.reduce((a, i) => a + i.total, 0)
+  };
+}
+
+function formatoDineroTicket(valor) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency", currency: "ARS", maximumFractionDigits: 0
+  }).format(Number(valor || 0));
+}
+
+function nombreArchivoSeguro(texto) {
+  return String(texto || "cliente").normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "").toLowerCase();
+}
+
+function cortarTextoCanvas(ctx, texto, maxWidth) {
+  const palabras = String(texto || "").split(/\s+/);
+  const lineas = [];
+  let linea = "";
+  palabras.forEach(p => {
+    const prueba = linea ? `${linea} ${p}` : p;
+    if (ctx.measureText(prueba).width <= maxWidth) linea = prueba;
+    else { if (linea) lineas.push(linea); linea = p; }
+  });
+  if (linea) lineas.push(linea);
+  return lineas.length ? lineas : [""];
+}
+
+function dibujarTicketEnCanvas(ctx, ticket, x, y, ancho, alto, numeroPedido="") {
+  const pad=24, izq=x+pad, der=x+ancho-pad;
+  ctx.save();
+  ctx.fillStyle="#fff"; ctx.fillRect(x,y,ancho,alto);
+  ctx.strokeStyle="#222"; ctx.lineWidth=2; ctx.strokeRect(x+1,y+1,ancho-2,alto-2);
+
+  ctx.fillStyle="#111"; ctx.textAlign="center"; ctx.font="bold 29px Arial";
+  ctx.fillText("PANADERÍA FRATELLO",x+ancho/2,y+42);
+
+  ctx.font="16px Arial"; ctx.textAlign="left";
+  ctx.fillText(`Cliente: ${ticket.cliente}`,izq,y+78);
+  ctx.fillText(`Fecha: ${new Date(ticket.fecha+"T12:00:00").toLocaleDateString("es-AR")}`,izq,y+103);
+  if(numeroPedido){ctx.textAlign="right";ctx.fillText(`Pedido Nº ${numeroPedido}`,der,y+103);}
+
+  let yy=y+130;
+  ctx.beginPath();ctx.moveTo(izq,yy);ctx.lineTo(der,yy);ctx.stroke();
+  yy+=25;
+
+  const colDesc=izq,colCant=x+ancho*.52,colPrecio=x+ancho*.75,colTotal=der;
+  ctx.font="bold 14px Arial";ctx.textAlign="left";ctx.fillText("Descripción",colDesc,yy);
+  ctx.textAlign="center";ctx.fillText("Cantidad",colCant,yy);
+  ctx.textAlign="right";ctx.fillText("P. unit.",colPrecio,yy);ctx.fillText("Total",colTotal,yy);
+  yy+=12;ctx.beginPath();ctx.moveTo(izq,yy);ctx.lineTo(der,yy);ctx.stroke();yy+=25;
+  ctx.font="14px Arial";
+
+  for(const item of ticket.items){
+    const lineas=cortarTextoCanvas(ctx,item.descripcion,ancho*.40).slice(0,2);
+    const altoFila=Math.max(34,lineas.length*18+12);
+    if(yy+altoFila>y+alto-82){ctx.textAlign="left";ctx.fillText("… continúa",izq,yy);break;}
+    ctx.textAlign="left";lineas.forEach((l,i)=>ctx.fillText(l,colDesc,yy+i*18));
+    ctx.textAlign="center";ctx.fillText(`${fmt(item.cantidad)} ${item.unidad}`,colCant,yy);
+    ctx.textAlign="right";
+    ctx.fillText(item.precioUnitario>0?formatoDineroTicket(item.precioUnitario):"Sin precio",colPrecio,yy);
+    ctx.fillText(item.precioUnitario>0?formatoDineroTicket(item.total):"—",colTotal,yy);
+    yy+=altoFila;ctx.strokeStyle="#d0d0d0";ctx.beginPath();ctx.moveTo(izq,yy-8);ctx.lineTo(der,yy-8);ctx.stroke();
+  }
+
+  const totalY=y+alto-48;
+  ctx.strokeStyle="#111";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+ancho*.52,totalY-25);ctx.lineTo(der,totalY-25);ctx.stroke();
+  ctx.font="bold 22px Arial";ctx.textAlign="right";ctx.fillText("TOTAL",x+ancho*.72,totalY);
+  ctx.fillText(formatoDineroTicket(ticket.total),der,totalY);
+  ctx.restore();
+}
+
+function crearCanvasTicketIndividual(ticket, ancho=900, alto=1120) {
+  const canvas=document.createElement("canvas");canvas.width=ancho;canvas.height=alto;
+  dibujarTicketEnCanvas(canvas.getContext("2d"),ticket,0,0,ancho,alto,String(ticket.id).slice(-6));
+  return canvas;
+}
+
+function avisarPreciosFaltantes(lista=pedidos) {
+  const faltantes=new Set();
+  lista.forEach(p=>(p.items||[]).forEach(i=>{
+    if(i.estado==="NO PEDIDO")return;
+    const prod=productoPorId(i.productoId);
+    if(precioUnitarioItem(prod,i.unidad)<=0)faltantes.add(prod?.nombre||i.producto);
+  }));
+  if(faltantes.size)alert("El ticket se generará, pero faltan precios para:\n\n"+[...faltantes].slice(0,12).join("\n")+"\n\nCargalos desde Administrar productos predeterminados.");
+}
+
 async function generarVistaPedidos(){
   if(!pedidos.length){alert("No hay pedidos cargados.");return;}
-  const canvas=$("canvasPedidosImpresion");
-  const W=1240,H=1754,top=170,cols=3,rows=4;
-  canvas.width=W;canvas.height=H;
-  const ctx=canvas.getContext("2d");
-  ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle="#555";ctx.strokeRect(12,12,W-24,H-24);
-
-  try{const logo=await cargarImagen("icon-192.png");ctx.drawImage(logo,38,30,120,120);}catch(e){}
-
-  const fecha=$("fechaPedido")?.value||"";
-  let fechaTitulo="SIN FECHA";
-  if(fecha){
-    fechaTitulo=new Date(fecha+"T12:00:00").toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"}).toUpperCase();
-  }
-  ctx.fillStyle="#2b2118";ctx.textAlign="center";ctx.font="bold 44px Arial";
-  ctx.fillText(`PEDIDOS - ${fechaTitulo}`,W/2,80);
-  ctx.textAlign="right";ctx.font="22px Arial";ctx.fillText(fecha,W-42,65);
-  ctx.fillText(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}),W-42,98);
-
-  const cellW=(W-24)/cols,cellH=(H-top-24)/rows;
-  for(let c=1;c<cols;c++)dibujarPunteada(ctx,12+c*cellW,top,12+c*cellW,H-12);
-  for(let r=1;r<rows;r++)dibujarPunteada(ctx,12,top+r*cellH,W-12,top+r*cellH);
-  dibujarPunteada(ctx,12,top,W-12,top);
-
-  pedidos.slice(0,12).forEach((pedido,index)=>{
-    const col=index%cols,row=Math.floor(index/cols),x=12+col*cellW,y=top+row*cellH,pad=24;
-    const items=pedido.items.filter(i=>i.estado!=="NO PEDIDO");
-    ctx.fillStyle="#111";ctx.textAlign="left";ctx.font="bold 28px Arial";
-    ctx.fillText(`${index+1}. ${pedido.cliente.toUpperCase()}`,x+pad,y+42);
-    ctx.textAlign="right";ctx.font="20px Arial";ctx.fillText("06:00",x+cellW-pad,y+42);
-    ctx.strokeStyle="#999";ctx.beginPath();ctx.moveTo(x+pad,y+58);ctx.lineTo(x+cellW-pad,y+58);ctx.stroke();
-
-    let yy=y+92;
-    items.slice(0,7).forEach(it=>{
-      ctx.textAlign="left";ctx.font="20px Arial";ctx.fillText(it.producto,x+pad,yy);
-      ctx.textAlign="right";ctx.font="bold 20px Arial";ctx.fillText(`${fmt(it.cantidad)} ${it.unidad}`,x+cellW-pad,yy);
-      ctx.strokeStyle="#d0d0d0";ctx.beginPath();ctx.moveTo(x+pad,yy+10);ctx.lineTo(x+cellW-pad,yy+10);ctx.stroke();
-      yy+=39;
-    });
-    const by=y+cellH-72;
-    ctx.strokeStyle="#666";ctx.beginPath();ctx.moveTo(x+pad,by-34);ctx.lineTo(x+cellW-pad,by-34);ctx.stroke();
-    ctx.textAlign="left";ctx.font="18px Arial";
-    ctx.fillText("Entregado: ____/____/______   ____:____",x+pad,by);
-    ctx.fillText("Firma: ____________________________",x+pad,by+33);
-  });
-
+  avisarPreciosFaltantes(pedidos);
+  const tickets=pedidos.map(datosTicketPedido),canvas=$("canvasPedidosImpresion");
+  const W=1400,cols=2,cellW=W/cols,cellH=900,rows=Math.ceil(tickets.length/cols);
+  canvas.width=W;canvas.height=Math.max(cellH,rows*cellH);
+  const ctx=canvas.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+  tickets.forEach((t,i)=>dibujarTicketEnCanvas(ctx,t,(i%cols)*cellW+8,Math.floor(i/cols)*cellH+8,cellW-16,cellH-16,String(t.id).slice(-6)));
   abrirModalImpresion();
 }
+
+function obtenerJsPDF(){return window.jspdf?.jsPDF||null;}
+
+function agregarTicketPdf(doc,ticket,x,y,ancho,alto){
+  const imagen=crearCanvasTicketIndividual(ticket).toDataURL("image/jpeg",.94);
+  doc.addImage(imagen,"JPEG",x,y,ancho,alto,undefined,"FAST");
+}
+
+function descargarPdfPedidos(){
+  if(!pedidos.length){alert("No hay pedidos cargados.");return;}
+  const JsPDF=obtenerJsPDF();if(!JsPDF){alert("No se pudo cargar el generador de PDF.");return;}
+  avisarPreciosFaltantes(pedidos);
+  const doc=new JsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+  const tickets=pedidos.map(datosTicketPedido),margen=7,separacion=4;
+  const ancho=(210-margen*2-separacion)/2,alto=(297-margen*2-separacion)/2;
+  tickets.forEach((t,i)=>{
+    if(i>0&&i%4===0)doc.addPage();
+    const pos=i%4,col=pos%2,fila=Math.floor(pos/2);
+    agregarTicketPdf(doc,t,margen+col*(ancho+separacion),margen+fila*(alto+separacion),ancho,alto);
+  });
+  doc.save(`tickets-fratello-${hoyISO()}.pdf`);
+}
+
+function descargarPdfPedidoIndividual(pedidoId){
+  const pedido=pedidos.find(p=>Number(p.id)===Number(pedidoId));
+  if(!pedido){alert("No se encontró el pedido.");return;}
+  const JsPDF=obtenerJsPDF();if(!JsPDF){alert("No se pudo cargar el generador de PDF.");return;}
+  avisarPreciosFaltantes([pedido]);
+  const ticket=datosTicketPedido(pedido);
+  const doc=new JsPDF({orientation:"portrait",unit:"mm",format:"a5"});
+  agregarTicketPdf(doc,ticket,5,5,138,200);
+  doc.save(`ticket-fratello-${nombreArchivoSeguro(ticket.cliente)}-${ticket.fecha}.pdf`);
+}
+
 function guardarImagenPedidos(){
   const canvas=$("canvasPedidosImpresion"); if(!canvas)return;
-  const a=document.createElement("a");a.download="pedidos-fratello.jpg";a.href=canvas.toDataURL("image/jpeg",0.95);a.click();
+  const a=document.createElement("a");a.download=`tickets-fratello-${hoyISO()}.jpg`;a.href=canvas.toDataURL("image/jpeg",0.95);a.click();
 }
 async function compartirImagenPedidos(){
   const canvas=$("canvasPedidosImpresion"); if(!canvas)return;
   const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.95));
-  const file=new File([blob],"pedidos-fratello.jpg",{type:"image/jpeg"});
+  const file=new File([blob],`tickets-fratello-${hoyISO()}.jpg`,{type:"image/jpeg"});
   if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
     try{await navigator.share({title:"Pedidos Fratello",files:[file]});return;}catch(e){if(e.name==="AbortError")return;}
   }
   guardarImagenPedidos();
 }
 function imprimirImagenPedidos(){
-  const canvas=$("canvasPedidosImpresion"); if(!canvas)return;
-  const data=canvas.toDataURL("image/png");
+  if(!pedidos.length){alert("No hay pedidos cargados.");return;}
+  const imagenes=pedidos.map(p=>crearCanvasTicketIndividual(datosTicketPedido(p)).toDataURL("image/png"));
   const w=window.open("","_blank");
   if(!w){alert("Permití ventanas emergentes para imprimir.");return;}
-  w.document.write(`<html><head><style>@page{size:A4 portrait;margin:0}body{margin:0}img{width:100%}</style></head><body><img src="${data}" onload="window.print();window.close()"></body></html>`);
+  w.document.write(`<html><head><title>Tickets Fratello</title><style>
+  @page{size:A4 portrait;margin:7mm}*{box-sizing:border-box}body{margin:0}
+  .pagina{width:100%;min-height:283mm;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4mm;page-break-after:always}
+  .pagina:last-child{page-break-after:auto}.ticket{width:100%;height:100%;object-fit:contain;border:1px dashed #aaa}
+  </style></head><body>`);
+  for(let i=0;i<imagenes.length;i+=4){
+    w.document.write('<div class="pagina">');
+    imagenes.slice(i,i+4).forEach(src=>w.document.write(`<img class="ticket" src="${src}">`));
+    w.document.write("</div>");
+  }
+  w.document.write(`<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),300));<\/script></body></html>`);
   w.document.close();
 }
 
@@ -3459,6 +3620,7 @@ async function init() {
   if ($("btnImprimirImagenPedidos")) $("btnImprimirImagenPedidos").onclick = imprimirImagenPedidos;
   if ($("btnCompartirImagenPedidos")) $("btnCompartirImagenPedidos").onclick = compartirImagenPedidos;
   if ($("btnGuardarImagenPedidos")) $("btnGuardarImagenPedidos").onclick = guardarImagenPedidos;
+  if ($("btnDescargarPdfPedidos")) $("btnDescargarPdfPedidos").onclick = descargarPdfPedidos;
   if ($("btnBorrarSeleccionados")) $("btnBorrarSeleccionados").onclick = borrarPedidosSeleccionados;
 
   iniciarSincronizacionDia();
@@ -3480,6 +3642,7 @@ async function init() {
 
 
 
+window.descargarPdfPedidoIndividual = descargarPdfPedidoIndividual;
 window.reprocesarPedidoFormulario = reprocesarPedidoFormulario;
 window.resolverProductoPedido = resolverProductoPedido;
 window.resolverUnidadPedido = resolverUnidadPedido;

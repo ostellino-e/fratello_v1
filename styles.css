@@ -1308,3 +1308,9 @@ body:has(.appSection:target) #contenidoApp {
   border:1px solid #b7d7b7;
   font-weight:700;
 }
+
+.catalogPriceFields{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px;margin-top:10px;padding:10px;border-radius:10px;background:#f4eee6}
+.catalogPriceFields label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:800}
+.catalogPriceFields input{margin:0;width:100%}
+.printModalActions{flex-wrap:wrap}
+@media(max-width:680px){.catalogPriceFields{grid-template-columns:1fr 1fr}.printModalActions button{flex:1 1 45%}}
