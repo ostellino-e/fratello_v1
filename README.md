@@ -1,10 +1,11 @@
-# Fratello v1.07 — Actualización forzada
-
-Correcciones:
-- Evita que Vercel y el service worker sigan mostrando una versión vieja.
-- Agrega headers no-cache para index.html, app.js y service-worker.js.
-- Agrega actualizar.html para borrar service workers y cachés anteriores.
-- Mantiene sincronización Firebase, catálogo, listas de precios y ticket térmico.
-
-Después de publicar, abrir una sola vez:
-https://fratello-v1.vercel.app/actualizar.html
+# Fratello v2.0
+Incluye:
+- Inicio dividido en Pedidos, Caja, Tareas, Clientes y Productos.
+- Pedidos fijos por cliente y días.
+- Carga de pedidos fijos para una fecha.
+- Edición de pedidos ya cargados.
+- Fecha de entrega exacta y detección de días escritos.
+- Pedidos futuros agrupados por fecha.
+- Historial y repetir pedido.
+- Listas de precios personalizadas de v1.08.
+- Firebase, tickets térmicos, PDF, impresión y catálogo existentes.

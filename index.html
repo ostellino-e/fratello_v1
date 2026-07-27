@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "1.07";
-    document.documentElement.dataset.fratelloVersion = "1.07";
+    window.FRATELLO_VERSION = "2.0";
+    document.documentElement.dataset.fratelloVersion = "2.0";
   </script>
 
 </head>
@@ -33,97 +33,56 @@
   </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v1.07</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v2.0</small>
   </section>
 
-  <section id="panelInicio" class="dashboard">
+  <section id="panelInicio" class="dashboard dashboardV2">
     <div class="refreshPanel">
       <button id="btnActualizarDatos" type="button"><span class="refreshIcon">🔄</span><span class="refreshText">Actualizar datos</span></button>
       <span id="estadoActualizacionManual">Sin actualizar</span>
     </div>
 
-    <a class="notificationBellCard"
-      href="#seccionNotificaciones" data-seccion="seccionNotificaciones" onclick="window.abrirSeccionFratello('seccionNotificaciones'); return false;">
+    <div class="v2Welcome">
+      <div>
+        <strong>Centro de control Fratello</strong>
+        <span>Elegí el área según la tarea que vas a realizar.</span>
+      </div>
+      <span class="v2Badge">v2.0</span>
+    </div>
+
+    <div class="v2ModuleGrid">
+      <a class="v2ModuleCard pedidos" href="#seccionPedidos" onclick="window.abrirSeccionFratello('seccionPedidos'); return false;">
+        <span>📦</span><strong>PEDIDOS</strong>
+        <small>Cargar, editar, fijos, futuros e historial.</small>
+      </a>
+      <a class="v2ModuleCard caja" href="#seccionCaja" onclick="window.abrirSeccionFratello('seccionCaja'); return false;">
+        <span>💰</span><strong>CAJA</strong>
+        <small>Tickets, precios, PDF e impresión.</small>
+      </a>
+      <a class="v2ModuleCard tareas" href="#seccionTareas" onclick="window.abrirSeccionFratello('seccionTareas'); return false;">
+        <span>✅</span><strong>TAREAS</strong>
+        <small>Producción, resumen y recordatorios.</small>
+      </a>
+      <a class="v2ModuleCard clientes" href="#seccionClientes" onclick="window.abrirSeccionFratello('seccionClientes'); return false;">
+        <span>👥</span><strong>CLIENTES</strong>
+        <small>Datos, direcciones y listas asignadas.</small>
+      </a>
+      <a class="v2ModuleCard productos" href="#seccionProductos" onclick="window.abrirSeccionFratello('seccionProductos'); return false;">
+        <span>🥐</span><strong>PRODUCTOS</strong>
+        <small>Catálogo, unidades y sinónimos.</small>
+      </a>
+    </div>
+
+    <a class="notificationBellCard" href="#seccionNotificaciones" onclick="window.abrirSeccionFratello('seccionNotificaciones'); return false;">
       <span class="notificationBellIcon">🔔</span>
-      <span class="notificationBellText">
-        <strong>Notificaciones</strong>
-        <small id="resumenNotificacionesInicio">Revisá los avisos de Fratello</small>
-      </span>
+      <span class="notificationBellText"><strong>Notificaciones</strong><small id="resumenNotificacionesInicio">Revisá los avisos de Fratello</small></span>
       <span id="badgeNotificaciones" class="notificationBadge hidden">0</span>
       <span class="dashboardArrow">›</span>
     </a>
 
-<div id="tarjetaDiaInicio" class="daySyncCard pendiente homeDayCard">
-      <div class="daySyncHeader">
-        <span class="daySyncIcon">📅</span>
-        <div class="daySyncInfo">
-          <strong id="estadoDiaInicio">Producción seleccionada</strong>
-          <label for="diaProduccionInicio">Día de producción</label>
-          <select id="diaProduccionInicio">
-            <option value="">Seleccionar día</option>
-            <option value="lunes_jueves">Lunes a jueves</option>
-            <option value="viernes">Viernes</option>
-            <option value="sabado">Sábado</option>
-            <option value="domingo">Domingo</option>
-          </select>
-        </div>
-      </div>
-      <label class="checkControl daySyncCheck">
-        <input type="checkbox" id="checkDiaInicio">
-        Confirmo que este es el día correcto
-      </label>
-    </div>
-
-    <a class="dashboardCard produccionCard" href="#seccionProduccion" data-seccion="seccionProduccion" onclick="window.abrirSeccionFratello('seccionProduccion'); return false;">
-      <span class="dashboardIcon">🥖</span>
-      <span class="dashboardText">
-        <strong>1. PRODUCCIÓN</strong>
-        <small>Estibada / realizada</small>
-        <span>Registrá o modificá la producción del día.</span>
-      </span>
-      <span class="dashboardArrow">›</span>
-    </a>
-
-    <a class="dashboardCard pedidosCard" href="#seccionPedidos" data-seccion="seccionPedidos" onclick="window.abrirSeccionFratello('seccionPedidos'); return false;">
-      <span class="dashboardIcon">🛒</span>
-      <span class="dashboardText">
-        <strong>2. PEDIDOS</strong>
-        <small>Por cliente</small>
-        <span>Pegá pedidos de WhatsApp y revisá lo cargado.</span>
-      </span>
-      <span class="dashboardArrow">›</span>
-    </a>
-
-    <a class="dashboardCard resumenCard" href="#seccionResumen" data-seccion="seccionResumen" onclick="window.abrirSeccionFratello('seccionResumen'); return false;">
-      <span class="dashboardIcon">📊</span>
-      <span class="dashboardText">
-        <strong>3. RESUMEN</strong>
-        <small>Comparador</small>
-        <span>Compará producción, faltantes y sobrantes.</span>
-      </span>
-      <span class="dashboardArrow">›</span>
-    </a>
-
-    
     <div class="notificationMiniPanel">
-      <div>
-        <strong>🔔 Avisos en este dispositivo</strong>
-        <span id="estadoNotificaciones">Todavía no están activadas.</span>
-      </div>
-      <div class="notificationMiniActions">
-        <button id="btnActivarNotificaciones" type="button">Activar</button>
-        <button id="btnProbarNotificacion" type="button" disabled>Probar</button>
-      </div>
-    </div>
-
-
-    <div class="quickTitle">Acciones rápidas</div>
-    <div class="quickActions">
-      <a href="#seccionClientes" data-seccion="seccionClientes" onclick="window.abrirSeccionFratello('seccionClientes'); return false;">👥<span>Clientes</span></a>
-      <a href="#seccionListasPrecios" data-seccion="seccionListasPrecios" onclick="window.abrirSeccionFratello('seccionListasPrecios'); return false;">💲<span>Precios</span></a>
-      <a href="#seccionProduccion" data-seccion="seccionProduccion" onclick="window.abrirSeccionFratello('seccionProduccion'); return false;">📦<span>Productos</span></a>
-      <a href="#seccionResumen" data-seccion="seccionResumen" onclick="window.abrirSeccionFratello('seccionResumen'); return false;">⚙️<span>Resumen</span></a>
-      <button type="button" id="btnBorrarRapido">🗑️<span>Borrar datos</span></button>
+      <div><strong>🔔 Avisos en este dispositivo</strong><span id="estadoNotificaciones">Todavía no están activadas.</span></div>
+      <div class="notificationMiniActions"><button id="btnActivarNotificaciones" type="button">Activar</button><button id="btnProbarNotificacion" type="button" disabled>Probar</button></div>
     </div>
   </section>
 
@@ -336,9 +295,7 @@
         <div><label>Barrio / zona</label><input id="nuevoClienteBarrio" type="text" placeholder="Ej: Jardín del Sur"></div>
         <div><label>Lista de precios</label>
           <select id="nuevoClienteListaPrecio">
-            <option value="auto">Automática según el nombre</option><option value="cliente">Clientes</option>
-            <option value="giuliano">Giuliano</option><option value="bailone_libano">Bailone / Líbano</option>
-            <option value="fratello">Fratello</option>
+            <option value="auto">Automática según el nombre</option>
           </select>
         </div>
       </div>
@@ -365,8 +322,84 @@
       <h2>💲 Listas de precios</h2>
       <p class="hint">Cargá los precios por producto y unidad. El ticket selecciona la lista automáticamente.</p>
       <div class="priceLegend"><span><strong>Clientes:</strong> lista general</span><span><strong>Giuliano:</strong> precio especial</span><span><strong>Bailone/Líbano:</strong> precio compartido</span><span><strong>Fratello:</strong> precio del local</span></div>
-      <div class="toolbar"><button id="btnGuardarListasPrecios" class="primary" type="button">💾 Guardar precios</button></div>
+      <div class="toolbar">
+        <button id="btnAgregarListaPrecio" type="button">➕ Agregar cliente / lista especial</button>
+        <button id="btnGuardarListasPrecios" class="primary" type="button">💾 Guardar precios</button>
+      </div>
+      <p class="hint">
+        Al agregar una lista especial, también podrás asignársela a cualquier cliente desde su ficha.
+      </p>
       <div id="mensajeListasPrecios" class="mensajePedido"></div><div id="tablaListasPrecios" class="priceTableWrap"></div>
+    </section>
+
+    <section class="card appSection" id="seccionCaja">
+      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
+      <h2>💰 Caja</h2>
+      <div class="v2SectionLinks">
+        <button type="button" onclick="window.abrirSeccionFratello('seccionListasPrecios')">💲 Listas de precios</button>
+        <button type="button" onclick="window.abrirSeccionFratello('seccionPedidos')">🧾 Tickets por cliente</button>
+        <button type="button" onclick="window.abrirSeccionFratello('seccionResumen')">📄 Resumen y exportación</button>
+      </div>
+      <p class="hint">Desde cada pedido podés descargar el PDF individual. Desde el resumen podés imprimir o guardar todos los tickets.</p>
+    </section>
+
+    <section class="card appSection" id="seccionTareas">
+      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
+      <h2>✅ Tareas</h2>
+      <div class="v2SectionLinks">
+        <button type="button" onclick="window.abrirSeccionFratello('seccionProduccion')">🥖 Producción</button>
+        <button type="button" onclick="window.abrirSeccionFratello('seccionResumen')">📊 Comparador</button>
+        <button type="button" onclick="window.abrirSeccionFratello('seccionNotificaciones')">🔔 Notificaciones</button>
+      </div>
+    </section>
+
+    <section class="card appSection" id="seccionProductos">
+      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
+      <h2>🥐 Productos</h2>
+      <p class="hint">Administrá el catálogo sin entrar en producción.</p>
+      <div class="v2SectionLinks">
+        <button type="button" onclick="window.abrirSeccionFratello('seccionProduccion'); setTimeout(()=>document.getElementById('administradorProductos')?.setAttribute('open',''),100)">⚙️ Administrar catálogo</button>
+        <button type="button" onclick="window.abrirSeccionFratello('seccionListasPrecios')">💲 Cargar precios</button>
+      </div>
+    </section>
+
+    <section class="card appSection" id="seccionPedidosFijos">
+      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidos'); return false;">← Volver a pedidos</a>
+      <h2>🔁 Pedidos fijos</h2>
+      <p class="hint">Guardá pedidos que se repiten. Luego cargalos para una fecha específica con un clic.</p>
+      <div class="fixedOrderForm">
+        <label>Cliente<select id="pedidoFijoCliente"></select></label>
+        <label>Pedido<textarea id="pedidoFijoTexto" rows="6" placeholder="Ej: 3 kg pan&#10;1 doc medialunas"></textarea></label>
+        <fieldset><legend>Días de entrega</legend>
+          <label><input type="checkbox" name="diaFijo" value="1"> Lunes</label>
+          <label><input type="checkbox" name="diaFijo" value="2"> Martes</label>
+          <label><input type="checkbox" name="diaFijo" value="3"> Miércoles</label>
+          <label><input type="checkbox" name="diaFijo" value="4"> Jueves</label>
+          <label><input type="checkbox" name="diaFijo" value="5"> Viernes</label>
+          <label><input type="checkbox" name="diaFijo" value="6"> Sábado</label>
+          <label><input type="checkbox" name="diaFijo" value="0"> Domingo</label>
+        </fieldset>
+        <div class="toolbar"><button id="btnGuardarPedidoFijo" class="primary" type="button">💾 Guardar pedido fijo</button><button id="btnLimpiarPedidoFijo" type="button">Limpiar</button></div>
+      </div>
+      <div class="futureLoadBox">
+        <label>Fecha para cargar pedidos fijos<input id="fechaCargarPedidosFijos" type="date"></label>
+        <button id="btnCargarPedidosFijosFecha" type="button">➕ Cargar pedidos fijos de esa fecha</button>
+      </div>
+      <div id="listaPedidosFijos"></div>
+    </section>
+
+    <section class="card appSection" id="seccionPedidosFuturos">
+      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidos'); return false;">← Volver a pedidos</a>
+      <h2>📅 Pedidos futuros</h2>
+      <p class="hint">Los pedidos aparecen agrupados por fecha exacta de entrega para que no se mezclen con la jornada actual.</p>
+      <div id="listaPedidosFuturos"></div>
+    </section>
+
+    <section class="card appSection" id="seccionHistorialPedidos">
+      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidos'); return false;">← Volver a pedidos</a>
+      <h2>🕘 Historial de pedidos</h2>
+      <p class="hint">Podés repetir un pedido anterior sin volver a escribirlo.</p>
+      <div id="listaHistorialPedidos"></div>
     </section>
 
     <section class="card appSection" id="seccionNotificaciones">
@@ -398,7 +431,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=107"></script>
+  <script src="app.js?v=200"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -433,12 +466,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=107")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=200")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=107", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=200", {
             scope: "./",
             updateViaCache: "none"
           });

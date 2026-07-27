@@ -377,7 +377,7 @@ function limpiarFormularioClienteCompleto() {
   if (telefono) telefono.value = "";
   if (direccion) direccion.value = "";
   if (barrio) barrio.value = "";
-  if (listaPrecio) listaPrecio.value = "auto";
+  if (listaPrecio) renderSelectorListasCliente("auto");
   if (recordatorio) recordatorio.checked = false;
   if (boton) boton.textContent = "➕ Agregar cliente";
 }
@@ -487,7 +487,7 @@ function editarClienteCompleto(nombre) {
   if ($("nuevoClienteTelefono")) $("nuevoClienteTelefono").value = datos.telefono || "";
   if ($("nuevoClienteDireccion")) $("nuevoClienteDireccion").value = datos.direccion || "";
   if ($("nuevoClienteBarrio")) $("nuevoClienteBarrio").value = datos.barrio || "";
-  if ($("nuevoClienteListaPrecio")) $("nuevoClienteListaPrecio").value = datos.listaPrecio || "auto";
+  renderSelectorListasCliente(datos.listaPrecio || "auto");
   if ($("nuevoClienteRecordatorio")) $("nuevoClienteRecordatorio").checked = Boolean(datos.enviarRecordatorio);
   if ($("btnGuardarClienteCompleto")) $("btnGuardarClienteCompleto").textContent = "💾 Guardar cambios";
 
@@ -1102,10 +1102,13 @@ function datosActuales() {
   return {
     produccion,
     pedidos,
+    pedidosFijos,
+    historialPedidos,
     predeterminadas,
     clientes,
     datosClientesCompletos,
     listasPrecios,
+    listasPrecioPersonalizadas,
     productosExtra,
     catalogoProductos: productos,
     pedidosConfirmados,
@@ -1142,6 +1145,10 @@ async function cargarDesdeNube() {
 
       produccion = data.produccion || produccion;
       pedidos = Array.isArray(data.pedidos) ? data.pedidos : pedidos;
+    pedidosFijos = Array.isArray(data.pedidosFijos) ? data.pedidosFijos : pedidosFijos;
+    historialPedidos = Array.isArray(data.historialPedidos) ? data.historialPedidos : historialPedidos;
+      pedidosFijos = Array.isArray(data.pedidosFijos) ? data.pedidosFijos : pedidosFijos;
+      historialPedidos = Array.isArray(data.historialPedidos) ? data.historialPedidos : historialPedidos;
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = Array.isArray(data.clientes) && data.clientes.length
         ? data.clientes
@@ -1150,6 +1157,12 @@ async function cargarDesdeNube() {
       datosClientesCompletos =
         data.datosClientesCompletos || datosClientesCompletos;
       listasPrecios = data.listasPrecios || listasPrecios;
+    listasPrecioPersonalizadas = Array.isArray(data.listasPrecioPersonalizadas)
+      ? data.listasPrecioPersonalizadas
+      : listasPrecioPersonalizadas;
+      listasPrecioPersonalizadas = Array.isArray(data.listasPrecioPersonalizadas)
+        ? data.listasPrecioPersonalizadas
+        : listasPrecioPersonalizadas;
       productosExtra = Array.isArray(data.productosExtra)
         ? data.productosExtra
         : productosExtra;
@@ -1173,11 +1186,21 @@ async function cargarDesdeNube() {
 
       localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
       localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+  localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  localStorage.setItem("fratello_historial_pedidos", JSON.stringify(historialPedidos));
       localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
       localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
       localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
     localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
+  localStorage.setItem(
+    "fratello_listas_precio_personalizadas",
+    JSON.stringify(listasPrecioPersonalizadas)
+  );
       localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
+      localStorage.setItem(
+        "fratello_listas_precio_personalizadas",
+        JSON.stringify(listasPrecioPersonalizadas)
+      );
       localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
       localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
       localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
@@ -1473,6 +1496,8 @@ function guardarTodo() {
 
 let produccion = JSON.parse(localStorage.getItem("fratello_produccion") || "{}");
 let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
+let pedidosFijos = JSON.parse(localStorage.getItem("fratello_pedidos_fijos") || "[]");
+let historialPedidos = JSON.parse(localStorage.getItem("fratello_historial_pedidos") || "[]");
 let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas") || "null") || crearPredeterminadasIniciales();
 let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") || [...clientesIniciales];
 let datosClientesCompletos = JSON.parse(localStorage.getItem("fratello_clientes_completos") || "{}");
@@ -2565,10 +2590,227 @@ function modificarCliente() {
   alert("Cliente modificado.");
 }
 
+
+function fechaISOManana() {
+  const fecha = new Date();
+  fecha.setDate(fecha.getDate() + 1);
+  return fecha.toISOString().slice(0, 10);
+}
+
+function fechaEntregaPedido(pedido) {
+  return pedido.fechaEntrega || pedido.fecha || hoyISO();
+}
+
+function registrarPedidoEnHistorial(pedido) {
+  if (!pedido || !pedido.id) return;
+  const copia = JSON.parse(JSON.stringify({
+    ...pedido,
+    fechaEntrega: fechaEntregaPedido(pedido),
+    guardadoHistorial: new Date().toISOString()
+  }));
+  historialPedidos = historialPedidos.filter(item => Number(item.id) !== Number(pedido.id));
+  historialPedidos.unshift(copia);
+  historialPedidos = historialPedidos.slice(0, 250);
+}
+
+function detectarProximoDiaEnTexto(texto, fechaBase = new Date()) {
+  const normal = normalizarPedidoInteligente(texto || "");
+  const dias = [
+    ["domingo",0],["lunes",1],["martes",2],["miercoles",3],
+    ["jueves",4],["viernes",5],["sabado",6]
+  ];
+  const encontrado = dias.find(([nombre]) => normal.includes(nombre));
+  if (!encontrado) return "";
+  const objetivo = encontrado[1];
+  const fecha = new Date(fechaBase);
+  let diferencia = (objetivo - fecha.getDay() + 7) % 7;
+  if (diferencia === 0) diferencia = 7;
+  fecha.setDate(fecha.getDate() + diferencia);
+  return fecha.toISOString().slice(0,10);
+}
+
+function aplicarFechaDetectadaAlPedido(texto) {
+  const input = $("fechaPedido");
+  if (!input) return;
+  const detectada = detectarProximoDiaEnTexto(texto);
+  if (!detectada) return;
+  if (input.value !== detectada) {
+    const legible = new Date(detectada+"T12:00:00").toLocaleDateString("es-AR");
+    if (confirm(`El pedido parece ser para el ${legible}. ¿Usar esa fecha de entrega?`)) {
+      input.value = detectada;
+    }
+  }
+}
+
+function editarPedidoCargado(id) {
+  const pedido = pedidos.find(p => Number(p.id) === Number(id));
+  if (!pedido) return;
+  const textoNuevo = prompt("Corregí el texto del pedido:", pedido.textoOriginal || "");
+  if (textoNuevo === null) return;
+  const fechaNueva = prompt("Fecha de entrega (AAAA-MM-DD):", fechaEntregaPedido(pedido));
+  if (fechaNueva === null) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaNueva)) {
+    alert("La fecha debe tener formato AAAA-MM-DD.");
+    return;
+  }
+  pedido.textoOriginal = textoNuevo;
+  pedido.fecha = fechaNueva;
+  pedido.fechaEntrega = fechaNueva;
+  pedido.items = procesarTextoPedido(textoNuevo, pedido.cliente, fechaNueva);
+  pedido.editadoEn = new Date().toISOString();
+  pedidosConfirmados = false;
+  registrarPedidoEnHistorial(pedido);
+  guardarTodo();
+  renderPedidosCargados();
+  renderPedidosFuturos();
+  renderHistorialPedidos();
+  calcularDiferencias();
+  alert("Pedido actualizado.");
+}
+
+function repetirPedidoHistorial(id) {
+  const anterior = historialPedidos.find(p => Number(p.id) === Number(id));
+  if (!anterior) return;
+  const fecha = prompt("Fecha de entrega para repetirlo (AAAA-MM-DD):", fechaISOManana());
+  if (!fecha) return;
+  const nuevo = {
+    id: Date.now(),
+    cliente: anterior.cliente,
+    fecha,
+    fechaEntrega: fecha,
+    textoOriginal: anterior.textoOriginal,
+    origen: "pedido_repetido",
+    items: procesarTextoPedido(anterior.textoOriginal || "", anterior.cliente, fecha)
+  };
+  pedidos.push(nuevo);
+  registrarPedidoEnHistorial(nuevo);
+  pedidosConfirmados = false;
+  guardarTodo();
+  renderPedidosCargados();
+  renderPedidosFuturos();
+  renderHistorialPedidos();
+  calcularDiferencias();
+  alert("Pedido repetido correctamente.");
+}
+
+function renderHistorialPedidos() {
+  const cont = $("listaHistorialPedidos");
+  if (!cont) return;
+  if (!historialPedidos.length) {
+    cont.innerHTML = "<p>No hay pedidos en el historial todavía.</p>";
+    return;
+  }
+  cont.innerHTML = historialPedidos.slice(0,80).map(p => `
+    <div class="historyOrderCard">
+      <div><strong>${escaparHtmlCatalogo(p.cliente || "Sin cliente")}</strong>
+      <span>Entrega: ${new Date(fechaEntregaPedido(p)+"T12:00:00").toLocaleDateString("es-AR")}</span></div>
+      <pre>${escaparHtmlCatalogo(p.textoOriginal || "")}</pre>
+      <button type="button" onclick="repetirPedidoHistorial(${p.id})">📋 Repetir pedido</button>
+    </div>`).join("");
+}
+
+function renderPedidosFuturos() {
+  const cont = $("listaPedidosFuturos");
+  if (!cont) return;
+  const hoy = hoyISO();
+  const futuros = pedidos.filter(p => fechaEntregaPedido(p) > hoy)
+    .sort((a,b)=>fechaEntregaPedido(a).localeCompare(fechaEntregaPedido(b)));
+  if (!futuros.length) {
+    cont.innerHTML = "<p>No hay pedidos para fechas posteriores.</p>";
+    return;
+  }
+  const grupos = {};
+  futuros.forEach(p => {
+    const fecha = fechaEntregaPedido(p);
+    (grupos[fecha] ||= []).push(p);
+  });
+  cont.innerHTML = Object.entries(grupos).map(([fecha,lista]) => `
+    <div class="futureDateGroup">
+      <h3>📅 ${new Date(fecha+"T12:00:00").toLocaleDateString("es-AR",{weekday:"long",day:"2-digit",month:"2-digit"})}</h3>
+      ${lista.map(p=>`<div class="futureOrderRow"><strong>${escaparHtmlCatalogo(p.cliente)}</strong><span>${(p.items||[]).filter(i=>i.estado!=="NO PEDIDO").length} ítems</span><button type="button" onclick="editarPedidoCargado(${p.id})">✏️ Editar</button></div>`).join("")}
+    </div>`).join("");
+}
+
+function limpiarFormularioPedidoFijo() {
+  if ($("pedidoFijoTexto")) $("pedidoFijoTexto").value="";
+  document.querySelectorAll('input[name="diaFijo"]').forEach(c=>c.checked=false);
+  if ($("btnGuardarPedidoFijo")) {
+    $("btnGuardarPedidoFijo").dataset.editando="";
+    $("btnGuardarPedidoFijo").textContent="💾 Guardar pedido fijo";
+  }
+}
+
+function guardarPedidoFijo() {
+  const cliente=$("pedidoFijoCliente")?.value||"";
+  const texto=$("pedidoFijoTexto")?.value.trim()||"";
+  const dias=[...document.querySelectorAll('input[name="diaFijo"]:checked')].map(c=>Number(c.value));
+  if(!cliente||!texto||!dias.length){alert("Elegí cliente, escribí el pedido y marcá al menos un día.");return;}
+  const idEditando=Number($("btnGuardarPedidoFijo")?.dataset.editando||0);
+  if(idEditando){
+    const fijo=pedidosFijos.find(p=>Number(p.id)===idEditando);
+    if(fijo) Object.assign(fijo,{cliente,texto,dias,activo:true,actualizado:new Date().toISOString()});
+  }else{
+    pedidosFijos.push({id:Date.now(),cliente,texto,dias,activo:true,creado:new Date().toISOString()});
+  }
+  guardarTodo();limpiarFormularioPedidoFijo();renderPedidosFijos();alert("Pedido fijo guardado.");
+}
+
+function editarPedidoFijo(id){
+  const fijo=pedidosFijos.find(p=>Number(p.id)===Number(id));if(!fijo)return;
+  $("pedidoFijoCliente").value=fijo.cliente;$("pedidoFijoTexto").value=fijo.texto;
+  document.querySelectorAll('input[name="diaFijo"]').forEach(c=>c.checked=fijo.dias.includes(Number(c.value)));
+  $("btnGuardarPedidoFijo").dataset.editando=String(id);$("btnGuardarPedidoFijo").textContent="💾 Guardar cambios";
+}
+
+function alternarPedidoFijo(id){
+  const fijo=pedidosFijos.find(p=>Number(p.id)===Number(id));if(!fijo)return;
+  fijo.activo=!fijo.activo;guardarTodo();renderPedidosFijos();
+}
+
+function eliminarPedidoFijo(id){
+  if(!confirm("¿Eliminar este pedido fijo?"))return;
+  pedidosFijos=pedidosFijos.filter(p=>Number(p.id)!==Number(id));guardarTodo();renderPedidosFijos();
+}
+
+function renderPedidosFijos(){
+  const cont=$("listaPedidosFijos");if(!cont)return;
+  if(!pedidosFijos.length){cont.innerHTML="<p>No hay pedidos fijos cargados.</p>";return;}
+  const nombres=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  cont.innerHTML=pedidosFijos.map(f=>`<div class="fixedOrderCard ${f.activo?"":"paused"}">
+    <div><strong>${escaparHtmlCatalogo(f.cliente)}</strong><span>${f.dias.map(d=>nombres[d]).join(", ")}</span></div>
+    <pre>${escaparHtmlCatalogo(f.texto)}</pre>
+    <div class="toolbar"><button onclick="editarPedidoFijo(${f.id})">✏️ Editar</button><button onclick="alternarPedidoFijo(${f.id})">${f.activo?"⏸ Pausar":"▶ Activar"}</button><button class="dangerBtn" onclick="eliminarPedidoFijo(${f.id})">🗑 Eliminar</button></div>
+  </div>`).join("");
+}
+
+function cargarPedidosFijosParaFecha(){
+  const fecha=$("fechaCargarPedidosFijos")?.value;
+  if(!fecha){alert("Elegí una fecha.");return;}
+  const dia=new Date(fecha+"T12:00:00").getDay();
+  const aplicables=pedidosFijos.filter(f=>f.activo&&f.dias.includes(dia));
+  if(!aplicables.length){alert("No hay pedidos fijos activos para ese día.");return;}
+  let agregados=0;
+  aplicables.forEach(f=>{
+    const existe=pedidos.some(p=>p.origen==="pedido_fijo"&&p.pedidoFijoId===f.id&&fechaEntregaPedido(p)===fecha);
+    if(existe)return;
+    const pedido={id:Date.now()+agregados,cliente:f.cliente,fecha,fechaEntrega:fecha,textoOriginal:f.texto,origen:"pedido_fijo",pedidoFijoId:f.id,items:procesarTextoPedido(f.texto,f.cliente,fecha)};
+    pedidos.push(pedido);registrarPedidoEnHistorial(pedido);agregados++;
+  });
+  guardarTodo();renderPedidosCargados();renderPedidosFuturos();renderHistorialPedidos();calcularDiferencias();
+  alert(`${agregados} pedido(s) fijo(s) cargado(s).`);
+}
+
+function renderSelectorClientesPedidoFijo(){
+  const s=$("pedidoFijoCliente");if(!s)return;
+  const actual=s.value;s.innerHTML=clientes.map(c=>`<option value="${escaparHtmlCatalogo(c)}">${escaparHtmlCatalogo(c)}</option>`).join("");
+  if(clientes.includes(actual))s.value=actual;
+}
+
 function procesarPedidoActual() {
-  const fecha = $("fechaPedido").value || hoyISO();
   const cliente = $("cliente").value;
   const texto = $("pedidoCrudo").value;
+  aplicarFechaDetectadaAlPedido(texto);
+  const fecha = $("fechaPedido").value || fechaISOManana();
 
   if (!texto.trim()) {
     alert("Pegá un pedido primero.");
@@ -2576,13 +2818,17 @@ function procesarPedidoActual() {
   }
 
   const procesado = procesarTextoPedido(texto, cliente, fecha);
-  pedidos.push({ id: Date.now(), fecha, cliente, textoOriginal: texto, items: procesado });
+  const nuevoPedido = { id: Date.now(), fecha, fechaEntrega: fecha, cliente, textoOriginal: texto, items: procesado };
+  pedidos.push(nuevoPedido);
+  registrarPedidoEnHistorial(nuevoPedido);
 
   pedidosConfirmados = false;
   guardarTodo();
 
   renderUltimoProcesado(procesado);
   renderPedidosCargados();
+  renderPedidosFuturos();
+  renderHistorialPedidos();
   calcularDiferencias();
   actualizarEstadoConfirmacion();
 
@@ -2636,7 +2882,7 @@ function renderPedidosCargados() {
           <input type="checkbox" class="checkPedidoEliminar" value="${pedido.id}">
           <strong>${pedido.cliente}</strong>
         </label>
-        <span>${itemsValidos.length} ítems</span>
+        <span>${itemsValidos.length} ítems · Entrega ${new Date(fechaEntregaPedido(pedido)+"T12:00:00").toLocaleDateString("es-AR")}${fechaEntregaPedido(pedido)>hoyISO()?" · 📅 Futuro":""}${pedido.origen==="pedido_fijo"?" · 🔁 Fijo":""}</span>
       </div>`;
 
     if (!itemsValidos.length) {
@@ -2655,6 +2901,7 @@ function renderPedidosCargados() {
     }
 
     html += `<div class="accionesPedido">
+      <button type="button" onclick="editarPedidoCargado(${pedido.id})">✏️ Editar pedido</button>
       <button type="button" onclick="descargarPdfPedidoIndividual(${pedido.id})">📄 PDF del cliente</button>
       <button type="button" onclick="reprocesarPedidoFormulario(${pedido.id})">🔄 Reinterpretar pedido</button>
       <button type="button" class="btnEliminarPedido" onclick="borrarPedido(${pedido.id})">Eliminar este pedido</button>
@@ -2747,7 +2994,8 @@ function formatearCantidadResumen(cantidadBase, producto) {
 function calcularDiferencias() {
   const totalesPedido = {};
 
-  for (const pedido of pedidos) {
+  const fechaTrabajo = $("fechaPedido")?.value || hoyISO();
+  for (const pedido of pedidos.filter(p => fechaEntregaPedido(p) === fechaTrabajo)) {
     for (const it of pedido.items || []) {
       if (it.estado === "NO PEDIDO") continue;
 
@@ -2874,14 +3122,188 @@ function cargarImagen(src){
 }
 
 
-const LISTAS_PRECIO=[{id:"cliente",nombre:"Clientes"},{id:"giuliano",nombre:"Giuliano"},{id:"bailone_libano",nombre:"Bailone / Líbano"},{id:"fratello",nombre:"Fratello"}];
-function etiquetaListaPrecio(id){return LISTAS_PRECIO.find(l=>l.id===id)?.nombre||"Clientes";}
+const LISTAS_PRECIO_BASE = [
+  { id: "cliente", nombre: "Clientes", fija: true },
+  { id: "giuliano", nombre: "Giuliano", fija: true },
+  { id: "bailone_libano", nombre: "Bailone / Líbano", fija: true },
+  { id: "fratello", nombre: "Fratello", fija: true }
+];
+
+let listasPrecioPersonalizadas = JSON.parse(
+  localStorage.getItem("fratello_listas_precio_personalizadas") || "[]"
+);
+
+function todasLasListasPrecio() {
+  const personalizadas = Array.isArray(listasPrecioPersonalizadas)
+    ? listasPrecioPersonalizadas
+    : [];
+
+  return [
+    ...LISTAS_PRECIO_BASE,
+    ...personalizadas.filter(lista =>
+      lista &&
+      lista.id &&
+      lista.nombre &&
+      !LISTAS_PRECIO_BASE.some(base => base.id === lista.id)
+    )
+  ];
+}
+function etiquetaListaPrecio(id){return todasLasListasPrecio().find(l=>l.id===id)?.nombre||"Clientes";}
 function listaPrecioAutomatica(nombreCliente){const n=normalizar(nombreCliente||"");if(n.includes("giuliano"))return"giuliano";if(n.includes("bailone")||n.includes("libano"))return"bailone_libano";if(n.includes("fratello"))return"fratello";return"cliente";}
 function listaPrecioCliente(nombreCliente){const c=datosClientesCompletos[nombreCliente]?.listaPrecio||"auto";return c==="auto"?listaPrecioAutomatica(nombreCliente):c;}
 function unidadesPrecioProducto(p){const f=p.formaVenta||formaVentaPredeterminada(p.unidad);const m={solo_unidad:["unidad"],solo_docena:["docena"],solo_kg:["kg"],unidad_docena:["unidad","docena"],unidad_kg:["unidad","kg"],kg_paquete:["kg","paquete"],revisar_siempre:[p.unidad||"unidad"]};return[...new Set(m[f]||[p.unidad||"unidad"])];}
 function clavePrecio(id,u){return`${id}__${normalizarUnidadPrecio(u)}`;}
 function precioLista(id,u,lista){u=normalizarUnidadPrecio(u);const d=Number(listasPrecios?.[clavePrecio(id,u)]?.[lista]||0);if(d>0)return d;const pu=Number(listasPrecios?.[clavePrecio(id,"unidad")]?.[lista]||0),pd=Number(listasPrecios?.[clavePrecio(id,"docena")]?.[lista]||0);if(u==="docena"&&pu>0)return pu*12;if(u==="unidad"&&pd>0)return pd/12;return Number(productoPorId(id)?.precios?.[u]||0);}
-function renderListasPrecios(){const c=$("tablaListasPrecios");if(!c)return;let h=`<table class="priceMatrix"><thead><tr><th>Producto</th><th>Unidad</th>${LISTAS_PRECIO.map(l=>`<th>${l.nombre}</th>`).join("")}</tr></thead><tbody>`;productos.filter(p=>p.activo!==false).forEach(p=>unidadesPrecioProducto(p).forEach(u=>{const k=clavePrecio(p.id,u);h+=`<tr data-price-key="${escaparHtmlCatalogo(k)}"><td>${escaparHtmlCatalogo(p.nombre)}</td><td>${u}</td>${LISTAS_PRECIO.map(l=>`<td><input type="number" min="0" step="0.01" data-price-list="${l.id}" value="${Number(listasPrecios?.[k]?.[l.id]||0)}" placeholder="0"></td>`).join("")}</tr>`;}));c.innerHTML=h+"</tbody></table>";}
+function renderSelectorListasCliente(valorSeleccionado = null) {
+  const select = $("nuevoClienteListaPrecio");
+  if (!select) return;
+
+  const valorActual = valorSeleccionado ?? select.value ?? "auto";
+  select.innerHTML =
+    '<option value="auto">Automática según el nombre</option>' +
+    todasLasListasPrecio()
+      .map(lista => `<option value="${escaparHtmlCatalogo(lista.id)}">${escaparHtmlCatalogo(lista.nombre)}</option>`)
+      .join("");
+
+  const existe = [...select.options].some(option => option.value === valorActual);
+  select.value = existe ? valorActual : "auto";
+}
+
+function crearIdListaPrecio(nombre) {
+  const base = normalizar(nombre)
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "lista_especial";
+
+  let id = base;
+  let numero = 2;
+
+  while (todasLasListasPrecio().some(lista => lista.id === id)) {
+    id = `${base}_${numero}`;
+    numero += 1;
+  }
+
+  return id;
+}
+
+function agregarListaPrecioPersonalizada() {
+  const nombre = prompt(
+    "Nombre del cliente o de la nueva lista de precios:",
+    ""
+  );
+
+  if (!nombre || !nombre.trim()) return;
+
+  const limpio = nombre.trim();
+  const repetida = todasLasListasPrecio().some(
+    lista => normalizar(lista.nombre) === normalizar(limpio)
+  );
+
+  if (repetida) {
+    alert("Ya existe una lista con ese nombre.");
+    return;
+  }
+
+  const nueva = {
+    id: crearIdListaPrecio(limpio),
+    nombre: limpio,
+    fija: false
+  };
+
+  listasPrecioPersonalizadas.push(nueva);
+  localStorage.setItem(
+    "fratello_listas_precio_personalizadas",
+    JSON.stringify(listasPrecioPersonalizadas)
+  );
+
+  renderListasPrecios();
+  renderSelectorListasCliente();
+  renderSelectorListasCliente(nueva.id);
+  guardarEnNube();
+
+  alert(`Lista "${limpio}" agregada correctamente.`);
+}
+
+function eliminarListaPrecioPersonalizada(id) {
+  const lista = listasPrecioPersonalizadas.find(item => item.id === id);
+  if (!lista) return;
+
+  if (!confirm(`¿Eliminar la lista de precios "${lista.nombre}"?`)) return;
+
+  listasPrecioPersonalizadas = listasPrecioPersonalizadas.filter(
+    item => item.id !== id
+  );
+
+  Object.values(datosClientesCompletos || {}).forEach(cliente => {
+    if (cliente?.listaPrecio === id) cliente.listaPrecio = "auto";
+  });
+
+  Object.keys(listasPrecios || {}).forEach(clave => {
+    if (listasPrecios[clave] && typeof listasPrecios[clave] === "object") {
+      delete listasPrecios[clave][id];
+    }
+  });
+
+  localStorage.setItem(
+    "fratello_listas_precio_personalizadas",
+    JSON.stringify(listasPrecioPersonalizadas)
+  );
+
+  guardarTodo();
+  renderListasPrecios();
+  renderSelectorListasCliente("auto");
+  renderListaClientesCompleta();
+
+  alert(`Lista "${lista.nombre}" eliminada.`);
+}
+
+function renderListasPrecios(){
+  const c = $("tablaListasPrecios");
+  if (!c) return;
+
+  const listas = todasLasListasPrecio();
+
+  let h = `<table class="priceMatrix">
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th>Unidad</th>
+        ${listas.map(lista => `
+          <th>
+            <div class="priceColumnHeader">
+              <span>${escaparHtmlCatalogo(lista.nombre)}</span>
+              ${lista.fija ? "" : `<button type="button" class="priceDeleteColumn" onclick="eliminarListaPrecioPersonalizada('${escaparHtmlCatalogo(lista.id)}')" title="Eliminar esta lista">×</button>`}
+            </div>
+          </th>`).join("")}
+      </tr>
+    </thead>
+    <tbody>`;
+
+  productos
+    .filter(producto => producto.activo !== false)
+    .forEach(producto => {
+      unidadesPrecioProducto(producto).forEach(unidad => {
+        const clave = clavePrecio(producto.id, unidad);
+
+        h += `<tr data-price-key="${escaparHtmlCatalogo(clave)}">
+          <td>${escaparHtmlCatalogo(producto.nombre)}</td>
+          <td>${escaparHtmlCatalogo(unidad)}</td>
+          ${listas.map(lista => `
+            <td>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                data-price-list="${escaparHtmlCatalogo(lista.id)}"
+                value="${Number(listasPrecios?.[clave]?.[lista.id] || 0)}"
+                placeholder="0">
+            </td>`).join("")}
+        </tr>`;
+      });
+    });
+
+  c.innerHTML = h + "</tbody></table>";
+}
+
 function guardarListasPrecios(){document.querySelectorAll("[data-price-key]").forEach(f=>{const k=f.dataset.priceKey;listasPrecios[k]=listasPrecios[k]||{};f.querySelectorAll("[data-price-list]").forEach(i=>listasPrecios[k][i.dataset.priceList]=Number(i.value||0));});localStorage.setItem("fratello_listas_precios",JSON.stringify(listasPrecios));guardarEnNube();const m=$("mensajeListasPrecios");if(m){m.textContent="✅ Listas de precios guardadas.";m.style.display="block";}}
 function normalizarUnidadPrecio(unidad) {
   const u = String(unidad || "unidad").toLowerCase();
@@ -3447,6 +3869,14 @@ Gracias, Fratello.`;
 
 
 async function init() {
+  if ($("btnGuardarPedidoFijo")) $("btnGuardarPedidoFijo").onclick=guardarPedidoFijo;
+  if ($("btnLimpiarPedidoFijo")) $("btnLimpiarPedidoFijo").onclick=limpiarFormularioPedidoFijo;
+  if ($("btnCargarPedidosFijosFecha")) $("btnCargarPedidosFijosFecha").onclick=cargarPedidosFijosParaFecha;
+
+  if ($("btnAgregarListaPrecio")) {
+    $("btnAgregarListaPrecio").onclick = agregarListaPrecioPersonalizada;
+  }
+
   if ($("btnGuardarListasPrecios")) {
     $("btnGuardarListasPrecios").onclick = guardarListasPrecios;
   }
@@ -3525,7 +3955,8 @@ async function init() {
   escucharCambiosNube();
   escucharHistorialNotificaciones();
   aplicarPermisosUsuario();
-  if ($("fechaPedido")) $("fechaPedido").value = hoyISO();
+  if ($("fechaPedido")) $("fechaPedido").value = fechaISOManana();
+  if ($("fechaCargarPedidosFijos")) $("fechaCargarPedidosFijos").value = fechaISOManana();
   renderClientes();
 
   if ($("cliente")) $("cliente").onchange = limpiarPedidoCrudo;
@@ -3575,6 +4006,10 @@ async function init() {
 
   renderProduccion();
   renderPedidosCargados();
+  renderSelectorClientesPedidoFijo();
+  renderPedidosFijos();
+  renderPedidosFuturos();
+  renderHistorialPedidos();
   renderListasPrecios();
   calcularDiferencias();
 }
@@ -3582,6 +4017,12 @@ async function init() {
 
 
 
+window.editarPedidoCargado=editarPedidoCargado;
+window.repetirPedidoHistorial=repetirPedidoHistorial;
+window.editarPedidoFijo=editarPedidoFijo;
+window.alternarPedidoFijo=alternarPedidoFijo;
+window.eliminarPedidoFijo=eliminarPedidoFijo;
+window.eliminarListaPrecioPersonalizada = eliminarListaPrecioPersonalizada;
 window.descargarPdfPedidoIndividual = descargarPdfPedidoIndividual;
 window.reprocesarPedidoFormulario = reprocesarPedidoFormulario;
 window.resolverProductoPedido = resolverProductoPedido;

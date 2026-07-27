@@ -1315,3 +1315,44 @@ body:has(.appSection:target) #contenidoApp {
 .printModalActions{flex-wrap:wrap}
 @media(max-width:680px){.catalogPriceFields{grid-template-columns:1fr 1fr}.printModalActions button{flex:1 1 45%}}
 .catalogPriceFields{display:none!important}.priceLegend{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.priceLegend span{padding:10px;border-radius:10px;background:#f4eee6}.priceTableWrap{overflow:auto;margin-top:12px}.priceMatrix{min-width:820px;width:100%;border-collapse:collapse}.priceMatrix th{position:sticky;top:0;background:#efe2d2;z-index:1}.priceMatrix th,.priceMatrix td{padding:8px;border:1px solid #dccdbd}.priceMatrix input{width:120px;margin:0;text-align:right}@media(max-width:680px){.priceLegend{grid-template-columns:1fr 1fr}.clienteFormGrid{grid-template-columns:1fr}}
+/* ===== FRATELLO v1.08 - LISTAS PERSONALIZADAS ===== */
+.priceColumnHeader{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  white-space:nowrap;
+}
+.priceDeleteColumn{
+  width:24px;
+  height:24px;
+  min-width:24px;
+  margin:0;
+  padding:0;
+  border-radius:50%;
+  background:#ffd9d5;
+  color:#9b1c1c;
+  border:1px solid #e7aaa4;
+  font-size:18px;
+  line-height:1;
+}
+.priceDeleteColumn:hover{
+  background:#ffc6bf;
+}
+
+/* ===== FRATELLO v2.0 ===== */
+.dashboardV2{max-width:1050px}
+.v2Welcome{display:flex;justify-content:space-between;align-items:center;padding:18px;border-radius:16px;background:#fff4df;margin:12px 0}
+.v2Welcome strong{display:block;font-size:22px}.v2Welcome span{display:block;margin-top:4px}
+.v2Badge{background:#4f2c1d!important;color:#fff;padding:7px 12px;border-radius:20px;font-weight:800}
+.v2ModuleGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:14px 0}
+.v2ModuleCard{display:grid;grid-template-columns:46px 1fr;gap:4px 12px;padding:18px;border-radius:16px;text-decoration:none;color:inherit;border:1px solid #dfc6a7;background:#fff}
+.v2ModuleCard>span{grid-row:1/3;font-size:34px}.v2ModuleCard strong{font-size:18px}.v2ModuleCard small{font-size:13px}
+.v2ModuleCard.productos{grid-column:1/-1}
+.v2SectionLinks,.v2PedidosTools{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.v2SectionLinks button,.v2PedidosTools button{width:auto}
+.fixedOrderForm,.futureLoadBox{padding:14px;border-radius:14px;background:#fff8ed;margin:12px 0}
+.fixedOrderForm fieldset{display:flex;gap:10px;flex-wrap:wrap;border:1px solid #ddc4a6;border-radius:10px;margin:10px 0}.fixedOrderForm fieldset label{display:flex;align-items:center;gap:4px}
+.fixedOrderCard,.historyOrderCard,.futureDateGroup{border:1px solid #dec9b0;border-radius:14px;padding:14px;margin:10px 0;background:#fff}
+.fixedOrderCard.paused{opacity:.6}.fixedOrderCard pre,.historyOrderCard pre{white-space:pre-wrap;background:#f8f3ec;padding:10px;border-radius:8px}
+.futureOrderRow{display:flex;align-items:center;gap:10px;padding:8px;border-top:1px solid #eee}.futureOrderRow strong{flex:1}.futureOrderRow button{width:auto}
+@media(max-width:680px){.v2ModuleGrid{grid-template-columns:1fr}.v2ModuleCard.productos{grid-column:auto}.futureOrderRow{flex-wrap:wrap}}
