@@ -1314,3 +1314,4 @@ body:has(.appSection:target) #contenidoApp {
 .catalogPriceFields input{margin:0;width:100%}
 .printModalActions{flex-wrap:wrap}
 @media(max-width:680px){.catalogPriceFields{grid-template-columns:1fr 1fr}.printModalActions button{flex:1 1 45%}}
+.catalogPriceFields{display:none!important}.priceLegend{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.priceLegend span{padding:10px;border-radius:10px;background:#f4eee6}.priceTableWrap{overflow:auto;margin-top:12px}.priceMatrix{min-width:820px;width:100%;border-collapse:collapse}.priceMatrix th{position:sticky;top:0;background:#efe2d2;z-index:1}.priceMatrix th,.priceMatrix td{padding:8px;border:1px solid #dccdbd}.priceMatrix input{width:120px;margin:0;text-align:right}@media(max-width:680px){.priceLegend{grid-template-columns:1fr 1fr}.clienteFormGrid{grid-template-columns:1fr}}

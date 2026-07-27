@@ -365,6 +365,8 @@ function limpiarFormularioClienteCompleto() {
   const nombre = $("nuevoClienteNombre");
   const telefono = $("nuevoClienteTelefono");
   const direccion = $("nuevoClienteDireccion");
+  const barrio = $("nuevoClienteBarrio");
+  const listaPrecio = $("nuevoClienteListaPrecio");
   const recordatorio = $("nuevoClienteRecordatorio");
   const boton = $("btnGuardarClienteCompleto");
 
@@ -374,6 +376,8 @@ function limpiarFormularioClienteCompleto() {
   }
   if (telefono) telefono.value = "";
   if (direccion) direccion.value = "";
+  if (barrio) barrio.value = "";
+  if (listaPrecio) listaPrecio.value = "auto";
   if (recordatorio) recordatorio.checked = false;
   if (boton) boton.textContent = "➕ Agregar cliente";
 }
@@ -393,6 +397,8 @@ function guardarClienteCompleto() {
     const nombreInput = $("nuevoClienteNombre");
     const telefonoInput = $("nuevoClienteTelefono");
     const direccionInput = $("nuevoClienteDireccion");
+    const barrioInput = $("nuevoClienteBarrio");
+    const listaPrecioInput = $("nuevoClienteListaPrecio");
     const recordatorioInput = $("nuevoClienteRecordatorio");
 
     if (!nombreInput) {
@@ -403,6 +409,8 @@ function guardarClienteCompleto() {
     const nombre = nombreInput.value.trim();
     const telefono = normalizarTelefonoCliente(telefonoInput?.value || "");
     const direccion = direccionInput?.value.trim() || "";
+    const barrio = barrioInput?.value.trim() || "";
+    const listaPrecio = listaPrecioInput?.value || "auto";
     const enviarRecordatorio = Boolean(recordatorioInput?.checked);
     const nombreAnterior = nombreInput.dataset.editando || "";
 
@@ -443,10 +451,7 @@ function guardarClienteCompleto() {
     }
 
     datosClientesCompletos[nombre] = {
-      nombre,
-      telefono,
-      direccion,
-      enviarRecordatorio,
+      nombre, telefono, direccion, barrio, listaPrecio, enviarRecordatorio,
       actualizado: new Date().toISOString()
     };
 
@@ -468,6 +473,8 @@ function editarClienteCompleto(nombre) {
     nombre,
     telefono: "",
     direccion: "",
+    barrio: "",
+    listaPrecio: "auto",
     enviarRecordatorio: false
   };
 
@@ -479,6 +486,8 @@ function editarClienteCompleto(nombre) {
 
   if ($("nuevoClienteTelefono")) $("nuevoClienteTelefono").value = datos.telefono || "";
   if ($("nuevoClienteDireccion")) $("nuevoClienteDireccion").value = datos.direccion || "";
+  if ($("nuevoClienteBarrio")) $("nuevoClienteBarrio").value = datos.barrio || "";
+  if ($("nuevoClienteListaPrecio")) $("nuevoClienteListaPrecio").value = datos.listaPrecio || "auto";
   if ($("nuevoClienteRecordatorio")) $("nuevoClienteRecordatorio").checked = Boolean(datos.enviarRecordatorio);
   if ($("btnGuardarClienteCompleto")) $("btnGuardarClienteCompleto").textContent = "💾 Guardar cambios";
 
@@ -1096,6 +1105,7 @@ function datosActuales() {
     predeterminadas,
     clientes,
     datosClientesCompletos,
+    listasPrecios,
     productosExtra,
     catalogoProductos: productos,
     pedidosConfirmados,
@@ -1133,7 +1143,9 @@ async function cargarDesdeNube() {
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = (Array.isArray(data.clientes) && data.clientes.length > 0) ? data.clientes : clientes;
     datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
+      listasPrecios = data.listasPrecios || listasPrecios;
       datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
+      listasPrecios = data.listasPrecios || listasPrecios;
       validarClientes();
     productosExtra = data.productosExtra || productosExtra;
     if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
@@ -1192,6 +1204,7 @@ async function actualizarDatosManual() {
       ? data.clientes
       : clientes;
     datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
+      listasPrecios = data.listasPrecios || listasPrecios;
     productosExtra = data.productosExtra || productosExtra;
     if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
       productos.splice(0, productos.length, ...data.catalogoProductos);
@@ -1211,6 +1224,7 @@ async function actualizarDatosManual() {
     localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
     localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
     localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+  localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
     localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
   localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
     localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
@@ -1367,6 +1381,7 @@ function escucharCambiosNube() {
         ? data.clientes
         : clientes;
       datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
+      listasPrecios = data.listasPrecios || listasPrecios;
       productosExtra = data.productosExtra || productosExtra;
       pedidosConfirmados = Boolean(data.pedidosConfirmados);
       correspondePedido = data.correspondePedido || correspondePedido;
@@ -1439,6 +1454,7 @@ let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
 let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas") || "null") || crearPredeterminadasIniciales();
 let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") || [...clientesIniciales];
 let datosClientesCompletos = JSON.parse(localStorage.getItem("fratello_clientes_completos") || "{}");
+let listasPrecios = JSON.parse(localStorage.getItem("fratello_listas_precios") || "{}");
 let productosExtra = JSON.parse(localStorage.getItem("fratello_productos_extra") || "[]");
 productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); });
 
@@ -2835,6 +2851,16 @@ function cargarImagen(src){
   return new Promise((ok,fail)=>{const img=new Image();img.onload=()=>ok(img);img.onerror=fail;img.src=src;});
 }
 
+
+const LISTAS_PRECIO=[{id:"cliente",nombre:"Clientes"},{id:"giuliano",nombre:"Giuliano"},{id:"bailone_libano",nombre:"Bailone / Líbano"},{id:"fratello",nombre:"Fratello"}];
+function etiquetaListaPrecio(id){return LISTAS_PRECIO.find(l=>l.id===id)?.nombre||"Clientes";}
+function listaPrecioAutomatica(nombreCliente){const n=normalizar(nombreCliente||"");if(n.includes("giuliano"))return"giuliano";if(n.includes("bailone")||n.includes("libano"))return"bailone_libano";if(n.includes("fratello"))return"fratello";return"cliente";}
+function listaPrecioCliente(nombreCliente){const c=datosClientesCompletos[nombreCliente]?.listaPrecio||"auto";return c==="auto"?listaPrecioAutomatica(nombreCliente):c;}
+function unidadesPrecioProducto(p){const f=p.formaVenta||formaVentaPredeterminada(p.unidad);const m={solo_unidad:["unidad"],solo_docena:["docena"],solo_kg:["kg"],unidad_docena:["unidad","docena"],unidad_kg:["unidad","kg"],kg_paquete:["kg","paquete"],revisar_siempre:[p.unidad||"unidad"]};return[...new Set(m[f]||[p.unidad||"unidad"])];}
+function clavePrecio(id,u){return`${id}__${normalizarUnidadPrecio(u)}`;}
+function precioLista(id,u,lista){u=normalizarUnidadPrecio(u);const d=Number(listasPrecios?.[clavePrecio(id,u)]?.[lista]||0);if(d>0)return d;const pu=Number(listasPrecios?.[clavePrecio(id,"unidad")]?.[lista]||0),pd=Number(listasPrecios?.[clavePrecio(id,"docena")]?.[lista]||0);if(u==="docena"&&pu>0)return pu*12;if(u==="unidad"&&pd>0)return pd/12;return Number(productoPorId(id)?.precios?.[u]||0);}
+function renderListasPrecios(){const c=$("tablaListasPrecios");if(!c)return;let h=`<table class="priceMatrix"><thead><tr><th>Producto</th><th>Unidad</th>${LISTAS_PRECIO.map(l=>`<th>${l.nombre}</th>`).join("")}</tr></thead><tbody>`;productos.filter(p=>p.activo!==false).forEach(p=>unidadesPrecioProducto(p).forEach(u=>{const k=clavePrecio(p.id,u);h+=`<tr data-price-key="${escaparHtmlCatalogo(k)}"><td>${escaparHtmlCatalogo(p.nombre)}</td><td>${u}</td>${LISTAS_PRECIO.map(l=>`<td><input type="number" min="0" step="0.01" data-price-list="${l.id}" value="${Number(listasPrecios?.[k]?.[l.id]||0)}" placeholder="0"></td>`).join("")}</tr>`;}));c.innerHTML=h+"</tbody></table>";}
+function guardarListasPrecios(){document.querySelectorAll("[data-price-key]").forEach(f=>{const k=f.dataset.priceKey;listasPrecios[k]=listasPrecios[k]||{};f.querySelectorAll("[data-price-list]").forEach(i=>listasPrecios[k][i.dataset.priceList]=Number(i.value||0));});localStorage.setItem("fratello_listas_precios",JSON.stringify(listasPrecios));guardarEnNube();const m=$("mensajeListasPrecios");if(m){m.textContent="✅ Listas de precios guardadas.";m.style.display="block";}}
 function normalizarUnidadPrecio(unidad) {
   const u = String(unidad || "unidad").toLowerCase();
   if (["unid","unidades","u"].includes(u)) return "unidad";
@@ -2846,37 +2872,9 @@ function normalizarUnidadPrecio(unidad) {
   return u;
 }
 
-function precioUnitarioItem(producto, unidad) {
-  if (!producto) return 0;
-  const u = normalizarUnidadPrecio(unidad);
-  const precios = producto.precios || {};
-  const directo = Number(precios[u] || 0);
-  if (directo > 0) return directo;
-  if (u === "docena" && Number(precios.unidad || 0) > 0) return Number(precios.unidad) * 12;
-  if (u === "unidad" && Number(precios.docena || 0) > 0) return Number(precios.docena) / 12;
-  return 0;
-}
+function precioUnitarioItem(producto,unidad,cliente=""){if(!producto)return 0;return precioLista(producto.id,unidad,listaPrecioCliente(cliente));}
 
-function datosTicketPedido(pedido) {
-  const items = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO").map(item => {
-    const producto = productoPorId(item.productoId);
-    const precioUnitario = precioUnitarioItem(producto, item.unidad);
-    return {
-      descripcion: producto?.nombre || item.producto || "Producto",
-      cantidad: Number(item.cantidad || 0),
-      unidad: normalizarUnidadPrecio(item.unidad),
-      precioUnitario,
-      total: Number(item.cantidad || 0) * precioUnitario
-    };
-  });
-  return {
-    id: pedido.id,
-    cliente: pedido.cliente || "Sin cliente",
-    fecha: pedido.fecha || $("fechaPedido")?.value || hoyISO(),
-    items,
-    total: items.reduce((a, i) => a + i.total, 0)
-  };
-}
+function datosTicketPedido(pedido){const dc=datosClientesCompletos[pedido.cliente]||{},lista=listaPrecioCliente(pedido.cliente);const items=(pedido.items||[]).filter(i=>i.estado!=="NO PEDIDO").map(item=>{const p=productoPorId(item.productoId),precioUnitario=precioUnitarioItem(p,item.unidad,pedido.cliente);return{descripcion:p?.nombre||item.producto||"Producto",cantidad:Number(item.cantidad||0),unidad:normalizarUnidadPrecio(item.unidad),precioUnitario,total:Number(item.cantidad||0)*precioUnitario};});return{id:pedido.id,cliente:pedido.cliente||"Sin cliente",fecha:pedido.fecha||$("fechaPedido")?.value||hoyISO(),direccion:dc.direccion||"",barrio:dc.barrio||"",listaPrecio:lista,listaPrecioNombre:etiquetaListaPrecio(lista),items,total:items.reduce((a,i)=>a+i.total,0)};}
 
 function formatoDineroTicket(valor) {
   return new Intl.NumberFormat("es-AR", {
@@ -2903,62 +2901,17 @@ function cortarTextoCanvas(ctx, texto, maxWidth) {
   return lineas.length ? lineas : [""];
 }
 
-function dibujarTicketEnCanvas(ctx, ticket, x, y, ancho, alto, numeroPedido="") {
-  const pad=24, izq=x+pad, der=x+ancho-pad;
-  ctx.save();
-  ctx.fillStyle="#fff"; ctx.fillRect(x,y,ancho,alto);
-  ctx.strokeStyle="#222"; ctx.lineWidth=2; ctx.strokeRect(x+1,y+1,ancho-2,alto-2);
+function calcularAltoTicket(t,a=640){return Math.max(720,430+t.items.reduce((x,i)=>x+(String(i.descripcion).length>25?74:58),0)+(t.direccion||t.barrio?90:35));}
+function dibujarTicketEnCanvas(ctx,t,x,y,a,h,n=""){const p=26,l=x+p,r=x+a-p;let yy=y+38;ctx.save();ctx.fillStyle="#fff";ctx.fillRect(x,y,a,h);ctx.strokeStyle="#111";ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,a-2,h-2);ctx.fillStyle="#111";ctx.textAlign="center";ctx.font="bold 29px Arial";ctx.fillText("PANADERÍA FRATELLO",x+a/2,yy);yy+=30;ctx.font="14px Arial";ctx.fillText("PEDIDO / TICKET DE ENTREGA",x+a/2,yy);yy+=28;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=26;ctx.textAlign="left";ctx.font="bold 17px Arial";ctx.fillText(`Cliente: ${t.cliente}`,l,yy);yy+=24;ctx.font="15px Arial";ctx.fillText(`Fecha: ${new Date(t.fecha+"T12:00:00").toLocaleDateString("es-AR")}`,l,yy);ctx.textAlign="right";ctx.fillText(`Pedido Nº ${n}`,r,yy);yy+=28;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=24;ctx.textAlign="left";ctx.font="bold 14px Arial";ctx.fillText("DESCRIPCIÓN",l,yy);yy+=22;ctx.font="bold 13px Arial";ctx.fillText("CANT.",l,yy);ctx.textAlign="right";ctx.fillText("P. UNIT.",x+a*.70,yy);ctx.fillText("TOTAL",r,yy);yy+=16;ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();yy+=24;for(const i of t.items){ctx.textAlign="left";ctx.font="bold 15px Arial";const ls=cortarTextoCanvas(ctx,i.descripcion,a-p*2).slice(0,2);ls.forEach((v,j)=>ctx.fillText(v,l,yy+j*18));yy+=ls.length*18+8;ctx.font="14px Arial";ctx.fillText(`${fmt(i.cantidad)} ${i.unidad}`,l,yy);ctx.textAlign="right";ctx.fillText(i.precioUnitario>0?formatoDineroTicket(i.precioUnitario):"Sin precio",x+a*.70,yy);ctx.fillText(i.precioUnitario>0?formatoDineroTicket(i.total):"—",r,yy);yy+=18;ctx.strokeStyle="#bbb";ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle="#111";yy+=20;}ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();yy+=34;ctx.font="bold 25px Arial";ctx.textAlign="left";ctx.fillText("TOTAL",l,yy);ctx.textAlign="right";ctx.fillText(formatoDineroTicket(t.total),r,yy);yy+=34;ctx.lineWidth=2;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=30;ctx.textAlign="left";ctx.font="bold 16px Arial";ctx.fillText("DIRECCIÓN DE ENTREGA",l,yy);yy+=24;ctx.font="15px Arial";if(t.direccion){cortarTextoCanvas(ctx,t.direccion,a-p*2).forEach(v=>{ctx.fillText(v,l,yy);yy+=20;});}else{ctx.fillText("Sin dirección cargada",l,yy);yy+=20;}if(t.barrio){ctx.fillText(`Barrio: ${t.barrio}`,l,yy);yy+=22;}yy+=12;ctx.textAlign="center";ctx.font="14px Arial";ctx.fillText("Gracias por elegir Panadería Fratello",x+a/2,yy);ctx.restore();}
 
-  ctx.fillStyle="#111"; ctx.textAlign="center"; ctx.font="bold 29px Arial";
-  ctx.fillText("PANADERÍA FRATELLO",x+ancho/2,y+42);
-
-  ctx.font="16px Arial"; ctx.textAlign="left";
-  ctx.fillText(`Cliente: ${ticket.cliente}`,izq,y+78);
-  ctx.fillText(`Fecha: ${new Date(ticket.fecha+"T12:00:00").toLocaleDateString("es-AR")}`,izq,y+103);
-  if(numeroPedido){ctx.textAlign="right";ctx.fillText(`Pedido Nº ${numeroPedido}`,der,y+103);}
-
-  let yy=y+130;
-  ctx.beginPath();ctx.moveTo(izq,yy);ctx.lineTo(der,yy);ctx.stroke();
-  yy+=25;
-
-  const colDesc=izq,colCant=x+ancho*.52,colPrecio=x+ancho*.75,colTotal=der;
-  ctx.font="bold 14px Arial";ctx.textAlign="left";ctx.fillText("Descripción",colDesc,yy);
-  ctx.textAlign="center";ctx.fillText("Cantidad",colCant,yy);
-  ctx.textAlign="right";ctx.fillText("P. unit.",colPrecio,yy);ctx.fillText("Total",colTotal,yy);
-  yy+=12;ctx.beginPath();ctx.moveTo(izq,yy);ctx.lineTo(der,yy);ctx.stroke();yy+=25;
-  ctx.font="14px Arial";
-
-  for(const item of ticket.items){
-    const lineas=cortarTextoCanvas(ctx,item.descripcion,ancho*.40).slice(0,2);
-    const altoFila=Math.max(34,lineas.length*18+12);
-    if(yy+altoFila>y+alto-82){ctx.textAlign="left";ctx.fillText("… continúa",izq,yy);break;}
-    ctx.textAlign="left";lineas.forEach((l,i)=>ctx.fillText(l,colDesc,yy+i*18));
-    ctx.textAlign="center";ctx.fillText(`${fmt(item.cantidad)} ${item.unidad}`,colCant,yy);
-    ctx.textAlign="right";
-    ctx.fillText(item.precioUnitario>0?formatoDineroTicket(item.precioUnitario):"Sin precio",colPrecio,yy);
-    ctx.fillText(item.precioUnitario>0?formatoDineroTicket(item.total):"—",colTotal,yy);
-    yy+=altoFila;ctx.strokeStyle="#d0d0d0";ctx.beginPath();ctx.moveTo(izq,yy-8);ctx.lineTo(der,yy-8);ctx.stroke();
-  }
-
-  const totalY=y+alto-48;
-  ctx.strokeStyle="#111";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+ancho*.52,totalY-25);ctx.lineTo(der,totalY-25);ctx.stroke();
-  ctx.font="bold 22px Arial";ctx.textAlign="right";ctx.fillText("TOTAL",x+ancho*.72,totalY);
-  ctx.fillText(formatoDineroTicket(ticket.total),der,totalY);
-  ctx.restore();
-}
-
-function crearCanvasTicketIndividual(ticket, ancho=900, alto=1120) {
-  const canvas=document.createElement("canvas");canvas.width=ancho;canvas.height=alto;
-  dibujarTicketEnCanvas(canvas.getContext("2d"),ticket,0,0,ancho,alto,String(ticket.id).slice(-6));
-  return canvas;
-}
+function crearCanvasTicketIndividual(t,a=640){const h=calcularAltoTicket(t,a),c=document.createElement("canvas");c.width=a;c.height=h;dibujarTicketEnCanvas(c.getContext("2d"),t,0,0,a,h,String(t.id).slice(-6));return c;}
 
 function avisarPreciosFaltantes(lista=pedidos) {
   const faltantes=new Set();
   lista.forEach(p=>(p.items||[]).forEach(i=>{
     if(i.estado==="NO PEDIDO")return;
     const prod=productoPorId(i.productoId);
-    if(precioUnitarioItem(prod,i.unidad)<=0)faltantes.add(prod?.nombre||i.producto);
+    if(precioUnitarioItem(prod,i.unidad,p.cliente)<=0)faltantes.add(prod?.nombre||i.producto);
   }));
   if(faltantes.size)alert("El ticket se generará, pero faltan precios para:\n\n"+[...faltantes].slice(0,12).join("\n")+"\n\nCargalos desde Administrar productos predeterminados.");
 }
@@ -2976,36 +2929,9 @@ async function generarVistaPedidos(){
 
 function obtenerJsPDF(){return window.jspdf?.jsPDF||null;}
 
-function agregarTicketPdf(doc,ticket,x,y,ancho,alto){
-  const imagen=crearCanvasTicketIndividual(ticket).toDataURL("image/jpeg",.94);
-  doc.addImage(imagen,"JPEG",x,y,ancho,alto,undefined,"FAST");
-}
-
-function descargarPdfPedidos(){
-  if(!pedidos.length){alert("No hay pedidos cargados.");return;}
-  const JsPDF=obtenerJsPDF();if(!JsPDF){alert("No se pudo cargar el generador de PDF.");return;}
-  avisarPreciosFaltantes(pedidos);
-  const doc=new JsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-  const tickets=pedidos.map(datosTicketPedido),margen=7,separacion=4;
-  const ancho=(210-margen*2-separacion)/2,alto=(297-margen*2-separacion)/2;
-  tickets.forEach((t,i)=>{
-    if(i>0&&i%4===0)doc.addPage();
-    const pos=i%4,col=pos%2,fila=Math.floor(pos/2);
-    agregarTicketPdf(doc,t,margen+col*(ancho+separacion),margen+fila*(alto+separacion),ancho,alto);
-  });
-  doc.save(`tickets-fratello-${hoyISO()}.pdf`);
-}
-
-function descargarPdfPedidoIndividual(pedidoId){
-  const pedido=pedidos.find(p=>Number(p.id)===Number(pedidoId));
-  if(!pedido){alert("No se encontró el pedido.");return;}
-  const JsPDF=obtenerJsPDF();if(!JsPDF){alert("No se pudo cargar el generador de PDF.");return;}
-  avisarPreciosFaltantes([pedido]);
-  const ticket=datosTicketPedido(pedido);
-  const doc=new JsPDF({orientation:"portrait",unit:"mm",format:"a5"});
-  agregarTicketPdf(doc,ticket,5,5,138,200);
-  doc.save(`ticket-fratello-${nombreArchivoSeguro(ticket.cliente)}-${ticket.fecha}.pdf`);
-}
+function agregarTicketPdf(doc,t,x,y,a){const c=crearCanvasTicketIndividual(t),h=a*c.height/c.width;doc.addImage(c.toDataURL("image/jpeg",.95),"JPEG",x,y,a,h,undefined,"FAST");return h;}
+function descargarPdfPedidos(){if(!pedidos.length){alert("No hay pedidos cargados.");return;}const J=obtenerJsPDF();if(!J){alert("No se pudo cargar el generador de PDF.");return;}avisarPreciosFaltantes(pedidos);const d=new J({orientation:"portrait",unit:"mm",format:"a4"}),a=62,m=6,g=4;let x=m,y=m,col=0,hf=0;pedidos.map(datosTicketPedido).forEach((t,idx)=>{const c=crearCanvasTicketIndividual(t),h=a*c.height/c.width;if(y+h>291&&col===0){d.addPage();y=m;}agregarTicketPdf(d,t,x,y,a);hf=Math.max(hf,h);col++;if(col===3){col=0;x=m;y+=hf+g;hf=0;if(idx<pedidos.length-1&&y+80>291){d.addPage();y=m;}}else x=m+col*(a+g);});d.save(`tickets-fratello-${hoyISO()}.pdf`);}
+function descargarPdfPedidoIndividual(id){const p=pedidos.find(x=>Number(x.id)===Number(id));if(!p){alert("No se encontró el pedido.");return;}const J=obtenerJsPDF();if(!J){alert("No se pudo cargar el generador de PDF.");return;}avisarPreciosFaltantes([p]);const t=datosTicketPedido(p),c=crearCanvasTicketIndividual(t),a=80,h=Math.max(100,a*c.height/c.width),d=new J({orientation:"portrait",unit:"mm",format:[a,h]});d.addImage(c.toDataURL("image/jpeg",.96),"JPEG",0,0,a,h,undefined,"FAST");d.save(`ticket-fratello-${nombreArchivoSeguro(t.cliente)}-${t.fecha}.pdf`);}
 
 function guardarImagenPedidos(){
   const canvas=$("canvasPedidosImpresion"); if(!canvas)return;
@@ -3020,663 +2946,5 @@ async function compartirImagenPedidos(){
   }
   guardarImagenPedidos();
 }
-function imprimirImagenPedidos(){
-  if(!pedidos.length){alert("No hay pedidos cargados.");return;}
-  const imagenes=pedidos.map(p=>crearCanvasTicketIndividual(datosTicketPedido(p)).toDataURL("image/png"));
-  const w=window.open("","_blank");
-  if(!w){alert("Permití ventanas emergentes para imprimir.");return;}
-  w.document.write(`<html><head><title>Tickets Fratello</title><style>
-  @page{size:A4 portrait;margin:7mm}*{box-sizing:border-box}body{margin:0}
-  .pagina{width:100%;min-height:283mm;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4mm;page-break-after:always}
-  .pagina:last-child{page-break-after:auto}.ticket{width:100%;height:100%;object-fit:contain;border:1px dashed #aaa}
-  </style></head><body>`);
-  for(let i=0;i<imagenes.length;i+=4){
-    w.document.write('<div class="pagina">');
-    imagenes.slice(i,i+4).forEach(src=>w.document.write(`<img class="ticket" src="${src}">`));
-    w.document.write("</div>");
-  }
-  w.document.write(`<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),300));<\/script></body></html>`);
-  w.document.close();
-}
+function imprimirImagenPedidos(){if(!pedidos.length){alert("No hay pedidos cargados.");return;}const imgs=pedidos.map(p=>crearCanvasTicketIndividual(datosTicketPedido(p)).toDataURL("image/png")),w=window.open("","_blank");if(!w){alert("Permití ventanas emergentes para imprimir.");return;}w.document.write(`<html><head><style>@page{size:80mm auto;margin:0}body{margin:0}.ticket{display:block;width:80mm;height:auto;page-break-after:always}.ticket:last-child{page-break-after:auto}</style></head><body>`);imgs.forEach(src=>w.document.write(`<img class="ticket" src="${src}">`));w.document.write(`<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),300));<\/script></body></html>`);w.document.close();}
 
-function resetDatos() {
-  if (!confirm("¿Seguro que querés borrar solo los pedidos cargados?")) return;
-
-  pedidos = [];
-  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
-  guardarEnNube();
-
-  renderPedidosCargados();
-  $("ultimoProcesado").innerHTML = "";
-  $("comparador").innerHTML = "";
-  $("resumenPanadero").textContent = "";
-}
-
-
-// --- MODO ADMINISTRADOR ÚNICO ---
-let usuarioActual = "admin";
-
-function aplicarPermisosUsuario() {
-  document.querySelectorAll(".adminOnly").forEach(el => {
-    el.style.display = "";
-  });
-
-  document.querySelectorAll(".normalOnly").forEach(el => {
-    el.style.display = "none";
-  });
-}
-
-
-
-function destildarCasillasConfirmacion() {
-  const checkProduccion = $("checkProduccionCompleta");
-  const checkPedido = $("checkPedidoCompleto");
-
-  if (checkProduccion) checkProduccion.checked = false;
-  if (checkPedido) checkPedido.checked = false;
-}
-
-function actualizarEstadoConfirmacion() {
-  const el = $("estadoConfirmacion");
-  if (!el) return;
-  el.textContent = pedidosConfirmados ? "Pedidos confirmados" : "Pedidos sin confirmar";
-  el.className = pedidosConfirmados ? "estadoConfirmacion confirmado" : "estadoConfirmacion";
-}
-
-function confirmarPedidos() {
-  const checkProduccion = $("checkProduccionCompleta");
-  const checkPedido = $("checkPedidoCompleto");
-
-  if (checkProduccion && !checkProduccion.checked) {
-    alert("Falta tildar que el día seleccionado es correcto.");
-    return;
-  }
-
-  if (checkPedido && !checkPedido.checked) {
-    alert("Falta tildar que todos los pedidos cargados están correctos.");
-    return;
-  }
-
-  if (!pedidos.length) {
-    alert("Todavía no hay pedidos cargados.");
-    return;
-  }
-
-  const ambiguosUnidad = pedidosConUnidadAmbigua();
-  const ambiguosProducto = pedidosConProductoAmbiguo();
-  const totalAmbiguos = ambiguosUnidad.length + ambiguosProducto.length;
-  if (totalAmbiguos) {
-    alert(`Hay ${totalAmbiguos} revisión(es) pendiente(s) de producto o unidad.`);
-    return;
-  }
-
-  pedidosConfirmados = true;
-  guardarTodo();
-  actualizarEstadoConfirmacion();
-  destildarCasillasConfirmacion();
-  alert("Pedidos confirmados correctamente. Se conservarán hasta iniciar una nueva jornada.");
-}
-
-
-
-
-function fechaJornadaActual() {
-  return $("fechaPedido")?.value || hoyISO();
-}
-
-function diaJornadaActual() {
-  return $("diaProduccion")?.value || $("diaProduccionPedidos")?.value || "";
-}
-
-function totalesPedidosDe(listaPedidos) {
-  const totales = {};
-  (listaPedidos || []).forEach(pedido => {
-    (pedido.items || []).forEach(it => {
-      if (it.estado === "NO PEDIDO") return;
-      const id = it.productoId;
-      if (!id) return;
-      totales[id] = (totales[id] || 0) + Number(it.cantidad || 0);
-    });
-  });
-  return totales;
-}
-
-function sumarTotales(a, b) {
-  const salida = {...(a || {})};
-  Object.entries(b || {}).forEach(([id, cantidad]) => {
-    salida[id] = Number(salida[id] || 0) + Number(cantidad || 0);
-  });
-  return salida;
-}
-
-function mapaProduccionActual() {
-  const salida = {};
-  productos.forEach(p => {
-    salida[p.id] = Number(produccion[claveProduccion(p.id)] || 0);
-  });
-  return salida;
-}
-
-function diferenciasDesde(produccionMapa, pedidosMapa) {
-  const salida = {};
-  const ids = new Set([
-    ...Object.keys(produccionMapa || {}),
-    ...Object.keys(pedidosMapa || {})
-  ]);
-
-  ids.forEach(id => {
-    salida[id] = Number(produccionMapa?.[id] || 0) - Number(pedidosMapa?.[id] || 0);
-  });
-
-  return salida;
-}
-
-function productoPorIdMemoria(id) {
-  return productos.find(p => p.id === id) || {
-    id,
-    nombre: id.replace(/^EXTRA_/, "").replace(/_/g, " "),
-    unidad: "unidad"
-  };
-}
-
-function memoriaCorrespondeAJornadaActual() {
-  if (!memoriaUltimoEnvio) return false;
-  return memoriaUltimoEnvio.fecha === fechaJornadaActual();
-}
-
-function actualizarPanelMemoriaEnvio() {
-  const estado = $("estadoMemoriaEnvio");
-  if (!estado) return;
-
-  if (!memoriaUltimoEnvio) {
-    estado.textContent = "No hay un envío guardado.";
-    return;
-  }
-
-  const cantidadClientes = (memoriaUltimoEnvio.clientes || []).length;
-  estado.textContent =
-    `${memoriaUltimoEnvio.fecha} · ${memoriaUltimoEnvio.hora || ""} · ` +
-    `${cantidadClientes} cliente${cantidadClientes === 1 ? "" : "s"} incluidos.`;
-}
-
-function borrarMemoriaEnvio() {
-  if (!memoriaUltimoEnvio) {
-    alert("No hay memoria de envío para borrar.");
-    return;
-  }
-
-  if (!confirm("¿Seguro que querés comenzar una jornada nueva y borrar la memoria del último envío?")) return;
-
-  memoriaUltimoEnvio = null;
-  localStorage.removeItem("fratello_memoria_envio");
-
-  // La limpieza completa ocurre únicamente al comenzar una jornada nueva.
-  limpiarJornadaDespuesDeEnviar();
-  actualizarPanelMemoriaEnvio();
-
-  alert("Nueva jornada iniciada. Se borraron los pedidos y la memoria del envío anterior.");
-}
-
-function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencias, clientesAcumulados) {
-  memoriaUltimoEnvio = {
-    fecha: fechaJornadaActual(),
-    dia: diaJornadaActual(),
-    produccion: produccionMapa,
-    pedidosTotales: pedidosAcumulados,
-    diferencias,
-    clientes: clientesAcumulados,
-    hora: new Date().toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"}),
-    actualizado: new Date().toISOString()
-  };
-
-  localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-  actualizarPanelMemoriaEnvio();
-}
-
-function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, diferenciasNuevas) {
-  let mensaje = "FRATELLO - ACTUALIZACIÓN DE PEDIDOS\n\n";
-
-  mensaje += "PEDIDOS NUEVOS / TARDÍOS:\n\n";
-  pedidosNuevos.forEach(pedido => {
-    mensaje += `${pedido.cliente}:\n`;
-    const items = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO");
-    if (!items.length) {
-      mensaje += "- Sin productos detectados\n";
-    } else {
-      items.forEach(it => {
-        mensaje += `- ${fmt(it.cantidad)} ${it.unidad} ${it.producto}\n`;
-      });
-    }
-    mensaje += "\n";
-  });
-
-  mensaje += "--------------------\n";
-  mensaje += "CAMBIOS SOBRE EL MENSAJE ANTERIOR:\n\n";
-
-  const ids = new Set([
-    ...Object.keys(diferenciasAnteriores || {}),
-    ...Object.keys(diferenciasNuevas || {})
-  ]);
-
-  const cambios = [];
-  ids.forEach(id => {
-    const anterior = Number(diferenciasAnteriores?.[id] || 0);
-    const nuevo = Number(diferenciasNuevas?.[id] || 0);
-    const delta = nuevo - anterior;
-    if (Math.abs(delta) < 0.0001) return;
-
-    const producto = productoPorIdMemoria(id);
-    cambios.push({producto, delta});
-  });
-
-  if (!cambios.length) {
-    mensaje += "- El pedido no modifica las cantidades informadas anteriormente.\n";
-  } else {
-    cambios.forEach(({producto, delta}) => {
-      if (delta < 0) {
-        mensaje += `🔴 AGREGAR ${fmt(Math.abs(delta))} ${producto.unidad} ${producto.nombre}\n`;
-      } else {
-        mensaje += `🟢 REDUCIR / GUARDAR ${fmt(delta)} ${producto.unidad} ${producto.nombre}\n`;
-      }
-    });
-  }
-
-  mensaje += "\nEste mensaje complementa el envío anterior.";
-  return mensaje;
-}
-
-function obtenerFilasComparador() {
-  const totalesPedido = {};
-
-  for (const pedido of pedidos) {
-    for (const it of pedido.items) {
-      if (it.estado !== "NO PEDIDO") {
-        totalesPedido[it.productoId] = (totalesPedido[it.productoId] || 0) + Number(it.cantidad || 0);
-      }
-    }
-  }
-
-  const filas = [];
-
-  for (const p of productos) {
-    const prod = Number(produccion[claveProduccion(p.id)] || 0);
-    const ped = Number(totalesPedido[p.id] || 0);
-
-    if (prod === 0 && ped === 0) continue;
-
-    const dif = prod - ped;
-
-    filas.push({
-      producto: p.nombre,
-      unidad: p.unidad,
-      prod,
-      ped,
-      dif
-    });
-  }
-
-  return filas;
-}
-
-
-function limpiarJornadaDespuesDeEnviar() {
-  pedidos = [];
-  pedidosConfirmados = false;
-
-  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
-  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(false));
-
-  const selectorProduccion = $("diaProduccion");
-  const selectorPedidos = $("diaProduccionPedidos");
-  const checkProduccion = $("checkProduccionCompleta");
-  const checkDiaPedidos = $("checkDiaPedidos");
-  const checkPedidos = $("checkPedidoCompleto");
-  const pedidoCrudo = $("pedidoCrudo");
-
-  if (selectorProduccion) selectorProduccion.value = "";
-  if (selectorPedidos) selectorPedidos.value = "";
-  if (checkProduccion) checkProduccion.checked = false;
-  if (checkDiaPedidos) checkDiaPedidos.checked = false;
-  if (checkPedidos) checkPedidos.checked = false;
-  if (pedidoCrudo) pedidoCrudo.value = "";
-
-  const pedidosCargados = $("pedidosCargados");
-  const ultimoProcesado = $("ultimoProcesado");
-  const comparador = $("comparador");
-  const resumenPanadero = $("resumenPanadero");
-  const vistaPedidos = $("vistaPedidosInline");
-  const produccionLista = $("produccionLista");
-  const produccionExtra = $("produccionExtra");
-
-  if (pedidosCargados) pedidosCargados.innerHTML = "<p>No hay pedidos cargados.</p>";
-  if (ultimoProcesado) ultimoProcesado.innerHTML = "";
-  if (comparador) comparador.innerHTML = "";
-  if (resumenPanadero) resumenPanadero.textContent = "";
-  if (vistaPedidos) vistaPedidos.innerHTML = "";
-  if (produccionLista) produccionLista.innerHTML = "";
-  if (produccionExtra) produccionExtra.innerHTML = "";
-
-  actualizarTarjetaDiaPedidos();
-  guardarEnNube();
-}
-
-function abrirWhatsApp(numero, mensaje) {
-  const texto = encodeURIComponent(mensaje);
-  const url = numero
-    ? `https://wa.me/${numero}?text=${texto}`
-    : `https://wa.me/?text=${texto}`;
-
-  window.location.href = url;
-}
-
-
-function verificarChecksAntesDeWhatsApp() {
-  const selectorProduccion = $("diaProduccion");
-  const selectorPedidos = $("diaProduccionPedidos");
-  const checkProduccion = $("checkProduccionCompleta");
-  const checkDiaPedidos = $("checkDiaPedidos");
-  const checkPedido = $("checkPedidoCompleto");
-
-  const diaElegido =
-    (selectorProduccion && selectorProduccion.value) ||
-    (selectorPedidos && selectorPedidos.value);
-
-  if (!diaElegido) {
-    alert("Primero seleccioná el día de producción.");
-    return false;
-  }
-
-  const diaConfirmado =
-    (checkProduccion && checkProduccion.checked) ||
-    (checkDiaPedidos && checkDiaPedidos.checked);
-
-  if (!diaConfirmado) {
-    alert("Primero confirmá que el día seleccionado es correcto.");
-    return false;
-  }
-
-  if (checkPedido && !checkPedido.checked) {
-    alert("Primero tildá que los pedidos cargados están correctos.");
-    return false;
-  }
-
-  return true;
-}
-
-function generarMensajeGrupoFratello() {
-  if (!verificarChecksAntesDeWhatsApp()) return;
-
-  const pedidosNuevos = [...pedidos];
-  const totalesNuevos = totalesPedidosDe(pedidosNuevos);
-  const esActualizacion = memoriaCorrespondeAJornadaActual();
-
-  let produccionMapa;
-  let pedidosAcumulados;
-  let diferenciasNuevas;
-  let clientesAcumulados;
-  let mensaje;
-
-  if (esActualizacion) {
-    produccionMapa = memoriaUltimoEnvio.produccion || mapaProduccionActual();
-    pedidosAcumulados = sumarTotales(memoriaUltimoEnvio.pedidosTotales, totalesNuevos);
-    diferenciasNuevas = diferenciasDesde(produccionMapa, pedidosAcumulados);
-    clientesAcumulados = [
-      ...(memoriaUltimoEnvio.clientes || []),
-      ...pedidosNuevos.map(p => p.cliente)
-    ];
-
-    mensaje = construirMensajeActualizacion(
-      pedidosNuevos,
-      memoriaUltimoEnvio.diferencias || {},
-      diferenciasNuevas
-    );
-  } else {
-    produccionMapa = mapaProduccionActual();
-    pedidosAcumulados = totalesNuevos;
-    diferenciasNuevas = diferenciasDesde(produccionMapa, pedidosAcumulados);
-    clientesAcumulados = pedidosNuevos.map(p => p.cliente);
-
-    const filas = obtenerFilasComparador();
-    const faltan = filas.filter(f => f.dif < 0);
-    const sobran = filas.filter(f => f.dif > 0);
-
-    mensaje = "FRATELLO - Resumen de producción y pedidos\n\n";
-
-    mensaje += "🔴 FALTA HACER:\n";
-    if (!faltan.length) {
-      mensaje += "- Nada\n";
-    } else {
-      faltan.forEach(f => {
-        mensaje += `🔴 ${fmt(Math.abs(f.dif))} ${f.unidad} ${f.producto}\n`;
-      });
-    }
-
-    mensaje += "\n🟢 SOBRA / GUARDAR:\n";
-    if (!sobran.length) {
-      mensaje += "- Nada\n";
-    } else {
-      sobran.forEach(f => {
-        mensaje += `🟢 ${fmt(f.dif)} ${f.unidad} ${f.producto}\n`;
-      });
-    }
-
-    mensaje += "\n--------------------\nPEDIDOS DE CLIENTES:\n\n";
-
-    pedidosNuevos.forEach(pedido => {
-      const itemsValidos = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO");
-      mensaje += `${pedido.cliente}:\n`;
-
-      if (!itemsValidos.length) {
-        mensaje += "- Sin productos detectados\n";
-      } else {
-        itemsValidos.forEach(it => {
-          mensaje += `- ${fmt(it.cantidad)} ${it.unidad} ${it.producto}\n`;
-        });
-      }
-      mensaje += "\n";
-    });
-
-    mensaje += "Enviado desde sistema Fratello.";
-  }
-
-  guardarMemoriaEnvio(
-    produccionMapa,
-    pedidosAcumulados,
-    diferenciasNuevas,
-    [...new Set(clientesAcumulados)]
-  );
-
-  guardarEnNube();
-
-  // v1.03: enviar el mensaje NO borra los pedidos.
-  // Se conservan para poder corregirlos o reenviarlos.
-  abrirWhatsApp("", mensaje);
-}
-
-
-const WHATSAPP_CLIENTE_PRUEBA = "5492657545599";
-
-function generarLinkFormularioCliente() {
-  const base = window.location.origin + window.location.pathname.replace("index.html", "");
-  return base + "pedido.html";
-}
-
-function recordarPedidoCliente() {
-  const link = generarLinkFormularioCliente();
-
-  const mensaje = `Hola! Te recordamos cargar tu pedido para mañana en este formulario:
-
-${link}
-
-Gracias, Fratello.`;
-
-  abrirWhatsApp(WHATSAPP_CLIENTE_PRUEBA, mensaje);
-}
-
-
-async function init() {
-  if ($("btnAgregarProductoCatalogo")) $("btnAgregarProductoCatalogo").onclick = agregarProductoCatalogo;
-  if ($("listaAdministradorProductos")) $("listaAdministradorProductos").onclick = manejarClicksAdministradorProductos;
-  renderAdministradorProductos();
-
-  const btnContinuarResumen = $("btnContinuarResumen");
-  if (btnContinuarResumen) {
-    btnContinuarResumen.onclick = continuarAlResumenSiEstaConfirmado;
-  }
-
-  const btnRecordarPendientes = $("btnRecordarPendientes");
-  if (btnRecordarPendientes) {
-    btnRecordarPendientes.onclick = recordarTodosLosPendientes;
-  }
-
-  const btnActualizarPendientes = $("btnActualizarPendientes");
-  if (btnActualizarPendientes) {
-    btnActualizarPendientes.onclick = renderClientesPendientes;
-  }
-
-  const btnBorrarNotificaciones = $("btnBorrarNotificaciones");
-  if (btnBorrarNotificaciones) {
-    btnBorrarNotificaciones.onclick = borrarTodasLasNotificaciones;
-  }
-
-  actualizarEstadoColaRecordatorios();
-
-  iniciarNavegacionFratello();
-
-  const btnActualizarNotificaciones = $("btnActualizarNotificaciones");
-  if (btnActualizarNotificaciones) {
-    btnActualizarNotificaciones.addEventListener(
-      "click",
-      cargarHistorialNotificaciones
-    );
-  }
-
-  const btnActivarNotificaciones = $("btnActivarNotificaciones");
-  const btnProbarNotificacion = $("btnProbarNotificacion");
-
-  if (btnActivarNotificaciones) {
-    btnActivarNotificaciones.addEventListener("click", activarNotificacionesFratello);
-  }
-
-  if (btnProbarNotificacion) {
-    btnProbarNotificacion.addEventListener("click", probarNotificacionFratello);
-  }
-
-  actualizarEstadoNotificaciones();
-
-  const btnActualizarDatos = $("btnActualizarDatos");
-  if (btnActualizarDatos) {
-    btnActualizarDatos.addEventListener("click", actualizarDatosManual);
-  }
-
-  const btnGuardarClienteCompleto = $("btnGuardarClienteCompleto");
-  const btnLimpiarClienteCompleto = $("btnLimpiarClienteCompleto");
-
-  if (btnGuardarClienteCompleto) {
-    btnGuardarClienteCompleto.addEventListener("click", guardarClienteCompleto);
-  }
-
-  if (btnLimpiarClienteCompleto) {
-    btnLimpiarClienteCompleto.addEventListener("click", limpiarFormularioClienteCompleto);
-  }
-
-  if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
-  await cargarDesdeNube();
-  validarClientes();
-  escucharCambiosNube();
-  escucharHistorialNotificaciones();
-  aplicarPermisosUsuario();
-  if ($("fechaPedido")) $("fechaPedido").value = hoyISO();
-  renderClientes();
-
-  if ($("cliente")) $("cliente").onchange = limpiarPedidoCrudo;
-  if ($("btnAgregarCliente")) $("btnAgregarCliente").onclick = agregarCliente;
-  if ($("btnModificarCliente")) $("btnModificarCliente").onclick = modificarCliente;
-
-  $("diaProduccion").onchange = () => {
-    renderProduccion();
-    calcularDiferencias();
-  };
-
-  $("btnDesbloquearProduccion").onclick = desbloquearProduccion;
-  $("btnBloquearProduccion").onclick = bloquearProduccion;
-  $("btnGuardarProduccion").onclick = guardarProduccion;
-  $("btnEditarPredeterminada").onclick = activarEdicionPredeterminada;
-  $("btnGuardarPredeterminada").onclick = guardarPredeterminada;
-  $("btnCancelarPredeterminada").onclick = cancelarEdicionPredeterminada;
-
-  $("btnProcesar").onclick = () => procesarPedidoActual();
-  $("btnLimpiarPedido").onclick = () => $("pedidoCrudo").value = "";
-  $("btnCalcular").onclick = calcularDiferencias;
-  if ($("btnWhatsAppGrupo")) $("btnWhatsAppGrupo").onclick = generarMensajeGrupoFratello;
-  if ($("btnRecordarCliente")) $("btnRecordarCliente").onclick = recordarPedidoCliente;
-  if ($("btnBorrarMemoriaEnvio")) $("btnBorrarMemoriaEnvio").onclick = borrarMemoriaEnvio;
-  $("btnExportar").onclick = copiarResumen;
-  $("btnReset").onclick = resetDatos;
-  $("btnVistaPedidos").onclick = generarVistaPedidos;
-  if ($("btnCerrarModalImpresion")) $("btnCerrarModalImpresion").onclick = cerrarModalImpresion;
-  if ($("btnCerrarModalImpresion2")) $("btnCerrarModalImpresion2").onclick = cerrarModalImpresion;
-  if ($("cerrarModalBackdrop")) $("cerrarModalBackdrop").onclick = cerrarModalImpresion;
-  if ($("btnImprimirImagenPedidos")) $("btnImprimirImagenPedidos").onclick = imprimirImagenPedidos;
-  if ($("btnCompartirImagenPedidos")) $("btnCompartirImagenPedidos").onclick = compartirImagenPedidos;
-  if ($("btnGuardarImagenPedidos")) $("btnGuardarImagenPedidos").onclick = guardarImagenPedidos;
-  if ($("btnDescargarPdfPedidos")) $("btnDescargarPdfPedidos").onclick = descargarPdfPedidos;
-  if ($("btnBorrarSeleccionados")) $("btnBorrarSeleccionados").onclick = borrarPedidosSeleccionados;
-
-  iniciarSincronizacionDia();
-
-  if (window.location.hash === "#notificaciones") {
-    abrirSeccionFratello("seccionNotificaciones");
-  }
-
-  renderListaClientesCompleta();
-  renderClientesPendientes();
-  actualizarPanelMemoriaEnvio();
-  actualizarCampanaNotificaciones();
-
-  renderProduccion();
-  renderPedidosCargados();
-  calcularDiferencias();
-}
-
-
-
-
-window.descargarPdfPedidoIndividual = descargarPdfPedidoIndividual;
-window.reprocesarPedidoFormulario = reprocesarPedidoFormulario;
-window.resolverProductoPedido = resolverProductoPedido;
-window.resolverUnidadPedido = resolverUnidadPedido;
-window.editarClienteCompleto = editarClienteCompleto;
-window.eliminarClienteCompleto = eliminarClienteCompleto;
- 
-init().catch(error => {
-  console.error("Error iniciando Fratello:", error);
-  const estado = document.getElementById("estadoSync");
-  if (estado) estado.textContent = "Error parcial al iniciar";
-});
-
-
-window.recordarClientePendiente = recordarClientePendiente;
-window.recordarTodosLosPendientes = recordarTodosLosPendientes;
-window.enviarSiguienteRecordatorioPendiente = enviarSiguienteRecordatorioPendiente;
-window.borrarTodasLasNotificaciones = borrarTodasLasNotificaciones;
-
-if (messaging) {
-  messaging.onMessage(async payload => {
-    cargarHistorialNotificaciones();
-    const titulo = payload.notification?.title || "Fratello";
-    const cuerpo = payload.notification?.body || "Tenés una nueva notificación.";
-
-    try {
-      const registro = await obtenerRegistroServiceWorkerNotificaciones();
-      await registro.showNotification(titulo, {
-        body: cuerpo,
-        icon: "icon-192.png",
-        badge: "icon-192.png",
-        data: payload.data || { url: "./index.html" }
-      });
-    } catch (error) {
-      console.error("Error mostrando notificación recibida:", error);
-    }
-  });
-}

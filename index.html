@@ -27,7 +27,7 @@
   </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v1.04</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v1.05</small>
   </section>
 
   <section id="panelInicio" class="dashboard">
@@ -114,6 +114,7 @@
     <div class="quickTitle">Acciones rápidas</div>
     <div class="quickActions">
       <a href="#seccionClientes" data-seccion="seccionClientes" onclick="window.abrirSeccionFratello('seccionClientes'); return false;">👥<span>Clientes</span></a>
+      <a href="#seccionListasPrecios" data-seccion="seccionListasPrecios" onclick="window.abrirSeccionFratello('seccionListasPrecios'); return false;">💲<span>Precios</span></a>
       <a href="#seccionProduccion" data-seccion="seccionProduccion" onclick="window.abrirSeccionFratello('seccionProduccion'); return false;">📦<span>Productos</span></a>
       <a href="#seccionResumen" data-seccion="seccionResumen" onclick="window.abrirSeccionFratello('seccionResumen'); return false;">⚙️<span>Resumen</span></a>
       <button type="button" id="btnBorrarRapido">🗑️<span>Borrar datos</span></button>
@@ -326,6 +327,14 @@
           <label>Dirección</label>
           <input id="nuevoClienteDireccion" type="text" placeholder="Ej: Pedernera 123">
         </div>
+        <div><label>Barrio / zona</label><input id="nuevoClienteBarrio" type="text" placeholder="Ej: Jardín del Sur"></div>
+        <div><label>Lista de precios</label>
+          <select id="nuevoClienteListaPrecio">
+            <option value="auto">Automática según el nombre</option><option value="cliente">Clientes</option>
+            <option value="giuliano">Giuliano</option><option value="bailone_libano">Bailone / Líbano</option>
+            <option value="fratello">Fratello</option>
+          </select>
+        </div>
       </div>
 
       <label class="checkControl">
@@ -345,6 +354,15 @@
     </section>
 
   
+    <section class="card appSection" id="seccionListasPrecios">
+      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
+      <h2>💲 Listas de precios</h2>
+      <p class="hint">Cargá los precios por producto y unidad. El ticket selecciona la lista automáticamente.</p>
+      <div class="priceLegend"><span><strong>Clientes:</strong> lista general</span><span><strong>Giuliano:</strong> precio especial</span><span><strong>Bailone/Líbano:</strong> precio compartido</span><span><strong>Fratello:</strong> precio del local</span></div>
+      <div class="toolbar"><button id="btnGuardarListasPrecios" class="primary" type="button">💾 Guardar precios</button></div>
+      <div id="mensajeListasPrecios" class="mensajePedido"></div><div id="tablaListasPrecios" class="priceTableWrap"></div>
+    </section>
+
     <section class="card appSection" id="seccionNotificaciones">
       <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
 
@@ -374,7 +392,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=104"></script>
+  <script src="app.js?v=105"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -409,12 +427,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=104")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=105")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=104", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=105", {
             scope: "./",
             updateViaCache: "none"
           });
