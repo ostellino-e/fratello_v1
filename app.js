@@ -3271,17 +3271,30 @@ function eliminarListaPrecioPersonalizada(id) {
   alert(`Lista "${lista.nombre}" eliminada.`);
 }
 
+function etiquetaUnidadPrecio(unidad) {
+  const etiquetas = {
+    unidad: "Unidad",
+    docena: "Docena",
+    kg: "Kg",
+    paquete: "Paquete",
+    bolsa: "Bolsa",
+    bandeja: "Bandeja"
+  };
+  return etiquetas[normalizarUnidadPrecio(unidad)] || unidad;
+}
+
 function renderListasPrecios(){
   const c = $("tablaListasPrecios");
   if (!c) return;
 
   const listas = todasLasListasPrecio();
+  const productosActivos = productos.filter(producto => producto.activo !== false);
 
-  let h = `<table class="priceMatrix">
+  let h = `<table class="priceMatrix unifiedPriceMatrix">
     <thead>
       <tr>
         <th>Producto</th>
-        <th>Unidad</th>
+        <th>Forma de venta</th>
         ${listas.map(lista => `
           <th>
             <div class="priceColumnHeader">
@@ -3293,33 +3306,60 @@ function renderListasPrecios(){
     </thead>
     <tbody>`;
 
-  productos
-    .filter(producto => producto.activo !== false)
-    .forEach(producto => {
-      unidadesPrecioProducto(producto).forEach(unidad => {
-        const clave = clavePrecio(producto.id, unidad);
+  productosActivos.forEach(producto => {
+    const unidades = unidadesPrecioProducto(producto);
 
-        h += `<tr data-price-key="${escaparHtmlCatalogo(clave)}">
-          <td>${escaparHtmlCatalogo(producto.nombre)}</td>
-          <td>${escaparHtmlCatalogo(unidad)}</td>
-          ${listas.map(lista => `
-            <td>
+    h += `<tr class="unifiedProductPriceRow" data-product-price-id="${escaparHtmlCatalogo(producto.id)}">
+      <td class="unifiedProductName">
+        <strong>${escaparHtmlCatalogo(producto.nombre)}</strong>
+        <small>${escaparHtmlCatalogo((producto.sinonimos || []).join(", "))}</small>
+      </td>
+      <td>
+        <div class="unitBadges">
+          ${unidades.map(unidad => `<span>${escaparHtmlCatalogo(etiquetaUnidadPrecio(unidad))}</span>`).join("")}
+        </div>
+      </td>
+      ${listas.map(lista => `
+        <td class="unifiedPriceCell">
+          ${unidades.map(unidad => {
+            const clave = clavePrecio(producto.id, unidad);
+            return `<label class="priceUnitInput">
+              <span>${escaparHtmlCatalogo(etiquetaUnidadPrecio(unidad))}</span>
               <input
                 type="number"
                 min="0"
                 step="0.01"
+                data-price-key="${escaparHtmlCatalogo(clave)}"
                 data-price-list="${escaparHtmlCatalogo(lista.id)}"
                 value="${Number(listasPrecios?.[clave]?.[lista.id] || 0)}"
                 placeholder="0">
-            </td>`).join("")}
-        </tr>`;
-      });
-    });
+            </label>`;
+          }).join("")}
+        </td>`).join("")}
+    </tr>`;
+  });
 
   c.innerHTML = h + "</tbody></table>";
 }
 
-function guardarListasPrecios(){document.querySelectorAll("[data-price-key]").forEach(f=>{const k=f.dataset.priceKey;listasPrecios[k]=listasPrecios[k]||{};f.querySelectorAll("[data-price-list]").forEach(i=>listasPrecios[k][i.dataset.priceList]=Number(i.value||0));});localStorage.setItem("fratello_listas_precios",JSON.stringify(listasPrecios));guardarEnNube();const m=$("mensajeListasPrecios");if(m){m.textContent="✅ Listas de precios guardadas.";m.style.display="block";}}
+function guardarListasPrecios(){
+  document.querySelectorAll("[data-price-key][data-price-list]").forEach(input => {
+    const clave = input.dataset.priceKey;
+    const lista = input.dataset.priceList;
+    listasPrecios[clave] = listasPrecios[clave] || {};
+    listasPrecios[clave][lista] = Number(input.value || 0);
+  });
+
+  localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarEnNube();
+
+  const mensaje = $("mensajeListasPrecios");
+  if (mensaje) {
+    mensaje.textContent = "✅ Precios guardados correctamente.";
+    mensaje.style.display = "block";
+  }
+}
+
 function normalizarUnidadPrecio(unidad) {
   const u = String(unidad || "unidad").toLowerCase();
   if (["unid","unidades","u"].includes(u)) return "unidad";

@@ -1,9 +1,8 @@
-# Fratello v2.1 — Reorganización principal
+# Fratello v2.2 — Productos unificados
 
-- Inicio limpio con cinco áreas: Pedidos, Caja, Tareas, Clientes y Productos.
-- Pedidos contiene el acceso ordenado a los pasos 1 Producción, 2 Pedidos y 3 Resumen.
-- Caja queda vacía y preparada para próximas mejoras.
-- Tareas queda vacía y preparada para próximas mejoras.
-- Clientes contiene la base de datos y la gestión de pedidos fijos por días.
-- Productos contiene el catálogo y los precios por lista.
-- Conserva Firebase, pedidos futuros, historial, tickets y todas las funciones existentes.
+Cambios:
+- Cada producto aparece una sola vez en la tabla de precios.
+- Las distintas formas de venta (unidad, docena, kg, paquete, etc.) se muestran dentro de la misma fila.
+- Cada lista de precios mantiene campos separados por unidad dentro de la misma celda.
+- Se conservan todos los precios ya guardados, porque las claves internas no cambian.
+- Mantiene toda la organización y funciones de Fratello v2.1.
