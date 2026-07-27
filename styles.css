@@ -1452,3 +1452,36 @@ body:has(.appSection:target) #contenidoApp {
   .fixedScheduleHeader{grid-template-columns:1fr}
   .fixedScheduleTitle{flex-direction:column}
 }
+
+/* ===== FRATELLO v3.0: pedidos fijos por cliente ===== */
+.fixedOrdersManager{border:1px solid #ddc5a7;border-radius:16px;padding:0 14px 14px;background:#fffaf4}
+.fixedOrdersManager>summary{padding:16px 0;font-weight:800;cursor:pointer}
+.fixedOrdersTopBar{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;margin:14px 0}
+.fixedOrdersTopBar label{display:flex;flex-direction:column;gap:6px}
+.dayLinkInfo{padding:12px 14px;border-radius:14px;background:#f1e5d7;margin:12px 0}
+.dayLinkInfo p{margin:5px 0 0;font-size:12px}
+.fixedClientBlock{border:1px solid #ddc6aa;border-radius:16px;background:#fff;margin:14px 0;overflow:hidden}
+.fixedClientBlockHeader{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px;background:#f4eadf}
+.fixedClientBlockHeader strong{display:block;font-size:17px}
+.fixedClientBlockHeader span{display:block;font-size:11px;margin-top:3px;color:#77675c}
+.fixedClientOrders{padding:12px}
+.fixedOrderEditor{border:1px solid #e4d2bd;border-radius:13px;margin:9px 0;overflow:hidden}
+.fixedOrderEditor>summary{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px;cursor:pointer}
+.fixedOrderEditor>summary strong{display:block}
+.fixedOrderEditor>summary span{display:block;font-size:11px;color:#75665c;margin-top:3px}
+.fixedOrderEditor>summary b{font-size:10px;padding:5px 8px;border-radius:12px;background:#deead9;color:#35592d}
+.fixedOrderEditor.paused>summary b{background:#eee1d5;color:#7a5c45}
+.fixedOrderEditorBody{border-top:1px solid #eadccc;padding:14px;display:grid;gap:12px}
+.fixedOrderEditorBody>label{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:12px}
+.fixedOrderEditorBody textarea{min-height:150px;resize:vertical}
+.fixedActiveCheck{display:flex!important;flex-direction:row!important;align-items:center;gap:8px!important}
+.emptyFixedClient{padding:8px;color:#78695f}
+.dailyOrderEditOverlay{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px}
+.dailyOrderEditModal{width:min(680px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.dailyOrderEditModal label{display:flex;flex-direction:column;gap:6px;margin:12px 0;font-weight:700}
+.dailyOrderEditModal textarea{min-height:220px;resize:vertical}
+@media(max-width:760px){
+  .fixedOrdersTopBar{grid-template-columns:1fr}
+  .fixedClientBlockHeader{align-items:flex-start;flex-direction:column}
+  .fixedClientBlockHeader button{width:100%}
+}

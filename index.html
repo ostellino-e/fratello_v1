@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "2.5";
-    document.documentElement.dataset.fratelloVersion = "2.5";
+    window.FRATELLO_VERSION = "3.0";
+    document.documentElement.dataset.fratelloVersion = "3.0";
   </script>
 
 </head>
@@ -33,7 +33,7 @@
   </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v2.5</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.0</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -283,43 +283,47 @@
       <h3>Clientes cargados</h3>
       <div id="listaClientesCompleta"></div>
 
-      <details class="clientFixedOrdersBox" id="pedidosFijosClientes">
-        <summary>🔁 Pedidos fijos y días de entrega</summary>
-        <h3>Programaciones de pedidos fijos</h3>
-      <p class="hint">Un mismo cliente puede tener varias programaciones: por ejemplo, una de lunes a jueves y otra diferente para el viernes.</p>
-      <div class="fixedOrderForm">
-        <div class="fixedScheduleHeader">
-          <label>Cliente<select id="pedidoFijoCliente"></select></label>
-          <label>Nombre de la programación
-            <input id="pedidoFijoNombre" type="text" placeholder="Ej: Lunes a jueves">
+      <details id="pedidosFijosClientes" class="fixedOrdersManager">
+        <summary>🔁 Pedidos fijos por cliente</summary>
+        <h3>Pedidos fijos por cliente</h3>
+        <p class="hint">
+          Cada cliente puede tener Pedido 1, Pedido 2, Pedido 3 y los que necesites.
+          En cada pedido escribís los productos y marcás los días correspondientes.
+        </p>
+
+        <div class="fixedOrdersTopBar">
+          <label>Cliente
+            <select id="pedidoFijoCliente"></select>
           </label>
-          <label>Prioridad
-            <input id="pedidoFijoPrioridad" type="number" min="0" step="1" value="1">
-            <small>Si dos programaciones coinciden, se usa la de mayor prioridad.</small>
-          </label>
+          <button id="btnNuevoPedidoFijoCliente" class="primary" type="button">
+            ➕ Agregar pedido fijo a este cliente
+          </button>
         </div>
-        <label>Pedido<textarea id="pedidoFijoTexto" rows="6" placeholder="Ej: 3 kg pan&#10;1 doc medialunas"></textarea></label>
-        <fieldset class="weekdaySelector"><legend>Días de entrega</legend>
-          <div class="weekdayGrid">
-            <label><input type="checkbox" name="diaFijo" value="1"><span>Lun</span><small>Lunes</small></label>
-            <label><input type="checkbox" name="diaFijo" value="2"><span>Mar</span><small>Martes</small></label>
-            <label><input type="checkbox" name="diaFijo" value="3"><span>Mié</span><small>Miércoles</small></label>
-            <label><input type="checkbox" name="diaFijo" value="4"><span>Jue</span><small>Jueves</small></label>
-            <label><input type="checkbox" name="diaFijo" value="5"><span>Vie</span><small>Viernes</small></label>
-            <label><input type="checkbox" name="diaFijo" value="6"><span>Sáb</span><small>Sábado</small></label>
-            <label><input type="checkbox" name="diaFijo" value="0"><span>Dom</span><small>Domingo</small></label>
-          </div>
-        </fieldset>
-        <div class="toolbar"><button id="btnGuardarPedidoFijo" class="primary" type="button">💾 Guardar programación</button><button id="btnLimpiarPedidoFijo" type="button">Limpiar</button></div>
-      </div>
-      <div class="futureLoadBox automaticFixedInfo">
-        <strong>⚡ Carga automática</strong>
-        <p>Cuando elegís una fecha en Pedidos, Fratello incorpora automáticamente los pedidos fijos correspondientes a ese día.</p>
-        <label>Revisar otra fecha<input id="fechaCargarPedidosFijos" type="date"></label>
-        <button id="btnCargarPedidosFijosFecha" type="button">🔄 Revisar y cargar esa fecha</button>
-      </div>
-      <div id="listaPedidosFijos"></div>
-    </details>
+
+        <div class="dayLinkInfo">
+          <strong>📅 Vinculado con Producción</strong>
+          <p>
+            Al elegir el día en Producción, Fratello selecciona la fecha correspondiente
+            y carga automáticamente el pedido fijo marcado para ese día.
+          </p>
+        </div>
+
+        <div id="listaPedidosFijos"></div>
+
+        <div class="futureLoadBox automaticFixedInfo">
+          <label>Fecha usada para revisar pedidos
+            <input id="fechaCargarPedidosFijos" type="date">
+          </label>
+          <button id="btnCargarPedidosFijosFecha" type="button">🔄 Revisar pedidos de esa fecha</button>
+        </div>
+
+        <!-- Campos de compatibilidad usados internamente -->
+        <input id="pedidoFijoNombre" type="hidden">
+        <input id="pedidoFijoPrioridad" type="hidden" value="1">
+        <textarea id="pedidoFijoTexto" class="hidden"></textarea>
+        <button id="btnGuardarPedidoFijo" type="button" class="hidden">Guardar</button>
+        <button id="btnLimpiarPedidoFijo" type="button" class="hidden">Limpiar</button>
+      </details>
     </section>
 
   
@@ -435,7 +439,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=250"></script>
+  <script src="app.js?v=300"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -470,12 +474,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=250")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=300")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=250", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=300", {
             scope: "./",
             updateViaCache: "none"
           });
