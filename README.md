@@ -1,14 +1,10 @@
-# Fratello v3.8.1 — Entregas y memoria semanal de tickets
+# Fratello v3.8.2 — Correcciones de tickets y precios
 
-## Pedidos para hoy
-- Burbuja en el acceso principal con la cantidad pendiente de entregar.
-- El contador baja al marcar un pedido como Entregado.
-- Los entregados siguen visibles, atenuados y al final.
-- Los estados se conservan en local y Firebase.
-
-## Tickets
-- Semana actual organizada de lunes a domingo.
-- Al comenzar un lunes nuevo, los tickets de semanas anteriores pasan a Pendientes.
-- Los tickets no se eliminan.
-- Se incorporó una memoria propia de tickets para conservarlos aunque el pedido operativo deje de estar visible.
-- Pendientes queda preparado para agregar posteriormente el estado de pago.
+- Se corrigió el bloqueo del scroll al cerrar el modal de ticket.
+- Se restaura la posición anterior de la pantalla al cerrar.
+- Se puede cerrar con los botones, el fondo o la tecla Escape.
+- Pedidos para hoy ahora incluye el botón `Ver ticket`.
+- Se restauraron alias automáticos para Líbano/Bailone, Giuliano y Fratello.
+- La lista asignada acepta tanto el ID como el nombre visible guardado.
+- El buscador de precios intenta el mismo producto y lista aunque la unidad comercial haya quedado cargada en otra variante.
+- Si no existe un precio especial, recién entonces usa la columna Cliente.

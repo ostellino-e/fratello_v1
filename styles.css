@@ -2118,3 +2118,13 @@ body:has(.appSection:target) #contenidoApp {
   opacity: .72;
   background: #eef5ed;
 }
+
+
+/* v3.8.2: bloqueo de scroll únicamente mientras el modal está abierto */
+body.modalAbierto {
+  overflow: hidden;
+}
+
+.printModal.hidden {
+  display: none !important;
+}

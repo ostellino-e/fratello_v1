@@ -577,6 +577,7 @@ function renderPedidosHoy() {
         <div class="todayOrderText">${escaparHtmlCatalogo(pedido.texto || "").replace(/\n/g, "<br>")}</div>
 
         <div class="todayOrderActions">
+          <button type="button" class="primary" onclick="verTicketPedidoHoy(${pedido.id})">👁 Ver ticket</button>
           <button type="button" onclick="editarPedidoHoy(${pedido.id})">✏️ Editar</button>
           <button type="button" onclick="descargarPdfPedidoHoy(${pedido.id})">📄 Ticket PDF</button>
           <button type="button" onclick="guardarJpgPedidoHoy(${pedido.id})">🖼 Ticket JPG</button>
@@ -4872,15 +4873,33 @@ function textoPedidosClientes() {
   return texto;
 }
 
+let scrollAntesModalTicket = 0;
+
+function liberarScrollTicket() {
+  document.body.classList.remove("modalAbierto", "modalOpen");
+  document.documentElement.classList.remove("modalAbierto", "modalOpen");
+  document.body.style.removeProperty("overflow");
+  document.body.style.removeProperty("position");
+  document.body.style.removeProperty("top");
+  document.body.style.removeProperty("width");
+  document.documentElement.style.removeProperty("overflow");
+}
+
 function abrirModalImpresion() {
+  scrollAntesModalTicket = window.scrollY || document.documentElement.scrollTop || 0;
   $("modalImpresion")?.classList.remove("hidden");
   document.body.classList.add("modalAbierto");
 }
+
 function cerrarModalImpresion() {
   const modal = $("modalImpresion");
-  if (!modal) return;
-  modal.classList.add("hidden");
-  document.body.classList.remove("modalOpen");
+  if (modal) modal.classList.add("hidden");
+
+  liberarScrollTicket();
+
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: scrollAntesModalTicket, behavior: "auto" });
+  });
 }
 function dibujarPunteada(ctx,x1,y1,x2,y2){
   ctx.save();ctx.setLineDash([8,7]);ctx.strokeStyle="#777";ctx.lineWidth=1.4;
@@ -4936,6 +4955,19 @@ function listaPrecioAutomatica(nombreCliente) {
   const coincidenciaExacta = buscarListaPorNombreCliente(nombreCliente);
   if (coincidenciaExacta) return coincidenciaExacta.id;
 
+  const nombre = normalizar(nombreCliente || "");
+
+  // Alias históricos de clientes que comparten una misma columna.
+  if (nombre.includes("libano") || nombre.includes("bailone")) {
+    return "bailone_libano";
+  }
+  if (nombre.includes("giuliano")) {
+    return "giuliano";
+  }
+  if (nombre.includes("fratello")) {
+    return "fratello";
+  }
+
   return "cliente";
 }
 
@@ -4957,19 +4989,69 @@ function listaPrecioCliente(nombreCliente) {
   const asignada = datosCliente?.listaPrecio || "auto";
   const listasValidas = todasLasListasPrecio();
 
-  if (
-    asignada !== "auto" &&
-    listasValidas.some(lista => lista.id === asignada)
-  ) {
-    return asignada;
+  if (asignada !== "auto") {
+    const asignadaNormalizada = normalizar(asignada);
+    const listaAsignada = listasValidas.find(lista =>
+      lista.id === asignada ||
+      normalizar(lista.id) === asignadaNormalizada ||
+      normalizar(lista.nombre) === asignadaNormalizada
+    );
+
+    if (listaAsignada) return listaAsignada.id;
   }
 
-  const coincidencia = buscarListaPorNombreCliente(nombreCliente);
-  return coincidencia?.id || "cliente";
+  return listaPrecioAutomatica(nombreCliente);
 }
 function unidadesPrecioProducto(p){const f=p.formaVenta||formaVentaPredeterminada(p.unidad);const m={solo_unidad:["unidad"],solo_docena:["docena"],solo_kg:["kg"],unidad_docena:["unidad","docena"],unidad_kg:["unidad","kg"],kg_paquete:["kg","paquete"],revisar_siempre:[p.unidad||"unidad"]};return[...new Set(m[f]||[p.unidad||"unidad"])];}
 function clavePrecio(id,u){return`${id}__${normalizarUnidadPrecio(u)}`;}
-function precioLista(id,u,lista){u=normalizarUnidadPrecio(u);const d=Number(listasPrecios?.[clavePrecio(id,u)]?.[lista]||0);if(d>0)return d;const pu=Number(listasPrecios?.[clavePrecio(id,"unidad")]?.[lista]||0),pd=Number(listasPrecios?.[clavePrecio(id,"docena")]?.[lista]||0);if(u==="docena"&&pu>0)return pu*12;if(u==="unidad"&&pd>0)return pd/12;return Number(productoPorId(id)?.precios?.[u]||0);}
+function precioLista(id, unidad, lista) {
+  const u = normalizarUnidadPrecio(unidad);
+  const listaValida = todasLasListasPrecio().some(item => item.id === lista)
+    ? lista
+    : "cliente";
+
+  const precioExacto = Number(
+    listasPrecios?.[clavePrecio(id, u)]?.[listaValida] || 0
+  );
+  if (precioExacto > 0) return precioExacto;
+
+  const precioUnidad = Number(
+    listasPrecios?.[clavePrecio(id, "unidad")]?.[listaValida] || 0
+  );
+  const precioDocena = Number(
+    listasPrecios?.[clavePrecio(id, "docena")]?.[listaValida] || 0
+  );
+
+  if (u === "docena" && precioUnidad > 0) return precioUnidad * 12;
+  if (u === "unidad" && precioDocena > 0) return precioDocena / 12;
+
+  // Si el producto fue cargado con otra unidad comercial, busca el valor
+  // disponible para el mismo ID y la misma lista antes de caer al precio base.
+  const prefijo = `${id}__`;
+  const preciosMismoProducto = Object.entries(listasPrecios || {})
+    .filter(([clave]) => clave.startsWith(prefijo))
+    .map(([, valores]) => Number(valores?.[listaValida] || 0))
+    .filter(valor => valor > 0);
+
+  if (preciosMismoProducto.length === 1) {
+    console.info(
+      `[Fratello] Precio de ${id} tomado de la unidad comercial disponible en la lista ${listaValida}.`
+    );
+    return preciosMismoProducto[0];
+  }
+
+  const precioCliente = Number(
+    listasPrecios?.[clavePrecio(id, u)]?.cliente || 0
+  );
+  if (precioCliente > 0) {
+    console.warn(
+      `[Fratello] No se encontró precio para ${id} en ${listaValida}; se usa la columna cliente.`
+    );
+    return precioCliente;
+  }
+
+  return Number(productoPorId(id)?.precios?.[u] || 0);
+}
 function renderSelectorListasCliente(valorSeleccionado = null) {
   const select = $("nuevoClienteListaPrecio");
   if (!select) return;
@@ -5718,6 +5800,23 @@ function descargarPdfPedidos() {
 }
 function descargarPdfPedidoIndividual(id){const p=pedidos.find(x=>Number(x.id)===Number(id));if(!p){alert("No se encontró el pedido.");return;}const J=obtenerJsPDF();if(!J){alert("No se pudo cargar el generador de PDF.");return;}avisarPreciosFaltantes([p]);const t=datosTicketPedido(p),c=crearCanvasTicketIndividual(t),a=80,h=Math.max(100,a*c.height/c.width),d=new J({orientation:"portrait",unit:"mm",format:[a,h]});d.addImage(c.toDataURL("image/jpeg",.96),"JPEG",0,0,a,h,undefined,"FAST");d.save(`ticket-fratello-${nombreArchivoSeguro(t.cliente)}-${t.fecha}.pdf`);}
 
+
+function verTicketPedidoHoy(id) {
+  const pedido = pedidosHoy.find(item => Number(item.id) === Number(id));
+  if (!pedido) {
+    alert("No se encontró el pedido de hoy.");
+    return;
+  }
+
+  ticketsSeleccionadosActuales = [pedido];
+
+  if (!cargarCanvasTickets([pedido])) {
+    alert("No se pudo preparar el ticket.");
+    return;
+  }
+
+  abrirModalImpresion();
+}
 
 function descargarPdfPedidoHoy(id) {
   const pedido = pedidosHoy.find(item => Number(item.id) === Number(id));
@@ -6606,6 +6705,14 @@ async function init() {
   if ($("btnCerrarModalImpresion")) $("btnCerrarModalImpresion").onclick = cerrarModalImpresion;
   if ($("btnCerrarModalImpresion2")) $("btnCerrarModalImpresion2").onclick = cerrarModalImpresion;
   if ($("cerrarModalBackdrop")) $("cerrarModalBackdrop").onclick = cerrarModalImpresion;
+
+  document.addEventListener("keydown", evento => {
+    if (evento.key === "Escape" && !$("modalImpresion")?.classList.contains("hidden")) {
+      cerrarModalImpresion();
+    }
+  });
+
+  window.addEventListener("pageshow", liberarScrollTicket);
   if ($("btnImprimirImagenPedidos")) $("btnImprimirImagenPedidos").onclick = imprimirImagenPedidos;
   if ($("btnCompartirImagenPedidos")) $("btnCompartirImagenPedidos").onclick = compartirImagenPedidos;
   if ($("btnGuardarImagenPedidos")) $("btnGuardarImagenPedidos").onclick = guardarImagenPedidos;
@@ -6657,6 +6764,7 @@ window.editarPedidoFijo=editarPedidoFijo;
 window.alternarPedidoFijo=alternarPedidoFijo;
 window.eliminarPedidoFijo=eliminarPedidoFijo;
 window.eliminarListaPrecioPersonalizada = eliminarListaPrecioPersonalizada;
+window.verTicketPedidoHoy = verTicketPedidoHoy;
 window.descargarPdfPedidoIndividual = descargarPdfPedidoIndividual;
 window.descargarPdfPedidoHoy = descargarPdfPedidoHoy;
 window.verTicketIndividual = verTicketIndividual;
