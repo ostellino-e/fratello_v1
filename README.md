@@ -1,15 +1,21 @@
-# Fratello v3.1.1 — Corrección definitiva de decimales
+# Fratello v3.2 — Pedidos externos, notificaciones y navegación
 
-Problema corregido:
-- `0,5 kg` se convertía internamente en `0 5 kg`.
-- El parser tomaba la cantidad como 0 y descartaba la línea.
+1. Pedidos enviados desde pedido.html
+- Se incorporan mediante escucha en tiempo real de Firebase.
+- Nueva bandeja “Pedidos recibidos desde el enlace de clientes”.
+- Muestra pedidos aunque correspondan a otra fecha.
+- Botón para abrir automáticamente la fecha correcta en Pedidos cargados.
+- El formulario guarda fecha y fechaEntrega de forma explícita.
 
-Ahora reconoce correctamente:
-- Marineras 300 gr → 0,3 kg
-- Bizcocho de hojaldre 0,5 kg → 0,5 kg
-- Bizcocho de grasa 0,5 kg → 0,5 kg
+2. Notificaciones
+- Manejo de mensajes FCM con la app abierta.
+- Aviso local cuando aparece una notificación nueva en Firestore.
+- Aviso local inmediato cuando llega un pedido desde el formulario.
+- Service Worker unificado en la versión v3.2.
+- Se mantiene el historial de notificaciones.
 
-Además:
-- Reinterpreta automáticamente todos los pedidos existentes usando su texto actual.
-- Conserva las modificaciones manuales del texto.
-- Mantiene la sección Notificaciones en la pantalla principal.
+3. Navegación
+- Nueva pila de navegación.
+- “Volver” regresa a la pantalla anterior.
+- Desde Producción, Pedidos o Resumen vuelve al centro de Pedidos.
+- El botón Inicio sigue llevando directamente a la pantalla principal.

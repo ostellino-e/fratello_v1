@@ -619,7 +619,7 @@ function configurarPedidoFijoCliente(nombre) {
   if ($("pedidoFijoTexto")) $("pedidoFijoTexto").focus();
 }
 
-function mostrarInicioFratello() {
+function mostrarInicioFratello(limpiarPila = true) {
   const inicio = document.getElementById("panelInicio");
   const contenido = document.getElementById("contenidoApp");
 
@@ -629,6 +629,10 @@ function mostrarInicioFratello() {
 
   if (inicio) inicio.classList.remove("hidden");
   if (contenido) contenido.classList.remove("contenidoVisible");
+
+  seccionActualFratello = "inicio";
+  if (limpiarPila) pilaNavegacionFratello = [];
+
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -812,19 +816,56 @@ async function cargarHistorialNotificaciones() {
   }
 }
 
+let idsNotificacionesConocidas = new Set();
+
+async function mostrarNotificacionHistorialEnDispositivo(notificacion) {
+  if (!notificacion || !("Notification" in window) || Notification.permission !== "granted") return;
+
+  try {
+    const registro = await navigator.serviceWorker.ready;
+    await registro.showNotification(
+      notificacion.titulo || "Nueva notificación de Fratello",
+      {
+        body: notificacion.mensaje || notificacion.cuerpo || "Tenés un nuevo aviso.",
+        icon: "./icon-192.png",
+        badge: "./icon-192.png",
+        tag: `historial-${notificacion.id}`,
+        data: { url: "./index.html#seccionNotificaciones" }
+      }
+    );
+  } catch (error) {
+    console.error("No se pudo mostrar la notificación del historial:", error);
+  }
+}
+
 function escucharHistorialNotificaciones() {
   if (!db || unsubscribeHistorialNotificaciones) return;
+
+  let primeraCarga = true;
 
   unsubscribeHistorialNotificaciones = db
     .collection("fratello_historial_notificaciones")
     .orderBy("fechaISO", "desc")
     .limit(50)
     .onSnapshot(snapshot => {
-      notificacionesHistorial = snapshot.docs.map(doc => ({
+      const nuevas = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
 
+      if (primeraCarga) {
+        nuevas.forEach(notificacion => idsNotificacionesConocidas.add(notificacion.id));
+        primeraCarga = false;
+      } else {
+        nuevas
+          .filter(notificacion => !idsNotificacionesConocidas.has(notificacion.id))
+          .forEach(notificacion => {
+            idsNotificacionesConocidas.add(notificacion.id);
+            mostrarNotificacionHistorialEnDispositivo(notificacion);
+          });
+      }
+
+      notificacionesHistorial = nuevas;
       renderHistorialNotificaciones();
     }, error => {
       console.error("Error escuchando historial:", error);
@@ -840,17 +881,24 @@ function marcarNotificacionesComoVistas() {
   actualizarCampanaNotificaciones();
 }
 
-function abrirSeccionFratello(idSeccion) {
+let pilaNavegacionFratello = [];
+let seccionActualFratello = "inicio";
+
+function mostrarSeccionFratelloSinApilar(idSeccion) {
   const inicio = document.getElementById("panelInicio");
   const contenido = document.getElementById("contenidoApp");
   const destino = document.getElementById(idSeccion);
+
+  if (!destino) return;
 
   if (inicio) inicio.classList.add("hidden");
   if (contenido) contenido.classList.add("contenidoVisible");
 
   document.querySelectorAll(".appSection").forEach(seccion => {
-    seccion.classList.toggle("seccionActiva", seccion === destino);
+    seccion.classList.toggle("seccionActiva", seccion.id === idSeccion);
   });
+
+  seccionActualFratello = idSeccion;
 
   if (idSeccion === "seccionNotificaciones") {
     cargarHistorialNotificaciones();
@@ -868,13 +916,30 @@ function abrirSeccionFratello(idSeccion) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+function abrirSeccionFratello(idSeccion) {
+  if (!idSeccion) return;
+
+  if (seccionActualFratello !== idSeccion) {
+    pilaNavegacionFratello.push(seccionActualFratello || "inicio");
+  }
+
+  mostrarSeccionFratelloSinApilar(idSeccion);
+}
+
+function volverAtrasFratello() {
+  const anterior = pilaNavegacionFratello.pop();
+
+  if (!anterior || anterior === "inicio") {
+    mostrarInicioFratello(false);
+    return;
+  }
+
+  mostrarSeccionFratelloSinApilar(anterior);
+}
+
 function iniciarNavegacionFratello() {
   document.querySelectorAll("[data-seccion]").forEach(boton => {
     boton.addEventListener("click", () => abrirSeccionFratello(boton.dataset.seccion));
-  });
-
-  document.querySelectorAll(".volverInicio").forEach(boton => {
-    boton.addEventListener("click", mostrarInicioFratello);
   });
 
   const btnInicio = document.getElementById("btnInicio");
@@ -1020,6 +1085,23 @@ if (FIREBASE_ACTIVO && typeof firebase !== "undefined" && firebase.messaging) {
   }
 }
 
+if (messaging) {
+  messaging.onMessage(payload => {
+    const titulo = payload.notification?.title || "Fratello";
+    const cuerpo = payload.notification?.body || "Tenés una nueva notificación.";
+
+    navigator.serviceWorker.ready
+      .then(registro => registro.showNotification(titulo, {
+        body: cuerpo,
+        icon: "./icon-192.png",
+        badge: "./icon-192.png",
+        tag: payload.data?.tag || `fratello-${Date.now()}`,
+        data: payload.data || { url: "./index.html#seccionNotificaciones" }
+      }))
+      .catch(error => console.error("No se pudo mostrar la notificación:", error));
+  });
+}
+
 function actualizarEstadoNotificaciones() {
   const estado = $("estadoNotificaciones");
   const btnActivar = $("btnActivarNotificaciones");
@@ -1042,7 +1124,7 @@ function actualizarEstadoNotificaciones() {
   }
 
   if (Notification.permission === "granted" && tokenNotificaciones) {
-    estado.textContent = "✅ Notificaciones activadas en este dispositivo.";
+    estado.textContent = "✅ Notificaciones activadas. Los avisos nuevos se mostrarán en este dispositivo.";
     if (btnActivar) btnActivar.textContent = "Notificaciones activadas";
     if (btnProbar) btnProbar.disabled = false;
     return;
@@ -1066,7 +1148,7 @@ async function obtenerRegistroServiceWorkerNotificaciones() {
   let registro = await navigator.serviceWorker.getRegistration("./");
 
   if (!registro) {
-    registro = await navigator.serviceWorker.register("service-worker.js?v=080", {
+    registro = await navigator.serviceWorker.register("service-worker.js?v=320", {
       scope: "./",
       updateViaCache: "none"
     });
@@ -1491,6 +1573,107 @@ function reprocesarPedidoFormulario(pedidoId) {
   alert("Pedido reinterpretado con el motor inteligente.");
 }
 
+let idsPedidosFormularioConocidos = new Set(
+  pedidos
+    .filter(pedido => pedido?.origen === "formulario_cliente")
+    .map(pedido => String(pedido.id))
+);
+
+function pedidosFormularioRecibidos() {
+  return pedidos
+    .filter(pedido => pedido?.origen === "formulario_cliente")
+    .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+}
+
+function verPedidoFormularioEnFecha(idPedido) {
+  const pedido = pedidos.find(item => Number(item.id) === Number(idPedido));
+  if (!pedido) return;
+
+  const fecha = fechaEntregaPedido(pedido);
+  if ($("fechaPedido")) {
+    $("fechaPedido").value = fecha;
+    $("fechaPedido").dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  abrirSeccionFratello("seccionPedidos");
+  renderPedidosCargados();
+
+  setTimeout(() => {
+    document.querySelector(`[data-pedido-card-id="${pedido.id}"]`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 150);
+}
+
+function renderPedidosRecibidosFormulario() {
+  const contenedor = $("pedidosRecibidosFormulario");
+  if (!contenedor) return;
+
+  const recibidos = pedidosFormularioRecibidos().slice(0, 12);
+
+  if (!recibidos.length) {
+    contenedor.innerHTML = '<p class="incomingEmpty">Todavía no llegaron pedidos desde el enlace de clientes.</p>';
+    return;
+  }
+
+  const fechaSeleccionada = $("fechaPedido")?.value || "";
+
+  contenedor.innerHTML = recibidos.map(pedido => {
+    const fecha = fechaEntregaPedido(pedido);
+    const cantidadItems = (pedido.items || []).filter(item => item.estado !== "NO PEDIDO").length;
+    const otraFecha = fechaSeleccionada && fecha !== fechaSeleccionada;
+
+    return `<div class="incomingOrderRow ${otraFecha ? "otherDate" : ""}">
+      <div>
+        <strong>📲 ${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</strong>
+        <span>${new Date(fecha + "T12:00:00").toLocaleDateString("es-AR")} · ${cantidadItems} ítem(s)</span>
+      </div>
+      <button type="button" onclick="verPedidoFormularioEnFecha(${pedido.id})">
+        ${otraFecha ? "Ver fecha del pedido" : "Ver en pedidos cargados"}
+      </button>
+    </div>`;
+  }).join("");
+}
+
+async function mostrarNotificacionLocalPedido(pedido) {
+  if (!pedido || !("Notification" in window) || Notification.permission !== "granted") return;
+
+  try {
+    const registro = await navigator.serviceWorker.ready;
+    await registro.showNotification("Nuevo pedido recibido", {
+      body: `${pedido.cliente || "Un cliente"} envió un pedido para ${new Date(fechaEntregaPedido(pedido)+"T12:00:00").toLocaleDateString("es-AR")}.`,
+      icon: "./icon-192.png",
+      badge: "./icon-192.png",
+      tag: `pedido-cliente-${pedido.id}`,
+      renotify: true,
+      data: {
+        url: `./index.html?pedido=${pedido.id}#seccionPedidos`
+      }
+    });
+  } catch (error) {
+    console.error("No se pudo mostrar la notificación local:", error);
+  }
+}
+
+function detectarPedidosFormularioNuevos(listaAnterior, listaNueva) {
+  const anteriores = new Set(
+    (listaAnterior || [])
+      .filter(pedido => pedido?.origen === "formulario_cliente")
+      .map(pedido => String(pedido.id))
+  );
+
+  const nuevos = (listaNueva || []).filter(pedido =>
+    pedido?.origen === "formulario_cliente" &&
+    !anteriores.has(String(pedido.id))
+  );
+
+  nuevos.forEach(pedido => {
+    idsPedidosFormularioConocidos.add(String(pedido.id));
+    mostrarNotificacionLocalPedido(pedido);
+  });
+
+  return nuevos;
+}
+
 function escucharCambiosNube() {
   if (!db) return;
 
@@ -1501,6 +1684,7 @@ function escucharCambiosNube() {
 
     try {
       const data = doc.data();
+      const pedidosAntesDeActualizar = [...pedidos];
 
       produccion = data.produccion || produccion;
 
@@ -1508,6 +1692,7 @@ function escucharCambiosNube() {
         Array.isArray(data.pedidos) ? data.pedidos : pedidos
       );
       pedidos = resultadoInterpretacion.pedidos;
+      detectarPedidosFormularioNuevos(pedidosAntesDeActualizar, pedidos);
 
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = Array.isArray(data.clientes) && data.clientes.length
@@ -1540,6 +1725,7 @@ function escucharCambiosNube() {
       renderClientesPendientes();
       renderProduccion();
       renderPedidosCargados();
+      renderPedidosRecibidosFormulario();
       calcularDiferencias();
       actualizarPanelMemoriaEnvio();
       actualizarTarjetaDiaPedidos();
@@ -3635,7 +3821,7 @@ function renderPedidosCargados() {
     const esFijo = pedido.origen === "pedido_fijo";
     const fueModificado = esFijo && Boolean(pedido.modificadoDesdeFijo);
 
-    html += `<div class="pedidoClienteCard ${esFijo ? "fixedDailyOrder" : ""} ${fueModificado ? "fixedDailyOrderModified" : ""}">
+    html += `<div class="pedidoClienteCard ${esFijo ? "fixedDailyOrder" : ""} ${fueModificado ? "fixedDailyOrderModified" : ""}" data-pedido-card-id="${pedido.id}">
       <div class="pedidoClienteHeader">
         <label class="pedidoSelect">
           <input type="checkbox" class="checkPedidoEliminar" value="${pedido.id}">
@@ -4858,6 +5044,7 @@ async function init() {
   renderPedidosCargados();
   migrarPedidosFijosV301();
   repararPedidosConParserV311();
+  renderPedidosRecibidosFormulario();
   renderSelectorClientesPedidoFijo();
   renderPedidosFijos();
   renderPedidosFuturos();
@@ -4875,6 +5062,7 @@ window.duplicarPedidoFijo=duplicarPedidoFijo;
 window.crearPedidoFijoCliente=crearPedidoFijoCliente;
 window.guardarPedidoFijoTarjeta=guardarPedidoFijoTarjeta;
 window.eliminarPedidoFijo=eliminarPedidoFijo;
+window.verPedidoFormularioEnFecha=verPedidoFormularioEnFecha;
 window.editarPedidoCargado=editarPedidoCargado;
 window.repetirPedidoHistorial=repetirPedidoHistorial;
 window.editarPedidoFijo=editarPedidoFijo;

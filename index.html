@@ -14,14 +14,14 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.1.1";
-    document.documentElement.dataset.fratelloVersion = "3.1.1";
+    window.FRATELLO_VERSION = "3.2";
+    document.documentElement.dataset.fratelloVersion = "3.2";
   </script>
 
 </head>
 <body>
   <header class="appHeader">
-    <a id="btnInicio" class="menuButton" aria-label="Volver al inicio" href="#" role="button" onclick="window.mostrarInicioFratello(); return false;">☰</a>
+    <a id="btnInicio" onclick="window.mostrarInicioFratello(); return false;" class="menuButton" aria-label="Volver al inicio" href="#" role="button" onclick="window.volverAtrasFratello(); return false;">☰</a>
     <div class="brandWrap">
       <img src="icon-192.png" alt="Logo Fratello" class="brandLogo">
       <div>
@@ -33,7 +33,7 @@
   </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.1.1</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.2</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -48,22 +48,22 @@
     </div>
 
     <div class="homeMainModules">
-      <a class="homeMainCard pedidos" href="#seccionPedidosCentro" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">
+      <a class="homeMainCard pedidos" href="#seccionPedidosCentro" onclick="window.volverAtrasFratello(); return false;">
         <span class="homeMainIcon">📦</span><span><strong>Pedidos</strong><small>Producción, carga de pedidos y resumen.</small></span><b>›</b>
       </a>
-      <a class="homeMainCard caja" href="#seccionCaja" onclick="window.abrirSeccionFratello('seccionCaja'); return false;">
+      <a class="homeMainCard caja" href="#seccionCaja" onclick="window.volverAtrasFratello(); return false;">
         <span class="homeMainIcon">💰</span><span><strong>Caja</strong><small>Próximamente.</small></span><b>›</b>
       </a>
-      <a class="homeMainCard tareas" href="#seccionTareas" onclick="window.abrirSeccionFratello('seccionTareas'); return false;">
+      <a class="homeMainCard tareas" href="#seccionTareas" onclick="window.volverAtrasFratello(); return false;">
         <span class="homeMainIcon">✅</span><span><strong>Tareas</strong><small>Próximamente.</small></span><b>›</b>
       </a>
-      <a class="homeMainCard clientes" href="#seccionClientes" onclick="window.abrirSeccionFratello('seccionClientes'); return false;">
+      <a class="homeMainCard clientes" href="#seccionClientes" onclick="window.volverAtrasFratello(); return false;">
         <span class="homeMainIcon">👥</span><span><strong>Clientes</strong><small>Base de datos y pedidos fijos.</small></span><b>›</b>
       </a>
-      <a class="homeMainCard productos" href="#seccionProductos" onclick="window.abrirSeccionFratello('seccionProductos'); return false;">
+      <a class="homeMainCard productos" href="#seccionProductos" onclick="window.volverAtrasFratello(); return false;">
         <span class="homeMainIcon">🥐</span><span><strong>Productos</strong><small>Catálogo y precios por lista.</small></span><b>›</b>
       </a>
-      <a class="homeMainCard notificaciones" href="#seccionNotificaciones" onclick="window.abrirSeccionFratello('seccionNotificaciones'); return false;">
+      <a class="homeMainCard notificaciones" href="#seccionNotificaciones" onclick="window.volverAtrasFratello(); return false;">
         <span class="homeMainIcon">🔔</span>
         <span>
           <strong>Notificaciones <em id="badgeNotificaciones" class="homeNotificationBadge hidden">0</em></strong>
@@ -76,7 +76,7 @@
 
 <main class="layout" id="contenidoApp">
     <section class="card appSection moduleCenter" id="seccionPedidosCentro">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver al inicio</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
       <h2>📦 Pedidos</h2>
       <p class="hint">Los tres pasos de la jornada están juntos en esta sección.</p>
       <div class="workflowSteps">
@@ -91,7 +91,7 @@
     </section>
 
     <section class="card appSection" id="seccionProduccion">
-      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">← Volver a Pedidos</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
       <h2>1. Producción estibada/realizada</h2>
       <p class="hint">
         Elegí el día y el sistema carga la producción base. Solo cambiás algo si ese día fue distinto.
@@ -135,7 +135,7 @@
       </details>
     </section>
     <section class="card appSection" id="seccionPedidos">
-      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">← Volver a Pedidos</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
       <h2>2. Pegar pedido de WhatsApp</h2>
 
       <div id="tarjetaDiaPedidos" class="daySyncCard pendiente">
@@ -191,6 +191,12 @@
         <div id="estadoColaRecordatorios" class="reminderQueueStatus hidden"></div>
       </div>
 
+      <details class="incomingOrdersPanel" open>
+        <summary>📲 Pedidos recibidos desde el enlace de clientes</summary>
+        <p class="hint">Aparecen aunque hayan sido enviados para otra fecha. Tocá “Ver fecha del pedido” para abrirlos dentro de Pedidos cargados.</p>
+        <div id="pedidosRecibidosFormulario"></div>
+      </details>
+
       <h3>Pedidos cargados para la fecha elegida</h3>
       <div id="estadoPedidosFecha" class="ordersDateStatus"></div>
       <div id="pedidosCargados"></div>
@@ -213,7 +219,7 @@
     </section>
 
     <section class="card wide appSection" id="seccionResumen">
-      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">← Volver a Pedidos</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
       <h2>3. Resultado final</h2>
 
       <div id="panelMemoriaEnvio" class="memoryPanel">
@@ -249,7 +255,7 @@
     </section>
   
     <section class="card appSection" id="seccionClientes">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
       <h2>👥 Clientes</h2>
       <p class="hint">Base de datos de clientes, contactos, lista asignada y pedidos fijos.</p>
 
@@ -338,7 +344,7 @@
     
 
     <section class="card appSection emptyModule" id="seccionCaja">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver al inicio</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
       <div class="emptyModuleIcon">💰</div>
       <h2>Caja</h2>
       <p>Esta sección queda preparada para las próximas mejoras de caja.</p>
@@ -346,7 +352,7 @@
     </section>
 
     <section class="card appSection emptyModule" id="seccionTareas">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver al inicio</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
       <div class="emptyModuleIcon">✅</div>
       <h2>Tareas</h2>
       <p>Esta sección queda preparada para las próximas mejoras de tareas.</p>
@@ -354,7 +360,7 @@
     </section>
 
     <section class="card appSection" id="seccionProductos">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver al inicio</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
       <h2>🥐 Productos</h2>
       <p class="hint">Base de datos de productos, unidades, sinónimos y precios según cada lista.</p>
 
@@ -405,21 +411,21 @@
     
 
     <section class="card appSection" id="seccionPedidosFuturos">
-      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">← Volver a Pedidos</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
       <h2>📅 Pedidos futuros</h2>
       <p class="hint">Los pedidos aparecen agrupados por fecha exacta de entrega para que no se mezclen con la jornada actual.</p>
       <div id="listaPedidosFuturos"></div>
     </section>
 
     <section class="card appSection" id="seccionHistorialPedidos">
-      <a class="volverInicio" href="#" onclick="window.abrirSeccionFratello('seccionPedidosCentro'); return false;">← Volver a Pedidos</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
       <h2>🕘 Historial de pedidos</h2>
       <p class="hint">Podés repetir un pedido anterior sin volver a escribirlo.</p>
       <div id="listaHistorialPedidos"></div>
     </section>
 
     <section class="card appSection" id="seccionNotificaciones">
-      <a class="volverInicio" href="#" onclick="window.mostrarInicioFratello(); return false;">← Volver</a>
+      <a class="volverInicio" href="#" onclick="window.volverAtrasFratello(); return false;">← Volver</a>
 
       <div class="notificationsTitleRow">
         <div>
@@ -447,7 +453,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=311"></script>
+  <script src="app.js?v=320"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -455,13 +461,6 @@
         elemento.addEventListener("pointerup", function (evento) {
           evento.preventDefault();
           window.abrirSeccionFratello(elemento.getAttribute("data-seccion"));
-        });
-      });
-
-      document.querySelectorAll(".volverInicio, #btnInicio").forEach(function (elemento) {
-        elemento.addEventListener("pointerup", function (evento) {
-          evento.preventDefault();
-          window.mostrarInicioFratello();
         });
       });
 
@@ -482,12 +481,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=311")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=320")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=311", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=320", {
             scope: "./",
             updateViaCache: "none"
           });

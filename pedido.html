@@ -291,11 +291,14 @@ Bizcocho hojaldre 1,5 kg</pre>
       const nuevoPedido = {
         id: Date.now(),
         fecha,
+        fechaEntrega: fecha,
         cliente,
         textoOriginal: texto,
         origen: "formulario_cliente",
         pendienteInterpretacion: true,
         versionInterpretador: "central_v101",
+        recibidoDesdeFormulario: true,
+        recibidoEn: new Date().toISOString(),
         items: []
       };
 
@@ -352,12 +355,12 @@ Bizcocho hojaldre 1,5 kg</pre>
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=0813")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=320")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=0813", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=320", {
             scope: "./",
             updateViaCache: "none"
           });

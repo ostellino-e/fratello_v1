@@ -1490,3 +1490,16 @@ body:has(.appSection:target) #contenidoApp {
 .homeMainCard.notificaciones .homeMainIcon{position:relative}
 .homeNotificationBadge{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;margin-left:5px;border-radius:999px;background:#b9332f;color:#fff;font-size:11px;font-style:normal;vertical-align:middle}
 .homeNotificationBadge.hidden{display:none}
+
+/* ===== Fratello v3.2: pedidos recibidos y navegación ===== */
+.incomingOrdersPanel{margin:18px 0;border:1px solid #d8c09f;border-radius:14px;background:#fffaf4;padding:0 12px 12px}
+.incomingOrdersPanel>summary{padding:13px 0;font-weight:800;cursor:pointer}
+.incomingOrderRow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px;border-radius:11px;background:#f4eadf;margin:7px 0}
+.incomingOrderRow.otherDate{border-left:4px solid #c27a24}
+.incomingOrderRow strong,.incomingOrderRow span{display:block}
+.incomingOrderRow span{font-size:11px;margin-top:3px;color:#716257}
+.incomingEmpty{font-size:12px;color:#75665c}
+@media(max-width:700px){
+  .incomingOrderRow{align-items:flex-start;flex-direction:column}
+  .incomingOrderRow button{width:100%}
+}
