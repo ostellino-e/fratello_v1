@@ -519,6 +519,8 @@ function renderPanelPedidosSemana() {
   const fechas = fechasDesdeHoyHastaDomingo();
   const fechaOperativa = fechaOperativaActual();
 
+  fechas.forEach(fecha => asegurarPedidosFijosParaFecha(fecha, false));
+
   panel.innerHTML = fechas.map((fecha, indice) => {
     const pedidosFecha = pedidos
       .filter(pedido => fechaEntregaPedido(pedido) === fecha)
@@ -548,10 +550,6 @@ function renderPanelPedidosSemana() {
       panel.querySelectorAll(".weeklyDay").forEach(otro => {
         if (otro !== detalle) otro.open = false;
       });
-      const fecha = detalle.dataset.fecha;
-      if ($("fechaPedido") && fecha) {
-        $("fechaPedido").value = fecha;
-      }
     });
   });
 }
@@ -1478,6 +1476,7 @@ function datosActuales() {
     correspondePedido,
     memoriaUltimoEnvio,
     jornadasCerradas,
+    exclusionesPedidosFijos,
     actualizado: new Date().toISOString()
   };
 }
@@ -1547,6 +1546,9 @@ async function cargarDesdeNube() {
       correspondePedido = data.correspondePedido || correspondePedido;
       memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
       jornadasCerradas = Array.isArray(data.jornadasCerradas) ? data.jornadasCerradas : jornadasCerradas;
+      exclusionesPedidosFijos = Array.isArray(data.exclusionesPedidosFijos)
+        ? data.exclusionesPedidosFijos
+        : exclusionesPedidosFijos;
 
       validarClientes();
 
@@ -1572,6 +1574,7 @@ async function cargarDesdeNube() {
       localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
       localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
       localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
 }
 
     setEstadoSync("Online");
@@ -1608,6 +1611,9 @@ async function actualizarDatosManual(evento = null) {
     jornadasCerradas = Array.isArray(data.jornadasCerradas)
       ? data.jornadasCerradas
       : jornadasCerradas;
+    exclusionesPedidosFijos = Array.isArray(data.exclusionesPedidosFijos)
+      ? data.exclusionesPedidosFijos
+      : exclusionesPedidosFijos;
 
     pedidos = Array.isArray(data.pedidos) ? data.pedidos : pedidos;
     pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
@@ -1641,6 +1647,7 @@ async function actualizarDatosManual(evento = null) {
     localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
     localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
     localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
 
     renderClientes();
     renderListaClientesCompleta();
@@ -1953,6 +1960,7 @@ function guardarTodo() {
   localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
   localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
       localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
   guardarEnNube();
 }
 
@@ -2016,6 +2024,7 @@ let modoEdicionPredeterminada = false;
 let pedidosConfirmados = JSON.parse(localStorage.getItem("fratello_pedidos_confirmados") || "false");
 let memoriaUltimoEnvio = JSON.parse(localStorage.getItem("fratello_memoria_envio") || "null");
 let jornadasCerradas = JSON.parse(localStorage.getItem("fratello_jornadas_cerradas") || "[]");
+let exclusionesPedidosFijos = JSON.parse(localStorage.getItem("fratello_exclusiones_pedidos_fijos") || "[]");
 let produccionDesbloqueada = false;
 
 const $ = (id) => document.getElementById(id);
@@ -3275,10 +3284,71 @@ function modificarCliente() {
 }
 
 
+
+function fechaEntregaPredeterminada() {
+  const base = new Date(fechaOperativaActual() + "T12:00:00");
+  base.setDate(base.getDate() + 1);
+  return [
+    base.getFullYear(),
+    String(base.getMonth() + 1).padStart(2, "0"),
+    String(base.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function actualizarSelectorPedidoFuturo(forzarFecha = "") {
+  const check = $("checkPedidoFuturo");
+  const contenedor = $("selectorFechaPedidoFuturo");
+  const input = $("fechaPedido");
+  const texto = $("fechaEntregaAutomatica");
+  const predeterminada = fechaEntregaPredeterminada();
+
+  if (!check || !contenedor || !input) return;
+
+  if (forzarFecha) {
+    input.value = forzarFecha;
+    check.checked = forzarFecha > predeterminada;
+  }
+
+  contenedor.classList.toggle("hidden", !check.checked);
+
+  if (!check.checked) {
+    input.value = predeterminada;
+  } else {
+    input.min = predeterminada;
+    if (!input.value || input.value <= predeterminada) {
+      const siguiente = new Date(predeterminada + "T12:00:00");
+      siguiente.setDate(siguiente.getDate() + 1);
+      input.value = [
+        siguiente.getFullYear(),
+        String(siguiente.getMonth() + 1).padStart(2, "0"),
+        String(siguiente.getDate()).padStart(2, "0")
+      ].join("-");
+    }
+  }
+
+  if (texto) {
+    const legible = new Date(predeterminada + "T12:00:00").toLocaleDateString("es-AR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit"
+    });
+    texto.textContent = check.checked
+      ? "Elegí la fecha especial de entrega."
+      : `Entrega automática: ${legible}.`;
+  }
+}
+
+function fechaEntregaNuevoPedido() {
+  const esFuturo = Boolean($("checkPedidoFuturo")?.checked);
+  if (!esFuturo) return fechaEntregaPredeterminada();
+
+  const fecha = $("fechaPedido")?.value || "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return "";
+  return fecha;
+}
+
 function fechaISOManana() {
-  const fecha = new Date();
-  fecha.setDate(fecha.getDate() + 1);
-  return fecha.toISOString().slice(0, 10);
+  return fechaEntregaPredeterminada();
 }
 
 function fechaEntregaPedido(pedido) {
@@ -3321,7 +3391,7 @@ function aplicarFechaDetectadaAlPedido(texto) {
   if (input.value !== detectada) {
     const legible = new Date(detectada+"T12:00:00").toLocaleDateString("es-AR");
     if (confirm(`El pedido parece ser para el ${legible}. ¿Usar esa fecha de entrega?`)) {
-      input.value = detectada;
+      actualizarSelectorPedidoFuturo(detectada);
     }
   }
 }
@@ -3338,22 +3408,34 @@ function normalizarProgramacionPedidoFijo(fijo) {
 
 function programacionesAplicablesParaFecha(fecha) {
   const diaSemana = new Date(fecha + "T12:00:00").getDay();
-  const candidatas = (pedidosFijos || [])
+  const vistos = new Set();
+
+  return (pedidosFijos || [])
     .map(normalizarProgramacionPedidoFijo)
-    .filter(fijo => fijo.activo && fijo.dias.includes(diaSemana));
-
-  const porCliente = {};
-
-  candidatas.forEach(fijo => {
-    const clave = normalizar(fijo.cliente || "");
-    // Si quedaron datos viejos superpuestos, se usa el último guardado.
-    if (!porCliente[clave] || Number(fijo.id || 0) > Number(porCliente[clave].id || 0)) {
-      porCliente[clave] = fijo;
-    }
-  });
-
-  return Object.values(porCliente);
+    .filter(fijo => {
+      if (!fijo.activo || !fijo.dias.includes(diaSemana)) return false;
+      const clave = String(fijo.id || `${fijo.cliente}-${fijo.nombre}-${fijo.texto}`);
+      if (vistos.has(clave)) return false;
+      vistos.add(clave);
+      return true;
+    });
 }
+
+function claveExclusionPedidoFijo(pedidoFijoId, fecha) {
+  return `${Number(pedidoFijoId)}|${fecha}`;
+}
+
+function pedidoFijoExcluido(pedidoFijoId, fecha) {
+  return exclusionesPedidosFijos.includes(claveExclusionPedidoFijo(pedidoFijoId, fecha));
+}
+
+function excluirPedidoFijoEnFecha(pedido) {
+  if (!esPedidoFijoRobusto(pedido) || !pedido.pedidoFijoId) return;
+  const clave = claveExclusionPedidoFijo(pedido.pedidoFijoId, fechaEntregaPedido(pedido));
+  if (!exclusionesPedidosFijos.includes(clave)) exclusionesPedidosFijos.push(clave);
+}
+
+
 
 function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
   if (!fecha || !Array.isArray(pedidosFijos)) return 0;
@@ -3377,6 +3459,8 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
   let reparados = 0;
 
   aplicables.forEach(fijo => {
+    if (pedidoFijoExcluido(fijo.id, fecha)) return;
+
     let pedido = pedidos.find(item =>
       item.origen === "pedido_fijo" &&
       Number(item.pedidoFijoId) === Number(fijo.id) &&
@@ -3602,8 +3686,8 @@ function renderHistorialPedidos() {
 }
 
 function cantidadPedidosFuturos() {
-  const hoy = hoyISO();
-  return pedidos.filter(pedido => fechaEntregaPedido(pedido) > hoy).length;
+  const entregaNormal = fechaEntregaPredeterminada();
+  return pedidos.filter(pedido => fechaEntregaPedido(pedido) > entregaNormal).length;
 }
 
 function actualizarBadgePedidosFuturos() {
@@ -3618,8 +3702,8 @@ function renderPedidosFuturos() {
   actualizarBadgePedidosFuturos();
   const cont = $("listaPedidosFuturos");
   if (!cont) return;
-  const hoy = hoyISO();
-  const futuros = pedidos.filter(p => fechaEntregaPedido(p) > hoy)
+  const entregaNormal = fechaEntregaPredeterminada();
+  const futuros = pedidos.filter(p => fechaEntregaPedido(p) > entregaNormal)
     .sort((a,b)=>fechaEntregaPedido(a).localeCompare(fechaEntregaPedido(b)));
   if (!futuros.length) {
     cont.innerHTML = "<p>No hay pedidos para fechas posteriores.</p>";
@@ -3633,7 +3717,7 @@ function renderPedidosFuturos() {
   cont.innerHTML = Object.entries(grupos).map(([fecha,lista]) => `
     <div class="futureDateGroup">
       <h3>📅 ${new Date(fecha+"T12:00:00").toLocaleDateString("es-AR",{weekday:"long",day:"2-digit",month:"2-digit"})}</h3>
-      ${lista.map(p=>`<div class="futureOrderRow"><strong>${escaparHtmlCatalogo(p.cliente)}</strong><span>${(p.items||[]).filter(i=>i.estado!=="NO PEDIDO").length} ítems</span><button type="button" onclick="editarPedidoCargado(${p.id})">✏️ Editar</button></div>`).join("")}
+      ${lista.map(p=>`<div class="futureOrderRow"><strong>${escaparHtmlCatalogo(p.cliente)}</strong><span>${(p.items||[]).filter(i=>i.estado!=="NO PEDIDO").length} ítems</span><div class="futureOrderActions"><button type="button" onclick="editarPedidoCargado(${p.id})">✏️ Editar</button><button type="button" class="dangerBtn" onclick="borrarPedido(${p.id})">🗑 Eliminar</button></div></div>`).join("")}
     </div>`).join("");
 }
 
@@ -3946,10 +4030,15 @@ function procesarPedidoActual() {
   const cliente = $("cliente").value;
   const texto = $("pedidoCrudo").value;
   aplicarFechaDetectadaAlPedido(texto);
-  const fecha = $("fechaPedido").value || fechaISOManana();
+  const fecha = fechaEntregaNuevoPedido();
 
   if (!texto.trim()) {
     alert("Pegá un pedido primero.");
+    return;
+  }
+
+  if (!fecha) {
+    alert("Elegí una fecha válida para el pedido futuro.");
     return;
   }
 
@@ -3969,6 +4058,8 @@ function procesarPedidoActual() {
   actualizarEstadoConfirmacion();
 
   $("pedidoCrudo").value = "";
+  if ($("checkPedidoFuturo")) $("checkPedidoFuturo").checked = false;
+  actualizarSelectorPedidoFuturo();
   mostrarMensajePedido("Pedido cargado correctamente");
 }
 
@@ -4053,13 +4144,18 @@ function renderPedidosCargados() {
 
 
 function borrarPedido(id) {
+  const pedido = pedidos.find(p => Number(p.id) === Number(id));
+  if (!pedido) return;
   if (!confirm("¿Seguro que querés borrar este pedido?")) return;
 
+  excluirPedidoFijoEnFecha(pedido);
   pedidos = pedidos.filter(p => Number(p.id) !== Number(id));
   pedidosConfirmados = false;
   guardarTodo();
 
   renderPedidosCargados();
+  renderPedidosFuturos();
+  renderHistorialPedidos();
   calcularDiferencias();
   actualizarEstadoConfirmacion();
 
@@ -5149,6 +5245,9 @@ async function init() {
   if ($("btnCargarPedidosFijosFecha")) $("btnCargarPedidosFijosFecha").onclick=cargarPedidosFijosParaFecha;
   if ($("btnNuevoPedidoFijoCliente")) $("btnNuevoPedidoFijoCliente").onclick=()=>crearPedidoFijoCliente();
   if ($("fechaPedido")) $("fechaPedido").addEventListener("change", manejarCambioFechaPedidos);
+  if ($("checkPedidoFuturo")) {
+    $("checkPedidoFuturo").addEventListener("change", () => actualizarSelectorPedidoFuturo());
+  }
 
   if ($("btnAgregarListaPrecio")) {
     $("btnAgregarListaPrecio").onclick = agregarListaPrecioPersonalizada;
@@ -5179,8 +5278,11 @@ async function init() {
     const nuevaFechaOperativa = fechaOperativaActual();
     if (nuevaFechaOperativa !== ultimaFechaOperativa) {
       ultimaFechaOperativa = nuevaFechaOperativa;
-      if ($("fechaPedido")) $("fechaPedido").value = nuevaFechaOperativa;
+      if ($("checkPedidoFuturo") && !$("checkPedidoFuturo").checked) {
+        actualizarSelectorPedidoFuturo();
+      }
       renderPanelPedidosSemana();
+      renderPedidosFuturos();
     }
   }, 60000);
 
@@ -5238,9 +5340,10 @@ async function init() {
   escucharCambiosNube();
   escucharHistorialNotificaciones();
   aplicarPermisosUsuario();
-  if ($("fechaPedido")) $("fechaPedido").value = fechaOperativaActual();
+  if ($("fechaPedido")) $("fechaPedido").value = fechaEntregaPredeterminada();
   if ($("fechaCargarPedidosFijos")) $("fechaCargarPedidosFijos").value = fechaISOManana();
-  asegurarPedidosFijosParaFecha($("fechaPedido")?.value || fechaISOManana(), false);
+  actualizarSelectorPedidoFuturo();
+  fechasDesdeHoyHastaDomingo().forEach(fecha => asegurarPedidosFijosParaFecha(fecha, false));
   renderClientes();
 
   if ($("cliente")) $("cliente").onchange = limpiarPedidoCrudo;

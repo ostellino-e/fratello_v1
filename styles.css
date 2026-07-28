@@ -1778,3 +1778,56 @@ body:has(.appSection:target) #contenidoApp {
     padding: 8px;
   }
 }
+
+
+/* ===== Fratello v3.5.1 · Fecha automática y futuros ===== */
+.futureDateChoice {
+  margin: 12px 0;
+  padding: 11px 12px;
+  border: 1px solid #e4d8cc;
+  border-radius: 12px;
+  background: #fcfaf8;
+}
+
+.futureOrderToggle {
+  margin: 0;
+}
+
+.futureDateSelector {
+  margin-top: 10px;
+}
+
+.futureDateSelector label,
+.futureDateSelector small {
+  display: block;
+}
+
+.futureDateSelector small,
+.automaticDeliveryHint {
+  color: #77685d;
+  font-size: 12px;
+}
+
+.automaticDeliveryHint {
+  margin: 7px 0 0;
+}
+
+.futureOrderActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.futureOrderActions button {
+  width: auto !important;
+}
+
+@media (max-width: 600px) {
+  .futureOrderRow {
+    align-items: flex-start;
+  }
+
+  .futureOrderActions {
+    width: 100%;
+  }
+}

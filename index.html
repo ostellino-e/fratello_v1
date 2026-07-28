@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.5";
-    document.documentElement.dataset.fratelloVersion = "3.5";
+    window.FRATELLO_VERSION = "3.5.1";
+    document.documentElement.dataset.fratelloVersion = "3.5.1";
   </script>
 
 </head>
@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.5</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.5.1</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -168,8 +168,20 @@
         </label>
       </div>
 
-      <label>Fecha de entrega</label>
-      <input id="fechaPedido" type="date" />
+      <div class="futureDateChoice">
+        <label class="checkControl futureOrderToggle">
+          <input type="checkbox" id="checkPedidoFuturo">
+          Es un pedido para otra fecha
+        </label>
+
+        <div id="selectorFechaPedidoFuturo" class="futureDateSelector hidden">
+          <label for="fechaPedido">Fecha de entrega</label>
+          <input id="fechaPedido" type="date" />
+          <small>Usalo solamente cuando la entrega sea posterior a mañana.</small>
+        </div>
+
+        <p id="fechaEntregaAutomatica" class="automaticDeliveryHint"></p>
+      </div>
 
       <label>Cliente</label>
       <div class="clienteBox">
@@ -191,17 +203,7 @@
       <div id="pedidosCargados" class="hidden"></div>
 
       <div id="avisoUnidadesAmbiguas" class="ambiguousSummary hidden"></div>
-
-      <p class="hint keepOrdersHint">
-        Los pedidos confirmados y enviados se conservan. Solo se borran con “Nueva jornada / Borrar memoria”.
-      </p>
-
-
-      <div class="individualConfirmationNotice">
-        ✅ El resumen cuenta únicamente los pedidos confirmados uno por uno.
-      </div>
-
-      <button id="btnContinuarResumen" class="primary continueButton" type="button">
+<button id="btnContinuarResumen" class="primary continueButton" type="button">
         Continuar al resumen →
       </button>
     </section>
@@ -441,7 +443,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=350"></script>
+  <script src="app.js?v=351"></script>
 
   
 
@@ -458,12 +460,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=350")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=351")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=350", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=351", {
             scope: "./",
             updateViaCache: "none"
           });

@@ -1,15 +1,14 @@
-# Fratello v3.5 — Cuadro 2 más limpio
+# Fratello v3.5.1 — Pedidos futuros corregidos
 
 Cambios incluidos:
 
-- Los pedidos fijos no generan notificaciones.
-- La primera sincronización tampoco avisa por pedidos que ya existían.
-- Si falta confirmar el día, la aplicación vuelve al inicio del Cuadro 2.
-- Se eliminó visualmente el panel de clientes pendientes.
-- Los pedidos se organizan automáticamente desde el día operativo actual hasta el domingo.
-- La jornada cambia automáticamente a las 06:00.
-- El día actual aparece abierto y los siguientes cerrados.
-- Cada día contiene desplegables para pedidos desde enlace, pedidos del día y pedidos fijos.
-- Las tarjetas están compactadas; el detalle de productos se abre solo al tocar “Ver pedido”.
-- Se mantiene la confirmación individual de cada pedido.
-- No se agregó el resumen de contadores, para evitar sobrecargar la pantalla.
+- Los pedidos cargados normalmente se asignan automáticamente para mañana.
+- La fecha de entrega solo aparece cuando se marca “Es un pedido para otra fecha”.
+- La jornada operativa sigue cambiando a las 06:00.
+- Las pestañas semanales generan y muestran los pedidos fijos correspondientes a todos los días visibles hasta el domingo.
+- Se respetan múltiples pedidos fijos independientes de un mismo cliente.
+- Se eliminaron los mensajes informativos del final del Cuadro 2.
+- Los pedidos futuros pueden editarse y eliminarse tanto en el Cuadro 2 como en el módulo Pedidos futuros.
+- Los cambios realizados en cualquiera de las dos vistas se reflejan en la otra.
+- Al eliminar un pedido fijo de una fecha puntual, no vuelve a regenerarse para esa misma fecha.
+- El módulo Pedidos futuros muestra únicamente entregas posteriores a mañana.
