@@ -1987,3 +1987,50 @@ body:has(.appSection:target) #contenidoApp {
   background: #fff1c7;
   border: 1px solid #d4a63b;
 }
+
+
+/* Historial de pedidos: contraste y legibilidad */
+.historyOrderCard {
+  background: #ffffff !important;
+  color: #20170f !important;
+  border: 1px solid #d9c4a7;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(45, 30, 15, 0.08);
+}
+
+.historyOrderCard > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 12px;
+  align-items: center;
+}
+
+.historyOrderCard strong {
+  color: #2a180d !important;
+  font-size: 1rem;
+}
+
+.historyOrderCard span {
+  color: #6b5848 !important;
+  font-weight: 600;
+}
+
+.historyOrderCard pre {
+  background: #f7f1e8 !important;
+  color: #24180f !important;
+  border: 1px solid #eadcca;
+  border-radius: 8px;
+  padding: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  line-height: 1.45;
+}
+
+.historyOrderCard button {
+  color: #24180f;
+  background: #f3e4cf;
+  border: 1px solid #c9a97f;
+}

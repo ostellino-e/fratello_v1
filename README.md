@@ -1,14 +1,9 @@
-# Fratello v3.7.9 — Modal de tickets y Resumen limpio
+# Fratello v3.8.0 — Listas de precios e historial
 
-Correcciones:
-- Los botones Cerrar, Imprimir, Compartir, Guardar JPG y Descargar PDF del visor vuelven a funcionar.
-- Se evita que la inicialización se detenga cuando un botón opcional fue retirado.
-- El visor conserva exactamente el ticket o grupo de tickets seleccionado.
-- El PDF del modal ya no vuelve a incorporar pedidos de otros días.
-
-Resumen:
-- Se eliminó el cartel explicativo de WhatsApp.
-- Se retiró temporalmente Recordar pedido a cliente.
-- Se retiró Borrar pedidos cargados del Resumen.
-- Se retiró el borrado masivo duplicado.
-- Se agregó un estado visual simple: jornada lista, acciones pendientes o sin pedidos.
+- El ticket usa primero la lista asignada al cliente.
+- Cuando la lista está en modo automático, compara el nombre normalizado del cliente con el nombre o ID de cada columna/lista.
+- Si existe coincidencia exacta, utiliza esa lista.
+- Si no existe coincidencia, utiliza la columna `cliente`.
+- Las listas personalizadas ahora también se recuperan y guardan al usar Actualizar datos.
+- El ticket muestra qué lista de precios utilizó.
+- Se mejoró el contraste y la lectura del historial de pedidos.
