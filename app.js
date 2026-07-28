@@ -397,24 +397,26 @@ function recordarTodosLosPendientes() {
 
 
 function continuarAlResumenSiEstaConfirmado() {
+  const diaProduccion = $("diaProduccion")?.value || "";
+  const diaPedidos = $("diaProduccionPedidos")?.value || "";
+  const checkProduccion = $("checkProduccionCompleta");
+  const checkDiaPedidos = $("checkDiaPedidos");
   const checkPedidos = $("checkPedidoCompleto");
 
-  if (!pedidos.length) {
-    alert("Todavía no hay pedidos cargados.");
+  if (!diaProduccion || !diaPedidos || diaProduccion !== diaPedidos) {
+    alert("Primero elegí y sincronizá el mismo día en Producción y Pedidos.");
+    abrirSeccionFratello("seccionProduccion");
     return;
   }
 
-  const ambiguosUnidad = pedidosConUnidadAmbigua();
-  const ambiguosProducto = pedidosConProductoAmbiguo();
-  const totalAmbiguos = ambiguosUnidad.length + ambiguosProducto.length;
-  if (totalAmbiguos) {
-    alert(`Hay ${totalAmbiguos} revisión(es) pendiente(s) de producto o unidad. Revisalas antes de continuar.`);
-    abrirSeccionFratello("seccionPedidos");
+  if (!checkProduccion?.checked || !checkDiaPedidos?.checked) {
+    alert("Antes de continuar, confirmá el día correcto tanto en Producción como en Pedidos.");
+    abrirSeccionFratello("seccionProduccion");
     return;
   }
 
-  if (!checkPedidos || !checkPedidos.checked) {
-    alert("Primero tildá que todos los pedidos cargados están correctos.");
+  if (!checkPedidos?.checked) {
+    alert("Primero confirmá que todos los pedidos cargados están correctos.");
     return;
   }
 
@@ -861,7 +863,11 @@ function escucharHistorialNotificaciones() {
           .filter(notificacion => !idsNotificacionesConocidas.has(notificacion.id))
           .forEach(notificacion => {
             idsNotificacionesConocidas.add(notificacion.id);
-            mostrarNotificacionHistorialEnDispositivo(notificacion);
+            const origen = String(notificacion.origen || notificacion.tipo || "").toLowerCase();
+            const esPedidoFijo = origen.includes("fijo") || notificacion.pedidoFijo === true;
+            if (!esPedidoFijo) {
+              mostrarNotificacionHistorialEnDispositivo(notificacion);
+            }
           });
       }
 
@@ -1144,8 +1150,8 @@ function actualizarEstadoNotificaciones() {
   }
 
   if (Notification.permission === "granted" && tokenNotificaciones) {
-    estado.textContent = "✅ Notificaciones activadas. Los avisos nuevos se mostrarán en este dispositivo.";
-    if (btnActivar) btnActivar.textContent = "Notificaciones activadas";
+    estado.textContent = "✅ Dispositivo registrado. Para recibir avisos con la app cerrada se necesita el envío push del servidor.";
+    if (btnActivar) btnActivar.textContent = "Renovar registro";
     if (btnProbar) btnProbar.disabled = false;
     return;
   }
@@ -1168,7 +1174,7 @@ async function obtenerRegistroServiceWorkerNotificaciones() {
   let registro = await navigator.serviceWorker.getRegistration("./");
 
   if (!registro) {
-    registro = await navigator.serviceWorker.register("service-worker.js?v=320", {
+    registro = await navigator.serviceWorker.register("service-worker.js?v=330", {
       scope: "./",
       updateViaCache: "none"
     });
@@ -1187,7 +1193,8 @@ async function guardarTokenNotificaciones(token) {
     plataforma: navigator.userAgent,
     pwa: window.matchMedia("(display-mode: standalone)").matches || Boolean(navigator.standalone),
     activo: true,
-    actualizado: new Date().toISOString()
+    actualizado: new Date().toISOString(),
+    jornadaEnviada: true
   };
 
   await db.collection("fratello_notificaciones").doc(idSeguro).set(datos, { merge: true });
@@ -1678,15 +1685,19 @@ async function mostrarNotificacionLocalPedido(pedido) {
   }
 }
 
-function detectarPedidosFormularioNuevos(listaAnterior, listaNueva) {
+function pedidoDebeNotificar(pedido) {
+  return pedido?.origen === "formulario_cliente" || pedido?.origen === "manual";
+}
+
+function detectarPedidosNotificablesNuevos(listaAnterior, listaNueva) {
   const anteriores = new Set(
     (listaAnterior || [])
-      .filter(pedido => pedido?.origen === "formulario_cliente")
+      .filter(pedidoDebeNotificar)
       .map(pedido => String(pedido.id))
   );
 
   const nuevos = (listaNueva || []).filter(pedido =>
-    pedido?.origen === "formulario_cliente" &&
+    pedidoDebeNotificar(pedido) &&
     !anteriores.has(String(pedido.id))
   );
 
@@ -1697,6 +1708,7 @@ function detectarPedidosFormularioNuevos(listaAnterior, listaNueva) {
 
   return nuevos;
 }
+
 
 function escucharCambiosNube() {
   if (!db) return;
@@ -1716,7 +1728,7 @@ function escucharCambiosNube() {
         Array.isArray(data.pedidos) ? data.pedidos : pedidos
       );
       pedidos = resultadoInterpretacion.pedidos;
-      detectarPedidosFormularioNuevos(pedidosAntesDeActualizar, pedidos);
+      detectarPedidosNotificablesNuevos(pedidosAntesDeActualizar, pedidos);
       idsPedidosFormularioConocidos = new Set(
         pedidos
           .filter(pedido => pedido?.origen === "formulario_cliente")
@@ -3197,6 +3209,17 @@ function programacionesAplicablesParaFecha(fecha) {
 function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
   if (!fecha || !Array.isArray(pedidosFijos)) return 0;
 
+  const jornadaYaEnviada =
+    memoriaUltimoEnvio?.jornadaEnviada === true &&
+    memoriaUltimoEnvio?.fecha === fecha;
+
+  if (jornadaYaEnviada) {
+    if (mostrarAviso) {
+      alert("La jornada ya fue enviada. Para volver a cargar los pedidos fijos, usá “Nueva jornada / borrar memoria”.");
+    }
+    return 0;
+  }
+
   const aplicables = programacionesAplicablesParaFecha(fecha);
   let agregados = 0;
   let reparados = 0;
@@ -3425,7 +3448,21 @@ function renderHistorialPedidos() {
     </div>`).join("");
 }
 
+function cantidadPedidosFuturos() {
+  const hoy = hoyISO();
+  return pedidos.filter(pedido => fechaEntregaPedido(pedido) > hoy).length;
+}
+
+function actualizarBadgePedidosFuturos() {
+  const badge = $("badgePedidosFuturos");
+  if (!badge) return;
+  const cantidad = cantidadPedidosFuturos();
+  badge.textContent = String(cantidad);
+  badge.classList.toggle("empty", cantidad === 0);
+}
+
 function renderPedidosFuturos() {
+  actualizarBadgePedidosFuturos();
   const cont = $("listaPedidosFuturos");
   if (!cont) return;
   const hoy = hoyISO();
@@ -3764,7 +3801,7 @@ function procesarPedidoActual() {
   }
 
   const procesado = procesarTextoPedido(texto, cliente, fecha);
-  const nuevoPedido = { id: Date.now(), fecha, fechaEntrega: fecha, cliente, textoOriginal: texto, items: procesado };
+  const nuevoPedido = { id: Date.now(), fecha, fechaEntrega: fecha, cliente, textoOriginal: texto, origen: "manual", items: procesado };
   pedidos.push(nuevoPedido);
   registrarPedidoEnHistorial(nuevoPedido);
 
@@ -4066,8 +4103,15 @@ function fmt(n) {
 }
 
 function copiarResumen() {
-  navigator.clipboard.writeText($("resumenPanadero").textContent)
-    .then(() => alert("Resumen copiado. Ahora podés pegarlo en WhatsApp."))
+  const acciones = $("resumenPanadero")?.textContent || "";
+  const clientes = textoPedidosClientes();
+  const mensaje = `${acciones}
+
+--------------------
+${clientes}`;
+
+  navigator.clipboard.writeText(mensaje)
+    .then(() => alert("Resumen y pedidos copiados. Las acciones aparecen primero."))
     .catch(() => alert("No se pudo copiar automáticamente. Copiá el texto manualmente."));
 }
 
@@ -4585,11 +4629,15 @@ function borrarMemoriaEnvio() {
   memoriaUltimoEnvio = null;
   localStorage.removeItem("fratello_memoria_envio");
 
-  // La limpieza completa ocurre únicamente al comenzar una jornada nueva.
   limpiarJornadaDespuesDeEnviar();
+
+  const fecha = $("fechaPedido")?.value || fechaISOManana();
+  asegurarPedidosFijosParaFecha(fecha, false);
+  renderPedidosCargados();
+  calcularDiferencias();
   actualizarPanelMemoriaEnvio();
 
-  alert("Nueva jornada iniciada. Se borraron los pedidos y la memoria del envío anterior.");
+  alert("Nueva jornada iniciada. Los pedidos fijos del día volvieron a cargarse.");
 }
 
 function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencias, clientesAcumulados) {
@@ -4610,8 +4658,37 @@ function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencias, cli
 
 function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, diferenciasNuevas) {
   let mensaje = "FRATELLO - ACTUALIZACIÓN DE PEDIDOS\n\n";
+  mensaje += "⚠️ PRIMERO: CAMBIOS A REALIZAR\n\n";
 
+  const ids = new Set([
+    ...Object.keys(diferenciasAnteriores || {}),
+    ...Object.keys(diferenciasNuevas || {})
+  ]);
+
+  const cambios = [];
+  ids.forEach(id => {
+    const anterior = Number(diferenciasAnteriores?.[id] || 0);
+    const nuevo = Number(diferenciasNuevas?.[id] || 0);
+    const delta = nuevo - anterior;
+    if (Math.abs(delta) < 0.0001) return;
+    cambios.push({ producto: productoPorIdMemoria(id), delta });
+  });
+
+  if (!cambios.length) {
+    mensaje += "- El pedido no modifica las cantidades informadas anteriormente.\n";
+  } else {
+    cambios.forEach(({producto, delta}) => {
+      if (delta < 0) {
+        mensaje += `🔴 AGREGAR / HACER ${fmt(Math.abs(delta))} ${producto.unidad} ${producto.nombre}\n`;
+      } else {
+        mensaje += `🟢 REDUCIR / GUARDAR ${fmt(delta)} ${producto.unidad} ${producto.nombre}\n`;
+      }
+    });
+  }
+
+  mensaje += "\n--------------------\n";
   mensaje += "PEDIDOS NUEVOS / TARDÍOS:\n\n";
+
   pedidosNuevos.forEach(pedido => {
     mensaje += `${pedido.cliente}:\n`;
     const items = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO");
@@ -4625,40 +4702,10 @@ function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, dif
     mensaje += "\n";
   });
 
-  mensaje += "--------------------\n";
-  mensaje += "CAMBIOS SOBRE EL MENSAJE ANTERIOR:\n\n";
-
-  const ids = new Set([
-    ...Object.keys(diferenciasAnteriores || {}),
-    ...Object.keys(diferenciasNuevas || {})
-  ]);
-
-  const cambios = [];
-  ids.forEach(id => {
-    const anterior = Number(diferenciasAnteriores?.[id] || 0);
-    const nuevo = Number(diferenciasNuevas?.[id] || 0);
-    const delta = nuevo - anterior;
-    if (Math.abs(delta) < 0.0001) return;
-
-    const producto = productoPorIdMemoria(id);
-    cambios.push({producto, delta});
-  });
-
-  if (!cambios.length) {
-    mensaje += "- El pedido no modifica las cantidades informadas anteriormente.\n";
-  } else {
-    cambios.forEach(({producto, delta}) => {
-      if (delta < 0) {
-        mensaje += `🔴 AGREGAR ${fmt(Math.abs(delta))} ${producto.unidad} ${producto.nombre}\n`;
-      } else {
-        mensaje += `🟢 REDUCIR / GUARDAR ${fmt(delta)} ${producto.unidad} ${producto.nombre}\n`;
-      }
-    });
-  }
-
-  mensaje += "\nEste mensaje complementa el envío anterior.";
+  mensaje += "Este mensaje complementa el envío anterior.";
   return mensaje;
 }
+
 
 function obtenerFilasComparador() {
   const totalesPedido = {};
@@ -4693,6 +4740,27 @@ function obtenerFilasComparador() {
   return filas;
 }
 
+
+function limpiarPedidosDespuesDeEnviar() {
+  pedidos = [];
+  pedidosConfirmados = false;
+
+  localStorage.setItem("fratello_pedidos", JSON.stringify([]));
+  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(false));
+
+  if ($("checkPedidoCompleto")) $("checkPedidoCompleto").checked = false;
+  if ($("pedidoCrudo")) $("pedidoCrudo").value = "";
+  if ($("pedidosCargados")) $("pedidosCargados").innerHTML = "<p>Jornada enviada. No hay pedidos pendientes.</p>";
+  if ($("ultimoProcesado")) $("ultimoProcesado").innerHTML = "";
+  if ($("comparador")) $("comparador").innerHTML = "";
+  if ($("resumenPanadero")) $("resumenPanadero").textContent = "";
+  if ($("vistaPedidosInline")) $("vistaPedidosInline").innerHTML = "";
+
+  renderPedidosFuturos();
+  renderPedidosRecibidosFormulario();
+  actualizarEstadoConfirmacion();
+  guardarEnNube();
+}
 
 function limpiarJornadaDespuesDeEnviar() {
   pedidos = [];
@@ -4761,12 +4829,11 @@ function verificarChecksAntesDeWhatsApp() {
     return false;
   }
 
-  const diaConfirmado =
-    (checkProduccion && checkProduccion.checked) ||
-    (checkDiaPedidos && checkDiaPedidos.checked);
+  const diaConfirmadoProduccion = Boolean(checkProduccion?.checked);
+  const diaConfirmadoPedidos = Boolean(checkDiaPedidos?.checked);
 
-  if (!diaConfirmado) {
-    alert("Primero confirmá que el día seleccionado es correcto.");
+  if (!diaConfirmadoProduccion || !diaConfirmadoPedidos) {
+    alert("Primero confirmá el día correcto en Producción y también en Pedidos.");
     return false;
   }
 
@@ -4861,10 +4928,9 @@ function generarMensajeGrupoFratello() {
     [...new Set(clientesAcumulados)]
   );
 
-  guardarEnNube();
+  limpiarPedidosDespuesDeEnviar();
+  actualizarPanelMemoriaEnvio();
 
-  // v1.03: enviar el mensaje NO borra los pedidos.
-  // Se conservan para poder corregirlos o reenviarlos.
   abrirWhatsApp("", mensaje);
 }
 
@@ -4997,6 +5063,11 @@ async function init() {
   if (btnActualizarDatos) {
     btnActualizarDatos.addEventListener("click", actualizarDatosManual);
   }
+  const btnActualizarGlobal = $("btnActualizarGlobal");
+  if (btnActualizarGlobal) {
+    btnActualizarGlobal.addEventListener("click", actualizarDatosManual);
+  }
+
 
   const btnGuardarClienteCompleto = $("btnGuardarClienteCompleto");
   const btnLimpiarClienteCompleto = $("btnLimpiarClienteCompleto");
@@ -5071,6 +5142,7 @@ async function init() {
 
   renderProduccion();
   renderPedidosCargados();
+  renderPedidosFuturos();
   inicializarIdsPedidosFormularioConocidos();
   migrarPedidosFijosV301();
   repararPedidosConParserV311();

@@ -1503,3 +1503,19 @@ body:has(.appSection:target) #contenidoApp {
   .incomingOrderRow{align-items:flex-start;flex-direction:column}
   .incomingOrderRow button{width:100%}
 }
+
+/* ===== Fratello v3.3: mejoras operativas ===== */
+.futureOrdersMain{margin:14px 0}
+.futureOrdersButton{width:100%;display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:12px;text-align:left;padding:17px}
+.futureOrdersIcon{font-size:28px}
+.futureOrdersButton strong{display:block;font-size:17px}
+.futureOrdersButton small{display:block;margin-top:3px;font-weight:400}
+.futureOrdersBadge{display:grid;place-items:center;min-width:34px;height:34px;padding:0 8px;border-radius:999px;background:#b9332f;color:#fff;font-size:15px;font-style:normal;font-weight:800}
+.futureOrdersBadge.empty{background:#b9aa9d}
+.globalRefreshButton{position:fixed;top:10px;right:12px;z-index:9999;padding:7px 10px;border-radius:999px;font-size:12px;box-shadow:0 3px 12px rgba(0,0,0,.15)}
+.globalRefreshButton span{margin-left:3px}
+@media(max-width:700px){
+  .globalRefreshButton{top:auto;bottom:14px;right:12px}
+  .globalRefreshButton span{display:none}
+  .futureOrdersButton{grid-template-columns:42px 1fr auto}
+}
