@@ -827,27 +827,56 @@ function volverArribaCuadro2() {
   }, 80);
 }
 
-function continuarAlResumenSiEstaConfirmado() {
-  const diaProduccion = $("diaProduccion")?.value || "";
-  const diaPedidos = $("diaProduccionPedidos")?.value || "";
-  const checkProduccion = $("checkProduccionCompleta");
+function estadoConfirmacionFechaSeleccionada() {
+  const fecha = $("fechaPedido")?.value || fechaJornadaActual();
+  const pedidosFecha = pedidos.filter(pedido => fechaEntregaPedido(pedido) === fecha);
+  const confirmados = pedidosFecha.filter(pedido => pedidoEstaConfirmado(pedido));
+
+  return {
+    fecha,
+    pedidosFecha,
+    confirmados,
+    todosConfirmados: pedidosFecha.length > 0 && confirmados.length === pedidosFecha.length
+  };
+}
+
+function sincronizarConfirmacionDiaDesdePedidos() {
+  const estado = estadoConfirmacionFechaSeleccionada();
   const checkDiaPedidos = $("checkDiaPedidos");
 
+  if (checkDiaPedidos && estado.todosConfirmados) {
+    checkDiaPedidos.checked = true;
+  }
 
-  if (!diaPedidos || !checkDiaPedidos?.checked) {
-    alert("Primero elegí y confirmá el día en este cuadro.");
+  return estado;
+}
+
+function continuarAlResumenSiEstaConfirmado() {
+  const diaProduccion = $("diaProduccion")?.value || "";
+  const diaPedidos = $("diaProduccionPedidos")?.value || diaProduccion;
+  const checkProduccion = $("checkProduccionCompleta");
+  const estado = sincronizarConfirmacionDiaDesdePedidos();
+
+  if (!estado.pedidosFecha.length) {
+    alert("No hay pedidos cargados para el día seleccionado.");
+    return;
+  }
+
+  if (!estado.todosConfirmados) {
+    const faltan = estado.pedidosFecha.length - estado.confirmados.length;
+    alert(`Falta confirmar ${faltan} pedido(s) del día seleccionado.`);
+    return;
+  }
+
+  if (!diaProduccion || !checkProduccion?.checked) {
+    alert("Falta confirmar la producción del día seleccionado.");
     volverArribaCuadro2();
     return;
   }
 
-  if (!diaProduccion || diaProduccion !== diaPedidos || !checkProduccion?.checked) {
-    alert("El día del Cuadro 2 no coincide con la producción confirmada. Revisá el selector de este cuadro.");
+  if (diaPedidos && diaProduccion !== diaPedidos) {
+    alert("El día de Pedidos no coincide con el día confirmado en Producción.");
     volverArribaCuadro2();
-    return;
-  }
-
-  if (!pedidosConfirmadosParaFecha($("fechaPedido")?.value || hoyISO()).length) {
-    alert("Confirmá al menos un pedido antes de continuar al Resumen.");
     return;
   }
 
@@ -4499,6 +4528,7 @@ function alternarConfirmacionPedido(idPedido, confirmado) {
     }
   }
 
+  sincronizarConfirmacionDiaDesdePedidos();
   guardarTodo();
   calcularDiferencias();
   actualizarEstadoConfirmacion();
@@ -5093,26 +5123,28 @@ function actualizarEstadoConfirmacion() {
 
 function confirmarPedidos() {
   const checkProduccion = $("checkProduccionCompleta");
-  const checkPedido = $("checkPedidoCompleto");
+  const estado = sincronizarConfirmacionDiaDesdePedidos();
+
+  if (!estado.pedidosFecha.length) {
+    alert("Todavía no hay pedidos cargados para el día seleccionado.");
+    return;
+  }
+
+  if (!estado.todosConfirmados) {
+    const faltan = estado.pedidosFecha.length - estado.confirmados.length;
+    alert(`Falta confirmar ${faltan} pedido(s) del día seleccionado.`);
+    return;
+  }
 
   if (checkProduccion && !checkProduccion.checked) {
-    alert("Falta tildar que el día seleccionado es correcto.");
-    return;
-  }
-
-  if (checkPedido && !checkPedido.checked) {
-    alert("Falta tildar que todos los pedidos cargados están correctos.");
-    return;
-  }
-
-  if (!pedidos.length) {
-    alert("Todavía no hay pedidos cargados.");
+    alert("Falta confirmar la producción del día seleccionado.");
     return;
   }
 
   const ambiguosUnidad = pedidosConUnidadAmbigua();
   const ambiguosProducto = pedidosConProductoAmbiguo();
   const totalAmbiguos = ambiguosUnidad.length + ambiguosProducto.length;
+
   if (totalAmbiguos) {
     alert(`Hay ${totalAmbiguos} revisión(es) pendiente(s) de producto o unidad.`);
     return;
@@ -5121,8 +5153,7 @@ function confirmarPedidos() {
   pedidosConfirmados = true;
   guardarTodo();
   actualizarEstadoConfirmacion();
-  destildarCasillasConfirmacion();
-  alert("Pedidos confirmados correctamente. Se conservarán hasta iniciar una nueva jornada.");
+  alert("Pedidos confirmados correctamente.");
 }
 
 
@@ -5451,28 +5482,29 @@ function verificarChecksAntesDeWhatsApp() {
   const selectorProduccion = $("diaProduccion");
   const selectorPedidos = $("diaProduccionPedidos");
   const checkProduccion = $("checkProduccionCompleta");
-  const checkDiaPedidos = $("checkDiaPedidos");
-  const checkPedido = $("checkPedidoCompleto");
+  const estado = sincronizarConfirmacionDiaDesdePedidos();
 
-  const diaElegido =
-    (selectorProduccion && selectorProduccion.value) ||
-    (selectorPedidos && selectorPedidos.value);
+  const diaProduccion = selectorProduccion?.value || "";
+  const diaPedidos = selectorPedidos?.value || diaProduccion;
 
-  if (!diaElegido) {
-    alert("Primero seleccioná el día de producción.");
+  if (!estado.pedidosFecha.length) {
+    alert("No hay pedidos cargados para el día seleccionado.");
     return false;
   }
 
-  const diaConfirmadoProduccion = Boolean(checkProduccion?.checked);
-  const diaConfirmadoPedidos = Boolean(checkDiaPedidos?.checked);
-
-  if (!diaConfirmadoProduccion || !diaConfirmadoPedidos) {
-    alert("Primero confirmá el día correcto en Producción y también en Pedidos.");
+  if (!estado.todosConfirmados) {
+    const faltan = estado.pedidosFecha.length - estado.confirmados.length;
+    alert(`Falta confirmar ${faltan} pedido(s) antes de enviar.`);
     return false;
   }
 
-  if (!pedidosConfirmadosParaFecha(fechaJornadaActual()).length) {
-    alert("Confirmá al menos un pedido antes de enviar.");
+  if (!diaProduccion || !checkProduccion?.checked) {
+    alert("Primero confirmá la producción del día seleccionado.");
+    return false;
+  }
+
+  if (diaPedidos && diaProduccion !== diaPedidos) {
+    alert("El día de Pedidos no coincide con el día de Producción.");
     return false;
   }
 

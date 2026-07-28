@@ -1,11 +1,9 @@
-# Fratello v3.7.3 — Notificaciones únicas
+# Fratello v3.7.4 — Confirmación del día corregida
 
-Corrección definitiva del flujo de avisos:
-
-- Un pedido manual genera una sola notificación en el momento de crearse.
-- Un pedido externo genera una sola notificación al aparecer por primera vez en Firebase.
-- Los pedidos fijos nunca generan notificaciones.
-- La sincronización, el renderizado y el recálculo no recorren pedidos para notificarlos.
-- Los pedidos externos existentes se registran como conocidos al iniciar la app.
-- Se mantiene la navegación corregida desde las notificaciones.
-- Se mantiene el recuento correcto de producción y pedidos.
+Cambios:
+- La app toma la fecha realmente seleccionada en el panel semanal.
+- Si todos los clientes de esa fecha están tildados, el día se considera confirmado automáticamente.
+- Ya no exige un tilde de día separado para avanzar.
+- Informa exactamente cuántos pedidos faltan confirmar.
+- La validación de WhatsApp usa la fecha seleccionada, no otra jornada.
+- Se mantiene la corrección de desplegables, recuento y navegación.
