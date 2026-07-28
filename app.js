@@ -1573,11 +1573,15 @@ function reprocesarPedidoFormulario(pedidoId) {
   alert("Pedido reinterpretado con el motor inteligente.");
 }
 
-let idsPedidosFormularioConocidos = new Set(
-  pedidos
-    .filter(pedido => pedido?.origen === "formulario_cliente")
-    .map(pedido => String(pedido.id))
-);
+let idsPedidosFormularioConocidos = new Set();
+
+function inicializarIdsPedidosFormularioConocidos() {
+  idsPedidosFormularioConocidos = new Set(
+    (Array.isArray(pedidos) ? pedidos : [])
+      .filter(pedido => pedido?.origen === "formulario_cliente")
+      .map(pedido => String(pedido.id))
+  );
+}
 
 function pedidosFormularioRecibidos() {
   return pedidos
@@ -1693,6 +1697,11 @@ function escucharCambiosNube() {
       );
       pedidos = resultadoInterpretacion.pedidos;
       detectarPedidosFormularioNuevos(pedidosAntesDeActualizar, pedidos);
+      idsPedidosFormularioConocidos = new Set(
+        pedidos
+          .filter(pedido => pedido?.origen === "formulario_cliente")
+          .map(pedido => String(pedido.id))
+      );
 
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = Array.isArray(data.clientes) && data.clientes.length
@@ -5042,6 +5051,7 @@ async function init() {
 
   renderProduccion();
   renderPedidosCargados();
+  inicializarIdsPedidosFormularioConocidos();
   migrarPedidosFijosV301();
   repararPedidosConParserV311();
   renderPedidosRecibidosFormulario();

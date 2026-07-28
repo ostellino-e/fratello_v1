@@ -1,21 +1,12 @@
-# Fratello v3.2 — Pedidos externos, notificaciones y navegación
+# Fratello v3.2.1 — Corrección de modo online
 
-1. Pedidos enviados desde pedido.html
-- Se incorporan mediante escucha en tiempo real de Firebase.
-- Nueva bandeja “Pedidos recibidos desde el enlace de clientes”.
-- Muestra pedidos aunque correspondan a otra fecha.
-- Botón para abrir automáticamente la fecha correcta en Pedidos cargados.
-- El formulario guarda fecha y fechaEntrega de forma explícita.
+Se corrigió el error:
+`Cannot access 'pedidos' before initialization`
 
-2. Notificaciones
-- Manejo de mensajes FCM con la app abierta.
-- Aviso local cuando aparece una notificación nueva en Firestore.
-- Aviso local inmediato cuando llega un pedido desde el formulario.
-- Service Worker unificado en la versión v3.2.
-- Se mantiene el historial de notificaciones.
+Ese error detenía la aplicación antes de que Firebase pudiera cargar, por eso aparecía “Modo local”.
 
-3. Navegación
-- Nueva pila de navegación.
-- “Volver” regresa a la pantalla anterior.
-- Desde Producción, Pedidos o Resumen vuelve al centro de Pedidos.
-- El botón Inicio sigue llevando directamente a la pantalla principal.
+Cambios:
+- Inicialización segura de pedidos recibidos.
+- Firebase vuelve a conectarse normalmente.
+- Se mantiene la bandeja de pedidos externos.
+- Se mantienen notificaciones y navegación hacia atrás.
