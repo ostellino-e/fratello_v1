@@ -630,7 +630,7 @@ function htmlPedidoCompacto(pedido) {
       </label>
     </div>
 
-    <details class="compactOrderDetails">
+    <details class="compactOrderDetails" data-pedido-detalle="${pedido.id}">
       <summary>Ver pedido</summary>
       ${detalle}
       <div class="compactOrderActions">
@@ -644,7 +644,7 @@ function htmlPedidoCompacto(pedido) {
 
 function htmlGrupoPedidosSemana(titulo, pedidosGrupo, tipo, abierto = false) {
   const cantidad = pedidosGrupo.length;
-  return `<details class="weeklyOrderGroup ${tipo}" ${abierto ? "open" : ""}>
+  return `<details class="weeklyOrderGroup ${tipo}" data-grupo="${tipo}" ${abierto ? "open" : ""}>
     <summary>
       <span>${titulo}</span>
       <span class="weeklyCount">${cantidad}</span>
@@ -658,10 +658,54 @@ function htmlGrupoPedidosSemana(titulo, pedidosGrupo, tipo, abierto = false) {
   </details>`;
 }
 
+function capturarEstadoPanelPedidosSemana(panel) {
+  if (!panel) return { dias: [], grupos: [], pedidos: [], scrollY: window.scrollY };
+
+  return {
+    dias: Array.from(panel.querySelectorAll(".weeklyDay[open]"))
+      .map(el => el.dataset.fecha)
+      .filter(Boolean),
+    grupos: Array.from(panel.querySelectorAll(".weeklyDay")).flatMap(dia =>
+      Array.from(dia.querySelectorAll(".weeklyOrderGroup[open]")).map(grupo => ({
+        fecha: dia.dataset.fecha,
+        tipo: grupo.dataset.grupo
+      }))
+    ),
+    pedidos: Array.from(panel.querySelectorAll(".compactOrderDetails[open]"))
+      .map(el => el.dataset.pedidoDetalle)
+      .filter(Boolean),
+    scrollY: window.scrollY
+  };
+}
+
+function restaurarEstadoPanelPedidosSemana(panel, estado) {
+  if (!panel || !estado) return;
+
+  if (estado.dias?.length) {
+    panel.querySelectorAll(".weeklyDay").forEach(dia => {
+      dia.open = estado.dias.includes(dia.dataset.fecha);
+    });
+  }
+
+  (estado.grupos || []).forEach(item => {
+    const dia = panel.querySelector(`.weeklyDay[data-fecha="${item.fecha}"]`);
+    const grupo = dia?.querySelector(`.weeklyOrderGroup[data-grupo="${item.tipo}"]`);
+    if (grupo) grupo.open = true;
+  });
+
+  (estado.pedidos || []).forEach(id => {
+    const detalle = panel.querySelector(`.compactOrderDetails[data-pedido-detalle="${id}"]`);
+    if (detalle) detalle.open = true;
+  });
+
+  requestAnimationFrame(() => window.scrollTo({ top: estado.scrollY || 0, behavior: "auto" }));
+}
+
 function renderPanelPedidosSemana() {
   const panel = $("panelPedidosSemana");
   if (!panel) return;
 
+  const estadoAnterior = capturarEstadoPanelPedidosSemana(panel);
   const fechas = fechasDesdeHoyHastaDomingo();
   const fechaOperativa = fechaOperativaActual();
 
@@ -698,6 +742,8 @@ function renderPanelPedidosSemana() {
       });
     });
   });
+
+  restaurarEstadoPanelPedidosSemana(panel, estadoAnterior);
 }
 
 function volverArribaCuadro2() {
@@ -4942,7 +4988,12 @@ function totalesPedidosDe(listaPedidos) {
       if (it.estado === "NO PEDIDO") return;
       const id = it.productoId;
       if (!id) return;
-      totales[id] = (totales[id] || 0) + Number(it.cantidad || 0);
+
+      const producto = productoPorId(id);
+      if (!producto) return;
+
+      const cantidadBase = cantidadAUnidadBase(it.cantidad, it.unidad, producto);
+      totales[id] = Number(totales[id] || 0) + cantidadBase;
     });
   });
   return totales;
@@ -4959,7 +5010,8 @@ function sumarTotales(a, b) {
 function mapaProduccionActual() {
   const salida = {};
   productos.forEach(p => {
-    salida[p.id] = Number(produccion[claveProduccion(p.id)] || 0);
+    const cantidadCargada = Number(produccion[claveProduccion(p.id)] || 0);
+    salida[p.id] = cantidadAUnidadBase(cantidadCargada, p.unidad, p);
   });
   return salida;
 }
@@ -5068,10 +5120,11 @@ function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, dif
     mensaje += "- El pedido no modifica las cantidades informadas anteriormente.\n";
   } else {
     cambios.forEach(({producto, delta}) => {
+      const cantidadTexto = formatearCantidadResumen(Math.abs(delta), producto);
       if (delta < 0) {
-        mensaje += `🔴 AGREGAR / HACER ${fmt(Math.abs(delta))} ${producto.unidad} ${producto.nombre}\n`;
+        mensaje += `🔴 AGREGAR / HACER ${cantidadTexto} ${producto.nombre}\n`;
       } else {
-        mensaje += `🟢 REDUCIR / GUARDAR ${fmt(delta)} ${producto.unidad} ${producto.nombre}\n`;
+        mensaje += `🟢 REDUCIR / GUARDAR ${cantidadTexto} ${producto.nombre}\n`;
       }
     });
   }
@@ -5098,32 +5151,26 @@ function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, dif
 
 
 function obtenerFilasComparador() {
-  const totalesPedido = {};
-
-  for (const pedido of pedidosConfirmadosParaFecha(fechaJornadaActual())) {
-    for (const it of pedido.items || []) {
-      if (it.estado !== "NO PEDIDO") {
-        totalesPedido[it.productoId] = (totalesPedido[it.productoId] || 0) + Number(it.cantidad || 0);
-      }
-    }
-  }
-
+  const totalesPedido = totalesPedidosDe(
+    pedidosConfirmadosParaFecha(fechaJornadaActual())
+  );
+  const produccionMapa = mapaProduccionActual();
   const filas = [];
 
   for (const p of productos) {
-    const prod = Number(produccion[claveProduccion(p.id)] || 0);
+    const prod = Number(produccionMapa[p.id] || 0);
     const ped = Number(totalesPedido[p.id] || 0);
 
     if (prod === 0 && ped === 0) continue;
 
-    const dif = prod - ped;
-
     filas.push({
+      productoId: p.id,
       producto: p.nombre,
       unidad: p.unidad,
+      productoConfig: p,
       prod,
       ped,
-      dif
+      dif: prod - ped
     });
   }
 
@@ -5283,7 +5330,7 @@ function generarMensajeGrupoFratello() {
       mensaje += "- Nada\n";
     } else {
       faltan.forEach(f => {
-        mensaje += `🔴 ${fmt(Math.abs(f.dif))} ${f.unidad} ${f.producto}\n`;
+        mensaje += `🔴 ${formatearCantidadResumen(Math.abs(f.dif), f.productoConfig)} ${f.producto}\n`;
       });
     }
 
@@ -5292,7 +5339,7 @@ function generarMensajeGrupoFratello() {
       mensaje += "- Nada\n";
     } else {
       sobran.forEach(f => {
-        mensaje += `🟢 ${fmt(f.dif)} ${f.unidad} ${f.producto}\n`;
+        mensaje += `🟢 ${formatearCantidadResumen(f.dif, f.productoConfig)} ${f.producto}\n`;
       });
     }
 
