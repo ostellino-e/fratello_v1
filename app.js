@@ -810,9 +810,17 @@ function renderPanelPedidosSemana() {
   panel.querySelectorAll(".weeklyDay").forEach(detalle => {
     detalle.addEventListener("toggle", () => {
       if (!detalle.open) return;
+
       panel.querySelectorAll(".weeklyDay").forEach(otro => {
         if (otro !== detalle) otro.open = false;
       });
+
+      const fechaAbierta = detalle.dataset.fecha || "";
+      if (fechaAbierta && $("fechaPedido")) {
+        $("fechaPedido").value = fechaAbierta;
+      }
+
+      sincronizarConfirmacionDiaDesdePedidos();
     });
   });
 
@@ -827,16 +835,31 @@ function volverArribaCuadro2() {
   }, 80);
 }
 
+function fechaPanelSemanalAbierto() {
+  const panelAbierto = document.querySelector("#panelPedidosSemana .weeklyDay[open]");
+  return panelAbierto?.dataset?.fecha || "";
+}
+
 function estadoConfirmacionFechaSeleccionada() {
-  const fecha = $("fechaPedido")?.value || fechaJornadaActual();
-  const pedidosFecha = pedidos.filter(pedido => fechaEntregaPedido(pedido) === fecha);
-  const confirmados = pedidosFecha.filter(pedido => pedidoEstaConfirmado(pedido));
+  // La fecha válida es la del día semanal que el usuario tiene abierto.
+  // Ejemplo: el martes se confirman pedidos para el miércoles.
+  const fechaPanel = fechaPanelSemanalAbierto();
+  const fecha = fechaPanel || $("fechaPedido")?.value || fechaJornadaActual();
+
+  const pedidosFecha = pedidos.filter(pedido =>
+    fechaEntregaPedido(pedido) === fecha
+  );
+  const confirmados = pedidosFecha.filter(pedido =>
+    pedidoEstaConfirmado(pedido)
+  );
 
   return {
     fecha,
     pedidosFecha,
     confirmados,
-    todosConfirmados: pedidosFecha.length > 0 && confirmados.length === pedidosFecha.length
+    todosConfirmados:
+      pedidosFecha.length > 0 &&
+      confirmados.length === pedidosFecha.length
   };
 }
 
@@ -5514,7 +5537,7 @@ function verificarChecksAntesDeWhatsApp() {
 function generarMensajeGrupoFratello() {
   if (!verificarChecksAntesDeWhatsApp()) return;
 
-  const pedidosNuevos = pedidosConfirmadosParaFecha(fechaJornadaActual());
+  const pedidosNuevos = pedidosConfirmadosParaFecha(fechaPanelSemanalAbierto() || fechaJornadaActual());
   if (!pedidosNuevos.length) {
     alert("No hay pedidos confirmados para enviar.");
     return;
