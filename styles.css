@@ -2034,3 +2034,87 @@ body:has(.appSection:target) #contenidoApp {
   background: #f3e4cf;
   border: 1px solid #c9a97f;
 }
+
+
+/* Pedidos para hoy: burbuja de pendientes */
+.todayOrdersMenuButton strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.todayPendingBadge {
+  display: inline-flex;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #c7392f;
+  color: #fff;
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 2px 5px rgba(0,0,0,.18);
+}
+
+.todayPendingBadge.isZero {
+  background: #3b8b4b;
+}
+
+.todayOrdersCount {
+  min-width: 30px;
+  text-align: center;
+}
+
+/* Tickets semanales y pendientes */
+.ticketTabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+
+.ticketTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #cdb695;
+  background: #f4eadb;
+  color: #2b1c11;
+}
+
+.ticketTab.active {
+  background: #3b281a;
+  color: #fff;
+  border-color: #3b281a;
+}
+
+.ticketTabBadge {
+  min-width: 23px;
+  height: 23px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255,255,255,.9);
+  color: #2b1c11;
+  font-weight: 900;
+}
+
+.ticketWeekRange {
+  margin: 8px 0 14px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #f7f1e8;
+  color: #4c3828;
+  font-weight: 700;
+}
+
+.ticketClientRow.isDelivered {
+  opacity: .72;
+  background: #eef5ed;
+}

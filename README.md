@@ -1,9 +1,14 @@
-# Fratello v3.8.0 — Listas de precios e historial
+# Fratello v3.8.1 — Entregas y memoria semanal de tickets
 
-- El ticket usa primero la lista asignada al cliente.
-- Cuando la lista está en modo automático, compara el nombre normalizado del cliente con el nombre o ID de cada columna/lista.
-- Si existe coincidencia exacta, utiliza esa lista.
-- Si no existe coincidencia, utiliza la columna `cliente`.
-- Las listas personalizadas ahora también se recuperan y guardan al usar Actualizar datos.
-- El ticket muestra qué lista de precios utilizó.
-- Se mejoró el contraste y la lectura del historial de pedidos.
+## Pedidos para hoy
+- Burbuja en el acceso principal con la cantidad pendiente de entregar.
+- El contador baja al marcar un pedido como Entregado.
+- Los entregados siguen visibles, atenuados y al final.
+- Los estados se conservan en local y Firebase.
+
+## Tickets
+- Semana actual organizada de lunes a domingo.
+- Al comenzar un lunes nuevo, los tickets de semanas anteriores pasan a Pendientes.
+- Los tickets no se eliminan.
+- Se incorporó una memoria propia de tickets para conservarlos aunque el pedido operativo deje de estar visible.
+- Pendientes queda preparado para agregar posteriormente el estado de pago.

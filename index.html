@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.8.0";
-    document.documentElement.dataset.fratelloVersion = "3.8.0";
+    window.FRATELLO_VERSION = "3.8.1";
+    document.documentElement.dataset.fratelloVersion = "3.8.1";
   </script>
 
 </head>
@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.8.0</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.8.1</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -83,7 +83,11 @@
       <div class="workflowSteps">
         <button type="button" data-seccion="seccionProduccion"><span>1</span><strong>Producción</strong><small>Cargar lo estibado o realizado.</small></button>
         <button type="button" data-seccion="seccionPedidos"><span>2</span><strong>Pedidos</strong><small>Pegar, revisar y editar pedidos.</small></button>
-        <button type="button" data-seccion="seccionPedidosHoy"><span>HOY</span><strong>Pedidos para hoy</strong><small>Entregas durante la jornada actual.</small></button>
+        <button type="button" data-seccion="seccionPedidosHoy" class="todayOrdersMenuButton">
+          <span>HOY</span>
+          <strong>Pedidos para hoy <em id="badgePedidosHoyPendientes" class="todayPendingBadge">0</em></strong>
+          <small>Entregas durante la jornada actual.</small>
+        </button>
         <button type="button" data-seccion="seccionResumen"><span>3</span><strong>Resumen</strong><small>Comparar faltantes y sobrantes.</small></button>
         <button type="button" data-seccion="seccionTickets"><span>🎟</span><strong>Tickets</strong><small>Elegir día, revisar e imprimir tickets.</small></button>
       </div>
@@ -240,8 +244,26 @@
 <section class="card wide appSection" id="seccionTickets">
       <a class="volverInicio" href="#" data-volver="true">← Volver</a>
       <h2>🎟 Tickets</h2>
-      <p class="hint">Elegí el día que querés revisar. Dentro de cada día están los tickets individuales y la opción de imprimirlos todos juntos.</p>
-      <div id="panelTicketsPorDia" class="ticketsByDay"></div>
+      <p class="hint">La semana actual va de lunes a domingo. Al comenzar un nuevo lunes, los tickets anteriores pasan automáticamente a Pendientes.</p>
+
+      <div class="ticketTabs" role="tablist" aria-label="Organización de tickets">
+        <button type="button" id="btnTicketsSemanaActual" class="ticketTab active" onclick="mostrarPestanaTickets('semana')">
+          Semana actual <span id="badgeTicketsSemana" class="ticketTabBadge">0</span>
+        </button>
+        <button type="button" id="btnTicketsPendientes" class="ticketTab" onclick="mostrarPestanaTickets('pendientes')">
+          Pendientes <span id="badgeTicketsPendientes" class="ticketTabBadge">0</span>
+        </button>
+      </div>
+
+      <div id="vistaTicketsSemana" class="ticketTabView">
+        <div id="rangoSemanaTickets" class="ticketWeekRange"></div>
+        <div id="panelTicketsPorDia" class="ticketsByDay"></div>
+      </div>
+
+      <div id="vistaTicketsPendientes" class="ticketTabView hidden">
+        <p class="hint">Por ahora se conservan todos los tickets de semanas anteriores. Más adelante se podrán marcar como pagados.</p>
+        <div id="panelTicketsPendientes" class="ticketsByDay"></div>
+      </div>
     </section>
 
 <section class="card wide appSection" id="seccionResumen">
@@ -475,7 +497,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=380"></script>
+  <script src="app.js?v=381"></script>
 
   
 
@@ -492,12 +514,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=380")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=381")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=380", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=381", {
             scope: "./",
             updateViaCache: "none"
           });

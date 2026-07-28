@@ -403,12 +403,9 @@ function guardarPedidosHoy() {
 }
 
 function depurarPedidosHoyPorJornada() {
-  const jornadaActual = fechaOperativaActual();
-  const vigentes = pedidosHoy.filter(pedido => pedido.jornada === jornadaActual);
-  if (vigentes.length !== pedidosHoy.length) {
-    pedidosHoy = vigentes;
-    guardarPedidosHoy();
-  }
+  // Desde v3.8.1 no se borran los pedidos de jornadas anteriores.
+  // Se conservan para la memoria semanal de tickets y la pestaña Pendientes.
+  return pedidosHoy;
 }
 
 function limpiarFormularioPedidoHoy() {
@@ -475,6 +472,7 @@ function guardarPedidoHoyDesdeFormulario() {
   }
 
   guardarPedidosHoy();
+  sincronizarMemoriaTickets();
   limpiarFormularioPedidoHoy();
   renderPedidosHoy();
   renderTicketsPorDia();
@@ -504,7 +502,9 @@ function eliminarPedidoHoy(id) {
   }
 
   guardarPedidosHoy();
+  sincronizarMemoriaTickets();
   renderPedidosHoy();
+  renderTicketsPorDia();
 }
 
 function alternarEntregadoPedidoHoy(id, entregado) {
@@ -514,7 +514,9 @@ function alternarEntregadoPedidoHoy(id, entregado) {
   pedido.entregado = Boolean(entregado);
   pedido.actualizado = new Date().toISOString();
   guardarPedidosHoy();
+  sincronizarMemoriaTickets();
   renderPedidosHoy();
+  renderTicketsPorDia();
 }
 
 function renderPedidosHoy() {
@@ -524,14 +526,30 @@ function renderPedidosHoy() {
 
   depurarPedidosHoyPorJornada();
 
-  const ordenados = [...pedidosHoy].sort((a, b) => {
+  const jornadaActual = fechaOperativaActual();
+  const pedidosJornada = pedidosHoy.filter(
+    pedido => (pedido.jornada || pedido.fechaEntrega || pedido.fecha) === jornadaActual
+  );
+
+  const ordenados = [...pedidosJornada].sort((a, b) => {
     if (Boolean(a.entregado) !== Boolean(b.entregado)) {
       return Number(a.entregado) - Number(b.entregado);
     }
     return String(a.horaEntrega || "").localeCompare(String(b.horaEntrega || ""));
   });
 
-  if (contador) contador.textContent = String(ordenados.length);
+  const pendientes = ordenados.filter(pedido => !pedido.entregado).length;
+  if (contador) contador.textContent = String(pendientes);
+
+  const badgeMenu = $("badgePedidosHoyPendientes");
+  if (badgeMenu) {
+    badgeMenu.textContent = String(pendientes);
+    badgeMenu.classList.toggle("isZero", pendientes === 0);
+    badgeMenu.setAttribute(
+      "aria-label",
+      `${pendientes} pedido${pendientes === 1 ? "" : "s"} pendiente${pendientes === 1 ? "" : "s"} de entregar`
+    );
+  }
 
   if (!ordenados.length) {
     lista.innerHTML = '<p class="todayOrdersEmpty">No hay pedidos cargados para esta jornada.</p>';
@@ -1896,6 +1914,8 @@ function datosActuales() {
     datosClientesCompletos,
     listasPrecios,
     listasPrecioPersonalizadas,
+    ticketsMemoria,
+    pedidosHoy,
     productosExtra,
     catalogoProductos: productos,
     pedidosConfirmados,
@@ -1982,6 +2002,12 @@ async function cargarDesdeNube() {
     listasPrecioPersonalizadas = Array.isArray(data.listasPrecioPersonalizadas)
       ? data.listasPrecioPersonalizadas
       : listasPrecioPersonalizadas;
+    ticketsMemoria = Array.isArray(data.ticketsMemoria)
+      ? data.ticketsMemoria
+      : ticketsMemoria;
+    pedidosHoy = Array.isArray(data.pedidosHoy)
+      ? data.pedidosHoy
+      : pedidosHoy;
       listasPrecioPersonalizadas = Array.isArray(data.listasPrecioPersonalizadas)
         ? data.listasPrecioPersonalizadas
         : listasPrecioPersonalizadas;
@@ -2030,6 +2056,8 @@ async function cargarDesdeNube() {
         "fratello_listas_precio_personalizadas",
         JSON.stringify(listasPrecioPersonalizadas)
       );
+      localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+      localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
       localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
       localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
       localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
@@ -2086,6 +2114,12 @@ async function actualizarDatosManual(evento = null) {
     listasPrecioPersonalizadas = Array.isArray(data.listasPrecioPersonalizadas)
       ? data.listasPrecioPersonalizadas
       : listasPrecioPersonalizadas;
+    ticketsMemoria = Array.isArray(data.ticketsMemoria)
+      ? data.ticketsMemoria
+      : ticketsMemoria;
+    pedidosHoy = Array.isArray(data.pedidosHoy)
+      ? data.pedidosHoy
+      : pedidosHoy;
     productosExtra = data.productosExtra || productosExtra;
     pedidosConfirmados = Boolean(data.pedidosConfirmados);
     correspondePedido = data.correspondePedido || correspondePedido;
@@ -5142,31 +5176,110 @@ function precioUnitarioItem(producto,unidad,cliente=""){if(!producto)return 0;re
 
 
 let ticketsSeleccionadosActuales = [];
+let ticketsMemoria = JSON.parse(
+  localStorage.getItem("fratello_tickets_memoria") || "[]"
+);
+
+function fechaISODesdeDate(fecha) {
+  return [
+    fecha.getFullYear(),
+    String(fecha.getMonth() + 1).padStart(2, "0"),
+    String(fecha.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function limitesSemanaTickets(fechaBase = fechaOperativaActual()) {
+  const fecha = new Date(fechaBase + "T12:00:00");
+  const dia = fecha.getDay();
+  const retroceso = dia === 0 ? 6 : dia - 1;
+
+  const lunes = new Date(fecha);
+  lunes.setDate(fecha.getDate() - retroceso);
+
+  const domingo = new Date(lunes);
+  domingo.setDate(lunes.getDate() + 6);
+
+  return {
+    inicio: fechaISODesdeDate(lunes),
+    fin: fechaISODesdeDate(domingo)
+  };
+}
+
+function claveTicketMemoria(pedido, tipo = "normal") {
+  return `${tipo}-${String(pedido.id)}`;
+}
+
+function guardarMemoriaTickets() {
+  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarEnNube();
+}
+
+function sincronizarMemoriaTickets() {
+  const actuales = [
+    ...pedidos.map(pedido => ({ pedido, tipo: "normal" })),
+    ...pedidosHoy.map(pedido => ({ pedido, tipo: "hoy" }))
+  ];
+
+  const porClave = new Map(
+    (Array.isArray(ticketsMemoria) ? ticketsMemoria : []).map(ticket => [
+      ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal"),
+      ticket
+    ])
+  );
+
+  actuales.forEach(({ pedido, tipo }) => {
+    const clave = claveTicketMemoria(pedido, tipo);
+    const anterior = porClave.get(clave) || {};
+
+    porClave.set(clave, {
+      ...anterior,
+      ...pedido,
+      claveMemoria: clave,
+      tipoTicket: tipo,
+      esPedidoHoy: tipo === "hoy",
+      fechaTicket:
+        pedido.fechaEntrega ||
+        pedido.fecha ||
+        pedido.jornada ||
+        anterior.fechaTicket ||
+        fechaOperativaActual(),
+      actualizadoTicket: new Date().toISOString()
+    });
+  });
+
+  ticketsMemoria = [...porClave.values()]
+    .filter(ticket => ticket && ticket.id)
+    .sort((a, b) =>
+      String(a.fechaTicket || "").localeCompare(String(b.fechaTicket || "")) ||
+      String(a.cliente || "").localeCompare(String(b.cliente || ""), "es")
+    );
+
+  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+}
+
+function ticketsMemoriaParaFecha(fecha) {
+  sincronizarMemoriaTickets();
+
+  return ticketsMemoria
+    .filter(ticket => ticket.fechaTicket === fecha)
+    .map(ticket => ({
+      ...ticket,
+      esPedidoHoy: ticket.tipoTicket === "hoy"
+    }))
+    .sort((a, b) =>
+      String(a.cliente || "").localeCompare(String(b.cliente || ""), "es")
+    );
+}
 
 function pedidosTicketParaFecha(fecha) {
-  const normales = pedidos.filter(pedido => fechaEntregaPedido(pedido) === fecha);
-  const deHoy = pedidosHoy
-    .filter(pedido => (pedido.jornada || pedido.fechaEntrega || pedido.fecha) === fecha)
-    .map(pedido => ({ ...pedido, esPedidoHoy: true }));
-
-  const combinados = [...normales, ...deHoy];
-  const vistos = new Set();
-
-  return combinados.filter(pedido => {
-    const clave = `${pedido.esPedidoHoy ? "hoy" : "normal"}-${pedido.id}`;
-    if (vistos.has(clave)) return false;
-    vistos.add(clave);
-    return true;
-  }).sort((a, b) =>
-    String(a.cliente || "").localeCompare(String(b.cliente || ""), "es")
-  );
+  return ticketsMemoriaParaFecha(fecha);
 }
 
 function fechasDisponiblesTickets() {
-  return [...new Set([
-    ...pedidos.map(fechaEntregaPedido),
-    ...pedidosHoy.map(pedido => pedido.jornada || pedido.fechaEntrega || pedido.fecha)
-  ].filter(Boolean))].sort();
+  sincronizarMemoriaTickets();
+  return [...new Set(
+    ticketsMemoria.map(ticket => ticket.fechaTicket).filter(Boolean)
+  )].sort();
 }
 
 function etiquetaFechaTickets(fecha) {
@@ -5179,37 +5292,39 @@ function etiquetaFechaTickets(fecha) {
   return nombre.charAt(0).toUpperCase() + nombre.slice(1);
 }
 
-function renderTicketsPorDia() {
-  const panel = $("panelTicketsPorDia");
-  if (!panel) return;
+function mostrarPestanaTickets(pestana) {
+  const esSemana = pestana !== "pendientes";
+  $("vistaTicketsSemana")?.classList.toggle("hidden", !esSemana);
+  $("vistaTicketsPendientes")?.classList.toggle("hidden", esSemana);
+  $("btnTicketsSemanaActual")?.classList.toggle("active", esSemana);
+  $("btnTicketsPendientes")?.classList.toggle("active", !esSemana);
+}
 
-  const fechas = fechasDisponiblesTickets();
-
+function htmlPanelTicketsFechas(fechas, abrirPrimero = true) {
   if (!fechas.length) {
-    panel.innerHTML = '<p class="weeklyEmpty">No hay pedidos con tickets disponibles.</p>';
-    return;
+    return '<p class="weeklyEmpty">No hay tickets en esta sección.</p>';
   }
 
-  panel.innerHTML = fechas.map((fecha, indice) => {
+  return fechas.map((fecha, indice) => {
     const lista = pedidosTicketParaFecha(fecha);
 
-    return `<details class="ticketDayPanel" data-ticket-fecha="${fecha}" ${indice === 0 ? "open" : ""}>
+    return `<details class="ticketDayPanel" data-ticket-fecha="${fecha}" ${abrirPrimero && indice === 0 ? "open" : ""}>
       <summary>
         <span>${etiquetaFechaTickets(fecha)}</span>
         <span class="weeklyCount">${lista.length}</span>
       </summary>
       <div class="ticketDayBody">
         ${lista.map(pedido => {
-          const tipo = pedido.esPedidoHoy ? "hoy" : "normal";
-          return `<article class="ticketClientRow">
+          const tipo = "archivo";
+          return `<article class="ticketClientRow ${pedido.entregado ? "isDelivered" : ""}">
             <div>
               <strong>${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</strong>
-              <small>${pedido.esPedidoHoy ? `Pedido de hoy${pedido.horaEntrega ? ` · ${pedido.horaEntrega}` : ""}` : etiquetaOrigenPedido(pedido)}</small>
+              <small>${pedido.esPedidoHoy ? `Pedido de hoy${pedido.horaEntrega ? ` · ${pedido.horaEntrega}` : ""}` : etiquetaOrigenPedido(pedido)}${pedido.entregado ? " · ✅ Entregado" : ""}</small>
             </div>
             <div class="ticketClientActions">
-              <button type="button" onclick="verTicketIndividual('${tipo}', ${pedido.id})">👁 Ver</button>
-              <button type="button" onclick="imprimirTicketIndividual('${tipo}', ${pedido.id})">🖨 Imprimir</button>
-              <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', ${pedido.id})">🖼 JPG</button>
+              <button type="button" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">👁 Ver</button>
+              <button type="button" onclick="imprimirTicketIndividual('${tipo}', '${pedido.claveMemoria}')">🖨 Imprimir</button>
+              <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG</button>
             </div>
           </article>`;
         }).join("")}
@@ -5223,7 +5338,50 @@ function renderTicketsPorDia() {
   }).join("");
 }
 
+function renderTicketsPorDia() {
+  const panelSemana = $("panelTicketsPorDia");
+  const panelPendientes = $("panelTicketsPendientes");
+  if (!panelSemana && !panelPendientes) return;
+
+  sincronizarMemoriaTickets();
+
+  const limites = limitesSemanaTickets();
+  const fechas = fechasDisponiblesTickets();
+  const fechasSemana = fechas.filter(
+    fecha => fecha >= limites.inicio && fecha <= limites.fin
+  );
+  const fechasPendientes = fechas.filter(fecha => fecha < limites.inicio);
+
+  if (panelSemana) panelSemana.innerHTML = htmlPanelTicketsFechas(fechasSemana, true);
+  if (panelPendientes) panelPendientes.innerHTML = htmlPanelTicketsFechas(fechasPendientes.reverse(), true);
+
+  const cantidadSemana = fechasSemana.reduce(
+    (total, fecha) => total + pedidosTicketParaFecha(fecha).length,
+    0
+  );
+  const cantidadPendientes = fechasPendientes.reduce(
+    (total, fecha) => total + pedidosTicketParaFecha(fecha).length,
+    0
+  );
+
+  if ($("badgeTicketsSemana")) $("badgeTicketsSemana").textContent = String(cantidadSemana);
+  if ($("badgeTicketsPendientes")) $("badgeTicketsPendientes").textContent = String(cantidadPendientes);
+
+  if ($("rangoSemanaTickets")) {
+    const inicio = new Date(limites.inicio + "T12:00:00").toLocaleDateString("es-AR");
+    const fin = new Date(limites.fin + "T12:00:00").toLocaleDateString("es-AR");
+    $("rangoSemanaTickets").textContent = `Semana actual: ${inicio} al ${fin}`;
+  }
+}
+
 function buscarPedidoTicket(tipo, id) {
+  if (tipo === "archivo") {
+    sincronizarMemoriaTickets();
+    return ticketsMemoria.find(
+      ticket => String(ticket.claveMemoria) === String(id)
+    ) || null;
+  }
+
   const lista = tipo === "hoy" ? pedidosHoy : pedidos;
   return lista.find(pedido => Number(pedido.id) === Number(id)) || null;
 }
@@ -6467,6 +6625,8 @@ async function init() {
   renderProduccion();
   renderPedidosCargados();
   renderPedidosFuturos();
+  renderPedidosHoy();
+  renderTicketsPorDia();
   inicializarIdsPedidosFormularioConocidos();
   migrarPedidosFijosV301();
   repararPedidosConParserV311();
