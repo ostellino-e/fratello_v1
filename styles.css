@@ -2243,3 +2243,82 @@ body.modalAbierto {
   .cajaSectionHead{flex-direction:column}
   .cajaSectionHead button{width:100%}
 }
+
+
+/* Caja v3.9.1 — seguridad y edición rápida */
+.cajaPersonSelectorBlock{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:end;
+  gap:10px;
+}
+.cajaPersonSelectorBlock label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  font-weight:800;
+}
+.cajaManagePeopleQuick{
+  min-height:44px;
+  white-space:nowrap;
+}
+.cajaPeopleModal{
+  max-width:520px;
+  width:min(92vw,520px);
+  position:relative;
+}
+.cajaPeopleModal h3{margin-top:0}
+.cajaPinSection{
+  overflow:visible;
+}
+.cajaPinField{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  margin-top:14px;
+  font-weight:800;
+}
+.cajaPinInputRow{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+}
+.cajaPinInputRow input{
+  min-height:46px;
+  width:100%;
+  box-sizing:border-box;
+  font-size:1.05rem;
+  letter-spacing:.08em;
+}
+.cajaPinInputRow button{
+  min-height:46px;
+  min-width:112px;
+}
+.cajaPinSave{
+  width:100%;
+  min-height:48px;
+  margin-top:14px;
+}
+#estadoCambioPinCaja{
+  display:block;
+  min-height:21px;
+  margin-top:10px;
+  font-weight:800;
+}
+#estadoCambioPinCaja.success{color:#27723a}
+#estadoCambioPinCaja.error{color:#a23b2f}
+@media(max-width:520px){
+  .cajaPersonSelectorBlock{
+    grid-template-columns:1fr;
+  }
+  .cajaManagePeopleQuick{
+    width:100%;
+  }
+  .cajaPinInputRow{
+    grid-template-columns:1fr;
+  }
+  .cajaPinInputRow button{
+    width:100%;
+  }
+}

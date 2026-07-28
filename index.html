@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=390" />
+  <link rel="stylesheet" href="styles.css?v=391" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.9.0";
-    document.documentElement.dataset.fratelloVersion = "3.9.0";
+    window.FRATELLO_VERSION = "3.9.1";
+    document.documentElement.dataset.fratelloVersion = "3.9.1";
   </script>
 
 </head>
@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.0</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.1</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -393,22 +393,18 @@
       <div class="cajaTitleRow">
         <div>
           <h2>💰 Caja</h2>
-          <p class="hint">Cada empleada carga solamente el cierre del turno que realizó.</p>
+          
         </div>
         <span class="cajaVersionBadge">Caja v1 · 100%</span>
       </div>
 
       <div class="cajaModeSwitch" role="tablist" aria-label="Modo de caja">
         <button id="btnModoCajaEmpleado" class="active" type="button">👤 Cargar cierre</button>
-        <button id="btnModoCajaAdmin" type="button">🔐 Administrador</button>
+        <button id="btnModoCajaAdmin" type="button">🔐 Acceso privado</button>
       </div>
 
       <section id="panelCajaEmpleado" class="cajaPanel">
-        <div class="cajaPrivacyNote">
-          🔒 Esta pantalla no muestra el total del día ni la venta del otro turno.
-        </div>
-
-        <div class="cajaFormGrid">
+<div class="cajaFormGrid">
           <label>Fecha
             <input id="cajaFecha" type="date">
           </label>
@@ -420,9 +416,14 @@
             </select>
           </label>
 
-          <label class="cajaFull">Persona que realiza el cierre
-            <select id="cajaPersona"></select>
-          </label>
+          <div class="cajaFull cajaPersonSelectorBlock">
+            <label>Persona que realiza el cierre
+              <select id="cajaPersona"></select>
+            </label>
+            <button id="btnAdministrarPersonasCajaRapido" class="cajaManagePeopleQuick" type="button">
+              ⚙️ Editar nombres
+            </button>
+          </div>
         </div>
 
         <div id="avisoCierreExistente" class="cajaExistingNotice hidden">
@@ -512,13 +513,27 @@
           <div id="listaPersonasCaja"></div>
         </details>
 
-        <details class="cajaAdminSection">
+        <details class="cajaAdminSection cajaPinSection">
           <summary>🔑 Cambiar PIN de administrador</summary>
-          <div class="cajaPinChange">
-            <input id="nuevoPinCaja" type="password" inputmode="numeric" maxlength="8" placeholder="Nuevo PIN">
-            <button id="btnCambiarPinCaja" type="button">Guardar PIN</button>
-          </div>
-          <small>PIN inicial de esta versión: 2580. Cambialo después de ingresar.</small>
+
+          <label class="cajaPinField">
+            Nuevo PIN
+            <div class="cajaPinInputRow">
+              <input id="nuevoPinCaja" type="password" inputmode="numeric" maxlength="8" placeholder="Entre 4 y 8 números">
+              <button id="btnMostrarNuevoPinCaja" type="button" aria-label="Mostrar nuevo PIN">👁 Mostrar</button>
+            </div>
+          </label>
+
+          <label class="cajaPinField">
+            Confirmar PIN
+            <div class="cajaPinInputRow">
+              <input id="confirmarPinCaja" type="password" inputmode="numeric" maxlength="8" placeholder="Repetí el nuevo PIN">
+              <button id="btnMostrarConfirmarPinCaja" type="button" aria-label="Mostrar confirmación de PIN">👁 Mostrar</button>
+            </div>
+          </label>
+
+          <button id="btnCambiarPinCaja" class="primary cajaPinSave" type="button">Guardar nuevo PIN</button>
+          <small id="estadoCambioPinCaja"></small>
         </details>
       </section>
     </section>
@@ -625,7 +640,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=390"></script>
+  <script src="app.js?v=391"></script>
 
   
 
@@ -677,6 +692,22 @@
     </div>
   </div>
 </div>
+
+
+  <div id="modalPersonasCaja" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="tituloModalPersonasCaja">
+    <div class="modalContent cajaPeopleModal">
+      <button id="btnCerrarModalPersonasCaja" class="modalClose" type="button" aria-label="Cerrar">×</button>
+      <h3 id="tituloModalPersonasCaja">👥 Editar nombres</h3>
+      <p class="hint">Solo el administrador puede agregar o eliminar personas.</p>
+
+      <div class="cajaPersonAdd">
+        <input id="nuevaPersonaCajaRapida" type="text" placeholder="Nombre">
+        <button id="btnAgregarPersonaCajaRapida" type="button">Agregar</button>
+      </div>
+
+      <div id="listaPersonasCajaRapida"></div>
+    </div>
+  </div>
 
 </body>
 </html>

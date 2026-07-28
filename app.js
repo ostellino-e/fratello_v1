@@ -6592,7 +6592,10 @@ let cierresCaja = [];
 let personasCaja = ["Sofía", "María"];
 let configuracionCaja = { pinAdmin: "2580" };
 let gastosCajaEdicion = [];
-let cajaAdminActivo = sessionStorage.getItem("fratello_caja_admin") === "1";
+let cajaAdminActivo = false;
+let temporizadorCajaAdmin = null;
+let ultimoMovimientoCajaAdmin = 0;
+const CAJA_ADMIN_TIMEOUT_MS = 2 * 60 * 1000;
 
 function hoyISOCaja() {
   const ahora = new Date();
@@ -6667,9 +6670,9 @@ function renderPersonasCaja() {
     if (personasCaja.includes(valorActual)) selector.value = valorActual;
   }
 
-  const lista = $("listaPersonasCaja");
-  if (lista) {
-    lista.innerHTML = personasCaja.length
+  const renderLista = (contenedor) => {
+    if (!contenedor) return;
+    contenedor.innerHTML = personasCaja.length
       ? personasCaja.map((nombre, indice) => `
           <div class="cajaPersonRow">
             <span>${escaparCaja(nombre)}</span>
@@ -6677,7 +6680,10 @@ function renderPersonasCaja() {
           </div>
         `).join("")
       : '<p class="hint">No hay personas cargadas.</p>';
-  }
+  };
+
+  renderLista($("listaPersonasCaja"));
+  renderLista($("listaPersonasCajaRapida"));
 }
 
 function renderGastosCaja() {
@@ -6838,6 +6844,72 @@ function guardarCierreCaja() {
   renderCajaAdmin();
 }
 
+
+function iniciarTemporizadorCajaAdmin() {
+  detenerTemporizadorCajaAdmin();
+  ultimoMovimientoCajaAdmin = Date.now();
+
+  temporizadorCajaAdmin = setInterval(() => {
+    if (!cajaAdminActivo) return;
+    if (Date.now() - ultimoMovimientoCajaAdmin >= CAJA_ADMIN_TIMEOUT_MS) {
+      bloquearCajaAdmin("La sesión se cerró por inactividad.");
+    }
+  }, 5000);
+}
+
+function registrarActividadCajaAdmin() {
+  if (!cajaAdminActivo) return;
+  ultimoMovimientoCajaAdmin = Date.now();
+}
+
+function detenerTemporizadorCajaAdmin() {
+  if (temporizadorCajaAdmin) {
+    clearInterval(temporizadorCajaAdmin);
+    temporizadorCajaAdmin = null;
+  }
+}
+
+function bloquearCajaAdmin(mensaje = "") {
+  cajaAdminActivo = false;
+  detenerTemporizadorCajaAdmin();
+
+  $("panelCajaAdmin")?.classList.add("hidden");
+  $("panelCajaAdminLogin")?.classList.remove("hidden");
+
+  if ($("cajaAdminPin")) $("cajaAdminPin").value = "";
+  if ($("estadoLoginCaja")) $("estadoLoginCaja").textContent = mensaje;
+}
+
+function alternarVisibilidadPinCaja(inputId, botonId) {
+  const input = $(inputId);
+  const boton = $(botonId);
+  if (!input || !boton) return;
+
+  const mostrar = input.type === "password";
+  input.type = mostrar ? "text" : "password";
+  boton.textContent = mostrar ? "🙈 Ocultar" : "👁 Mostrar";
+}
+
+function abrirModalPersonasCaja() {
+  if (!cajaAdminActivo) {
+    mostrarModoCaja("admin");
+    if ($("estadoLoginCaja")) {
+      $("estadoLoginCaja").textContent = "Ingresá el PIN para editar los nombres.";
+    }
+    return;
+  }
+
+  renderPersonasCaja();
+  $("modalPersonasCaja")?.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  registrarActividadCajaAdmin();
+}
+
+function cerrarModalPersonasCaja() {
+  $("modalPersonasCaja")?.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
 function mostrarModoCaja(modo) {
   const empleado = modo === "empleado";
   $("btnModoCajaEmpleado")?.classList.toggle("active", empleado);
@@ -6845,6 +6917,7 @@ function mostrarModoCaja(modo) {
   $("panelCajaEmpleado")?.classList.toggle("hidden", !empleado);
 
   if (empleado) {
+    bloquearCajaAdmin();
     $("panelCajaAdminLogin")?.classList.add("hidden");
     $("panelCajaAdmin")?.classList.add("hidden");
     cargarCierreSeleccionadoCaja();
@@ -6866,15 +6939,14 @@ function ingresarCajaAdmin() {
   }
 
   cajaAdminActivo = true;
-  sessionStorage.setItem("fratello_caja_admin", "1");
   if ($("cajaAdminPin")) $("cajaAdminPin").value = "";
   if (estado) estado.textContent = "";
+  iniciarTemporizadorCajaAdmin();
   mostrarModoCaja("admin");
 }
 
 function salirCajaAdmin() {
-  cajaAdminActivo = false;
-  sessionStorage.removeItem("fratello_caja_admin");
+  bloquearCajaAdmin();
   mostrarModoCaja("empleado");
 }
 
@@ -6975,8 +7047,8 @@ function editarCierreDesdeAdminCaja(fecha, turno) {
   $("cajaEfectivo")?.focus();
 }
 
-function agregarPersonaCaja() {
-  const input = $("nuevaPersonaCaja");
+function agregarPersonaCaja(inputId = "nuevaPersonaCaja") {
+  const input = $(inputId);
   const nombre = String(input?.value || "").trim();
   if (!nombre) return;
 
@@ -7005,18 +7077,54 @@ function eliminarPersonaCaja(indice) {
 
 function cambiarPinCaja() {
   const input = $("nuevoPinCaja");
+  const confirmar = $("confirmarPinCaja");
+  const estado = $("estadoCambioPinCaja");
   const nuevoPin = String(input?.value || "").trim();
+  const confirmacion = String(confirmar?.value || "").trim();
+
+  if (estado) {
+    estado.textContent = "";
+    estado.className = "";
+  }
 
   if (!/^\d{4,8}$/.test(nuevoPin)) {
-    alert("El PIN debe tener entre 4 y 8 números.");
+    if (estado) {
+      estado.textContent = "El PIN debe tener entre 4 y 8 números.";
+      estado.className = "error";
+    }
+    return;
+  }
+
+  if (nuevoPin !== confirmacion) {
+    if (estado) {
+      estado.textContent = "Los dos PIN no coinciden.";
+      estado.className = "error";
+    }
     return;
   }
 
   configuracionCaja.pinAdmin = nuevoPin;
   guardarCajaLocal();
   guardarEnNube();
-  if (input) input.value = "";
-  alert("PIN actualizado correctamente.");
+
+  if (input) {
+    input.value = "";
+    input.type = "password";
+  }
+  if (confirmar) {
+    confirmar.value = "";
+    confirmar.type = "password";
+  }
+
+  if ($("btnMostrarNuevoPinCaja")) $("btnMostrarNuevoPinCaja").textContent = "👁 Mostrar";
+  if ($("btnMostrarConfirmarPinCaja")) $("btnMostrarConfirmarPinCaja").textContent = "👁 Mostrar";
+
+  if (estado) {
+    estado.textContent = "✅ PIN actualizado correctamente.";
+    estado.className = "success";
+  }
+
+  registrarActividadCajaAdmin();
 }
 
 function iniciarModuloCaja() {
@@ -7041,8 +7149,25 @@ function iniciarModuloCaja() {
   $("btnSalirCajaAdmin")?.addEventListener("click", salirCajaAdmin);
   $("btnActualizarCajaAdmin")?.addEventListener("click", renderCajaAdmin);
   $("cajaAdminFecha")?.addEventListener("change", renderCajaAdmin);
-  $("btnAgregarPersonaCaja")?.addEventListener("click", agregarPersonaCaja);
+  $("btnAgregarPersonaCaja")?.addEventListener("click", () => agregarPersonaCaja("nuevaPersonaCaja"));
+  $("btnAdministrarPersonasCajaRapido")?.addEventListener("click", abrirModalPersonasCaja);
+  $("btnCerrarModalPersonasCaja")?.addEventListener("click", cerrarModalPersonasCaja);
+  $("btnAgregarPersonaCajaRapida")?.addEventListener("click", () => agregarPersonaCaja("nuevaPersonaCajaRapida"));
+  $("modalPersonasCaja")?.addEventListener("click", evento => {
+    if (evento.target?.id === "modalPersonasCaja") cerrarModalPersonasCaja();
+  });
   $("btnCambiarPinCaja")?.addEventListener("click", cambiarPinCaja);
+  $("btnMostrarNuevoPinCaja")?.addEventListener("click", () => alternarVisibilidadPinCaja("nuevoPinCaja", "btnMostrarNuevoPinCaja"));
+  $("btnMostrarConfirmarPinCaja")?.addEventListener("click", () => alternarVisibilidadPinCaja("confirmarPinCaja", "btnMostrarConfirmarPinCaja"));
+
+  ["click", "touchstart", "keydown", "input"].forEach(nombreEvento => {
+    document.addEventListener(nombreEvento, registrarActividadCajaAdmin, { passive: true });
+  });
+
+  window.addEventListener("pagehide", () => bloquearCajaAdmin());
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) bloquearCajaAdmin();
+  });
 
   mostrarModoCaja("empleado");
 }
