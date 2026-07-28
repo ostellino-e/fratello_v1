@@ -1,15 +1,11 @@
-# Fratello v3.7 — Base estable reconstruida
+# Fratello v3.7.1 — Panel semanal corregido
 
-Base utilizada:
-- Fratello v3.5.1, última versión estable del panel semanal y pedidos fijos.
-
-Cambios incorporados:
-- Nueva subsección “Pedidos para hoy”.
-- Los pedidos para hoy no participan en producción, resumen ni WhatsApp.
-- Reinicio automático de pedidos del día a las 06:00.
-- Edición, eliminación y marcado como entregado.
-- Los desplegables del panel semanal mantienen su estado al confirmar pedidos.
-- Se conserva la posición de la pantalla.
-- El panel semanal conserva la lógica estable de pedidos normales, futuros y fijos.
-- Recuento corregido usando una misma unidad base para producción y pedidos.
-- Mensajes de WhatsApp correctamente formateados.
+Correcciones:
+- Confirmar un cliente ya no reconstruye el panel.
+- Permanecen abiertos el día, el grupo y la pestaña del cliente.
+- Se eliminó un render duplicado que cerraba los desplegables.
+- La sincronización de Firebase ahora recupera también pedidos fijos.
+- Los pedidos fijos se guardan correctamente en localStorage.
+- Al cargar o editar un pedido para una fecha futura, esa fecha se reabre si había quedado cerrada por una prueba anterior.
+- Se redujeron las escrituras simultáneas a Firestore mediante guardado agrupado.
+- Esto evita el error QUICK_TOO_MANY_RPCS observado en la consola.

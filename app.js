@@ -722,7 +722,18 @@ function renderPanelPedidosSemana() {
   const fechas = fechasDesdeHoyHastaDomingo();
   const fechaOperativa = fechaOperativaActual();
 
-  fechas.forEach(fecha => asegurarPedidosFijosParaFecha(fecha, false));
+  fechas.forEach(fecha => {
+    const tienePedidoNuevo = pedidos.some(pedido =>
+      fechaEntregaPedido(pedido) === fecha &&
+      !esPedidoFijoRobusto(pedido)
+    );
+
+    if (tienePedidoNuevo) {
+      reabrirJornadaParaNuevoPedido(fecha);
+    }
+
+    asegurarPedidosFijosParaFecha(fecha, false);
+  });
 
   panel.innerHTML = fechas.map((fecha, indice) => {
     const pedidosFecha = pedidos
@@ -1690,15 +1701,37 @@ function datosActuales() {
   };
 }
 
-async function guardarEnNube() {
+let temporizadorGuardadoNube = null;
+let guardadoNubeEnCurso = false;
+let guardadoNubePendiente = false;
+
+function guardarEnNube() {
   if (!db || cargandoDesdeNube) return;
-  try {
-    await db.collection("fratello").doc("estado").set(datosActuales());
-    setEstadoSync("Guardado online");
-  } catch (error) {
-    console.error("Error guardando en Firebase:", error);
-    setEstadoSync("Error al guardar online");
-  }
+
+  guardadoNubePendiente = true;
+  clearTimeout(temporizadorGuardadoNube);
+
+  temporizadorGuardadoNube = setTimeout(async () => {
+    if (guardadoNubeEnCurso || !guardadoNubePendiente || !db || cargandoDesdeNube) return;
+
+    guardadoNubeEnCurso = true;
+    guardadoNubePendiente = false;
+
+    try {
+      await db.collection("fratello").doc("estado").set(datosActuales(), { merge: true });
+      setEstadoSync("Guardado online");
+    } catch (error) {
+      console.error("Error guardando en Firebase:", error);
+      setEstadoSync("Error al guardar online");
+      guardadoNubePendiente = true;
+    } finally {
+      guardadoNubeEnCurso = false;
+
+      if (guardadoNubePendiente) {
+        setTimeout(guardarEnNube, 900);
+      }
+    }
+  }, 450);
 }
 
 async function cargarDesdeNube() {
@@ -1722,6 +1755,16 @@ async function cargarDesdeNube() {
     historialPedidos = Array.isArray(data.historialPedidos) ? data.historialPedidos : historialPedidos;
       pedidosFijos = Array.isArray(data.pedidosFijos) ? data.pedidosFijos : pedidosFijos;
       historialPedidos = Array.isArray(data.historialPedidos) ? data.historialPedidos : historialPedidos;
+      pedidosFijos = Array.isArray(data.pedidosFijos)
+        ? data.pedidosFijos
+        : pedidosFijos;
+      historialPedidos = Array.isArray(data.historialPedidos)
+        ? data.historialPedidos
+        : historialPedidos;
+      exclusionesPedidosFijos = Array.isArray(data.exclusionesPedidosFijos)
+        ? data.exclusionesPedidosFijos
+        : exclusionesPedidosFijos;
+
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = Array.isArray(data.clientes) && data.clientes.length
         ? data.clientes
@@ -1763,6 +1806,9 @@ async function cargarDesdeNube() {
 
       localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
       localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+      localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+      localStorage.setItem("fratello_historial_pedidos", JSON.stringify(historialPedidos));
+      localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
   localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
   localStorage.setItem("fratello_historial_pedidos", JSON.stringify(historialPedidos));
       localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
@@ -2129,7 +2175,6 @@ function escucharCambiosNube() {
       renderListaClientesCompleta();
       renderProduccion();
       renderPedidosCargados();
-      renderPedidosRecibidosFormulario();
       calcularDiferencias();
       actualizarPanelMemoriaEnvio();
       actualizarTarjetaDiaPedidos();
@@ -2162,6 +2207,8 @@ function escucharCambiosNube() {
 function guardarTodo() {
   localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
   localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+  localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  localStorage.setItem("fratello_historial_pedidos", JSON.stringify(historialPedidos));
   localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
   localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
   localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
@@ -3830,6 +3877,7 @@ function editarPedidoCargado(id) {
     pedido.textoOriginal = textoNuevo;
     pedido.fecha = fechaNueva;
     pedido.fechaEntrega = fechaNueva;
+    reabrirJornadaParaNuevoPedido(fechaNueva);
     pedido.items = procesarTextoPedido(textoNuevo, pedido.cliente, fechaNueva);
     pedido.editadoEn = new Date().toISOString();
 
@@ -3869,6 +3917,7 @@ function repetirPedidoHistorial(id) {
     origen: "pedido_repetido",
     items: procesarTextoPedido(anterior.textoOriginal || "", anterior.cliente, fecha)
   };
+  reabrirJornadaParaNuevoPedido(fecha);
   pedidos.push(nuevo);
   registrarPedidoEnHistorial(nuevo);
   pedidosConfirmados = false;
@@ -4255,6 +4304,7 @@ function procesarPedidoActual() {
 
   const procesado = procesarTextoPedido(texto, cliente, fecha);
   const nuevoPedido = { id: Date.now(), fecha, fechaEntrega: fecha, cliente, textoOriginal: texto, origen: "manual", confirmado: false, items: procesado };
+  reabrirJornadaParaNuevoPedido(fecha);
   pedidos.push(nuevoPedido);
   registrarPedidoEnHistorial(nuevoPedido);
 
@@ -4332,11 +4382,23 @@ function alternarConfirmacionPedido(idPedido, confirmado) {
   pedido.confirmado = Boolean(confirmado);
   pedidosConfirmados = pedidos
     .filter(item => fechaEntregaPedido(item) === ($("fechaPedido")?.value || hoyISO()))
-    .filter(item => item.confirmado === true)
-    .length > 0;
+    .some(item => item.confirmado === true);
+
+  // Actualizar solamente la tarjeta marcada. No reconstruir el panel:
+  // así el cliente, el grupo y el día permanecen abiertos.
+  const tarjeta = document.querySelector(`[data-pedido-card-id="${idPedido}"]`);
+  if (tarjeta) {
+    tarjeta.classList.toggle("isConfirmed", Boolean(confirmado));
+
+    const etiqueta = tarjeta.querySelector(".compactConfirm");
+    if (etiqueta) {
+      etiqueta.classList.toggle("confirmed", Boolean(confirmado));
+      const texto = etiqueta.querySelector("span");
+      if (texto) texto.textContent = confirmado ? "Confirmado" : "Confirmar";
+    }
+  }
 
   guardarTodo();
-  renderPedidosCargados();
   calcularDiferencias();
   actualizarEstadoConfirmacion();
 }
@@ -4964,6 +5026,21 @@ function confirmarPedidos() {
 
 
 
+
+function reabrirJornadaParaNuevoPedido(fecha) {
+  if (!fecha) return;
+
+  const antes = jornadasCerradas.length;
+  jornadasCerradas = (jornadasCerradas || []).filter(item => item !== fecha);
+
+  if (memoriaUltimoEnvio?.fecha === fecha && memoriaUltimoEnvio?.jornadaEnviada === true) {
+    memoriaUltimoEnvio = {};
+  }
+
+  if (jornadasCerradas.length !== antes) {
+    localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  }
+}
 
 function jornadaEstaCerrada(fecha) {
   return Array.isArray(jornadasCerradas) && jornadasCerradas.includes(fecha);
