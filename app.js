@@ -1926,6 +1926,9 @@ function datosActuales() {
     memoriaUltimoEnvio,
     jornadasCerradas,
     exclusionesPedidosFijos,
+    cierresCaja,
+    personasCaja,
+    configuracionCaja,
     actualizado: new Date().toISOString()
   };
 }
@@ -1993,6 +1996,17 @@ async function cargarDesdeNube() {
       exclusionesPedidosFijos = Array.isArray(data.exclusionesPedidosFijos)
         ? data.exclusionesPedidosFijos
         : exclusionesPedidosFijos;
+
+      cierresCaja = Array.isArray(data.cierresCaja)
+        ? data.cierresCaja
+        : cierresCaja;
+      personasCaja = Array.isArray(data.personasCaja) && data.personasCaja.length
+        ? data.personasCaja
+        : personasCaja;
+      configuracionCaja = data.configuracionCaja && typeof data.configuracionCaja === "object"
+        ? { ...configuracionCaja, ...data.configuracionCaja }
+        : configuracionCaja;
+      guardarCajaLocal();
 
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = Array.isArray(data.clientes) && data.clientes.length
@@ -6568,7 +6582,480 @@ function repararPedidosConParserV311() {
 }
 
 
+
+/* =========================================================
+   FRATELLO CAJA v1 — v3.9.0
+   ========================================================= */
+
+const CAJA_STORAGE_KEY = "fratello_caja_v390";
+let cierresCaja = [];
+let personasCaja = ["Sofía", "María"];
+let configuracionCaja = { pinAdmin: "2580" };
+let gastosCajaEdicion = [];
+let cajaAdminActivo = sessionStorage.getItem("fratello_caja_admin") === "1";
+
+function hoyISOCaja() {
+  const ahora = new Date();
+  const local = new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function montoCaja(valor) {
+  const numero = Number(valor || 0);
+  return Number.isFinite(numero) && numero >= 0 ? numero : 0;
+}
+
+function formatoDineroCaja(valor) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0
+  }).format(montoCaja(valor));
+}
+
+function escaparCaja(texto) {
+  return String(texto ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function cargarCajaLocal() {
+  try {
+    const guardado = JSON.parse(localStorage.getItem(CAJA_STORAGE_KEY) || "{}");
+    cierresCaja = Array.isArray(guardado.cierresCaja) ? guardado.cierresCaja : [];
+    personasCaja = Array.isArray(guardado.personasCaja) && guardado.personasCaja.length
+      ? guardado.personasCaja
+      : ["Sofía", "María"];
+    configuracionCaja = guardado.configuracionCaja && typeof guardado.configuracionCaja === "object"
+      ? { pinAdmin: String(guardado.configuracionCaja.pinAdmin || "2580") }
+      : { pinAdmin: "2580" };
+  } catch (error) {
+    console.error("No se pudo leer Caja local:", error);
+  }
+}
+
+function guardarCajaLocal() {
+  localStorage.setItem(CAJA_STORAGE_KEY, JSON.stringify({
+    cierresCaja,
+    personasCaja,
+    configuracionCaja
+  }));
+}
+
+function idCierreCaja(fecha, turno) {
+  return `${fecha}_${turno}`;
+}
+
+function obtenerCierreCaja(fecha, turno) {
+  return cierresCaja.find(cierre => cierre.id === idCierreCaja(fecha, turno)) || null;
+}
+
+function turnoTextoCaja(turno) {
+  return turno === "tarde" ? "Tarde" : "Mañana";
+}
+
+function renderPersonasCaja() {
+  const selector = $("cajaPersona");
+  if (selector) {
+    const valorActual = selector.value;
+    selector.innerHTML = personasCaja
+      .map(nombre => `<option value="${escaparCaja(nombre)}">${escaparCaja(nombre)}</option>`)
+      .join("");
+    if (personasCaja.includes(valorActual)) selector.value = valorActual;
+  }
+
+  const lista = $("listaPersonasCaja");
+  if (lista) {
+    lista.innerHTML = personasCaja.length
+      ? personasCaja.map((nombre, indice) => `
+          <div class="cajaPersonRow">
+            <span>${escaparCaja(nombre)}</span>
+            <button type="button" onclick="eliminarPersonaCaja(${indice})">Eliminar</button>
+          </div>
+        `).join("")
+      : '<p class="hint">No hay personas cargadas.</p>';
+  }
+}
+
+function renderGastosCaja() {
+  const lista = $("listaGastosCaja");
+  if (!lista) return;
+
+  if (!gastosCajaEdicion.length) {
+    lista.innerHTML = '<div class="cajaExpenseEmpty">Todavía no se cargaron gastos en este turno.</div>';
+  } else {
+    lista.innerHTML = gastosCajaEdicion.map((gasto, indice) => `
+      <div class="cajaExpenseRow">
+        <input
+          type="text"
+          value="${escaparCaja(gasto.motivo)}"
+          placeholder="Motivo"
+          aria-label="Motivo del gasto"
+          onchange="actualizarGastoCaja(${indice}, 'motivo', this.value)">
+        <input
+          type="number"
+          min="0"
+          step="1"
+          inputmode="numeric"
+          value="${montoCaja(gasto.monto) || ""}"
+          placeholder="$ 0"
+          aria-label="Monto del gasto"
+          onchange="actualizarGastoCaja(${indice}, 'monto', this.value)">
+        <button type="button" aria-label="Eliminar gasto" onclick="eliminarGastoCaja(${indice})">🗑</button>
+      </div>
+    `).join("");
+  }
+
+  const total = gastosCajaEdicion.reduce((suma, gasto) => suma + montoCaja(gasto.monto), 0);
+  if ($("totalGastosCaja")) $("totalGastosCaja").textContent = formatoDineroCaja(total);
+}
+
+function agregarGastoCaja() {
+  gastosCajaEdicion.push({ motivo: "", monto: 0 });
+  renderGastosCaja();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll("#listaGastosCaja .cajaExpenseRow input");
+    inputs[inputs.length - 2]?.focus();
+  }, 30);
+}
+
+function actualizarGastoCaja(indice, campo, valor) {
+  if (!gastosCajaEdicion[indice]) return;
+  gastosCajaEdicion[indice][campo] = campo === "monto" ? montoCaja(valor) : String(valor || "");
+  renderGastosCaja();
+}
+
+function eliminarGastoCaja(indice) {
+  gastosCajaEdicion.splice(indice, 1);
+  renderGastosCaja();
+}
+
+function limpiarFormularioCaja({ conservarFechaTurno = true } = {}) {
+  if (!conservarFechaTurno && $("cajaFecha")) $("cajaFecha").value = hoyISOCaja();
+  if ($("cajaEfectivo")) $("cajaEfectivo").value = "";
+  if ($("cajaTransferencias")) $("cajaTransferencias").value = "";
+  if ($("cajaObservacion")) $("cajaObservacion").value = "";
+  gastosCajaEdicion = [];
+  renderGastosCaja();
+  $("avisoCierreExistente")?.classList.add("hidden");
+}
+
+function cargarCierreSeleccionadoCaja() {
+  const fecha = $("cajaFecha")?.value || hoyISOCaja();
+  const turno = $("cajaTurno")?.value || "manana";
+  const cierre = obtenerCierreCaja(fecha, turno);
+  const aviso = $("avisoCierreExistente");
+
+  if (!cierre) {
+    limpiarFormularioCaja({ conservarFechaTurno: true });
+    return;
+  }
+
+  if ($("cajaPersona")) $("cajaPersona").value = cierre.persona || personasCaja[0] || "";
+  if ($("cajaEfectivo")) $("cajaEfectivo").value = montoCaja(cierre.efectivo) || "";
+  if ($("cajaTransferencias")) $("cajaTransferencias").value = montoCaja(cierre.transferencias) || "";
+  if ($("cajaObservacion")) $("cajaObservacion").value = cierre.observacion || "";
+  gastosCajaEdicion = Array.isArray(cierre.gastos)
+    ? cierre.gastos.map(gasto => ({ motivo: gasto.motivo || "", monto: montoCaja(gasto.monto) }))
+    : [];
+
+  aviso?.classList.remove("hidden");
+  renderGastosCaja();
+}
+
+function validarCierreCaja() {
+  const fecha = $("cajaFecha")?.value;
+  const turno = $("cajaTurno")?.value;
+  const persona = $("cajaPersona")?.value;
+  const efectivo = montoCaja($("cajaEfectivo")?.value);
+  const transferencias = montoCaja($("cajaTransferencias")?.value);
+
+  if (!fecha) return "Seleccioná la fecha.";
+  if (!turno) return "Seleccioná el turno.";
+  if (!persona) return "Seleccioná quién realiza el cierre.";
+  if (!efectivo && !transferencias) return "Cargá al menos un monto de venta.";
+
+  const gastoIncompleto = gastosCajaEdicion.some(gasto =>
+    !String(gasto.motivo || "").trim() || montoCaja(gasto.monto) <= 0
+  );
+  if (gastoIncompleto) return "Revisá los gastos: cada uno necesita motivo y monto.";
+
+  return "";
+}
+
+function guardarCierreCaja() {
+  const estado = $("estadoCierreCaja");
+  const error = validarCierreCaja();
+
+  if (error) {
+    if (estado) {
+      estado.textContent = `⚠️ ${error}`;
+      estado.className = "cajaSaveStatus error";
+    }
+    return;
+  }
+
+  const fecha = $("cajaFecha").value;
+  const turno = $("cajaTurno").value;
+  const id = idCierreCaja(fecha, turno);
+  const anterior = obtenerCierreCaja(fecha, turno);
+  const ahora = new Date().toISOString();
+
+  const cierre = {
+    id,
+    fecha,
+    turno,
+    persona: $("cajaPersona").value,
+    efectivo: montoCaja($("cajaEfectivo").value),
+    transferencias: montoCaja($("cajaTransferencias").value),
+    gastos: gastosCajaEdicion.map(gasto => ({
+      motivo: String(gasto.motivo || "").trim(),
+      monto: montoCaja(gasto.monto)
+    })),
+    observacion: String($("cajaObservacion")?.value || "").trim(),
+    creado: anterior?.creado || ahora,
+    actualizado: ahora
+  };
+
+  const indice = cierresCaja.findIndex(item => item.id === id);
+  if (indice >= 0) cierresCaja[indice] = cierre;
+  else cierresCaja.push(cierre);
+
+  guardarCajaLocal();
+  guardarEnNube();
+
+  if (estado) {
+    estado.textContent = anterior
+      ? `✅ Cierre del turno ${turnoTextoCaja(turno).toLowerCase()} actualizado correctamente.`
+      : `✅ Cierre del turno ${turnoTextoCaja(turno).toLowerCase()} guardado correctamente.`;
+    estado.className = "cajaSaveStatus success";
+  }
+
+  $("avisoCierreExistente")?.classList.remove("hidden");
+  renderCajaAdmin();
+}
+
+function mostrarModoCaja(modo) {
+  const empleado = modo === "empleado";
+  $("btnModoCajaEmpleado")?.classList.toggle("active", empleado);
+  $("btnModoCajaAdmin")?.classList.toggle("active", !empleado);
+  $("panelCajaEmpleado")?.classList.toggle("hidden", !empleado);
+
+  if (empleado) {
+    $("panelCajaAdminLogin")?.classList.add("hidden");
+    $("panelCajaAdmin")?.classList.add("hidden");
+    cargarCierreSeleccionadoCaja();
+    return;
+  }
+
+  $("panelCajaAdminLogin")?.classList.toggle("hidden", cajaAdminActivo);
+  $("panelCajaAdmin")?.classList.toggle("hidden", !cajaAdminActivo);
+  if (cajaAdminActivo) renderCajaAdmin();
+}
+
+function ingresarCajaAdmin() {
+  const pin = String($("cajaAdminPin")?.value || "");
+  const estado = $("estadoLoginCaja");
+
+  if (pin !== String(configuracionCaja.pinAdmin || "2580")) {
+    if (estado) estado.textContent = "PIN incorrecto.";
+    return;
+  }
+
+  cajaAdminActivo = true;
+  sessionStorage.setItem("fratello_caja_admin", "1");
+  if ($("cajaAdminPin")) $("cajaAdminPin").value = "";
+  if (estado) estado.textContent = "";
+  mostrarModoCaja("admin");
+}
+
+function salirCajaAdmin() {
+  cajaAdminActivo = false;
+  sessionStorage.removeItem("fratello_caja_admin");
+  mostrarModoCaja("empleado");
+}
+
+function totalesCierreCaja(cierre) {
+  const efectivo = montoCaja(cierre?.efectivo);
+  const transferencias = montoCaja(cierre?.transferencias);
+  const gastos = (cierre?.gastos || []).reduce((suma, gasto) => suma + montoCaja(gasto.monto), 0);
+  return {
+    efectivo,
+    transferencias,
+    gastos,
+    venta: efectivo + transferencias,
+    efectivoRendir: efectivo - gastos
+  };
+}
+
+function tarjetaResumenCaja(titulo, valor, clase = "") {
+  return `<div class="cajaSummaryCard ${clase}">
+    <span>${titulo}</span>
+    <strong>${formatoDineroCaja(valor)}</strong>
+  </div>`;
+}
+
+function renderCajaAdmin() {
+  if (!cajaAdminActivo) return;
+
+  const fecha = $("cajaAdminFecha")?.value || hoyISOCaja();
+  const manana = obtenerCierreCaja(fecha, "manana");
+  const tarde = obtenerCierreCaja(fecha, "tarde");
+  const cierres = [manana, tarde].filter(Boolean);
+  const suma = cierres.reduce((acum, cierre) => {
+    const t = totalesCierreCaja(cierre);
+    acum.efectivo += t.efectivo;
+    acum.transferencias += t.transferencias;
+    acum.gastos += t.gastos;
+    acum.venta += t.venta;
+    acum.efectivoRendir += t.efectivoRendir;
+    return acum;
+  }, { efectivo: 0, transferencias: 0, gastos: 0, venta: 0, efectivoRendir: 0 });
+
+  if ($("resumenCajaAdmin")) {
+    $("resumenCajaAdmin").innerHTML = [
+      tarjetaResumenCaja("Venta total", suma.venta, "primary"),
+      tarjetaResumenCaja("Efectivo vendido", suma.efectivo),
+      tarjetaResumenCaja("Transferencias", suma.transferencias),
+      tarjetaResumenCaja("Gastos en efectivo", suma.gastos, "expense"),
+      tarjetaResumenCaja("Efectivo a recibir", suma.efectivoRendir, "net")
+    ].join("");
+  }
+
+  if ($("cierresCajaAdmin")) {
+    $("cierresCajaAdmin").innerHTML = ["manana", "tarde"].map(turno => {
+      const cierre = obtenerCierreCaja(fecha, turno);
+      if (!cierre) {
+        return `<div class="cajaAdminClosure pending">
+          <div><strong>${turnoTextoCaja(turno)}</strong><span>Sin cargar</span></div>
+          <button type="button" onclick="editarCierreDesdeAdminCaja('${fecha}','${turno}')">Cargar</button>
+        </div>`;
+      }
+
+      const t = totalesCierreCaja(cierre);
+      const gastos = (cierre.gastos || []).length
+        ? `<ul>${cierre.gastos.map(g => `<li><span>${escaparCaja(g.motivo)}</span><b>${formatoDineroCaja(g.monto)}</b></li>`).join("")}</ul>`
+        : '<p class="hint">Sin gastos.</p>';
+
+      return `<article class="cajaAdminClosure">
+        <div class="cajaAdminClosureHead">
+          <div>
+            <strong>${turnoTextoCaja(turno)}</strong>
+            <span>Cerró: ${escaparCaja(cierre.persona)}</span>
+          </div>
+          <button type="button" onclick="editarCierreDesdeAdminCaja('${fecha}','${turno}')">✏️ Editar</button>
+        </div>
+        <div class="cajaAdminClosureNumbers">
+          <span>Efectivo <b>${formatoDineroCaja(t.efectivo)}</b></span>
+          <span>Transferencias <b>${formatoDineroCaja(t.transferencias)}</b></span>
+          <span>Venta del turno <b>${formatoDineroCaja(t.venta)}</b></span>
+          <span>Gastos <b>${formatoDineroCaja(t.gastos)}</b></span>
+          <span>Efectivo a rendir <b>${formatoDineroCaja(t.efectivoRendir)}</b></span>
+        </div>
+        <details>
+          <summary>Ver gastos y observación</summary>
+          ${gastos}
+          ${cierre.observacion ? `<p><strong>Observación:</strong> ${escaparCaja(cierre.observacion)}</p>` : ""}
+        </details>
+      </article>`;
+    }).join("");
+  }
+
+  renderPersonasCaja();
+}
+
+function editarCierreDesdeAdminCaja(fecha, turno) {
+  if ($("cajaFecha")) $("cajaFecha").value = fecha;
+  if ($("cajaTurno")) $("cajaTurno").value = turno;
+  mostrarModoCaja("empleado");
+  cargarCierreSeleccionadoCaja();
+  $("cajaEfectivo")?.focus();
+}
+
+function agregarPersonaCaja() {
+  const input = $("nuevaPersonaCaja");
+  const nombre = String(input?.value || "").trim();
+  if (!nombre) return;
+
+  if (personasCaja.some(item => item.toLowerCase() === nombre.toLowerCase())) {
+    alert("Esa persona ya está cargada.");
+    return;
+  }
+
+  personasCaja.push(nombre);
+  personasCaja.sort((a, b) => a.localeCompare(b, "es"));
+  guardarCajaLocal();
+  guardarEnNube();
+  if (input) input.value = "";
+  renderPersonasCaja();
+}
+
+function eliminarPersonaCaja(indice) {
+  const nombre = personasCaja[indice];
+  if (!nombre) return;
+  if (!confirm(`¿Eliminar a ${nombre} de la lista?`)) return;
+  personasCaja.splice(indice, 1);
+  guardarCajaLocal();
+  guardarEnNube();
+  renderPersonasCaja();
+}
+
+function cambiarPinCaja() {
+  const input = $("nuevoPinCaja");
+  const nuevoPin = String(input?.value || "").trim();
+
+  if (!/^\d{4,8}$/.test(nuevoPin)) {
+    alert("El PIN debe tener entre 4 y 8 números.");
+    return;
+  }
+
+  configuracionCaja.pinAdmin = nuevoPin;
+  guardarCajaLocal();
+  guardarEnNube();
+  if (input) input.value = "";
+  alert("PIN actualizado correctamente.");
+}
+
+function iniciarModuloCaja() {
+  cargarCajaLocal();
+
+  if ($("cajaFecha")) $("cajaFecha").value = hoyISOCaja();
+  if ($("cajaAdminFecha")) $("cajaAdminFecha").value = hoyISOCaja();
+
+  renderPersonasCaja();
+  renderGastosCaja();
+
+  $("btnModoCajaEmpleado")?.addEventListener("click", () => mostrarModoCaja("empleado"));
+  $("btnModoCajaAdmin")?.addEventListener("click", () => mostrarModoCaja("admin"));
+  $("btnAgregarGastoCaja")?.addEventListener("click", agregarGastoCaja);
+  $("btnGuardarCierreCaja")?.addEventListener("click", guardarCierreCaja);
+  $("cajaFecha")?.addEventListener("change", cargarCierreSeleccionadoCaja);
+  $("cajaTurno")?.addEventListener("change", cargarCierreSeleccionadoCaja);
+  $("btnIngresarCajaAdmin")?.addEventListener("click", ingresarCajaAdmin);
+  $("cajaAdminPin")?.addEventListener("keydown", evento => {
+    if (evento.key === "Enter") ingresarCajaAdmin();
+  });
+  $("btnSalirCajaAdmin")?.addEventListener("click", salirCajaAdmin);
+  $("btnActualizarCajaAdmin")?.addEventListener("click", renderCajaAdmin);
+  $("cajaAdminFecha")?.addEventListener("change", renderCajaAdmin);
+  $("btnAgregarPersonaCaja")?.addEventListener("click", agregarPersonaCaja);
+  $("btnCambiarPinCaja")?.addEventListener("click", cambiarPinCaja);
+
+  mostrarModoCaja("empleado");
+}
+
+window.agregarGastoCaja = agregarGastoCaja;
+window.actualizarGastoCaja = actualizarGastoCaja;
+window.eliminarGastoCaja = eliminarGastoCaja;
+window.editarCierreDesdeAdminCaja = editarCierreDesdeAdminCaja;
+window.eliminarPersonaCaja = eliminarPersonaCaja;
+
 async function init() {
+  iniciarModuloCaja();
+
   // v3.0.1: los pedidos fijos se guardan desde cada tarjeta del cliente.
   if ($("btnCargarPedidosFijosFecha")) $("btnCargarPedidosFijosFecha").onclick=cargarPedidosFijosParaFecha;
   if ($("btnNuevoPedidoFijoCliente")) $("btnNuevoPedidoFijoCliente").onclick=()=>crearPedidoFijoCliente();
@@ -6665,6 +7152,9 @@ async function init() {
 
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   await cargarDesdeNube();
+  renderPersonasCaja();
+  cargarCierreSeleccionadoCaja();
+  renderCajaAdmin();
   validarClientes();
 
   // v1.06: después de recuperar Firebase, volver a dibujar catálogo y precios.

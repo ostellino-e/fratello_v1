@@ -2136,3 +2136,110 @@ body.modalAbierto {
 .todayOrderCard.isDelivered{opacity:.72;background:#eef6ee;border-color:#9bc7a2}
 .todayOrderCard.isDelivered .todayOrderHead strong{text-decoration:line-through}
 @media(max-width:700px){.todayOrderActions{display:grid;grid-template-columns:1fr 1fr}.todayDeliveryButton{grid-column:1/-1}}
+
+
+/* =========================================================
+   FRATELLO CAJA v1 — v3.9.0
+   ========================================================= */
+.cajaModule{max-width:920px}
+.cajaTitleRow,.cajaAdminTop,.cajaSectionHead,.cajaAdminClosureHead{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px
+}
+.cajaTitleRow h2,.cajaAdminTop h3,.cajaSectionHead h3{margin:0}
+.cajaVersionBadge{
+  display:inline-flex;padding:7px 10px;border-radius:999px;background:#e8f3e8;
+  color:#31633b;font-size:.78rem;font-weight:900;white-space:nowrap
+}
+.cajaModeSwitch{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:6px;margin:18px 0;
+  background:#ede7df;border-radius:13px
+}
+.cajaModeSwitch button{border:0;background:transparent;min-height:45px;border-radius:9px;font-weight:800}
+.cajaModeSwitch button.active{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.cajaPanel{border:1px solid #ddd0c2;border-radius:15px;padding:18px;background:#fffdfa}
+.cajaPrivacyNote,.cajaExistingNotice{
+  border-radius:10px;padding:11px 13px;margin-bottom:16px;font-weight:700;font-size:.9rem
+}
+.cajaPrivacyNote{background:#f2eee9;color:#574638}
+.cajaExistingNotice{background:#fff1d6;color:#7a5313;border:1px solid #e5c27c}
+.cajaFormGrid,.cajaMoneyGrid{
+  display:grid;grid-template-columns:1fr 1fr;gap:14px
+}
+.cajaFormGrid label,.cajaMoneyGrid label,.cajaObservation{
+  display:flex;flex-direction:column;gap:6px;font-weight:800
+}
+.cajaFull{grid-column:1/-1}
+.cajaFormGrid input,.cajaFormGrid select,.cajaMoneyGrid input,.cajaObservation textarea,
+.cajaAdminLogin input,.cajaAdminFilters input,.cajaPersonAdd input,.cajaPinChange input{
+  width:100%;box-sizing:border-box
+}
+.cajaMoneyGrid{margin:18px 0}
+.cajaMoneyGrid label{
+  padding:15px;border-radius:13px;background:#f8f5f0;border:1px solid #e4d9cc
+}
+.cajaMoneyGrid input{font-size:1.25rem;font-weight:900}
+.cajaExpensesBox{
+  margin:18px 0;padding:16px;border:1px solid #e2d6c9;border-radius:14px;background:#faf7f2
+}
+.cajaSectionHead p,.cajaAdminTop p{margin:4px 0 0;color:#786b60;font-size:.88rem}
+.cajaExpenseList{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.cajaExpenseEmpty{padding:14px;text-align:center;border:1px dashed #ccbca9;border-radius:10px;color:#786b60}
+.cajaExpenseRow{display:grid;grid-template-columns:1.5fr 1fr auto;gap:8px;align-items:center}
+.cajaExpenseRow input{min-width:0}
+.cajaExpenseRow button{min-width:42px}
+.cajaExpenseTotal{
+  display:flex;justify-content:space-between;align-items:center;padding-top:12px;
+  border-top:1px solid #dfd2c4;font-size:1.05rem
+}
+.cajaExpenseTotal strong{font-size:1.2rem}
+.cajaSaveButton{width:100%;min-height:52px;margin-top:14px;font-size:1.05rem;font-weight:900}
+.cajaSaveStatus{min-height:22px;text-align:center;font-weight:800}
+.cajaSaveStatus.success{color:#27723a}.cajaSaveStatus.error{color:#a23b2f}
+.cajaAdminLogin{max-width:390px;margin:auto;text-align:center;display:flex;flex-direction:column;gap:12px}
+.cajaAdminIcon{font-size:2.5rem}.cajaAdminLogin h3,.cajaAdminLogin p{margin:0}
+.cajaAdminLogin input{text-align:center;font-size:1.35rem;letter-spacing:.2em}
+.cajaAdminFilters{display:flex;align-items:end;gap:10px;margin:18px 0}
+.cajaAdminFilters label{flex:1}
+.cajaSummaryGrid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0
+}
+.cajaSummaryCard{
+  display:flex;flex-direction:column;gap:5px;padding:14px;border-radius:12px;
+  background:#f2eee9;border:1px solid #ded2c5
+}
+.cajaSummaryCard span{font-size:.82rem;color:#716357;font-weight:700}
+.cajaSummaryCard strong{font-size:1.25rem}
+.cajaSummaryCard.primary{grid-column:1/-1;background:#efe2cf}
+.cajaSummaryCard.expense{background:#fff0ec}
+.cajaSummaryCard.net{background:#e9f4e9}
+.cajaAdminSection{margin-top:18px;padding:15px;border:1px solid #dfd3c6;border-radius:13px}
+.cajaAdminSection>h3{margin-top:0}
+.cajaAdminClosures{display:flex;flex-direction:column;gap:12px}
+.cajaAdminClosure{padding:14px;border:1px solid #ded2c5;border-radius:12px;background:#fff}
+.cajaAdminClosure.pending{display:flex;justify-content:space-between;align-items:center;background:#f7f3ee}
+.cajaAdminClosure.pending div{display:flex;flex-direction:column}
+.cajaAdminClosureHead span{display:block;margin-top:3px;color:#76695e;font-size:.85rem}
+.cajaAdminClosureNumbers{
+  display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;margin:13px 0
+}
+.cajaAdminClosureNumbers span{display:flex;justify-content:space-between;gap:8px;font-size:.9rem}
+.cajaAdminClosure ul{list-style:none;padding:0;margin:10px 0}
+.cajaAdminClosure li{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eee5dc}
+.cajaPeopleAdmin summary,.cajaAdminSection summary{font-weight:900;cursor:pointer}
+.cajaPersonAdd,.cajaPinChange{display:flex;gap:8px;margin:14px 0}
+.cajaPersonAdd input,.cajaPinChange input{flex:1}
+.cajaPersonRow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #eee5dc}
+@media(max-width:650px){
+  .cajaTitleRow{align-items:center}
+  .cajaFormGrid,.cajaMoneyGrid,.cajaSummaryGrid{grid-template-columns:1fr}
+  .cajaFull,.cajaSummaryCard.primary{grid-column:auto}
+  .cajaExpenseRow{grid-template-columns:1fr 110px auto}
+  .cajaAdminClosureNumbers{grid-template-columns:1fr}
+  .cajaAdminTop{align-items:center}
+}
+@media(max-width:430px){
+  .cajaPanel{padding:13px}
+  .cajaExpenseRow{grid-template-columns:1fr 90px auto;gap:5px}
+  .cajaSectionHead{flex-direction:column}
+  .cajaSectionHead button{width:100%}
+}

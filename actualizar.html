@@ -31,10 +31,10 @@
         }
 
         localStorage.setItem("fratello_actualizacion_forzada", new Date().toISOString());
-        estado.textContent = "Actualización completada. Abriendo Fratello v3.8.3…";
+        estado.textContent = "Actualización completada. Abriendo Fratello v3.9.0…";
 
         setTimeout(() => {
-          location.replace("./index.html?v=383&actualizado=" + Date.now());
+          location.replace("./index.html?v=390&actualizado=" + Date.now());
         }, 700);
       } catch (error) {
         console.error(error);

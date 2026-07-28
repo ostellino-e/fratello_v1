@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=390" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.8.2";
-    document.documentElement.dataset.fratelloVersion = "3.8.2";
+    window.FRATELLO_VERSION = "3.9.0";
+    document.documentElement.dataset.fratelloVersion = "3.9.0";
   </script>
 
 </head>
@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.8.3</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.0</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -53,7 +53,7 @@
         <span class="homeMainIcon">📦</span><span><strong>Pedidos</strong><small>Producción, carga de pedidos y resumen.</small></span><b>›</b>
       </a>
       <a class="homeMainCard caja" href="#seccionCaja" data-seccion="seccionCaja">
-        <span class="homeMainIcon">💰</span><span><strong>Caja</strong><small>Próximamente.</small></span><b>›</b>
+        <span class="homeMainIcon">💰</span><span><strong>Caja</strong><small>Cierres por turno, gastos y control privado.</small></span><b>›</b>
       </a>
       <a class="homeMainCard tareas" href="#seccionTareas" data-seccion="seccionTareas">
         <span class="homeMainIcon">✅</span><span><strong>Tareas</strong><small>Próximamente.</small></span><b>›</b>
@@ -387,12 +387,140 @@
   
     
 
-    <section class="card appSection emptyModule" id="seccionCaja">
+    <section class="card appSection cajaModule" id="seccionCaja">
       <a class="volverInicio" href="#" data-volver="true">← Volver</a>
-      <div class="emptyModuleIcon">💰</div>
-      <h2>Caja</h2>
-      <p>Esta sección queda preparada para las próximas mejoras de caja.</p>
-      <span>Próximamente</span>
+
+      <div class="cajaTitleRow">
+        <div>
+          <h2>💰 Caja</h2>
+          <p class="hint">Cada empleada carga solamente el cierre del turno que realizó.</p>
+        </div>
+        <span class="cajaVersionBadge">Caja v1 · 100%</span>
+      </div>
+
+      <div class="cajaModeSwitch" role="tablist" aria-label="Modo de caja">
+        <button id="btnModoCajaEmpleado" class="active" type="button">👤 Cargar cierre</button>
+        <button id="btnModoCajaAdmin" type="button">🔐 Administrador</button>
+      </div>
+
+      <section id="panelCajaEmpleado" class="cajaPanel">
+        <div class="cajaPrivacyNote">
+          🔒 Esta pantalla no muestra el total del día ni la venta del otro turno.
+        </div>
+
+        <div class="cajaFormGrid">
+          <label>Fecha
+            <input id="cajaFecha" type="date">
+          </label>
+
+          <label>Turno
+            <select id="cajaTurno">
+              <option value="manana">Mañana</option>
+              <option value="tarde">Tarde</option>
+            </select>
+          </label>
+
+          <label class="cajaFull">Persona que realiza el cierre
+            <select id="cajaPersona"></select>
+          </label>
+        </div>
+
+        <div id="avisoCierreExistente" class="cajaExistingNotice hidden">
+          ⚠️ Ese turno ya tiene un cierre cargado. Podés corregirlo y volver a guardarlo.
+        </div>
+
+        <div class="cajaMoneyGrid">
+          <label>
+            <span>💵 Venta en efectivo</span>
+            <input id="cajaEfectivo" type="number" min="0" step="1" inputmode="numeric" placeholder="$ 0">
+          </label>
+          <label>
+            <span>🏦 Venta en transferencias</span>
+            <input id="cajaTransferencias" type="number" min="0" step="1" inputmode="numeric" placeholder="$ 0">
+          </label>
+        </div>
+
+        <div class="cajaExpensesBox">
+          <div class="cajaSectionHead">
+            <div>
+              <h3>Gastos pagados en efectivo</h3>
+              <p>Se cargan uno por uno: motivo y monto.</p>
+            </div>
+            <button id="btnAgregarGastoCaja" type="button">＋ Agregar gasto</button>
+          </div>
+
+          <div id="listaGastosCaja" class="cajaExpenseList"></div>
+
+          <div class="cajaExpenseTotal">
+            <span>Total de gastos</span>
+            <strong id="totalGastosCaja">$ 0</strong>
+          </div>
+        </div>
+
+        <label class="cajaObservation">
+          Observación opcional
+          <textarea id="cajaObservacion" rows="2" placeholder="Ej.: se pagó una compra urgente"></textarea>
+        </label>
+
+        <button id="btnGuardarCierreCaja" class="primary cajaSaveButton" type="button">
+          ✅ Guardar cierre
+        </button>
+
+        <p id="estadoCierreCaja" class="cajaSaveStatus" aria-live="polite"></p>
+      </section>
+
+      <section id="panelCajaAdminLogin" class="cajaPanel hidden">
+        <div class="cajaAdminLogin">
+          <div class="cajaAdminIcon">🔐</div>
+          <h3>Acceso administrador</h3>
+          <p>Ingresá tu PIN para ver los acumulados y todos los turnos.</p>
+          <input id="cajaAdminPin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN">
+          <button id="btnIngresarCajaAdmin" class="primary" type="button">Ingresar</button>
+          <small id="estadoLoginCaja"></small>
+        </div>
+      </section>
+
+      <section id="panelCajaAdmin" class="cajaPanel hidden">
+        <div class="cajaAdminTop">
+          <div>
+            <h3>Panel privado</h3>
+            <p>Resumen completo de cierres y acumulados.</p>
+          </div>
+          <button id="btnSalirCajaAdmin" type="button">Cerrar sesión</button>
+        </div>
+
+        <div class="cajaAdminFilters">
+          <label>Fecha
+            <input id="cajaAdminFecha" type="date">
+          </label>
+          <button id="btnActualizarCajaAdmin" type="button">🔄 Actualizar</button>
+        </div>
+
+        <div id="resumenCajaAdmin" class="cajaSummaryGrid"></div>
+
+        <div class="cajaAdminSection">
+          <h3>Cierres del día</h3>
+          <div id="cierresCajaAdmin" class="cajaAdminClosures"></div>
+        </div>
+
+        <details class="cajaAdminSection cajaPeopleAdmin">
+          <summary>👥 Administrar personas habilitadas</summary>
+          <div class="cajaPersonAdd">
+            <input id="nuevaPersonaCaja" type="text" placeholder="Nombre">
+            <button id="btnAgregarPersonaCaja" type="button">Agregar</button>
+          </div>
+          <div id="listaPersonasCaja"></div>
+        </details>
+
+        <details class="cajaAdminSection">
+          <summary>🔑 Cambiar PIN de administrador</summary>
+          <div class="cajaPinChange">
+            <input id="nuevoPinCaja" type="password" inputmode="numeric" maxlength="8" placeholder="Nuevo PIN">
+            <button id="btnCambiarPinCaja" type="button">Guardar PIN</button>
+          </div>
+          <small>PIN inicial de esta versión: 2580. Cambialo después de ingresar.</small>
+        </details>
+      </section>
     </section>
 
     <section class="card appSection emptyModule" id="seccionTareas">
@@ -497,7 +625,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=383"></script>
+  <script src="app.js?v=390"></script>
 
   
 
