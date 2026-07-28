@@ -401,7 +401,7 @@ function continuarAlResumenSiEstaConfirmado() {
   const diaPedidos = $("diaProduccionPedidos")?.value || "";
   const checkProduccion = $("checkProduccionCompleta");
   const checkDiaPedidos = $("checkDiaPedidos");
-  const checkPedidos = $("checkPedidoCompleto");
+
 
   if (!diaProduccion || !diaPedidos || diaProduccion !== diaPedidos) {
     alert("Primero elegí y sincronizá el mismo día en Producción y Pedidos.");
@@ -415,8 +415,8 @@ function continuarAlResumenSiEstaConfirmado() {
     return;
   }
 
-  if (!checkPedidos?.checked) {
-    alert("Primero confirmá que todos los pedidos cargados están correctos.");
+  if (!pedidosConfirmadosParaFecha($("fechaPedido")?.value || hoyISO()).length) {
+    alert("Confirmá al menos un pedido antes de continuar al Resumen.");
     return;
   }
 
@@ -1311,6 +1311,7 @@ function datosActuales() {
     pedidosConfirmados,
     correspondePedido,
     memoriaUltimoEnvio,
+    jornadasCerradas,
     actualizado: new Date().toISOString()
   };
 }
@@ -1342,6 +1343,7 @@ async function cargarDesdeNube() {
 
       produccion = data.produccion || produccion;
       pedidos = Array.isArray(data.pedidos) ? data.pedidos : pedidos;
+    pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
     pedidosFijos = Array.isArray(data.pedidosFijos) ? data.pedidosFijos : pedidosFijos;
     historialPedidos = Array.isArray(data.historialPedidos) ? data.historialPedidos : historialPedidos;
       pedidosFijos = Array.isArray(data.pedidosFijos) ? data.pedidosFijos : pedidosFijos;
@@ -1378,6 +1380,7 @@ async function cargarDesdeNube() {
       pedidosConfirmados = Boolean(data.pedidosConfirmados);
       correspondePedido = data.correspondePedido || correspondePedido;
       memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
+      jornadasCerradas = Array.isArray(data.jornadasCerradas) ? data.jornadasCerradas : jornadasCerradas;
 
       validarClientes();
 
@@ -1402,7 +1405,8 @@ async function cargarDesdeNube() {
       localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
       localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
       localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-    }
+      localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+}
 
     setEstadoSync("Online");
   } catch (error) {
@@ -1411,54 +1415,53 @@ async function cargarDesdeNube() {
   }
 }
 
-async function actualizarDatosManual() {
-  const boton = $("btnActualizarDatos");
-  const texto = boton?.querySelector(".refreshText");
-  const icono = boton?.querySelector(".refreshIcon");
+async function actualizarDatosManual(evento = null) {
+  const botonGlobal = $("btnActualizarGlobal");
+  const botonPrincipal = $("btnActualizarDatos");
+  const botones = [botonGlobal, botonPrincipal].filter(Boolean);
   const estado = $("estadoActualizacionManual");
 
-  if (!boton) return;
+  botones.forEach(boton => {
+    boton.disabled = true;
+    boton.classList.add("actualizando");
+  });
 
-  boton.disabled = true;
-  boton.classList.add("actualizando");
-  if (texto) texto.textContent = "Actualizando...";
+  if (botonGlobal) botonGlobal.textContent = "⏳";
   if (estado) estado.textContent = "Consultando Firebase...";
 
   try {
-    if (!db) {
-      throw new Error("Firebase no está conectado.");
-    }
+    if (!db) throw new Error("Firebase no está conectado.");
 
     const doc = await db.collection("fratello").doc("estado").get();
-
-    if (!doc.exists) {
-      throw new Error("No hay datos guardados en Firebase.");
-    }
+    if (!doc.exists) throw new Error("No hay datos guardados en Firebase.");
 
     const data = doc.data();
-
     cargandoDesdeNube = true;
 
     produccion = data.produccion || produccion;
+    jornadasCerradas = Array.isArray(data.jornadasCerradas)
+      ? data.jornadasCerradas
+      : jornadasCerradas;
+
     pedidos = Array.isArray(data.pedidos) ? data.pedidos : pedidos;
+    pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
+
     predeterminadas = data.predeterminadas || predeterminadas;
-    clientes = Array.isArray(data.clientes) && data.clientes.length
-      ? data.clientes
-      : clientes;
+    clientes = Array.isArray(data.clientes) && data.clientes.length ? data.clientes : clientes;
     datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
-      listasPrecios = data.listasPrecios || listasPrecios;
+    listasPrecios = data.listasPrecios || listasPrecios;
     productosExtra = data.productosExtra || productosExtra;
-    if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
-      productos.splice(0, productos.length, ...data.catalogoProductos);
-    }
     pedidosConfirmados = Boolean(data.pedidosConfirmados);
     correspondePedido = data.correspondePedido || correspondePedido;
     memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
 
-    validarClientes();
+    if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
+      productos.splice(0, productos.length, ...data.catalogoProductos);
+    }
 
-    productosExtra.forEach(p => {
-      if (!productos.find(x => x.id === p.id)) productos.push(p);
+    validarClientes();
+    productosExtra.forEach(producto => {
+      if (!productos.find(item => item.id === producto.id)) productos.push(producto);
     });
 
     localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
@@ -1466,20 +1469,26 @@ async function actualizarDatosManual() {
     localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
     localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
     localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-  localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
+    localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
     localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
-  localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
+    localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
     localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
     localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+    localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 
     renderClientes();
     renderListaClientesCompleta();
     renderClientesPendientes();
     renderProduccion();
     renderPedidosCargados();
+    renderPedidosFuturos();
+    renderPedidosRecibidosFormulario();
+    renderHistorialPedidos();
     calcularDiferencias();
     actualizarPanelMemoriaEnvio();
     actualizarTarjetaDiaPedidos();
+    actualizarCampanaNotificaciones();
+    await cargarHistorialNotificaciones();
 
     const hora = new Date().toLocaleTimeString("es-AR", {
       hour: "2-digit",
@@ -1487,36 +1496,26 @@ async function actualizarDatosManual() {
     });
 
     if (estado) estado.textContent = `✅ Datos actualizados a las ${hora}`;
-
-    boton.classList.remove("actualizando");
-    boton.classList.add("actualizado");
-    if (icono) icono.textContent = "✅";
-    if (texto) texto.textContent = "Actualizado";
+    if (botonGlobal) botonGlobal.textContent = "✅";
+    setEstadoSync("Online actualizado");
 
     setTimeout(() => {
-      boton.classList.remove("actualizado");
-      if (icono) icono.textContent = "🔄";
-      if (texto) texto.textContent = "Actualizar datos";
-    }, 1800);
-
-    setEstadoSync("Online actualizado");
+      if (botonGlobal) botonGlobal.textContent = "🔄";
+    }, 1200);
   } catch (error) {
     console.error("Error actualizando datos:", error);
-
     if (estado) estado.textContent = "❌ No se pudieron actualizar los datos";
-    boton.classList.remove("actualizando");
-    boton.classList.add("errorActualizacion");
-    if (icono) icono.textContent = "⚠️";
-    if (texto) texto.textContent = "Reintentar";
+    if (botonGlobal) botonGlobal.textContent = "⚠️";
 
     setTimeout(() => {
-      boton.classList.remove("errorActualizacion");
-      if (icono) icono.textContent = "🔄";
-      if (texto) texto.textContent = "Actualizar datos";
-    }, 2200);
+      if (botonGlobal) botonGlobal.textContent = "🔄";
+    }, 1600);
   } finally {
     cargandoDesdeNube = false;
-    boton.disabled = false;
+    botones.forEach(boton => {
+      boton.disabled = false;
+      boton.classList.remove("actualizando");
+    });
   }
 }
 
@@ -1728,6 +1727,7 @@ function escucharCambiosNube() {
         Array.isArray(data.pedidos) ? data.pedidos : pedidos
       );
       pedidos = resultadoInterpretacion.pedidos;
+      pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
       detectarPedidosNotificablesNuevos(pedidosAntesDeActualizar, pedidos);
       idsPedidosFormularioConocidos = new Set(
         pedidos
@@ -1745,6 +1745,7 @@ function escucharCambiosNube() {
       pedidosConfirmados = Boolean(data.pedidosConfirmados);
       correspondePedido = data.correspondePedido || correspondePedido;
       memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
+      jornadasCerradas = Array.isArray(data.jornadasCerradas) ? data.jornadasCerradas : jornadasCerradas;
 
       validarClientes();
 
@@ -1760,6 +1761,7 @@ function escucharCambiosNube() {
       localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
       localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
       localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 
       renderClientes();
       renderListaClientesCompleta();
@@ -1805,6 +1807,7 @@ function guardarTodo() {
   localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
   localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
   localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
   guardarEnNube();
 }
 
@@ -1867,6 +1870,7 @@ let correspondePedido = JSON.parse(localStorage.getItem("fratello_corresponde") 
 let modoEdicionPredeterminada = false;
 let pedidosConfirmados = JSON.parse(localStorage.getItem("fratello_pedidos_confirmados") || "false");
 let memoriaUltimoEnvio = JSON.parse(localStorage.getItem("fratello_memoria_envio") || "null");
+let jornadasCerradas = JSON.parse(localStorage.getItem("fratello_jornadas_cerradas") || "[]");
 let produccionDesbloqueada = false;
 
 const $ = (id) => document.getElementById(id);
@@ -3210,8 +3214,11 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
   if (!fecha || !Array.isArray(pedidosFijos)) return 0;
 
   const jornadaYaEnviada =
-    memoriaUltimoEnvio?.jornadaEnviada === true &&
-    memoriaUltimoEnvio?.fecha === fecha;
+    jornadaEstaCerrada(fecha) ||
+    (
+      memoriaUltimoEnvio?.jornadaEnviada === true &&
+      memoriaUltimoEnvio?.fecha === fecha
+    );
 
   if (jornadaYaEnviada) {
     if (mostrarAviso) {
@@ -3277,6 +3284,7 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
       pedidoFijoId: fijo.id,
       programacionNombre: fijo.nombre || "Pedido fijo",
       modificadoDesdeFijo: false,
+      confirmado: false,
       items: itemsCorrectos
     };
 
@@ -3801,7 +3809,7 @@ function procesarPedidoActual() {
   }
 
   const procesado = procesarTextoPedido(texto, cliente, fecha);
-  const nuevoPedido = { id: Date.now(), fecha, fechaEntrega: fecha, cliente, textoOriginal: texto, origen: "manual", items: procesado };
+  const nuevoPedido = { id: Date.now(), fecha, fechaEntrega: fecha, cliente, textoOriginal: texto, origen: "manual", confirmado: false, items: procesado };
   pedidos.push(nuevoPedido);
   registrarPedidoEnHistorial(nuevoPedido);
 
@@ -3848,14 +3856,67 @@ function renderUltimoProcesado() {
   actualizarAvisoUnidadesAmbiguas();
 }
 
+let pestanaPedidosActiva = "dia";
+
+function cambiarPestanaPedidos(tipo) {
+  pestanaPedidosActiva = tipo === "fijos" ? "fijos" : "dia";
+
+  $("tabPedidosDia")?.classList.toggle("active", pestanaPedidosActiva === "dia");
+  $("tabPedidosFijos")?.classList.toggle("active", pestanaPedidosActiva === "fijos");
+
+  const ayuda = $("ayudaPestanaPedidos");
+  if (ayuda) {
+    ayuda.textContent = pestanaPedidosActiva === "fijos"
+      ? "Estos pedidos vienen de la programación fija. Confirmá únicamente los que realmente se entregarán hoy."
+      : "Acá se muestran los pedidos manuales y enviados desde el enlace del cliente.";
+  }
+
+  renderPedidosCargados();
+}
+
+function pedidoEstaConfirmado(pedido) {
+  return pedido?.confirmado === true;
+}
+
+function alternarConfirmacionPedido(idPedido, confirmado) {
+  const pedido = pedidos.find(item => Number(item.id) === Number(idPedido));
+  if (!pedido) return;
+
+  pedido.confirmado = Boolean(confirmado);
+  pedidosConfirmados = pedidos
+    .filter(item => fechaEntregaPedido(item) === ($("fechaPedido")?.value || hoyISO()))
+    .filter(item => item.confirmado === true)
+    .length > 0;
+
+  guardarTodo();
+  renderPedidosCargados();
+  calcularDiferencias();
+  actualizarEstadoConfirmacion();
+}
+
+function pedidosConfirmadosParaFecha(fecha) {
+  return pedidos.filter(pedido =>
+    fechaEntregaPedido(pedido) === fecha &&
+    pedidoEstaConfirmado(pedido)
+  );
+}
+
 function renderPedidosCargados() {
   const contenedor = $("pedidosCargados");
   if (!contenedor) return;
 
   const fechaSeleccionada = $("fechaPedido")?.value || hoyISO();
-  const pedidosFecha = pedidos.filter(
+  const todosPedidosFecha = pedidos.filter(
     pedido => fechaEntregaPedido(pedido) === fechaSeleccionada
   );
+
+  const pedidosDia = todosPedidosFecha.filter(pedido => pedido.origen !== "pedido_fijo");
+  const pedidosFijosDia = todosPedidosFecha.filter(pedido => pedido.origen === "pedido_fijo");
+
+  if ($("badgePedidosDia")) $("badgePedidosDia").textContent = String(pedidosDia.length);
+  if ($("badgePedidosFijosDia")) $("badgePedidosFijosDia").textContent = String(pedidosFijosDia.length);
+
+  const pedidosFecha = pestanaPedidosActiva === "fijos" ? pedidosFijosDia : pedidosDia;
 
   const estadoFecha = $("estadoPedidosFecha");
   if (estadoFecha) {
@@ -3867,7 +3928,7 @@ function renderPedidosCargados() {
         year: "numeric"
       });
 
-    const fijos = pedidosFecha.filter(p => p.origen === "pedido_fijo").length;
+    const fijos = pedidosFijosDia.length;
     estadoFecha.innerHTML =
       `<strong>${fechaLegible}</strong>` +
       `<span>${pedidosFecha.length} pedido(s) · ${fijos} fijo(s)</span>`;
@@ -3889,11 +3950,16 @@ function renderPedidosCargados() {
 
     html += `<div class="pedidoClienteCard ${esFijo ? "fixedDailyOrder" : ""} ${fueModificado ? "fixedDailyOrderModified" : ""}" data-pedido-card-id="${pedido.id}">
       <div class="pedidoClienteHeader">
-        <label class="pedidoSelect">
-          <input type="checkbox" class="checkPedidoEliminar" value="${pedido.id}">
+        <div class="pedidoIdentity">
           <strong>${esFijo ? "🔁 " : ""}${pedido.cliente}</strong>
+          <span>${itemsValidos.length} ítems · Entrega ${new Date(fechaEntregaPedido(pedido)+"T12:00:00").toLocaleDateString("es-AR")}</span>
+        </div>
+        <label class="confirmOrderControl ${pedidoEstaConfirmado(pedido) ? "confirmed" : "pending"}">
+          <input type="checkbox"
+            ${pedidoEstaConfirmado(pedido) ? "checked" : ""}
+            onchange="alternarConfirmacionPedido(${pedido.id}, this.checked)">
+          <span>${pedidoEstaConfirmado(pedido) ? "✅ Confirmado" : "○ Confirmar envío"}</span>
         </label>
-        <span>${itemsValidos.length} ítems · Entrega ${new Date(fechaEntregaPedido(pedido)+"T12:00:00").toLocaleDateString("es-AR")}</span>
       </div>
       <div class="orderOriginBadges">
         ${esFijo ? `<span class="originFixed">🔁 ${escaparHtmlCatalogo(pedido.programacionNombre || "Pedido fijo")}</span>` : '<span class="originManual">✍️ Pedido cargado</span>'}
@@ -3916,6 +3982,10 @@ function renderPedidosCargados() {
     }
 
     html += `<div class="accionesPedido">
+      <label class="deleteOrderSelect">
+        <input type="checkbox" class="checkPedidoEliminar" value="${pedido.id}">
+        Seleccionar para borrar
+      </label>
       <button type="button" onclick="editarPedidoCargado(${pedido.id})">✏️ Editar esta entrega</button>
       ${esFijo && fueModificado
         ? `<button type="button" class="updateFixedOrderBtn" onclick="actualizarPedidoFijoDesdePedido(${pedido.id})">💾 Usar como nuevo pedido fijo</button>`
@@ -4013,7 +4083,7 @@ function calcularDiferencias() {
   const totalesPedido = {};
 
   const fechaTrabajo = $("fechaPedido")?.value || hoyISO();
-  for (const pedido of pedidos.filter(p => fechaEntregaPedido(p) === fechaTrabajo)) {
+  for (const pedido of pedidosConfirmadosParaFecha(fechaTrabajo)) {
     for (const it of pedido.items || []) {
       if (it.estado === "NO PEDIDO") continue;
 
@@ -4118,9 +4188,10 @@ ${clientes}`;
 
 
 function textoPedidosClientes() {
-  if (!pedidos.length) return "No hay pedidos cargados.";
-  let texto = "FRATELLO - Pedidos clientes\n\n";
-  pedidos.forEach(p => {
+  const lista = pedidosConfirmadosParaFecha(fechaJornadaActual());
+  if (!lista.length) return "No hay pedidos confirmados.";
+  let texto = "FRATELLO - Pedidos clientes confirmados\n\n";
+  lista.forEach(p => {
     texto += `${p.cliente}:\n`;
     p.items.filter(i => i.estado !== "NO PEDIDO").forEach(i => {
       texto += `- ${fmt(i.cantidad)} ${i.unidad} ${i.producto}\n`;
@@ -4489,7 +4560,6 @@ function aplicarPermisosUsuario() {
 
 function destildarCasillasConfirmacion() {
   const checkProduccion = $("checkProduccionCompleta");
-  const checkPedido = $("checkPedidoCompleto");
 
   if (checkProduccion) checkProduccion.checked = false;
   if (checkPedido) checkPedido.checked = false;
@@ -4538,6 +4608,27 @@ function confirmarPedidos() {
 
 
 
+
+function jornadaEstaCerrada(fecha) {
+  return Array.isArray(jornadasCerradas) && jornadasCerradas.includes(fecha);
+}
+
+function cerrarJornada(fecha) {
+  if (!fecha) return;
+  if (!Array.isArray(jornadasCerradas)) jornadasCerradas = [];
+  if (!jornadasCerradas.includes(fecha)) jornadasCerradas.push(fecha);
+  localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+}
+
+function reabrirJornada(fecha) {
+  jornadasCerradas = (Array.isArray(jornadasCerradas) ? jornadasCerradas : [])
+    .filter(item => item !== fecha);
+  localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+}
+
+function estadoJornadaActual() {
+  return jornadaEstaCerrada(fechaJornadaActual()) ? "cerrada" : "abierta";
+}
 
 function fechaJornadaActual() {
   return $("fechaPedido")?.value || hoyISO();
@@ -4626,12 +4717,12 @@ function borrarMemoriaEnvio() {
 
   if (!confirm("¿Seguro que querés comenzar una jornada nueva y borrar la memoria del último envío?")) return;
 
+  const fecha = memoriaUltimoEnvio?.fecha || $("fechaPedido")?.value || fechaISOManana();
   memoriaUltimoEnvio = null;
   localStorage.removeItem("fratello_memoria_envio");
+  reabrirJornada(fecha);
 
   limpiarJornadaDespuesDeEnviar();
-
-  const fecha = $("fechaPedido")?.value || fechaISOManana();
   asegurarPedidosFijosParaFecha(fecha, false);
   renderPedidosCargados();
   calcularDiferencias();
@@ -4649,10 +4740,12 @@ function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencias, cli
     diferencias,
     clientes: clientesAcumulados,
     hora: new Date().toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"}),
-    actualizado: new Date().toISOString()
+    actualizado: new Date().toISOString(),
+    jornadaEnviada: true
   };
 
   localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
   actualizarPanelMemoriaEnvio();
 }
 
@@ -4710,8 +4803,8 @@ function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, dif
 function obtenerFilasComparador() {
   const totalesPedido = {};
 
-  for (const pedido of pedidos) {
-    for (const it of pedido.items) {
+  for (const pedido of pedidosConfirmadosParaFecha(fechaJornadaActual())) {
+    for (const it of pedido.items || []) {
       if (it.estado !== "NO PEDIDO") {
         totalesPedido[it.productoId] = (totalesPedido[it.productoId] || 0) + Number(it.cantidad || 0);
       }
@@ -4837,8 +4930,8 @@ function verificarChecksAntesDeWhatsApp() {
     return false;
   }
 
-  if (checkPedido && !checkPedido.checked) {
-    alert("Primero tildá que los pedidos cargados están correctos.");
+  if (!pedidosConfirmadosParaFecha(fechaJornadaActual()).length) {
+    alert("Confirmá al menos un pedido antes de enviar.");
     return false;
   }
 
@@ -4848,7 +4941,11 @@ function verificarChecksAntesDeWhatsApp() {
 function generarMensajeGrupoFratello() {
   if (!verificarChecksAntesDeWhatsApp()) return;
 
-  const pedidosNuevos = [...pedidos];
+  const pedidosNuevos = pedidosConfirmadosParaFecha(fechaJornadaActual());
+  if (!pedidosNuevos.length) {
+    alert("No hay pedidos confirmados para enviar.");
+    return;
+  }
   const totalesNuevos = totalesPedidosDe(pedidosNuevos);
   const esActualizacion = memoriaCorrespondeAJornadaActual();
 
@@ -4928,6 +5025,7 @@ function generarMensajeGrupoFratello() {
     [...new Set(clientesAcumulados)]
   );
 
+  cerrarJornada(fechaJornadaActual());
   limpiarPedidosDespuesDeEnviar();
   actualizarPanelMemoriaEnvio();
 
@@ -5013,6 +5111,9 @@ async function init() {
   if ($("btnAgregarProductoCatalogo")) $("btnAgregarProductoCatalogo").onclick = agregarProductoCatalogo;
   if ($("listaAdministradorProductos")) $("listaAdministradorProductos").onclick = manejarClicksAdministradorProductos;
   renderAdministradorProductos();
+
+  if ($("tabPedidosDia")) $("tabPedidosDia").onclick = () => cambiarPestanaPedidos("dia");
+  if ($("tabPedidosFijos")) $("tabPedidosFijos").onclick = () => cambiarPestanaPedidos("fijos");
 
   const btnContinuarResumen = $("btnContinuarResumen");
   if (btnContinuarResumen) {
@@ -5165,6 +5266,8 @@ window.crearPedidoFijoCliente=crearPedidoFijoCliente;
 window.guardarPedidoFijoTarjeta=guardarPedidoFijoTarjeta;
 window.eliminarPedidoFijo=eliminarPedidoFijo;
 window.verPedidoFormularioEnFecha=verPedidoFormularioEnFecha;
+window.alternarConfirmacionPedido=alternarConfirmacionPedido;
+window.cambiarPestanaPedidos=cambiarPestanaPedidos;
 window.editarPedidoCargado=editarPedidoCargado;
 window.repetirPedidoHistorial=repetirPedidoHistorial;
 window.editarPedidoFijo=editarPedidoFijo;

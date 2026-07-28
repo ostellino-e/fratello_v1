@@ -1,11 +1,13 @@
-# Fratello v3.3 — Mejoras operativas
+# Fratello v3.4 — Jornadas y confirmación individual
 
-- WhatsApp muestra primero qué hacer/guardar y después los pedidos.
-- No genera avisos por pedidos fijos.
-- Los pedidos manuales y del formulario sí generan aviso local.
-- Registro de notificaciones renovable por dispositivo.
-- Pedidos futuros ahora es un botón grande con contador.
-- Botón pequeño Actualizar visible en todas las pantallas.
-- No permite pasar al Resumen sin confirmar Producción y Pedidos.
-- Al enviar WhatsApp se limpian los pedidos cargados, incluidos los fijos.
-- Los pedidos fijos no reaparecen hasta usar Nueva jornada / borrar memoria.
+## Cambios
+- Botón Actualizar flotante, cuadrado y funcional.
+- Actualiza Firebase, pedidos, producción, futuros, clientes, resumen y notificaciones.
+- Pedidos normales y pedidos fijos separados en pestañas.
+- Cada pedido se confirma individualmente.
+- El resumen y WhatsApp sólo cuentan pedidos confirmados.
+- Un pedido fijo no confirmado no se suma ni se envía.
+- Al enviar WhatsApp la jornada queda cerrada.
+- Las jornadas cerradas se guardan localmente y en Firebase.
+- Los pedidos fijos no reaparecen al recargar o volver a entrar.
+- “Nueva jornada / borrar memoria” reabre la fecha y vuelve a cargar los pedidos fijos.

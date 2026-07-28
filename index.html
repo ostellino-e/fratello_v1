@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.3";
-    document.documentElement.dataset.fratelloVersion = "3.3";
+    window.FRATELLO_VERSION = "3.4";
+    document.documentElement.dataset.fratelloVersion = "3.4";
   </script>
 
 </head>
@@ -30,11 +30,11 @@
       </div>
     </div>
     <div class="headerSpacer" aria-hidden="true"></div>
-  <button id="btnActualizarGlobal" class="globalRefreshButton" type="button" title="Actualizar datos">🔄 <span>Actualizar</span></button>
+  <button id="btnActualizarGlobal" class="globalRefreshButton" type="button" title="Actualizar todos los datos" aria-label="Actualizar datos">🔄</button>
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.3</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.4</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -204,6 +204,16 @@
         <div id="pedidosRecibidosFormulario"></div>
       </details>
 
+      <div class="ordersTabs" role="tablist">
+        <button id="tabPedidosDia" class="ordersTab active" type="button" data-tipo-pedido="dia">
+          Pedidos del día <span id="badgePedidosDia">0</span>
+        </button>
+        <button id="tabPedidosFijos" class="ordersTab" type="button" data-tipo-pedido="fijos">
+          🔁 Pedidos fijos <span id="badgePedidosFijosDia">0</span>
+        </button>
+      </div>
+      <p id="ayudaPestanaPedidos" class="hint">Acá se muestran los pedidos manuales y enviados por clientes.</p>
+
       <h3>Pedidos cargados para la fecha elegida</h3>
       <div id="estadoPedidosFecha" class="ordersDateStatus"></div>
       <div id="pedidosCargados"></div>
@@ -215,10 +225,9 @@
       </p>
 
 
-      <label class="checkControl">
-        <input type="checkbox" id="checkPedidoCompleto">
-        Confirmo que todos los pedidos cargados están correctos
-      </label>
+      <div class="individualConfirmationNotice">
+        ✅ El resumen cuenta únicamente los pedidos confirmados uno por uno.
+      </div>
 
       <button id="btnContinuarResumen" class="primary continueButton" type="button">
         Continuar al resumen →
@@ -460,7 +469,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=330"></script>
+  <script src="app.js?v=340"></script>
 
   
 
@@ -477,12 +486,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=330")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=340")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=330", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=340", {
             scope: "./",
             updateViaCache: "none"
           });
