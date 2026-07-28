@@ -1324,8 +1324,6 @@ async function mostrarNotificacionHistorialEnDispositivo(notificacion) {
 function escucharHistorialNotificaciones() {
   if (!db || unsubscribeHistorialNotificaciones) return;
 
-  let primeraCarga = true;
-
   unsubscribeHistorialNotificaciones = db
     .collection("fratello_historial_notificaciones")
     .orderBy("fechaISO", "desc")
@@ -1336,22 +1334,13 @@ function escucharHistorialNotificaciones() {
         ...doc.data()
       }));
 
-      if (primeraCarga) {
-        nuevas.forEach(notificacion => idsNotificacionesConocidas.add(notificacion.id));
-        primeraCarga = false;
-      } else {
-        nuevas
-          .filter(notificacion => !idsNotificacionesConocidas.has(notificacion.id))
-          .forEach(notificacion => {
-            idsNotificacionesConocidas.add(notificacion.id);
-            const origen = String(notificacion.origen || notificacion.tipo || "").toLowerCase();
-            const esPedidoFijo = origen.includes("fijo") || notificacion.pedidoFijo === true;
-            if (!esPedidoFijo) {
-              mostrarNotificacionHistorialEnDispositivo(notificacion);
-            }
-          });
-      }
+      nuevas.forEach(notificacion => {
+        idsNotificacionesConocidas.add(notificacion.id);
+      });
 
+      // El historial solamente actualiza la campana y la lista interna.
+      // Nunca genera avisos del sistema, para evitar notificar pedidos fijos
+      // al recargar, borrar memoria o comenzar una jornada.
       notificacionesHistorial = nuevas;
       renderHistorialNotificaciones();
     }, error => {
@@ -1655,20 +1644,51 @@ if (FIREBASE_ACTIVO && typeof firebase !== "undefined" && firebase.messaging) {
   }
 }
 
-if (messaging) {
-  messaging.onMessage(payload => {
-    const titulo = payload.notification?.title || "Fratello";
-    const cuerpo = payload.notification?.body || "Tenés una nueva notificación.";
 
-    navigator.serviceWorker.ready
-      .then(registro => registro.showNotification(titulo, {
+
+
+function origenNotificacionPermitido(datos = {}) {
+  const origen = String(
+    datos.origen ||
+    datos.tipoOrigen ||
+    datos.tipo_pedido ||
+    datos.tipoPedido ||
+    ""
+  ).toLowerCase().trim();
+
+  return [
+    "manual",
+    "externo",
+    "formulario_cliente",
+    "pedido_manual",
+    "pedido_externo"
+  ].includes(origen);
+}
+
+if (messaging) {
+  messaging.onMessage(async payload => {
+    const datos = payload?.data || {};
+
+    // Los push sin origen explícito se descartan.
+    // Esto evita que pedidos fijos o avisos viejos reaparezcan al actualizar.
+    if (!origenNotificacionPermitido(datos)) return;
+
+    const titulo = payload.notification?.title || "Fratello";
+    const cuerpo = payload.notification?.body || "Tenés un nuevo pedido.";
+
+    try {
+      const registro = await obtenerRegistroServiceWorkerNotificaciones();
+      await registro.showNotification(titulo, {
         body: cuerpo,
         icon: "./icon-192.png",
         badge: "./icon-192.png",
-        tag: payload.data?.tag || `fratello-${Date.now()}`,
-        data: payload.data || { url: "./index.html#seccionNotificaciones" }
-      }))
-      .catch(error => console.error("No se pudo mostrar la notificación:", error));
+        tag: datos.tag || `fratello-pedido-${datos.pedidoId || Date.now()}`,
+        renotify: false,
+        data: datos
+      });
+    } catch (error) {
+      console.error("Error mostrando notificación recibida:", error);
+    }
   });
 }
 
@@ -2187,6 +2207,7 @@ function reprocesarPedidoFormulario(pedidoId) {
 }
 
 let idsPedidosFormularioConocidos = new Set();
+let primeraSincronizacionPedidosCompletada = false;
 
 function inicializarIdsPedidosFormularioConocidos() {
   idsPedidosFormularioConocidos = new Set(
@@ -2290,10 +2311,20 @@ function escucharCambiosNube() {
       pedidos = resultadoInterpretacion.pedidos;
       pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
 
-      // Únicamente los pedidos externos recién llegados pueden notificar.
-      // Los manuales se notifican en el momento exacto de su creación.
-      // Los pedidos fijos, renderizados y sincronizaciones nunca notifican.
-      detectarPedidosNotificablesNuevos(pedidos);
+      // En la primera sincronización de cada carga de página se registra
+      // el estado existente, pero no se muestra ninguna notificación.
+      // Solo cambios posteriores pueden avisar pedidos externos nuevos.
+      if (!primeraSincronizacionPedidosCompletada) {
+        idsPedidosFormularioConocidos = new Set(
+          pedidos
+            .filter(pedido => pedido?.origen === "formulario_cliente")
+            .map(pedido => String(pedido.id || ""))
+            .filter(Boolean)
+        );
+        primeraSincronizacionPedidosCompletada = true;
+      } else {
+        detectarPedidosNotificablesNuevos(pedidos);
+      }
 
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = Array.isArray(data.clientes) && data.clientes.length
@@ -5898,22 +5929,4 @@ window.recordarTodosLosPendientes = recordarTodosLosPendientes;
 window.enviarSiguienteRecordatorioPendiente = enviarSiguienteRecordatorioPendiente;
 window.borrarTodasLasNotificaciones = borrarTodasLasNotificaciones;
 
-if (messaging) {
-  messaging.onMessage(async payload => {
-    cargarHistorialNotificaciones();
-    const titulo = payload.notification?.title || "Fratello";
-    const cuerpo = payload.notification?.body || "Tenés una nueva notificación.";
 
-    try {
-      const registro = await obtenerRegistroServiceWorkerNotificaciones();
-      await registro.showNotification(titulo, {
-        body: cuerpo,
-        icon: "icon-192.png",
-        badge: "icon-192.png",
-        data: payload.data || { url: "./index.html" }
-      });
-    } catch (error) {
-      console.error("Error mostrando notificación recibida:", error);
-    }
-  });
-}

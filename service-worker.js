@@ -5,16 +5,37 @@ firebase.initializeApp({"apiKey": "AIzaSyDPg7UWyqOKYxP5qEelgqjcfTjXD3BXYQY", "au
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(payload => {
+  const datos = payload?.data || {};
+  const origen = String(
+    datos.origen ||
+    datos.tipoOrigen ||
+    datos.tipo_pedido ||
+    datos.tipoPedido ||
+    ""
+  ).toLowerCase().trim();
+
+  const permitido = [
+    "manual",
+    "externo",
+    "formulario_cliente",
+    "pedido_manual",
+    "pedido_externo"
+  ].includes(origen);
+
+  // Rechazar cualquier push sin origen válido, incluidos pedidos fijos.
+  if (!permitido) return;
+
   const titulo = payload.notification?.title || "Fratello";
   const opciones = {
-    body: payload.notification?.body || "Tenés una nueva notificación.",
+    body: payload.notification?.body || "Tenés un nuevo pedido.",
     icon: "./icon-192.png",
     badge: "./icon-192.png",
-    tag: payload.data?.tag || "fratello-notificacion",
-    data: payload.data || { url: "./index.html#notificaciones" }
+    tag: datos.tag || `fratello-pedido-${datos.pedidoId || Date.now()}`,
+    renotify: false,
+    data: datos
   };
 
-  self.registration.showNotification(titulo, opciones);
+  return self.registration.showNotification(titulo, opciones);
 });
 
 self.addEventListener("notificationclick", event => {
@@ -48,7 +69,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v375";
+const CACHE_NAME = "fratello-v376";
 const ARCHIVOS = [
   "./",
   "./index.html",
