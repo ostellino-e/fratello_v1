@@ -19,25 +19,36 @@ messaging.onBackgroundMessage(payload => {
 
 self.addEventListener("notificationclick", event => {
   event.notification.close();
-  const destino = event.notification.data?.url || "./index.html#notificaciones";
+
+  const destino = event.notification?.data?.url || "./index.html?abrir=pedidos";
 
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then(lista => {
-      for (const cliente of lista) {
-        if ("focus" in cliente) {
-          cliente.navigate(destino);
-          return cliente.focus();
-        }
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(ventanas => {
+      for (const ventana of ventanas) {
+        try {
+          const urlActual = new URL(ventana.url);
+          const urlDestino = new URL(destino, self.location.origin);
+
+          if (urlActual.origin === urlDestino.origin) {
+            return ventana.focus().then(() => {
+              ventana.postMessage({
+                type: "ABRIR_DESDE_NOTIFICACION",
+                url: urlDestino.href,
+                seccion: "seccionPedidos",
+                fecha: urlDestino.searchParams.get("fecha"),
+                pedidoId: urlDestino.searchParams.get("pedido")
+              });
+            });
+          }
+        } catch (_) {}
       }
 
-      if (clients.openWindow) {
-        return clients.openWindow(destino);
-      }
+      return clients.openWindow(destino);
     })
   );
 });
 
-const CACHE_NAME = "fratello-v371";
+const CACHE_NAME = "fratello-v372";
 const ARCHIVOS = [
   "./",
   "./index.html",

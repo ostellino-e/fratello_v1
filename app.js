@@ -554,6 +554,55 @@ function renderPedidosHoy() {
   `).join("");
 }
 
+
+function origenPedidoNormalizado(pedido) {
+  const origen = String(pedido?.origen || "").toLowerCase().trim();
+
+  if (origen === "manual") return "manual";
+  if (["externo", "formulario", "web", "cliente"].includes(origen)) return "externo";
+  if (["fijo", "pedido_fijo", "automatico", "automático"].includes(origen)) return "fijo";
+
+  if (pedido?.esFijo === true || pedido?.pedidoFijoId || pedido?.origenFijo === true) {
+    return "fijo";
+  }
+
+  return origen || "desconocido";
+}
+
+function debeNotificarPedido(pedido) {
+  const origen = origenPedidoNormalizado(pedido);
+  return origen === "manual" || origen === "externo";
+}
+
+function emitirNotificacionPedidoSiCorresponde(pedido, opciones = {}) {
+  if (!pedido || !debeNotificarPedido(pedido)) return false;
+
+  const titulo = opciones.titulo || "Nuevo pedido";
+  const cliente = pedido.cliente || "Cliente";
+  const cuerpo = opciones.cuerpo || `Nuevo pedido de ${cliente}`;
+  const fecha = fechaEntregaPedido(pedido) || fechaOperativaActual();
+
+  try {
+    if (typeof mostrarNotificacion === "function") {
+      mostrarNotificacion(titulo, {
+        body: cuerpo,
+        tag: `pedido-${pedido.id || Date.now()}`,
+        data: {
+          url: `${location.origin}${location.pathname}?abrir=pedidos&fecha=${encodeURIComponent(fecha)}&pedido=${encodeURIComponent(pedido.id || "")}`,
+          seccion: "seccionPedidos",
+          fecha,
+          pedidoId: pedido.id || null
+        }
+      });
+      return true;
+    }
+  } catch (error) {
+    console.error("No se pudo mostrar la notificación:", error);
+  }
+
+  return false;
+}
+
 function fechaOperativaActual() {
   const ahora = new Date();
   const fecha = new Date(ahora);
@@ -1326,6 +1375,65 @@ function volverAtrasFratello() {
 window.abrirSeccionFratello = abrirSeccionFratello;
 window.volverAtrasFratello = volverAtrasFratello;
 window.mostrarInicioFratello = mostrarInicioFratello;
+
+
+function abrirDesdeNotificacion(datos = {}) {
+  const fecha = datos.fecha || new URL(location.href).searchParams.get("fecha");
+  const pedidoId = datos.pedidoId || new URL(location.href).searchParams.get("pedido");
+
+  if (fecha && $("fechaPedido")) {
+    $("fechaPedido").value = fecha;
+  }
+
+  abrirSeccionFratello("seccionPedidos");
+
+  // Crear una entrada real en el historial para que el botón Atrás vuelva al inicio.
+  if (!history.state || history.state.fratelloNotificacion !== true) {
+    history.replaceState({ fratelloInicio: true }, "", `${location.pathname}${location.hash || ""}`);
+    history.pushState(
+      { fratelloNotificacion: true, seccion: "seccionPedidos", fecha, pedidoId },
+      "",
+      `${location.pathname}?abrir=pedidos${fecha ? `&fecha=${encodeURIComponent(fecha)}` : ""}${pedidoId ? `&pedido=${encodeURIComponent(pedidoId)}` : ""}`
+    );
+  }
+
+  setTimeout(() => {
+    renderPedidosCargados();
+    if (pedidoId) {
+      const tarjeta = document.querySelector(`[data-pedido-card-id="${pedidoId}"]`);
+      tarjeta?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const detalle = tarjeta?.querySelector("details");
+      if (detalle) detalle.open = true;
+    }
+  }, 120);
+}
+
+function procesarEntradaDesdeNotificacion() {
+  const params = new URL(location.href).searchParams;
+  if (params.get("abrir") !== "pedidos") return;
+
+  abrirDesdeNotificacion({
+    fecha: params.get("fecha"),
+    pedidoId: params.get("pedido")
+  });
+}
+
+window.addEventListener("message", event => {
+  if (event.data?.type === "ABRIR_DESDE_NOTIFICACION") {
+    abrirDesdeNotificacion(event.data);
+  }
+});
+
+window.addEventListener("popstate", event => {
+  if (event.state?.fratelloInicio || !event.state) {
+    abrirSeccionFratello("seccionInicio");
+    return;
+  }
+
+  if (event.state?.fratelloNotificacion) {
+    abrirSeccionFratello(event.state.seccion || "seccionPedidos");
+  }
+});
 
 function iniciarNavegacionFratello() {
   if ($("btnGuardarPedidoHoy")) {
@@ -4307,6 +4415,7 @@ function procesarPedidoActual() {
   reabrirJornadaParaNuevoPedido(fecha);
   pedidos.push(nuevoPedido);
   registrarPedidoEnHistorial(nuevoPedido);
+  emitirNotificacionPedidoSiCorresponde(nuevoPedido);
 
   pedidosConfirmados = false;
   guardarTodo();
@@ -5586,6 +5695,7 @@ async function init() {
   depurarPedidosHoyPorJornada();
   renderPedidosHoy();
   iniciarNavegacionFratello();
+  procesarEntradaDesdeNotificacion();
 
   const btnActualizarNotificaciones = $("btnActualizarNotificaciones");
   if (btnActualizarNotificaciones) {
