@@ -1831,3 +1831,25 @@ body:has(.appSection:target) #contenidoApp {
     width: 100%;
   }
 }
+
+
+/* ===== Fratello v3.6 · Pedidos para hoy ===== */
+.todayOrderForm{display:grid;gap:8px;padding:12px;border:1px solid #e1d6ca;border-radius:13px;background:#fcfaf8}
+.todayOrdersToolbar{display:flex;align-items:center;justify-content:space-between;margin:18px 0 9px}
+.todayOrdersCount{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 8px;border-radius:999px;background:#eadfd4;color:#4f2c1d;font-size:12px;font-weight:900}
+.todayOrdersList{display:grid;gap:9px}
+.todayOrdersEmpty{margin:0;padding:14px;border:1px dashed #d9ccbf;border-radius:12px;color:#77685d;text-align:center}
+.todayOrderCard{padding:11px;border:1px solid #dfd4c8;border-radius:12px;background:#fff}
+.todayOrderCard.isDelivered{opacity:.72;background:#f7fbf7;border-color:#bcd8c0}
+.todayOrderHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.todayOrderHead strong,.todayOrderHead span{display:block}
+.todayOrderHead span{margin-top:3px;color:#77685d;font-size:12px}
+.todayOrderStatus{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;padding:7px 9px;border-radius:999px;background:#eee7df;font-size:12px;font-weight:800}
+.todayOrderCard.isDelivered .todayOrderStatus{background:#dff1e2;color:#236b31}
+.todayOrderStatus input{width:auto!important;margin:0!important}
+.todayOrderDetails{margin-top:8px}
+.todayOrderDetails>summary{cursor:pointer;color:#5c3b2b;font-size:13px;font-weight:800}
+.todayOrderText{margin-top:9px;padding:9px;border-radius:9px;background:#f7f3ef;line-height:1.45}
+.todayOrderActions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.todayOrderActions button{width:auto!important}
+@media(max-width:600px){.todayOrderHead{align-items:flex-start}.todayOrderStatus span{display:none}.todayOrderStatus{padding:8px}}

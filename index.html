@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.5.1";
-    document.documentElement.dataset.fratelloVersion = "3.5.1";
+    window.FRATELLO_VERSION = "3.6";
+    document.documentElement.dataset.fratelloVersion = "3.6";
   </script>
 
 </head>
@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.5.1</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.6</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -83,6 +83,7 @@
       <div class="workflowSteps">
         <button type="button" data-seccion="seccionProduccion"><span>1</span><strong>Producción</strong><small>Cargar lo estibado o realizado.</small></button>
         <button type="button" data-seccion="seccionPedidos"><span>2</span><strong>Pedidos</strong><small>Pegar, revisar y editar pedidos.</small></button>
+        <button type="button" data-seccion="seccionPedidosHoy"><span>HOY</span><strong>Pedidos para hoy</strong><small>Entregas durante la jornada actual.</small></button>
         <button type="button" data-seccion="seccionResumen"><span>3</span><strong>Resumen</strong><small>Comparar faltantes y sobrantes.</small></button>
       </div>
       <div class="futureOrdersMain">
@@ -208,7 +209,34 @@
       </button>
     </section>
 
-    <section class="card wide appSection" id="seccionResumen">
+    
+    <section class="card appSection" id="seccionPedidosHoy">
+      <a class="volverInicio" href="#" data-volver="true">← Volver</a>
+      <h2>Pedidos para hoy</h2>
+      <p class="hint">Para pedidos que se entregan durante la jornada actual. No se suman a producción, resumen ni WhatsApp.</p>
+
+      <div class="todayOrderForm">
+        <label for="clientePedidoHoy">Cliente</label>
+        <input id="clientePedidoHoy" type="text" placeholder="Nombre del cliente">
+
+        <label for="textoPedidoHoy">Pedido</label>
+        <textarea id="textoPedidoHoy" rows="5" placeholder="Ejemplo: 2 kg de pan, 1 docena de facturas"></textarea>
+
+        <label for="horaEntregaPedidoHoy">Hora de entrega</label>
+        <input id="horaEntregaPedidoHoy" type="time">
+
+        <button type="button" id="btnGuardarPedidoHoy">Guardar pedido para hoy</button>
+      </div>
+
+      <div class="todayOrdersToolbar">
+        <strong>Pedidos de la jornada</strong>
+        <span id="contadorPedidosHoy" class="todayOrdersCount">0</span>
+      </div>
+
+      <div id="listaPedidosHoy" class="todayOrdersList"></div>
+    </section>
+
+<section class="card wide appSection" id="seccionResumen">
       <a class="volverInicio" href="#" data-volver="true">← Volver</a>
       <h2>3. Resultado final</h2>
 
@@ -443,7 +471,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=351"></script>
+  <script src="app.js?v=360"></script>
 
   
 
@@ -460,12 +488,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=351")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=360")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=351", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=360", {
             scope: "./",
             updateViaCache: "none"
           });

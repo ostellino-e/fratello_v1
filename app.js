@@ -397,6 +397,152 @@ function recordarTodosLosPendientes() {
 
 
 
+
+function guardarPedidosHoy() {
+  localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+}
+
+function depurarPedidosHoyPorJornada() {
+  const jornadaActual = fechaOperativaActual();
+  const vigentes = pedidosHoy.filter(pedido => pedido.jornada === jornadaActual);
+  if (vigentes.length !== pedidosHoy.length) {
+    pedidosHoy = vigentes;
+    guardarPedidosHoy();
+  }
+}
+
+function limpiarFormularioPedidoHoy() {
+  pedidoHoyEditandoId = null;
+  if ($("clientePedidoHoy")) $("clientePedidoHoy").value = "";
+  if ($("textoPedidoHoy")) $("textoPedidoHoy").value = "";
+  if ($("horaEntregaPedidoHoy")) $("horaEntregaPedidoHoy").value = "";
+  if ($("btnGuardarPedidoHoy")) $("btnGuardarPedidoHoy").textContent = "Guardar pedido para hoy";
+}
+
+function guardarPedidoHoyDesdeFormulario() {
+  const cliente = $("clientePedidoHoy")?.value.trim() || "";
+  const texto = $("textoPedidoHoy")?.value.trim() || "";
+  const horaEntrega = $("horaEntregaPedidoHoy")?.value || "";
+
+  if (!cliente) {
+    alert("Ingresá el nombre del cliente.");
+    $("clientePedidoHoy")?.focus();
+    return;
+  }
+  if (!texto) {
+    alert("Ingresá el pedido.");
+    $("textoPedidoHoy")?.focus();
+    return;
+  }
+  if (!/^\d{2}:\d{2}$/.test(horaEntrega)) {
+    alert("Elegí la hora de entrega.");
+    $("horaEntregaPedidoHoy")?.focus();
+    return;
+  }
+
+  if (pedidoHoyEditandoId !== null) {
+    const existente = pedidosHoy.find(p => Number(p.id) === Number(pedidoHoyEditandoId));
+    if (existente) {
+      existente.cliente = cliente;
+      existente.texto = texto;
+      existente.horaEntrega = horaEntrega;
+      existente.actualizado = new Date().toISOString();
+    }
+  } else {
+    pedidosHoy.push({
+      id: Date.now(),
+      jornada: fechaOperativaActual(),
+      cliente,
+      texto,
+      horaEntrega,
+      entregado: false,
+      creado: new Date().toISOString()
+    });
+  }
+
+  guardarPedidosHoy();
+  limpiarFormularioPedidoHoy();
+  renderPedidosHoy();
+}
+
+function editarPedidoHoy(id) {
+  const pedido = pedidosHoy.find(p => Number(p.id) === Number(id));
+  if (!pedido) return;
+
+  pedidoHoyEditandoId = pedido.id;
+  if ($("clientePedidoHoy")) $("clientePedidoHoy").value = pedido.cliente || "";
+  if ($("textoPedidoHoy")) $("textoPedidoHoy").value = pedido.texto || "";
+  if ($("horaEntregaPedidoHoy")) $("horaEntregaPedidoHoy").value = pedido.horaEntrega || "";
+  if ($("btnGuardarPedidoHoy")) $("btnGuardarPedidoHoy").textContent = "Guardar cambios";
+
+  abrirSeccionFratello("seccionPedidosHoy");
+  setTimeout(() => $("clientePedidoHoy")?.focus(), 80);
+}
+
+function eliminarPedidoHoy(id) {
+  if (!confirm("¿Seguro que querés eliminar este pedido para hoy?")) return;
+  pedidosHoy = pedidosHoy.filter(p => Number(p.id) !== Number(id));
+  if (Number(pedidoHoyEditandoId) === Number(id)) limpiarFormularioPedidoHoy();
+  guardarPedidosHoy();
+  renderPedidosHoy();
+}
+
+function alternarEntregadoPedidoHoy(id, entregado) {
+  const pedido = pedidosHoy.find(p => Number(p.id) === Number(id));
+  if (!pedido) return;
+  pedido.entregado = Boolean(entregado);
+  pedido.actualizado = new Date().toISOString();
+  guardarPedidosHoy();
+  renderPedidosHoy();
+}
+
+function renderPedidosHoy() {
+  const lista = $("listaPedidosHoy");
+  const contador = $("contadorPedidosHoy");
+  if (!lista) return;
+
+  depurarPedidosHoyPorJornada();
+
+  const ordenados = [...pedidosHoy].sort((a, b) => {
+    if (Boolean(a.entregado) !== Boolean(b.entregado)) {
+      return Number(a.entregado) - Number(b.entregado);
+    }
+    return String(a.horaEntrega || "").localeCompare(String(b.horaEntrega || ""));
+  });
+
+  if (contador) contador.textContent = String(ordenados.length);
+
+  if (!ordenados.length) {
+    lista.innerHTML = '<p class="todayOrdersEmpty">No hay pedidos cargados para esta jornada.</p>';
+    return;
+  }
+
+  lista.innerHTML = ordenados.map(pedido => `
+    <article class="todayOrderCard ${pedido.entregado ? "isDelivered" : ""}">
+      <div class="todayOrderHead">
+        <div>
+          <strong>${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</strong>
+          <span>Entrega ${escaparHtmlCatalogo(pedido.horaEntrega || "")}</span>
+        </div>
+        <label class="todayOrderStatus">
+          <input type="checkbox" ${pedido.entregado ? "checked" : ""}
+            onchange="alternarEntregadoPedidoHoy(${pedido.id}, this.checked)">
+          <span>${pedido.entregado ? "Entregado" : "Pendiente"}</span>
+        </label>
+      </div>
+
+      <details class="todayOrderDetails">
+        <summary>Ver pedido</summary>
+        <div class="todayOrderText">${escaparHtmlCatalogo(pedido.texto || "").replace(/\n/g, "<br>")}</div>
+        <div class="todayOrderActions">
+          <button type="button" onclick="editarPedidoHoy(${pedido.id})">✏️ Editar</button>
+          <button type="button" class="dangerBtn" onclick="eliminarPedidoHoy(${pedido.id})">🗑 Eliminar</button>
+        </div>
+      </details>
+    </article>
+  `).join("");
+}
+
 function fechaOperativaActual() {
   const ahora = new Date();
   const fecha = new Date(ahora);
@@ -1112,6 +1258,10 @@ window.volverAtrasFratello = volverAtrasFratello;
 window.mostrarInicioFratello = mostrarInicioFratello;
 
 function iniciarNavegacionFratello() {
+  if ($("btnGuardarPedidoHoy")) {
+    $("btnGuardarPedidoHoy").addEventListener("click", guardarPedidoHoyDesdeFormulario);
+  }
+
   document.addEventListener("click", evento => {
     const botonSeccion = evento.target.closest("[data-seccion]");
     if (botonSeccion) {
@@ -2025,6 +2175,8 @@ let pedidosConfirmados = JSON.parse(localStorage.getItem("fratello_pedidos_confi
 let memoriaUltimoEnvio = JSON.parse(localStorage.getItem("fratello_memoria_envio") || "null");
 let jornadasCerradas = JSON.parse(localStorage.getItem("fratello_jornadas_cerradas") || "[]");
 let exclusionesPedidosFijos = JSON.parse(localStorage.getItem("fratello_exclusiones_pedidos_fijos") || "[]");
+let pedidosHoy = JSON.parse(localStorage.getItem("fratello_pedidos_hoy") || "[]");
+let pedidoHoyEditandoId = null;
 let produccionDesbloqueada = false;
 
 const $ = (id) => document.getElementById(id);
@@ -5283,9 +5435,13 @@ async function init() {
       }
       renderPanelPedidosSemana();
       renderPedidosFuturos();
+      depurarPedidosHoyPorJornada();
+      renderPedidosHoy();
     }
   }, 60000);
 
+  depurarPedidosHoyPorJornada();
+  renderPedidosHoy();
   iniciarNavegacionFratello();
 
   const btnActualizarNotificaciones = $("btnActualizarNotificaciones");
