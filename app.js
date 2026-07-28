@@ -429,11 +429,13 @@ function guardarPedidoHoyDesdeFormulario() {
     $("clientePedidoHoy")?.focus();
     return;
   }
+
   if (!texto) {
     alert("Ingresá el pedido.");
     $("textoPedidoHoy")?.focus();
     return;
   }
+
   if (!/^\d{2}:\d{2}$/.test(horaEntrega)) {
     alert("Elegí la hora de entrega.");
     $("horaEntregaPedidoHoy")?.focus();
@@ -481,8 +483,13 @@ function editarPedidoHoy(id) {
 
 function eliminarPedidoHoy(id) {
   if (!confirm("¿Seguro que querés eliminar este pedido para hoy?")) return;
+
   pedidosHoy = pedidosHoy.filter(p => Number(p.id) !== Number(id));
-  if (Number(pedidoHoyEditandoId) === Number(id)) limpiarFormularioPedidoHoy();
+
+  if (Number(pedidoHoyEditandoId) === Number(id)) {
+    limpiarFormularioPedidoHoy();
+  }
+
   guardarPedidosHoy();
   renderPedidosHoy();
 }
@@ -490,6 +497,7 @@ function eliminarPedidoHoy(id) {
 function alternarEntregadoPedidoHoy(id, entregado) {
   const pedido = pedidosHoy.find(p => Number(p.id) === Number(id));
   if (!pedido) return;
+
   pedido.entregado = Boolean(entregado);
   pedido.actualizado = new Date().toISOString();
   guardarPedidosHoy();
@@ -524,8 +532,10 @@ function renderPedidosHoy() {
           <strong>${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</strong>
           <span>Entrega ${escaparHtmlCatalogo(pedido.horaEntrega || "")}</span>
         </div>
+
         <label class="todayOrderStatus">
-          <input type="checkbox" ${pedido.entregado ? "checked" : ""}
+          <input type="checkbox"
+            ${pedido.entregado ? "checked" : ""}
             onchange="alternarEntregadoPedidoHoy(${pedido.id}, this.checked)">
           <span>${pedido.entregado ? "Entregado" : "Pendiente"}</span>
         </label>
@@ -534,6 +544,7 @@ function renderPedidosHoy() {
       <details class="todayOrderDetails">
         <summary>Ver pedido</summary>
         <div class="todayOrderText">${escaparHtmlCatalogo(pedido.texto || "").replace(/\n/g, "<br>")}</div>
+
         <div class="todayOrderActions">
           <button type="button" onclick="editarPedidoHoy(${pedido.id})">✏️ Editar</button>
           <button type="button" class="dangerBtn" onclick="eliminarPedidoHoy(${pedido.id})">🗑 Eliminar</button>
@@ -659,7 +670,7 @@ function htmlGrupoPedidosSemana(titulo, pedidosGrupo, tipo, abierto = false) {
 }
 
 function capturarEstadoPanelPedidosSemana(panel) {
-  if (!panel) return { dias: [], grupos: [], pedidos: [], scrollY: window.scrollY };
+  if (!panel) return null;
 
   return {
     dias: Array.from(panel.querySelectorAll(".weeklyDay[open]"))
@@ -681,24 +692,26 @@ function capturarEstadoPanelPedidosSemana(panel) {
 function restaurarEstadoPanelPedidosSemana(panel, estado) {
   if (!panel || !estado) return;
 
-  if (estado.dias?.length) {
+  if (estado.dias.length) {
     panel.querySelectorAll(".weeklyDay").forEach(dia => {
       dia.open = estado.dias.includes(dia.dataset.fecha);
     });
   }
 
-  (estado.grupos || []).forEach(item => {
+  estado.grupos.forEach(item => {
     const dia = panel.querySelector(`.weeklyDay[data-fecha="${item.fecha}"]`);
     const grupo = dia?.querySelector(`.weeklyOrderGroup[data-grupo="${item.tipo}"]`);
     if (grupo) grupo.open = true;
   });
 
-  (estado.pedidos || []).forEach(id => {
+  estado.pedidos.forEach(id => {
     const detalle = panel.querySelector(`.compactOrderDetails[data-pedido-detalle="${id}"]`);
     if (detalle) detalle.open = true;
   });
 
-  requestAnimationFrame(() => window.scrollTo({ top: estado.scrollY || 0, behavior: "auto" }));
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: estado.scrollY || 0, behavior: "auto" });
+  });
 }
 
 function renderPanelPedidosSemana() {
@@ -4983,9 +4996,11 @@ function diaJornadaActual() {
 
 function totalesPedidosDe(listaPedidos) {
   const totales = {};
+
   (listaPedidos || []).forEach(pedido => {
     (pedido.items || []).forEach(it => {
       if (it.estado === "NO PEDIDO") return;
+
       const id = it.productoId;
       if (!id) return;
 
@@ -4996,6 +5011,7 @@ function totalesPedidosDe(listaPedidos) {
       totales[id] = Number(totales[id] || 0) + cantidadBase;
     });
   });
+
   return totales;
 }
 
@@ -5009,10 +5025,12 @@ function sumarTotales(a, b) {
 
 function mapaProduccionActual() {
   const salida = {};
+
   productos.forEach(p => {
     const cantidadCargada = Number(produccion[claveProduccion(p.id)] || 0);
     salida[p.id] = cantidadAUnidadBase(cantidadCargada, p.unidad, p);
   });
+
   return salida;
 }
 
@@ -5121,6 +5139,7 @@ function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, dif
   } else {
     cambios.forEach(({producto, delta}) => {
       const cantidadTexto = formatearCantidadResumen(Math.abs(delta), producto);
+
       if (delta < 0) {
         mensaje += `🔴 AGREGAR / HACER ${cantidadTexto} ${producto.nombre}\n`;
       } else {

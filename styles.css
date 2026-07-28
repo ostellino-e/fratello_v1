@@ -1833,7 +1833,7 @@ body:has(.appSection:target) #contenidoApp {
 }
 
 
-/* ===== Fratello v3.6 · Pedidos para hoy ===== */
+/* ===== Fratello v3.7 · Pedidos para hoy ===== */
 .todayOrderForm{display:grid;gap:8px;padding:12px;border:1px solid #e1d6ca;border-radius:13px;background:#fcfaf8}
 .todayOrdersToolbar{display:flex;align-items:center;justify-content:space-between;margin:18px 0 9px}
 .todayOrdersCount{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 8px;border-radius:999px;background:#eadfd4;color:#4f2c1d;font-size:12px;font-weight:900}

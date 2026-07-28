@@ -1,12 +1,15 @@
-# Fratello v3.6.1 — Desplegables y recuento corregidos
+# Fratello v3.7 — Base estable reconstruida
 
-Cambios:
+Base utilizada:
+- Fratello v3.5.1, última versión estable del panel semanal y pedidos fijos.
 
-- Al confirmar un pedido, los desplegables permanecen abiertos.
-- Se conserva el día, grupo y pedido que estaban desplegados.
-- Se mantiene la posición de desplazamiento de la pantalla.
-- Se corrigió el recuento utilizado para el mensaje de WhatsApp.
-- Docenas y unidades ahora se convierten a una misma unidad base antes de sumar.
-- La producción y los pedidos se comparan usando el mismo criterio.
-- El mensaje inicial y las actualizaciones muestran cantidades correctamente formateadas.
-- Los pedidos para hoy siguen completamente excluidos del recuento y del WhatsApp.
+Cambios incorporados:
+- Nueva subsección “Pedidos para hoy”.
+- Los pedidos para hoy no participan en producción, resumen ni WhatsApp.
+- Reinicio automático de pedidos del día a las 06:00.
+- Edición, eliminación y marcado como entregado.
+- Los desplegables del panel semanal mantienen su estado al confirmar pedidos.
+- Se conserva la posición de la pantalla.
+- El panel semanal conserva la lógica estable de pedidos normales, futuros y fijos.
+- Recuento corregido usando una misma unidad base para producción y pedidos.
+- Mensajes de WhatsApp correctamente formateados.
