@@ -937,13 +937,33 @@ function volverAtrasFratello() {
   mostrarSeccionFratelloSinApilar(anterior);
 }
 
+window.abrirSeccionFratello = abrirSeccionFratello;
+window.volverAtrasFratello = volverAtrasFratello;
+window.mostrarInicioFratello = mostrarInicioFratello;
+
 function iniciarNavegacionFratello() {
-  document.querySelectorAll("[data-seccion]").forEach(boton => {
-    boton.addEventListener("click", () => abrirSeccionFratello(boton.dataset.seccion));
+  document.addEventListener("click", evento => {
+    const botonSeccion = evento.target.closest("[data-seccion]");
+    if (botonSeccion) {
+      evento.preventDefault();
+      abrirSeccionFratello(botonSeccion.dataset.seccion);
+      return;
+    }
+
+    const botonVolver = evento.target.closest("[data-volver]");
+    if (botonVolver) {
+      evento.preventDefault();
+      volverAtrasFratello();
+    }
   });
 
   const btnInicio = document.getElementById("btnInicio");
-  if (btnInicio) btnInicio.addEventListener("click", mostrarInicioFratello);
+  if (btnInicio) {
+    btnInicio.addEventListener("click", evento => {
+      evento.preventDefault();
+      mostrarInicioFratello();
+    });
+  }
 
   const btnBorrarRapido = document.getElementById("btnBorrarRapido");
   if (btnBorrarRapido) {
