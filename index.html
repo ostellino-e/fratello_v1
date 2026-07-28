@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.8.2</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.8.3</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -234,7 +234,7 @@
       </div>
 
       <div class="todayOrdersToolbar">
-        <strong>Pedidos de la jornada</strong>
+        <strong>Pedidos pendientes de entregar</strong>
         <span id="contadorPedidosHoy" class="todayOrdersCount">0</span>
       </div>
 
@@ -497,7 +497,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=382"></script>
+  <script src="app.js?v=383"></script>
 
   
 
@@ -514,12 +514,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=382")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=383")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=382", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=383", {
             scope: "./",
             updateViaCache: "none"
           });

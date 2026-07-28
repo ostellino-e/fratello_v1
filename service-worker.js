@@ -69,7 +69,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v382";
+const CACHE_NAME = "fratello-v383";
 const ARCHIVOS = [
   "./",
   "./index.html",

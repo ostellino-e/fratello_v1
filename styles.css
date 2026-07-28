@@ -2128,3 +2128,11 @@ body.modalAbierto {
 .printModal.hidden {
   display: none !important;
 }
+
+.todayOrderDeliveryState{display:inline-flex;align-items:center;justify-content:center;padding:8px 11px;border-radius:999px;background:#fff1d8;color:#805412;border:1px solid #e2bf7a;font-size:.78rem;font-weight:900}
+.todayOrderDeliveryState.isDelivered{background:#e3f3e5;color:#276235;border-color:#92c69c}
+.todayDeliveryButton{width:100%;min-height:48px;border:0;border-radius:10px;background:#2f8a46;color:#fff;font-weight:900;font-size:1rem;box-shadow:0 3px 8px rgba(0,0,0,.15)}
+.todayDeliveryButton.undoDelivery{background:#8b745d}
+.todayOrderCard.isDelivered{opacity:.72;background:#eef6ee;border-color:#9bc7a2}
+.todayOrderCard.isDelivered .todayOrderHead strong{text-decoration:line-through}
+@media(max-width:700px){.todayOrderActions{display:grid;grid-template-columns:1fr 1fr}.todayDeliveryButton{grid-column:1/-1}}

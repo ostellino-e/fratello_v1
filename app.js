@@ -515,6 +515,7 @@ function alternarEntregadoPedidoHoy(id, entregado) {
   pedido.actualizado = new Date().toISOString();
   guardarPedidosHoy();
   sincronizarMemoriaTickets();
+  guardarEnNube();
   renderPedidosHoy();
   renderTicketsPorDia();
 }
@@ -564,12 +565,9 @@ function renderPedidosHoy() {
           <span>Entrega ${escaparHtmlCatalogo(pedido.horaEntrega || "")}</span>
         </div>
 
-        <label class="todayOrderStatus">
-          <input type="checkbox"
-            ${pedido.entregado ? "checked" : ""}
-            onchange="alternarEntregadoPedidoHoy(${pedido.id}, this.checked)">
-          <span>${pedido.entregado ? "Entregado" : "Pendiente"}</span>
-        </label>
+        <div class="todayOrderDeliveryState ${pedido.entregado ? "isDelivered" : ""}">
+          ${pedido.entregado ? "✅ ENTREGADO" : "🕒 PENDIENTE"}
+        </div>
       </div>
 
       <details class="todayOrderDetails">
@@ -577,6 +575,10 @@ function renderPedidosHoy() {
         <div class="todayOrderText">${escaparHtmlCatalogo(pedido.texto || "").replace(/\n/g, "<br>")}</div>
 
         <div class="todayOrderActions">
+          <button type="button" class="todayDeliveryButton ${pedido.entregado ? "undoDelivery" : ""}"
+            onclick="alternarEntregadoPedidoHoy(${pedido.id}, ${pedido.entregado ? "false" : "true"})">
+            ${pedido.entregado ? "↩️ Volver a pendiente" : "✅ Marcar como entregado"}
+          </button>
           <button type="button" class="primary" onclick="verTicketPedidoHoy(${pedido.id})">👁 Ver ticket</button>
           <button type="button" onclick="editarPedidoHoy(${pedido.id})">✏️ Editar</button>
           <button type="button" onclick="descargarPdfPedidoHoy(${pedido.id})">📄 Ticket PDF</button>
