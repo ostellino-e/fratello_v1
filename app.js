@@ -396,6 +396,174 @@ function recordarTodosLosPendientes() {
 }
 
 
+
+function fechaOperativaActual() {
+  const ahora = new Date();
+  const fecha = new Date(ahora);
+  if (ahora.getHours() < 6) fecha.setDate(fecha.getDate() - 1);
+  return [
+    fecha.getFullYear(),
+    String(fecha.getMonth() + 1).padStart(2, "0"),
+    String(fecha.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function fechasDesdeHoyHastaDomingo() {
+  const inicio = new Date(fechaOperativaActual() + "T12:00:00");
+  const diaSemana = inicio.getDay(); // 0 domingo
+  const diasHastaDomingo = diaSemana === 0 ? 0 : 7 - diaSemana;
+  const fechas = [];
+
+  for (let i = 0; i <= diasHastaDomingo; i += 1) {
+    const fecha = new Date(inicio);
+    fecha.setDate(inicio.getDate() + i);
+    fechas.push([
+      fecha.getFullYear(),
+      String(fecha.getMonth() + 1).padStart(2, "0"),
+      String(fecha.getDate()).padStart(2, "0")
+    ].join("-"));
+  }
+  return fechas;
+}
+
+function nombreDiaPedidos(fechaISO, esPrimero = false) {
+  const fecha = new Date(fechaISO + "T12:00:00");
+  const nombre = fecha.toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit"
+  });
+  return `${esPrimero ? "Hoy · " : ""}${nombre.charAt(0).toUpperCase()}${nombre.slice(1)}`;
+}
+
+function esPedidoFijoRobusto(pedido) {
+  return pedido?.origen === "pedido_fijo" ||
+    Boolean(pedido?.programacionId) ||
+    Boolean(pedido?.programacionNombre) ||
+    pedido?.esPedidoFijo === true;
+}
+
+function categoriaPedidoSemana(pedido) {
+  if (esPedidoFijoRobusto(pedido)) return "fijos";
+  if (pedido?.origen === "formulario_cliente") return "enlace";
+  return "dia";
+}
+
+function etiquetaOrigenPedido(pedido) {
+  if (esPedidoFijoRobusto(pedido)) return "🔁 Fijo";
+  if (pedido?.origen === "formulario_cliente") return "📲 Enlace";
+  return "✍️ Manual";
+}
+
+function htmlPedidoCompacto(pedido) {
+  const itemsValidos = (pedido.items || []).filter(item => item.estado !== "NO PEDIDO");
+  const confirmado = pedidoEstaConfirmado(pedido);
+
+  let detalle = "";
+  if (!itemsValidos.length) {
+    detalle = '<p class="compactOrderEmpty">No se detectaron productos con cantidad.</p>';
+  } else {
+    detalle = `<div class="compactOrderItems">${itemsValidos.map(item => `
+      <div class="compactOrderItem">
+        <span>${escaparHtmlCatalogo(item.producto || "Producto")}</span>
+        <strong>${fmt(item.cantidad)} ${escaparHtmlCatalogo(item.unidad || "")}</strong>
+      </div>`).join("")}</div>`;
+  }
+
+  return `<article class="compactOrderCard ${confirmado ? "isConfirmed" : ""}" data-pedido-card-id="${pedido.id}">
+    <div class="compactOrderTop">
+      <div class="compactOrderName">
+        <strong>${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</strong>
+        <span>${etiquetaOrigenPedido(pedido)} · ${itemsValidos.length} producto(s)</span>
+      </div>
+      <label class="compactConfirm ${confirmado ? "confirmed" : ""}">
+        <input type="checkbox"
+          ${confirmado ? "checked" : ""}
+          onchange="alternarConfirmacionPedido(${pedido.id}, this.checked)">
+        <span>${confirmado ? "Confirmado" : "Confirmar"}</span>
+      </label>
+    </div>
+
+    <details class="compactOrderDetails">
+      <summary>Ver pedido</summary>
+      ${detalle}
+      <div class="compactOrderActions">
+        <button type="button" onclick="editarPedidoCargado(${pedido.id})">✏️ Editar</button>
+        <button type="button" onclick="descargarPdfPedidoIndividual(${pedido.id})">📄 PDF</button>
+        <button type="button" class="btnEliminarPedido" onclick="borrarPedido(${pedido.id})">Eliminar</button>
+      </div>
+    </details>
+  </article>`;
+}
+
+function htmlGrupoPedidosSemana(titulo, pedidosGrupo, tipo, abierto = false) {
+  const cantidad = pedidosGrupo.length;
+  return `<details class="weeklyOrderGroup ${tipo}" ${abierto ? "open" : ""}>
+    <summary>
+      <span>${titulo}</span>
+      <span class="weeklyCount">${cantidad}</span>
+    </summary>
+    <div class="weeklyOrderGroupBody">
+      ${tipo === "enlace" ? '<p class="weeklyGroupHint">Pedidos enviados por los clientes desde su enlace.</p>' : ""}
+      ${cantidad
+        ? pedidosGrupo.map(htmlPedidoCompacto).join("")
+        : '<p class="weeklyEmpty">No hay pedidos en esta sección.</p>'}
+    </div>
+  </details>`;
+}
+
+function renderPanelPedidosSemana() {
+  const panel = $("panelPedidosSemana");
+  if (!panel) return;
+
+  const fechas = fechasDesdeHoyHastaDomingo();
+  const fechaOperativa = fechaOperativaActual();
+
+  panel.innerHTML = fechas.map((fecha, indice) => {
+    const pedidosFecha = pedidos
+      .filter(pedido => fechaEntregaPedido(pedido) === fecha)
+      .sort((a, b) => String(a.cliente || "").localeCompare(String(b.cliente || ""), "es"));
+
+    const enlace = pedidosFecha.filter(pedido => categoriaPedidoSemana(pedido) === "enlace");
+    const dia = pedidosFecha.filter(pedido => categoriaPedidoSemana(pedido) === "dia");
+    const fijos = pedidosFecha.filter(pedido => categoriaPedidoSemana(pedido) === "fijos");
+
+    return `<details class="weeklyDay" data-fecha="${fecha}" ${indice === 0 ? "open" : ""}>
+      <summary>
+        <span>${nombreDiaPedidos(fecha, fecha === fechaOperativa)}</span>
+        <span class="weeklyDayTotal">${pedidosFecha.length}</span>
+      </summary>
+      <div class="weeklyDayBody">
+        ${htmlGrupoPedidosSemana("Pedidos recibidos desde enlace", enlace, "enlace", false)}
+        ${htmlGrupoPedidosSemana("Pedidos del día", dia, "dia", false)}
+        ${htmlGrupoPedidosSemana("Pedidos fijos", fijos, "fijos", false)}
+      </div>
+    </details>`;
+  }).join("");
+
+  // Mantener un solo día abierto a la vez para reducir el scroll.
+  panel.querySelectorAll(".weeklyDay").forEach(detalle => {
+    detalle.addEventListener("toggle", () => {
+      if (!detalle.open) return;
+      panel.querySelectorAll(".weeklyDay").forEach(otro => {
+        if (otro !== detalle) otro.open = false;
+      });
+      const fecha = detalle.dataset.fecha;
+      if ($("fechaPedido") && fecha) {
+        $("fechaPedido").value = fecha;
+      }
+    });
+  });
+}
+
+function volverArribaCuadro2() {
+  abrirSeccionFratello("seccionPedidos");
+  setTimeout(() => {
+    $("inicioCuadro2")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    $("diaProduccionPedidos")?.focus();
+  }, 80);
+}
+
 function continuarAlResumenSiEstaConfirmado() {
   const diaProduccion = $("diaProduccion")?.value || "";
   const diaPedidos = $("diaProduccionPedidos")?.value || "";
@@ -403,15 +571,15 @@ function continuarAlResumenSiEstaConfirmado() {
   const checkDiaPedidos = $("checkDiaPedidos");
 
 
-  if (!diaProduccion || !diaPedidos || diaProduccion !== diaPedidos) {
-    alert("Primero elegí y sincronizá el mismo día en Producción y Pedidos.");
-    abrirSeccionFratello("seccionProduccion");
+  if (!diaPedidos || !checkDiaPedidos?.checked) {
+    alert("Primero elegí y confirmá el día en este cuadro.");
+    volverArribaCuadro2();
     return;
   }
 
-  if (!checkProduccion?.checked || !checkDiaPedidos?.checked) {
-    alert("Antes de continuar, confirmá el día correcto tanto en Producción como en Pedidos.");
-    abrirSeccionFratello("seccionProduccion");
+  if (!diaProduccion || diaProduccion !== diaPedidos || !checkProduccion?.checked) {
+    alert("El día del Cuadro 2 no coincide con la producción confirmada. Revisá el selector de este cuadro.");
+    volverArribaCuadro2();
     return;
   }
 
@@ -525,7 +693,6 @@ function guardarClienteCompleto() {
     guardarTodo();
     renderClientes(nombre);
     renderListaClientesCompleta();
-    if (typeof renderClientesPendientes === "function") renderClientesPendientes();
 
     limpiarFormularioClienteCompleto();
     mostrarMensajeClienteCompleto("Cliente guardado correctamente.");
@@ -571,7 +738,6 @@ function eliminarClienteCompleto(nombre) {
   renderClientes();
   actualizarPanelMemoriaEnvio();
   renderListaClientesCompleta();
-  if (typeof renderClientesPendientes === "function") renderClientesPendientes();
   abrirSeccionFratello("seccionClientes");
 }
 
@@ -1478,7 +1644,6 @@ async function actualizarDatosManual(evento = null) {
 
     renderClientes();
     renderListaClientesCompleta();
-    renderClientesPendientes();
     renderProduccion();
     renderPedidosCargados();
     renderPedidosFuturos();
@@ -1635,34 +1800,9 @@ function verPedidoFormularioEnFecha(idPedido) {
 }
 
 function renderPedidosRecibidosFormulario() {
-  const contenedor = $("pedidosRecibidosFormulario");
-  if (!contenedor) return;
-
-  const recibidos = pedidosFormularioRecibidos().slice(0, 12);
-
-  if (!recibidos.length) {
-    contenedor.innerHTML = '<p class="incomingEmpty">Todavía no llegaron pedidos desde el enlace de clientes.</p>';
-    return;
-  }
-
-  const fechaSeleccionada = $("fechaPedido")?.value || "";
-
-  contenedor.innerHTML = recibidos.map(pedido => {
-    const fecha = fechaEntregaPedido(pedido);
-    const cantidadItems = (pedido.items || []).filter(item => item.estado !== "NO PEDIDO").length;
-    const otraFecha = fechaSeleccionada && fecha !== fechaSeleccionada;
-
-    return `<div class="incomingOrderRow ${otraFecha ? "otherDate" : ""}">
-      <div>
-        <strong>📲 ${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</strong>
-        <span>${new Date(fecha + "T12:00:00").toLocaleDateString("es-AR")} · ${cantidadItems} ítem(s)</span>
-      </div>
-      <button type="button" onclick="verPedidoFormularioEnFecha(${pedido.id})">
-        ${otraFecha ? "Ver fecha del pedido" : "Ver en pedidos cargados"}
-      </button>
-    </div>`;
-  }).join("");
+  renderPanelPedidosSemana();
 }
+
 
 async function mostrarNotificacionLocalPedido(pedido) {
   if (!pedido || !("Notification" in window) || Notification.permission !== "granted") return;
@@ -1685,7 +1825,8 @@ async function mostrarNotificacionLocalPedido(pedido) {
 }
 
 function pedidoDebeNotificar(pedido) {
-  return pedido?.origen === "formulario_cliente" || pedido?.origen === "manual";
+  if (!pedido || esPedidoFijoRobusto(pedido)) return false;
+  return pedido.origen === "formulario_cliente" || pedido.origen === "manual";
 }
 
 function detectarPedidosNotificablesNuevos(listaAnterior, listaNueva) {
@@ -1728,7 +1869,12 @@ function escucharCambiosNube() {
       );
       pedidos = resultadoInterpretacion.pedidos;
       pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
-      detectarPedidosNotificablesNuevos(pedidosAntesDeActualizar, pedidos);
+
+      // La primera sincronización solo registra el estado existente.
+      // Las notificaciones se disparan únicamente en cambios posteriores.
+      if (idsPedidosFormularioConocidos.size > 0 || pedidosAntesDeActualizar.length > 0) {
+        detectarPedidosNotificablesNuevos(pedidosAntesDeActualizar, pedidos);
+      }
       idsPedidosFormularioConocidos = new Set(
         pedidos
           .filter(pedido => pedido?.origen === "formulario_cliente")
@@ -1765,7 +1911,6 @@ function escucharCambiosNube() {
 
       renderClientes();
       renderListaClientesCompleta();
-      renderClientesPendientes();
       renderProduccion();
       renderPedidosCargados();
       renderPedidosRecibidosFormulario();
@@ -3902,104 +4047,8 @@ function pedidosConfirmadosParaFecha(fecha) {
 }
 
 function renderPedidosCargados() {
-  const contenedor = $("pedidosCargados");
-  if (!contenedor) return;
-
-  const fechaSeleccionada = $("fechaPedido")?.value || hoyISO();
-  const todosPedidosFecha = pedidos.filter(
-    pedido => fechaEntregaPedido(pedido) === fechaSeleccionada
-  );
-
-  const pedidosDia = todosPedidosFecha.filter(pedido => pedido.origen !== "pedido_fijo");
-  const pedidosFijosDia = todosPedidosFecha.filter(pedido => pedido.origen === "pedido_fijo");
-
-  if ($("badgePedidosDia")) $("badgePedidosDia").textContent = String(pedidosDia.length);
-  if ($("badgePedidosFijosDia")) $("badgePedidosFijosDia").textContent = String(pedidosFijosDia.length);
-
-  const pedidosFecha = pestanaPedidosActiva === "fijos" ? pedidosFijosDia : pedidosDia;
-
-  const estadoFecha = $("estadoPedidosFecha");
-  if (estadoFecha) {
-    const fechaLegible = new Date(fechaSeleccionada + "T12:00:00")
-      .toLocaleDateString("es-AR", {
-        weekday: "long",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-      });
-
-    const fijos = pedidosFijosDia.length;
-    estadoFecha.innerHTML =
-      `<strong>${fechaLegible}</strong>` +
-      `<span>${pedidosFecha.length} pedido(s) · ${fijos} fijo(s)</span>`;
-  }
-
-  if (!pedidosFecha.length) {
-    contenedor.innerHTML =
-      "<p>No hay pedidos cargados para esta fecha. Los pedidos fijos se agregan automáticamente al elegir el día.</p>";
-    renderClientesPendientes();
-    return;
-  }
-
-  let html = "";
-
-  pedidosFecha.forEach((pedido) => {
-    const itemsValidos = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO");
-    const esFijo = pedido.origen === "pedido_fijo";
-    const fueModificado = esFijo && Boolean(pedido.modificadoDesdeFijo);
-
-    html += `<div class="pedidoClienteCard ${esFijo ? "fixedDailyOrder" : ""} ${fueModificado ? "fixedDailyOrderModified" : ""}" data-pedido-card-id="${pedido.id}">
-      <div class="pedidoClienteHeader">
-        <div class="pedidoIdentity">
-          <strong>${esFijo ? "🔁 " : ""}${pedido.cliente}</strong>
-          <span>${itemsValidos.length} ítems · Entrega ${new Date(fechaEntregaPedido(pedido)+"T12:00:00").toLocaleDateString("es-AR")}</span>
-        </div>
-        <label class="confirmOrderControl ${pedidoEstaConfirmado(pedido) ? "confirmed" : "pending"}">
-          <input type="checkbox"
-            ${pedidoEstaConfirmado(pedido) ? "checked" : ""}
-            onchange="alternarConfirmacionPedido(${pedido.id}, this.checked)">
-          <span>${pedidoEstaConfirmado(pedido) ? "✅ Confirmado" : "○ Confirmar envío"}</span>
-        </label>
-      </div>
-      <div class="orderOriginBadges">
-        ${esFijo ? `<span class="originFixed">🔁 ${escaparHtmlCatalogo(pedido.programacionNombre || "Pedido fijo")}</span>` : '<span class="originManual">✍️ Pedido cargado</span>'}
-        ${fueModificado ? '<span class="originModified">🟠 Modificado para esta entrega</span>' : ""}
-      </div>`;
-
-    if (!itemsValidos.length) {
-      html += "<p>No se detectaron productos con cantidad.</p>";
-    } else {
-      html += "<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Unidad</th></tr></thead><tbody>";
-      itemsValidos.forEach(it => {
-        const clase = (it.unidadAmbigua || it.estado === "REVISAR UNIDAD") ? "ambiguousRow" : "";
-        html += `<tr class="${clase}">
-          <td>${it.producto}${botonesResolverProducto(pedido.id, it)}${botonesResolverUnidad(pedido.id, it)}</td>
-          <td>${fmt(it.cantidad)}</td>
-          <td>${it.unidad}</td>
-        </tr>`;
-      });
-      html += "</tbody></table>";
-    }
-
-    html += `<div class="accionesPedido">
-      <label class="deleteOrderSelect">
-        <input type="checkbox" class="checkPedidoEliminar" value="${pedido.id}">
-        Seleccionar para borrar
-      </label>
-      <button type="button" onclick="editarPedidoCargado(${pedido.id})">✏️ Editar esta entrega</button>
-      ${esFijo && fueModificado
-        ? `<button type="button" class="updateFixedOrderBtn" onclick="actualizarPedidoFijoDesdePedido(${pedido.id})">💾 Usar como nuevo pedido fijo</button>`
-        : ""}
-      <button type="button" onclick="descargarPdfPedidoIndividual(${pedido.id})">📄 PDF del cliente</button>
-      <button type="button" onclick="reprocesarPedidoFormulario(${pedido.id})">🔄 Reinterpretar pedido</button>
-      <button type="button" class="btnEliminarPedido" onclick="borrarPedido(${pedido.id})">Eliminar esta entrega</button>
-    </div>`;
-    html += `</div>`;
-  });
-
-  contenedor.innerHTML = html;
+  renderPanelPedidosSemana();
   actualizarAvisoUnidadesAmbiguas();
-  renderClientesPendientes();
 }
 
 
@@ -5112,22 +5161,9 @@ async function init() {
   if ($("listaAdministradorProductos")) $("listaAdministradorProductos").onclick = manejarClicksAdministradorProductos;
   renderAdministradorProductos();
 
-  if ($("tabPedidosDia")) $("tabPedidosDia").onclick = () => cambiarPestanaPedidos("dia");
-  if ($("tabPedidosFijos")) $("tabPedidosFijos").onclick = () => cambiarPestanaPedidos("fijos");
-
   const btnContinuarResumen = $("btnContinuarResumen");
   if (btnContinuarResumen) {
     btnContinuarResumen.onclick = continuarAlResumenSiEstaConfirmado;
-  }
-
-  const btnRecordarPendientes = $("btnRecordarPendientes");
-  if (btnRecordarPendientes) {
-    btnRecordarPendientes.onclick = recordarTodosLosPendientes;
-  }
-
-  const btnActualizarPendientes = $("btnActualizarPendientes");
-  if (btnActualizarPendientes) {
-    btnActualizarPendientes.onclick = renderClientesPendientes;
   }
 
   const btnBorrarNotificaciones = $("btnBorrarNotificaciones");
@@ -5136,6 +5172,17 @@ async function init() {
   }
 
   actualizarEstadoColaRecordatorios();
+
+  
+  let ultimaFechaOperativa = fechaOperativaActual();
+  setInterval(() => {
+    const nuevaFechaOperativa = fechaOperativaActual();
+    if (nuevaFechaOperativa !== ultimaFechaOperativa) {
+      ultimaFechaOperativa = nuevaFechaOperativa;
+      if ($("fechaPedido")) $("fechaPedido").value = nuevaFechaOperativa;
+      renderPanelPedidosSemana();
+    }
+  }, 60000);
 
   iniciarNavegacionFratello();
 
@@ -5191,7 +5238,7 @@ async function init() {
   escucharCambiosNube();
   escucharHistorialNotificaciones();
   aplicarPermisosUsuario();
-  if ($("fechaPedido")) $("fechaPedido").value = fechaISOManana();
+  if ($("fechaPedido")) $("fechaPedido").value = fechaOperativaActual();
   if ($("fechaCargarPedidosFijos")) $("fechaCargarPedidosFijos").value = fechaISOManana();
   asegurarPedidosFijosParaFecha($("fechaPedido")?.value || fechaISOManana(), false);
   renderClientes();
@@ -5237,7 +5284,6 @@ async function init() {
   }
 
   renderListaClientesCompleta();
-  renderClientesPendientes();
   actualizarPanelMemoriaEnvio();
   actualizarCampanaNotificaciones();
 

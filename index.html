@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.4";
-    document.documentElement.dataset.fratelloVersion = "3.4";
+    window.FRATELLO_VERSION = "3.5";
+    document.documentElement.dataset.fratelloVersion = "3.5";
   </script>
 
 </head>
@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.4</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.5</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -142,6 +142,7 @@
       </details>
     </section>
     <section class="card appSection" id="seccionPedidos">
+      <div id="inicioCuadro2"></div>
       <a class="volverInicio" href="#" data-volver="true">← Volver</a>
       <h2>2. Pegar pedido de WhatsApp</h2>
 
@@ -183,40 +184,11 @@
       <textarea id="pedidoCrudo" placeholder="Pegá acá el pedido completo de WhatsApp..."></textarea>
 <button id="btnProcesar" class="primary">Procesar pedido</button>
       <button id="btnLimpiarPedido">Limpiar cuadro</button>
+      <div id="panelPedidosSemana" class="weeklyOrdersPanel"></div>
 
-      
-      <div id="panelClientesPendientes" class="pendingClientsPanel">
-        <div class="pendingClientsHeader">
-          <div>
-            <strong>Clientes pendientes</strong>
-            <span id="contadorClientesPendientes">0 pendientes</span>
-          </div>
-          <button id="btnActualizarPendientes" type="button">Actualizar</button>
-        </div>
-        <div id="listaClientesPendientes"></div>
-        <button id="btnRecordarPendientes" type="button">📲 Enviar recordatorios seleccionados</button>
-        <div id="estadoColaRecordatorios" class="reminderQueueStatus hidden"></div>
-      </div>
-
-      <details class="incomingOrdersPanel" open>
-        <summary>📲 Pedidos recibidos desde el enlace de clientes</summary>
-        <p class="hint">Aparecen aunque hayan sido enviados para otra fecha. Tocá “Ver fecha del pedido” para abrirlos dentro de Pedidos cargados.</p>
-        <div id="pedidosRecibidosFormulario"></div>
-      </details>
-
-      <div class="ordersTabs" role="tablist">
-        <button id="tabPedidosDia" class="ordersTab active" type="button" data-tipo-pedido="dia">
-          Pedidos del día <span id="badgePedidosDia">0</span>
-        </button>
-        <button id="tabPedidosFijos" class="ordersTab" type="button" data-tipo-pedido="fijos">
-          🔁 Pedidos fijos <span id="badgePedidosFijosDia">0</span>
-        </button>
-      </div>
-      <p id="ayudaPestanaPedidos" class="hint">Acá se muestran los pedidos manuales y enviados por clientes.</p>
-
-      <h3>Pedidos cargados para la fecha elegida</h3>
-      <div id="estadoPedidosFecha" class="ordersDateStatus"></div>
-      <div id="pedidosCargados"></div>
+      <!-- Contenedores de compatibilidad usados por funciones internas -->
+      <div id="pedidosRecibidosFormulario" class="hidden"></div>
+      <div id="pedidosCargados" class="hidden"></div>
 
       <div id="avisoUnidadesAmbiguas" class="ambiguousSummary hidden"></div>
 
@@ -469,7 +441,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=340"></script>
+  <script src="app.js?v=350"></script>
 
   
 
@@ -486,12 +458,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=340")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=350")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=340", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=350", {
             scope: "./",
             updateViaCache: "none"
           });

@@ -1566,3 +1566,215 @@ body:has(.appSection:target) #contenidoApp {
   .pedidoClienteHeader{flex-direction:column}
   .confirmOrderControl{width:100%;justify-content:center}
 }
+
+
+/* ===== Fratello v3.5 · Cuadro 2 limpio ===== */
+.weeklyOrdersPanel {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.weeklyDay {
+  border: 1px solid #dbcbbb;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.weeklyDay > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 900;
+  background: #f7f1eb;
+}
+
+.weeklyDay > summary::-webkit-details-marker,
+.weeklyOrderGroup > summary::-webkit-details-marker,
+.compactOrderDetails > summary::-webkit-details-marker {
+  display: none;
+}
+
+.weeklyDay > summary::before,
+.weeklyOrderGroup > summary::before,
+.compactOrderDetails > summary::before {
+  content: "›";
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform .18s ease;
+}
+
+.weeklyDay[open] > summary::before,
+.weeklyOrderGroup[open] > summary::before,
+.compactOrderDetails[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.weeklyDayTotal,
+.weeklyCount {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #eadfd4;
+  color: #4f2c1d;
+  font-size: 12px;
+}
+
+.weeklyDayBody {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.weeklyOrderGroup {
+  border: 1px solid #eee3d8;
+  border-radius: 11px;
+  overflow: hidden;
+}
+
+.weeklyOrderGroup > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 800;
+  background: #fff;
+}
+
+.weeklyOrderGroupBody {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid #eee3d8;
+  background: #fcfaf8;
+}
+
+.weeklyGroupHint,
+.weeklyEmpty,
+.compactOrderEmpty {
+  margin: 4px 2px;
+  color: #77685d;
+  font-size: 13px;
+}
+
+.compactOrderCard {
+  border: 1px solid #e1d7cc;
+  border-radius: 11px;
+  padding: 10px;
+  background: #fff;
+}
+
+.compactOrderCard.isConfirmed {
+  border-color: #a9d5b0;
+  background: #fbfffb;
+}
+
+.compactOrderTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.compactOrderName {
+  min-width: 0;
+}
+
+.compactOrderName strong,
+.compactOrderName span {
+  display: block;
+}
+
+.compactOrderName span {
+  margin-top: 3px;
+  color: #77685d;
+  font-size: 12px;
+}
+
+.compactConfirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: #eee7df;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.compactConfirm.confirmed {
+  background: #dff1e2;
+  color: #236b31;
+}
+
+.compactConfirm input {
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.compactOrderDetails {
+  margin-top: 7px;
+}
+
+.compactOrderDetails > summary {
+  list-style: none;
+  cursor: pointer;
+  color: #5c3b2b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.compactOrderItems {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.compactOrderItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  background: #f7f3ef;
+  font-size: 13px;
+}
+
+.compactOrderActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.compactOrderActions button {
+  width: auto !important;
+  min-height: 36px;
+  padding: 7px 10px !important;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .compactOrderTop {
+    align-items: flex-start;
+  }
+  .compactConfirm span {
+    display: none;
+  }
+  .compactConfirm {
+    padding: 8px;
+  }
+}
