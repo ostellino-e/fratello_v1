@@ -1853,3 +1853,41 @@ body:has(.appSection:target) #contenidoApp {
 .todayOrderActions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
 .todayOrderActions button{width:auto!important}
 @media(max-width:600px){.todayOrderHead{align-items:flex-start}.todayOrderStatus span{display:none}.todayOrderStatus{padding:8px}}
+
+
+.compactOrderItem.needsReview {
+  border: 1px solid #e0a21a;
+  background: #fff7dc;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.compactOrderItemMain {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.compactReviewAlert {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff0c2;
+  border: 1px solid #e0a21a;
+  font-weight: 700;
+}
+
+.productResolution,
+.unitResolution {
+  margin-top: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.productResolution button,
+.unitResolution button {
+  min-height: 34px;
+}

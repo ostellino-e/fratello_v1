@@ -447,17 +447,29 @@ function guardarPedidoHoyDesdeFormulario() {
     if (existente) {
       existente.cliente = cliente;
       existente.texto = texto;
+      existente.textoOriginal = texto;
       existente.horaEntrega = horaEntrega;
+      existente.items = procesarTextoPedido(texto, cliente, existente.jornada || fechaOperativaActual());
       existente.actualizado = new Date().toISOString();
     }
   } else {
+    const idPedidoHoy = Date.now();
+    const jornada = fechaOperativaActual();
+    const itemsProcesados = procesarTextoPedido(texto, cliente, jornada);
+
     pedidosHoy.push({
-      id: Date.now(),
-      jornada: fechaOperativaActual(),
+      id: idPedidoHoy,
+      jornada,
+      fecha: jornada,
+      fechaEntrega: jornada,
       cliente,
       texto,
+      textoOriginal: texto,
       horaEntrega,
+      origen: "manual_hoy",
+      confirmado: true,
       entregado: false,
+      items: itemsProcesados,
       creado: new Date().toISOString()
     });
   }
@@ -547,6 +559,8 @@ function renderPedidosHoy() {
 
         <div class="todayOrderActions">
           <button type="button" onclick="editarPedidoHoy(${pedido.id})">✏️ Editar</button>
+          <button type="button" onclick="descargarPdfPedidoHoy(${pedido.id})">📄 Ticket PDF</button>
+          <button type="button" onclick="guardarJpgPedidoHoy(${pedido.id})">🖼 Ticket JPG</button>
           <button type="button" class="dangerBtn" onclick="eliminarPedidoHoy(${pedido.id})">🗑 Eliminar</button>
         </div>
       </details>
@@ -664,15 +678,24 @@ function etiquetaOrigenPedido(pedido) {
 function htmlPedidoCompacto(pedido) {
   const itemsValidos = (pedido.items || []).filter(item => item.estado !== "NO PEDIDO");
   const confirmado = pedidoEstaConfirmado(pedido);
+  const pendientesRevision = itemsValidos.filter(item =>
+    item.productoAmbiguo ||
+    item.unidadAmbigua ||
+    String(item.estado || "").startsWith("REVISAR")
+  ).length;
 
   let detalle = "";
   if (!itemsValidos.length) {
     detalle = '<p class="compactOrderEmpty">No se detectaron productos con cantidad.</p>';
   } else {
     detalle = `<div class="compactOrderItems">${itemsValidos.map(item => `
-      <div class="compactOrderItem">
-        <span>${escaparHtmlCatalogo(item.producto || "Producto")}</span>
-        <strong>${fmt(item.cantidad)} ${escaparHtmlCatalogo(item.unidad || "")}</strong>
+      <div class="compactOrderItem ${item.productoAmbiguo || item.unidadAmbigua || String(item.estado || "").startsWith("REVISAR") ? "needsReview" : ""}">
+        <div class="compactOrderItemMain">
+          <span>${escaparHtmlCatalogo(item.producto || "Producto")}</span>
+          <strong>${fmt(item.cantidad)} ${escaparHtmlCatalogo(item.unidad || "")}</strong>
+        </div>
+        ${botonesResolverProducto(pedido.id, item)}
+        ${botonesResolverUnidad(pedido.id, item)}
       </div>`).join("")}</div>`;
   }
 
@@ -691,7 +714,8 @@ function htmlPedidoCompacto(pedido) {
     </div>
 
     <details class="compactOrderDetails" data-pedido-detalle="${pedido.id}">
-      <summary>Ver pedido</summary>
+      <summary>Ver pedido${pendientesRevision ? ` · ⚠️ ${pendientesRevision} por revisar` : ""}</summary>
+      ${pendientesRevision ? '<div class="compactReviewAlert">Revisá y elegí la opción correcta antes de confirmar.</div>' : ""}
       ${detalle}
       <div class="compactOrderActions">
         <button type="button" onclick="editarPedidoCargado(${pedido.id})">✏️ Editar</button>
@@ -5057,7 +5081,44 @@ function normalizarUnidadPrecio(unidad) {
 
 function precioUnitarioItem(producto,unidad,cliente=""){if(!producto)return 0;return precioLista(producto.id,unidad,listaPrecioCliente(cliente));}
 
-function datosTicketPedido(pedido){const dc=datosClientesCompletos[pedido.cliente]||{},lista=listaPrecioCliente(pedido.cliente);const items=(pedido.items||[]).filter(i=>i.estado!=="NO PEDIDO").map(item=>{const p=productoPorId(item.productoId),precioUnitario=precioUnitarioItem(p,item.unidad,pedido.cliente);return{descripcion:p?.nombre||item.producto||"Producto",cantidad:Number(item.cantidad||0),unidad:normalizarUnidadPrecio(item.unidad),precioUnitario,total:Number(item.cantidad||0)*precioUnitario};});return{id:pedido.id,cliente:pedido.cliente||"Sin cliente",fecha:pedido.fecha||$("fechaPedido")?.value||hoyISO(),direccion:dc.direccion||"",barrio:dc.barrio||"",listaPrecio:lista,listaPrecioNombre:etiquetaListaPrecio(lista),items,total:items.reduce((a,i)=>a+i.total,0)};}
+function datosTicketPedido(pedido) {
+  const dc = datosClientesCompletos[pedido.cliente] || {};
+  const lista = listaPrecioCliente(pedido.cliente);
+  const itemsOrigen = Array.isArray(pedido.items) && pedido.items.length
+    ? pedido.items
+    : procesarTextoPedido(
+        pedido.textoOriginal || pedido.texto || "",
+        pedido.cliente || "Cliente",
+        pedido.fechaEntrega || pedido.fecha || pedido.jornada || fechaOperativaActual()
+      );
+
+  const items = itemsOrigen
+    .filter(i => i.estado !== "NO PEDIDO")
+    .map(item => {
+      const p = productoPorId(item.productoId);
+      const precioUnitario = precioUnitarioItem(p, item.unidad, pedido.cliente);
+      return {
+        descripcion: p?.nombre || item.producto || "Producto",
+        cantidad: Number(item.cantidad || 0),
+        unidad: normalizarUnidadPrecio(item.unidad),
+        precioUnitario,
+        total: Number(item.cantidad || 0) * precioUnitario
+      };
+    });
+
+  return {
+    id: pedido.id,
+    cliente: pedido.cliente || "Sin cliente",
+    fecha: pedido.fechaEntrega || pedido.fecha || pedido.jornada || $("fechaPedido")?.value || hoyISO(),
+    horaEntrega: pedido.horaEntrega || "",
+    direccion: dc.direccion || "",
+    barrio: dc.barrio || "",
+    listaPrecio: lista,
+    listaPrecioNombre: etiquetaListaPrecio(lista),
+    items,
+    total: items.reduce((a, i) => a + i.total, 0)
+  };
+}
 
 function formatoDineroTicket(valor) {
   return new Intl.NumberFormat("es-AR", {
@@ -5085,7 +5146,7 @@ function cortarTextoCanvas(ctx, texto, maxWidth) {
 }
 
 function calcularAltoTicket(t,a=640){return Math.max(720,430+t.items.reduce((x,i)=>x+(String(i.descripcion).length>25?74:58),0)+(t.direccion||t.barrio?90:35));}
-function dibujarTicketEnCanvas(ctx,t,x,y,a,h,n=""){const p=26,l=x+p,r=x+a-p;let yy=y+38;ctx.save();ctx.fillStyle="#fff";ctx.fillRect(x,y,a,h);ctx.strokeStyle="#111";ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,a-2,h-2);ctx.fillStyle="#111";ctx.textAlign="center";ctx.font="bold 29px Arial";ctx.fillText("PANADERÍA FRATELLO",x+a/2,yy);yy+=30;ctx.font="14px Arial";ctx.fillText("PEDIDO / TICKET DE ENTREGA",x+a/2,yy);yy+=28;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=26;ctx.textAlign="left";ctx.font="bold 17px Arial";ctx.fillText(`Cliente: ${t.cliente}`,l,yy);yy+=24;ctx.font="15px Arial";ctx.fillText(`Fecha: ${new Date(t.fecha+"T12:00:00").toLocaleDateString("es-AR")}`,l,yy);ctx.textAlign="right";ctx.fillText(`Pedido Nº ${n}`,r,yy);yy+=28;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=24;ctx.textAlign="left";ctx.font="bold 14px Arial";ctx.fillText("DESCRIPCIÓN",l,yy);yy+=22;ctx.font="bold 13px Arial";ctx.fillText("CANT.",l,yy);ctx.textAlign="right";ctx.fillText("P. UNIT.",x+a*.70,yy);ctx.fillText("TOTAL",r,yy);yy+=16;ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();yy+=24;for(const i of t.items){ctx.textAlign="left";ctx.font="bold 15px Arial";const ls=cortarTextoCanvas(ctx,i.descripcion,a-p*2).slice(0,2);ls.forEach((v,j)=>ctx.fillText(v,l,yy+j*18));yy+=ls.length*18+8;ctx.font="14px Arial";ctx.fillText(`${fmt(i.cantidad)} ${i.unidad}`,l,yy);ctx.textAlign="right";ctx.fillText(i.precioUnitario>0?formatoDineroTicket(i.precioUnitario):"Sin precio",x+a*.70,yy);ctx.fillText(i.precioUnitario>0?formatoDineroTicket(i.total):"—",r,yy);yy+=18;ctx.strokeStyle="#bbb";ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle="#111";yy+=20;}ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();yy+=34;ctx.font="bold 25px Arial";ctx.textAlign="left";ctx.fillText("TOTAL",l,yy);ctx.textAlign="right";ctx.fillText(formatoDineroTicket(t.total),r,yy);yy+=34;ctx.lineWidth=2;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=30;ctx.textAlign="left";ctx.font="bold 16px Arial";ctx.fillText("DIRECCIÓN DE ENTREGA",l,yy);yy+=24;ctx.font="15px Arial";if(t.direccion){cortarTextoCanvas(ctx,t.direccion,a-p*2).forEach(v=>{ctx.fillText(v,l,yy);yy+=20;});}else{ctx.fillText("Sin dirección cargada",l,yy);yy+=20;}if(t.barrio){ctx.fillText(`Barrio: ${t.barrio}`,l,yy);yy+=22;}yy+=12;ctx.textAlign="center";ctx.font="14px Arial";ctx.fillText("Gracias por elegir Panadería Fratello",x+a/2,yy);ctx.restore();}
+function dibujarTicketEnCanvas(ctx,t,x,y,a,h,n=""){const p=26,l=x+p,r=x+a-p;let yy=y+38;ctx.save();ctx.fillStyle="#fff";ctx.fillRect(x,y,a,h);ctx.strokeStyle="#111";ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,a-2,h-2);ctx.fillStyle="#111";ctx.textAlign="center";ctx.font="bold 29px Arial";ctx.fillText("PANADERÍA FRATELLO",x+a/2,yy);yy+=30;ctx.font="14px Arial";ctx.fillText("PEDIDO / TICKET DE ENTREGA",x+a/2,yy);yy+=28;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=26;ctx.textAlign="left";ctx.font="bold 17px Arial";ctx.fillText(`Cliente: ${t.cliente}`,l,yy);yy+=24;ctx.font="15px Arial";ctx.fillText(`Fecha: ${new Date(t.fecha+"T12:00:00").toLocaleDateString("es-AR")}${t.horaEntrega ? ` · Entrega ${t.horaEntrega}` : ""}`,l,yy);ctx.textAlign="right";ctx.fillText(`Pedido Nº ${n}`,r,yy);yy+=28;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=24;ctx.textAlign="left";ctx.font="bold 14px Arial";ctx.fillText("DESCRIPCIÓN",l,yy);yy+=22;ctx.font="bold 13px Arial";ctx.fillText("CANT.",l,yy);ctx.textAlign="right";ctx.fillText("P. UNIT.",x+a*.70,yy);ctx.fillText("TOTAL",r,yy);yy+=16;ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();yy+=24;for(const i of t.items){ctx.textAlign="left";ctx.font="bold 15px Arial";const ls=cortarTextoCanvas(ctx,i.descripcion,a-p*2).slice(0,2);ls.forEach((v,j)=>ctx.fillText(v,l,yy+j*18));yy+=ls.length*18+8;ctx.font="14px Arial";ctx.fillText(`${fmt(i.cantidad)} ${i.unidad}`,l,yy);ctx.textAlign="right";ctx.fillText(i.precioUnitario>0?formatoDineroTicket(i.precioUnitario):"Sin precio",x+a*.70,yy);ctx.fillText(i.precioUnitario>0?formatoDineroTicket(i.total):"—",r,yy);yy+=18;ctx.strokeStyle="#bbb";ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle="#111";yy+=20;}ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();yy+=34;ctx.font="bold 25px Arial";ctx.textAlign="left";ctx.fillText("TOTAL",l,yy);ctx.textAlign="right";ctx.fillText(formatoDineroTicket(t.total),r,yy);yy+=34;ctx.lineWidth=2;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=30;ctx.textAlign="left";ctx.font="bold 16px Arial";ctx.fillText("DIRECCIÓN DE ENTREGA",l,yy);yy+=24;ctx.font="15px Arial";if(t.direccion){cortarTextoCanvas(ctx,t.direccion,a-p*2).forEach(v=>{ctx.fillText(v,l,yy);yy+=20;});}else{ctx.fillText("Sin dirección cargada",l,yy);yy+=20;}if(t.barrio){ctx.fillText(`Barrio: ${t.barrio}`,l,yy);yy+=22;}yy+=12;ctx.textAlign="center";ctx.font="14px Arial";ctx.fillText("Gracias por elegir Panadería Fratello",x+a/2,yy);ctx.restore();}
 
 function crearCanvasTicketIndividual(t,a=640){const h=calcularAltoTicket(t,a),c=document.createElement("canvas");c.width=a;c.height=h;dibujarTicketEnCanvas(c.getContext("2d"),t,0,0,a,h,String(t.id).slice(-6));return c;}
 
@@ -5116,9 +5177,95 @@ function agregarTicketPdf(doc,t,x,y,a){const c=crearCanvasTicketIndividual(t),h=
 function descargarPdfPedidos(){if(!pedidos.length){alert("No hay pedidos cargados.");return;}const J=obtenerJsPDF();if(!J){alert("No se pudo cargar el generador de PDF.");return;}avisarPreciosFaltantes(pedidos);const d=new J({orientation:"portrait",unit:"mm",format:"a4"}),a=62,m=6,g=4;let x=m,y=m,col=0,hf=0;pedidos.map(datosTicketPedido).forEach((t,idx)=>{const c=crearCanvasTicketIndividual(t),h=a*c.height/c.width;if(y+h>291&&col===0){d.addPage();y=m;}agregarTicketPdf(d,t,x,y,a);hf=Math.max(hf,h);col++;if(col===3){col=0;x=m;y+=hf+g;hf=0;if(idx<pedidos.length-1&&y+80>291){d.addPage();y=m;}}else x=m+col*(a+g);});d.save(`tickets-fratello-${hoyISO()}.pdf`);}
 function descargarPdfPedidoIndividual(id){const p=pedidos.find(x=>Number(x.id)===Number(id));if(!p){alert("No se encontró el pedido.");return;}const J=obtenerJsPDF();if(!J){alert("No se pudo cargar el generador de PDF.");return;}avisarPreciosFaltantes([p]);const t=datosTicketPedido(p),c=crearCanvasTicketIndividual(t),a=80,h=Math.max(100,a*c.height/c.width),d=new J({orientation:"portrait",unit:"mm",format:[a,h]});d.addImage(c.toDataURL("image/jpeg",.96),"JPEG",0,0,a,h,undefined,"FAST");d.save(`ticket-fratello-${nombreArchivoSeguro(t.cliente)}-${t.fecha}.pdf`);}
 
-function guardarImagenPedidos(){
-  const canvas=$("canvasPedidosImpresion"); if(!canvas)return;
-  const a=document.createElement("a");a.download=`tickets-fratello-${hoyISO()}.jpg`;a.href=canvas.toDataURL("image/jpeg",0.95);a.click();
+
+function descargarPdfPedidoHoy(id) {
+  const pedido = pedidosHoy.find(item => Number(item.id) === Number(id));
+  if (!pedido) {
+    alert("No se encontró el pedido de hoy.");
+    return;
+  }
+
+  const J = obtenerJsPDF();
+  if (!J) {
+    alert("No se pudo cargar el generador de PDF.");
+    return;
+  }
+
+  const t = datosTicketPedido(pedido);
+  const c = crearCanvasTicketIndividual(t);
+  const ancho = 80;
+  const alto = Math.max(100, ancho * c.height / c.width);
+  const doc = new J({ orientation: "portrait", unit: "mm", format: [ancho, alto] });
+  doc.addImage(c.toDataURL("image/jpeg", 0.96), "JPEG", 0, 0, ancho, alto, undefined, "FAST");
+  doc.save(`ticket-fratello-${nombreArchivoSeguro(t.cliente)}-${t.fecha}.pdf`);
+}
+
+async function descargarBlobCompatible(blob, nombreArchivo, titulo = "Ticket Fratello") {
+  const archivo = new File([blob], nombreArchivo, { type: blob.type || "image/jpeg" });
+
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [archivo] })) {
+    try {
+      await navigator.share({ title: titulo, files: [archivo] });
+      return true;
+    } catch (error) {
+      if (error?.name === "AbortError") return false;
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  enlace.rel = "noopener";
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return true;
+}
+
+async function guardarJpgPedidoHoy(id) {
+  const pedido = pedidosHoy.find(item => Number(item.id) === Number(id));
+  if (!pedido) {
+    alert("No se encontró el pedido de hoy.");
+    return;
+  }
+
+  const ticket = datosTicketPedido(pedido);
+  const canvas = crearCanvasTicketIndividual(ticket);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.95));
+
+  if (!blob) {
+    alert("No se pudo generar la imagen.");
+    return;
+  }
+
+  await descargarBlobCompatible(
+    blob,
+    `ticket-fratello-${nombreArchivoSeguro(ticket.cliente)}-${ticket.fecha}.jpg`,
+    `Ticket de ${ticket.cliente}`
+  );
+}
+
+async function guardarImagenPedidos() {
+  const canvas = $("canvasPedidosImpresion");
+  if (!canvas) return;
+
+  const blob = await new Promise(resolve =>
+    canvas.toBlob(resolve, "image/jpeg", 0.95)
+  );
+
+  if (!blob) {
+    alert("No se pudo generar la imagen.");
+    return;
+  }
+
+  await descargarBlobCompatible(
+    blob,
+    `tickets-fratello-${hoyISO()}.jpg`,
+    "Tickets Fratello"
+  );
 }
 async function compartirImagenPedidos(){
   const canvas=$("canvasPedidosImpresion"); if(!canvas)return;
@@ -5129,7 +5276,83 @@ async function compartirImagenPedidos(){
   }
   guardarImagenPedidos();
 }
-function imprimirImagenPedidos(){if(!pedidos.length){alert("No hay pedidos cargados.");return;}const imgs=pedidos.map(p=>crearCanvasTicketIndividual(datosTicketPedido(p)).toDataURL("image/png")),w=window.open("","_blank");if(!w){alert("Permití ventanas emergentes para imprimir.");return;}w.document.write(`<html><head><style>@page{size:80mm auto;margin:0}body{margin:0}.ticket{display:block;width:80mm;height:auto;page-break-after:always}.ticket:last-child{page-break-after:auto}</style></head><body>`);imgs.forEach(src=>w.document.write(`<img class="ticket" src="${src}">`));w.document.write(`<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),300));<\/script></body></html>`);w.document.close();}
+function imprimirImagenPedidos() {
+  const fechaAbierta = typeof fechaPanelSemanalAbierto === "function"
+    ? fechaPanelSemanalAbierto()
+    : "";
+
+  const lista = fechaAbierta
+    ? pedidos.filter(p => fechaEntregaPedido(p) === fechaAbierta)
+    : pedidos;
+
+  if (!lista.length) {
+    alert("No hay pedidos cargados para imprimir.");
+    return;
+  }
+
+  const imgs = lista.map(p =>
+    crearCanvasTicketIndividual(datosTicketPedido(p)).toDataURL("image/jpeg", 0.92)
+  );
+
+  const w = window.open("", "_blank");
+  if (!w) {
+    alert("Permití ventanas emergentes para imprimir.");
+    return;
+  }
+
+  w.document.write(`
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          @page { size: A4 portrait; margin: 7mm; }
+          * { box-sizing: border-box; }
+          html, body { margin: 0; padding: 0; background: white; }
+          .sheet {
+            width: 196mm;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3mm;
+            align-items: start;
+          }
+          .ticket {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 91mm;
+            object-fit: contain;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            border: 0;
+          }
+          @media screen and (max-width: 700px) {
+            .sheet {
+              width: 100%;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 6px;
+              padding: 6px;
+            }
+          }
+          @media print {
+            .sheet { width: 196mm; }
+            .ticket { max-height: 91mm; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="sheet">
+          ${imgs.map(src => `<img class="ticket" src="${src}">`).join("")}
+        </div>
+        <script>
+          window.addEventListener("load", () => {
+            setTimeout(() => window.print(), 400);
+          });
+        <\/script>
+      </body>
+    </html>
+  `);
+  w.document.close();
+}
 
 
 function resetDatos() {
@@ -5911,6 +6134,8 @@ window.alternarPedidoFijo=alternarPedidoFijo;
 window.eliminarPedidoFijo=eliminarPedidoFijo;
 window.eliminarListaPrecioPersonalizada = eliminarListaPrecioPersonalizada;
 window.descargarPdfPedidoIndividual = descargarPdfPedidoIndividual;
+window.descargarPdfPedidoHoy = descargarPdfPedidoHoy;
+window.guardarJpgPedidoHoy = guardarJpgPedidoHoy;
 window.reprocesarPedidoFormulario = reprocesarPedidoFormulario;
 window.resolverProductoPedido = resolverProductoPedido;
 window.resolverUnidadPedido = resolverUnidadPedido;
