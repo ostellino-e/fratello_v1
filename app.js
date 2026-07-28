@@ -2141,6 +2141,7 @@ function inicializarIdsPedidosFormularioConocidos() {
     (Array.isArray(pedidos) ? pedidos : [])
       .filter(pedido => pedido?.origen === "formulario_cliente")
       .map(pedido => String(pedido.id))
+      .filter(Boolean)
   );
 }
 
@@ -2175,7 +2176,8 @@ function renderPedidosRecibidosFormulario() {
 
 
 async function mostrarNotificacionLocalPedido(pedido) {
-  if (!pedido || !("Notification" in window) || Notification.permission !== "granted") return;
+  if (!pedido || pedido.origen !== "formulario_cliente") return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
 
   try {
     const registro = await navigator.serviceWorker.ready;
@@ -2184,9 +2186,9 @@ async function mostrarNotificacionLocalPedido(pedido) {
       icon: "./icon-192.png",
       badge: "./icon-192.png",
       tag: `pedido-cliente-${pedido.id}`,
-      renotify: true,
+      renotify: false,
       data: {
-        url: `./index.html?pedido=${pedido.id}#seccionPedidos`
+        url: `./index.html?abrir=pedidos&fecha=${encodeURIComponent(fechaEntregaPedido(pedido))}&pedido=${encodeURIComponent(pedido.id)}`
       }
     });
   } catch (error) {
@@ -2195,28 +2197,25 @@ async function mostrarNotificacionLocalPedido(pedido) {
 }
 
 function pedidoDebeNotificar(pedido) {
-  if (!pedido || esPedidoFijoRobusto(pedido)) return false;
-  return pedido.origen === "formulario_cliente" || pedido.origen === "manual";
+  return Boolean(pedido && pedido.origen === "formulario_cliente");
 }
 
-function detectarPedidosNotificablesNuevos(listaAnterior, listaNueva) {
-  const anteriores = new Set(
-    (listaAnterior || [])
-      .filter(pedidoDebeNotificar)
-      .map(pedido => String(pedido.id))
-  );
+function detectarPedidosNotificablesNuevos(listaNueva) {
+  const nuevosExternos = (Array.isArray(listaNueva) ? listaNueva : []).filter(pedido => {
+    if (!pedido || pedido.origen !== "formulario_cliente") return false;
 
-  const nuevos = (listaNueva || []).filter(pedido =>
-    pedidoDebeNotificar(pedido) &&
-    !anteriores.has(String(pedido.id))
-  );
+    const id = String(pedido.id || "");
+    if (!id || idsPedidosFormularioConocidos.has(id)) return false;
 
-  nuevos.forEach(pedido => {
+    return true;
+  });
+
+  nuevosExternos.forEach(pedido => {
     idsPedidosFormularioConocidos.add(String(pedido.id));
     mostrarNotificacionLocalPedido(pedido);
   });
 
-  return nuevos;
+  return nuevosExternos;
 }
 
 
@@ -2230,7 +2229,6 @@ function escucharCambiosNube() {
 
     try {
       const data = doc.data();
-      const pedidosAntesDeActualizar = [...pedidos];
 
       produccion = data.produccion || produccion;
 
@@ -2240,16 +2238,10 @@ function escucharCambiosNube() {
       pedidos = resultadoInterpretacion.pedidos;
       pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
 
-      // La primera sincronización solo registra el estado existente.
-      // Las notificaciones se disparan únicamente en cambios posteriores.
-      if (idsPedidosFormularioConocidos.size > 0 || pedidosAntesDeActualizar.length > 0) {
-        detectarPedidosNotificablesNuevos(pedidosAntesDeActualizar, pedidos);
-      }
-      idsPedidosFormularioConocidos = new Set(
-        pedidos
-          .filter(pedido => pedido?.origen === "formulario_cliente")
-          .map(pedido => String(pedido.id))
-      );
+      // Únicamente los pedidos externos recién llegados pueden notificar.
+      // Los manuales se notifican en el momento exacto de su creación.
+      // Los pedidos fijos, renderizados y sincronizaciones nunca notifican.
+      detectarPedidosNotificablesNuevos(pedidos);
 
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = Array.isArray(data.clientes) && data.clientes.length

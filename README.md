@@ -1,9 +1,11 @@
-# Fratello v3.7.2 — Notificaciones y navegación corregidas
+# Fratello v3.7.3 — Notificaciones únicas
 
-Cambios:
-- Solo generan notificación los pedidos manuales y externos.
-- Los pedidos fijos no generan notificaciones.
-- Abrir una notificación lleva directamente a Pedidos.
-- El botón Atrás vuelve correctamente a la pantalla principal.
-- Si la app ya estaba abierta, la notificación enfoca esa misma ventana.
-- Se conserva el recuento corregido de la versión anterior.
+Corrección definitiva del flujo de avisos:
+
+- Un pedido manual genera una sola notificación en el momento de crearse.
+- Un pedido externo genera una sola notificación al aparecer por primera vez en Firebase.
+- Los pedidos fijos nunca generan notificaciones.
+- La sincronización, el renderizado y el recálculo no recorren pedidos para notificarlos.
+- Los pedidos externos existentes se registran como conocidos al iniciar la app.
+- Se mantiene la navegación corregida desde las notificaciones.
+- Se mantiene el recuento correcto de producción y pedidos.
