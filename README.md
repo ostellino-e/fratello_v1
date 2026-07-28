@@ -1,10 +1,14 @@
-# Fratello v3.7.8 — Sección Tickets por día
+# Fratello v3.7.9 — Modal de tickets y Resumen limpio
 
-- Nueva subsección Tickets dentro de Pedidos.
-- Pestañas desplegables por día.
-- Tickets individuales por cliente.
-- Acciones Ver, Imprimir y JPG por cliente.
-- Al final de cada día: imprimir todos, guardar todos en JPG o PDF.
-- Ya no toma automáticamente pedidos de otros días.
-- El usuario elige explícitamente qué día desea imprimir.
-- Incluye pedidos normales y pedidos para hoy en su fecha correspondiente.
+Correcciones:
+- Los botones Cerrar, Imprimir, Compartir, Guardar JPG y Descargar PDF del visor vuelven a funcionar.
+- Se evita que la inicialización se detenga cuando un botón opcional fue retirado.
+- El visor conserva exactamente el ticket o grupo de tickets seleccionado.
+- El PDF del modal ya no vuelve a incorporar pedidos de otros días.
+
+Resumen:
+- Se eliminó el cartel explicativo de WhatsApp.
+- Se retiró temporalmente Recordar pedido a cliente.
+- Se retiró Borrar pedidos cargados del Resumen.
+- Se retiró el borrado masivo duplicado.
+- Se agregó un estado visual simple: jornada lista, acciones pendientes o sin pedidos.

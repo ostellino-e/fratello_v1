@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.7.8";
-    document.documentElement.dataset.fratelloVersion = "3.7.8";
+    window.FRATELLO_VERSION = "3.7.9";
+    document.documentElement.dataset.fratelloVersion = "3.7.9";
   </script>
 
 </head>
@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.7.8</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.7.9</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -246,7 +246,7 @@
 
 <section class="card wide appSection" id="seccionResumen">
       <a class="volverInicio" href="#" data-volver="true">← Volver</a>
-      <h2>3. Resultado final</h2>
+      <h2>3. Resumen</h2>
 
       <div id="panelMemoriaEnvio" class="memoryPanel">
         <div>
@@ -259,16 +259,12 @@
       <div class="toolbar">
         <button id="btnCalcular" class="primary">Calcular diferencias</button>
         <button id="btnWhatsAppGrupo" type="button">📲 Enviar al grupo Fratello</button>
-        <div id="avisoChecksWhatsapp" class="avisoConfirmar">Para enviar por WhatsApp deben estar tildados: día correcto y pedidos cargados correctos.</div>
-        <button id="btnRecordarCliente" type="button">📲 Recordar pedido a cliente</button>
         <button id="btnExportar">Copiar resumen para WhatsApp</button>
-        <button id="btnReset">Borrar pedidos cargados</button>
       </div>
 
       <h3>Todos los pedidos cargados</h3>
       <div id="ultimoProcesado" class="oculto"></div>
       <button type="button" data-seccion="seccionTickets">🎟 Abrir sección Tickets</button>
-      <button id="btnBorrarSeleccionados" type="button">🗑 Borrar pedidos seleccionados</button>
       <div id="vistaPedidosInline"></div>
 
       <div id="estadoConfirmacion" class="estadoConfirmacion">Pedidos sin confirmar</div>
@@ -479,7 +475,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=378"></script>
+  <script src="app.js?v=379"></script>
 
   
 
@@ -496,12 +492,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=378")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=379")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=378", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=379", {
             scope: "./",
             updateViaCache: "none"
           });

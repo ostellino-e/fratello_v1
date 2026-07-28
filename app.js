@@ -1535,10 +1535,7 @@ function iniciarNavegacionFratello() {
 
   const btnBorrarRapido = document.getElementById("btnBorrarRapido");
   if (btnBorrarRapido) {
-    btnBorrarRapido.addEventListener("click", () => {
-      const btnReset = document.getElementById("btnReset");
-      if (btnReset) btnReset.click();
-    });
+    btnBorrarRapido.addEventListener("click", resetDatos);
   }
 
   mostrarInicioFratello();
@@ -4839,8 +4836,10 @@ function abrirModalImpresion() {
   document.body.classList.add("modalAbierto");
 }
 function cerrarModalImpresion() {
-  $("modalImpresion")?.classList.add("hidden");
-  document.body.classList.remove("modalAbierto");
+  const modal = $("modalImpresion");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  document.body.classList.remove("modalOpen");
 }
 function dibujarPunteada(ctx,x1,y1,x2,y2){
   ctx.save();ctx.setLineDash([8,7]);ctx.strokeStyle="#777";ctx.lineWidth=1.4;
@@ -5211,9 +5210,18 @@ function cargarCanvasTickets(lista) {
 
 function verTicketIndividual(tipo, id) {
   const pedido = buscarPedidoTicket(tipo, id);
-  if (!pedido) return alert("No se encontró el pedido.");
+  if (!pedido) {
+    alert("No se encontró el pedido.");
+    return;
+  }
 
-  cargarCanvasTickets([pedido]);
+  ticketsSeleccionadosActuales = [pedido];
+
+  if (!cargarCanvasTickets(ticketsSeleccionadosActuales)) {
+    alert("No se pudo preparar el ticket.");
+    return;
+  }
+
   abrirModalImpresion();
 }
 
@@ -5437,14 +5445,64 @@ function obtenerJsPDF(){return window.jspdf?.jsPDF||null;}
 
 function agregarTicketPdf(doc,t,x,y,a){const c=crearCanvasTicketIndividual(t),h=a*c.height/c.width;doc.addImage(c.toDataURL("image/jpeg",.95),"JPEG",x,y,a,h,undefined,"FAST");return h;}
 function descargarPdfPedidos() {
-  const lista = ticketsSeleccionadosActuales;
+  const lista = Array.isArray(ticketsSeleccionadosActuales)
+    ? ticketsSeleccionadosActuales
+    : [];
+
   if (!lista.length) {
-    alert("Primero elegí un día o un ticket.");
+    alert("Primero abrí un ticket o elegí un día.");
     return;
   }
 
-  const fecha = datosTicketPedido(lista[0]).fecha || hoyISO();
-  descargarTicketsDelDiaPdf(fecha);
+  const J = obtenerJsPDF();
+  if (!J) {
+    alert("No se pudo cargar el generador de PDF.");
+    return;
+  }
+
+  if (lista.length === 1) {
+    const ticket = datosTicketPedido(lista[0]);
+    const canvas = crearCanvasTicketIndividual(ticket);
+    const ancho = 80;
+    const alto = Math.max(100, ancho * canvas.height / canvas.width);
+    const doc = new J({ orientation: "portrait", unit: "mm", format: [ancho, alto] });
+    doc.addImage(canvas.toDataURL("image/jpeg", 0.96), "JPEG", 0, 0, ancho, alto, undefined, "FAST");
+    doc.save(`ticket-fratello-${nombreArchivoSeguro(ticket.cliente)}-${ticket.fecha}.pdf`);
+    return;
+  }
+
+  const doc = new J({ orientation: "portrait", unit: "mm", format: "a4" });
+  const ancho = 62, margen = 6, espacio = 4;
+  let x = margen, y = margen, columna = 0, altoFila = 0;
+
+  lista.map(datosTicketPedido).forEach((ticket, indice) => {
+    const canvas = crearCanvasTicketIndividual(ticket);
+    const alto = ancho * canvas.height / canvas.width;
+
+    if (columna === 0 && y + alto > 291) {
+      doc.addPage();
+      y = margen;
+    }
+
+    agregarTicketPdf(doc, ticket, x, y, ancho);
+    altoFila = Math.max(altoFila, alto);
+    columna++;
+
+    if (columna === 3) {
+      columna = 0;
+      x = margen;
+      y += altoFila + espacio;
+      altoFila = 0;
+      if (indice < lista.length - 1 && y + 80 > 291) {
+        doc.addPage();
+        y = margen;
+      }
+    } else {
+      x = margen + columna * (ancho + espacio);
+    }
+  });
+
+  doc.save(`tickets-fratello-${hoyISO()}.pdf`);
 }
 function descargarPdfPedidoIndividual(id){const p=pedidos.find(x=>Number(x.id)===Number(id));if(!p){alert("No se encontró el pedido.");return;}const J=obtenerJsPDF();if(!J){alert("No se pudo cargar el generador de PDF.");return;}avisarPreciosFaltantes([p]);const t=datosTicketPedido(p),c=crearCanvasTicketIndividual(t),a=80,h=Math.max(100,a*c.height/c.width),d=new J({orientation:"portrait",unit:"mm",format:[a,h]});d.addImage(c.toDataURL("image/jpeg",.96),"JPEG",0,0,a,h,undefined,"FAST");d.save(`ticket-fratello-${nombreArchivoSeguro(t.cliente)}-${t.fecha}.pdf`);}
 
@@ -5521,7 +5579,11 @@ async function guardarJpgPedidoHoy(id) {
 
 async function guardarImagenPedidos() {
   const canvas = $("canvasPedidosImpresion");
-  if (!canvas) return;
+
+  if (!canvas || !canvas.width || !canvas.height || !ticketsSeleccionadosActuales.length) {
+    alert("Primero abrí un ticket o elegí un día.");
+    return;
+  }
 
   const blob = await new Promise(resolve =>
     canvas.toBlob(resolve, "image/jpeg", 0.95)
@@ -5532,20 +5594,45 @@ async function guardarImagenPedidos() {
     return;
   }
 
-  await descargarBlobCompatible(
-    blob,
-    `tickets-fratello-${hoyISO()}.jpg`,
-    "Tickets Fratello"
-  );
+  const nombre = ticketsSeleccionadosActuales.length === 1
+    ? `ticket-fratello-${nombreArchivoSeguro(datosTicketPedido(ticketsSeleccionadosActuales[0]).cliente)}-${hoyISO()}.jpg`
+    : `tickets-fratello-${hoyISO()}.jpg`;
+
+  await descargarBlobCompatible(blob, nombre, "Tickets Fratello");
 }
-async function compartirImagenPedidos(){
-  const canvas=$("canvasPedidosImpresion"); if(!canvas)return;
-  const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.95));
-  const file=new File([blob],`tickets-fratello-${hoyISO()}.jpg`,{type:"image/jpeg"});
-  if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-    try{await navigator.share({title:"Pedidos Fratello",files:[file]});return;}catch(e){if(e.name==="AbortError")return;}
+async function compartirImagenPedidos() {
+  const canvas = $("canvasPedidosImpresion");
+
+  if (!canvas || !canvas.width || !canvas.height || !ticketsSeleccionadosActuales.length) {
+    alert("Primero abrí un ticket o elegí un día.");
+    return;
   }
-  guardarImagenPedidos();
+
+  const blob = await new Promise(resolve =>
+    canvas.toBlob(resolve, "image/jpeg", 0.95)
+  );
+
+  if (!blob) {
+    alert("No se pudo generar la imagen.");
+    return;
+  }
+
+  const archivo = new File(
+    [blob],
+    `tickets-fratello-${hoyISO()}.jpg`,
+    { type: "image/jpeg" }
+  );
+
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [archivo] })) {
+    try {
+      await navigator.share({ title: "Tickets Fratello", files: [archivo] });
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+
+  await descargarBlobCompatible(blob, archivo.name, "Tickets Fratello");
 }
 function imprimirImagenPedidos() {
   imprimirListaTickets(ticketsSeleccionadosActuales);
@@ -5589,10 +5676,36 @@ function destildarCasillasConfirmacion() {
 }
 
 function actualizarEstadoConfirmacion() {
-  const el = $("estadoConfirmacion");
-  if (!el) return;
-  el.textContent = pedidosConfirmados ? "Pedidos confirmados" : "Pedidos sin confirmar";
-  el.className = pedidosConfirmados ? "estadoConfirmacion confirmado" : "estadoConfirmacion";
+  const contenedor = $("estadoConfirmacion");
+  if (!contenedor) return;
+
+  const estadoPedidos = estadoConfirmacionFechaSeleccionada();
+  const produccionConfirmada = Boolean($("checkProduccionCompleta")?.checked);
+  const faltanPedidos = Math.max(
+    0,
+    estadoPedidos.pedidosFecha.length - estadoPedidos.confirmados.length
+  );
+
+  contenedor.classList.remove("estadoListo", "estadoPendiente", "estadoAlerta");
+
+  if (!estadoPedidos.pedidosFecha.length) {
+    contenedor.textContent = "🟠 No hay pedidos cargados para el día seleccionado";
+    contenedor.classList.add("estadoAlerta");
+    return;
+  }
+
+  if (!produccionConfirmada || faltanPedidos > 0) {
+    const pendientes = [];
+    if (!produccionConfirmada) pendientes.push("confirmar producción");
+    if (faltanPedidos > 0) pendientes.push(`confirmar ${faltanPedidos} pedido(s)`);
+
+    contenedor.textContent = `🔴 Faltan acciones: ${pendientes.join(" y ")}`;
+    contenedor.classList.add("estadoPendiente");
+    return;
+  }
+
+  contenedor.textContent = "🟢 Jornada lista para calcular y enviar";
+  contenedor.classList.add("estadoListo");
 }
 
 function confirmarPedidos() {
@@ -6275,9 +6388,9 @@ async function init() {
   if ($("btnWhatsAppGrupo")) $("btnWhatsAppGrupo").onclick = generarMensajeGrupoFratello;
   if ($("btnRecordarCliente")) $("btnRecordarCliente").onclick = recordarPedidoCliente;
   if ($("btnBorrarMemoriaEnvio")) $("btnBorrarMemoriaEnvio").onclick = borrarMemoriaEnvio;
-  $("btnExportar").onclick = copiarResumen;
-  $("btnReset").onclick = resetDatos;
-  $("btnVistaPedidos").onclick = generarVistaPedidos;
+  if ($("btnExportar")) $("btnExportar").onclick = copiarResumen;
+  if ($("btnReset")) $("btnReset").onclick = resetDatos;
+  if ($("btnVistaPedidos")) $("btnVistaPedidos").onclick = generarVistaPedidos;
   if ($("btnCerrarModalImpresion")) $("btnCerrarModalImpresion").onclick = cerrarModalImpresion;
   if ($("btnCerrarModalImpresion2")) $("btnCerrarModalImpresion2").onclick = cerrarModalImpresion;
   if ($("cerrarModalBackdrop")) $("cerrarModalBackdrop").onclick = cerrarModalImpresion;
