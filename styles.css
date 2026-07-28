@@ -1891,3 +1891,76 @@ body:has(.appSection:target) #contenidoApp {
 .unitResolution button {
   min-height: 34px;
 }
+
+
+.ticketsByDay {
+  display: grid;
+  gap: 10px;
+}
+
+.ticketDayPanel {
+  border: 1px solid #d8c5a7;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.ticketDayPanel > summary {
+  cursor: pointer;
+  padding: 13px;
+  background: #f6eee2;
+  display: flex;
+  justify-content: space-between;
+  font-weight: 800;
+}
+
+.ticketDayBody {
+  padding: 10px;
+}
+
+.ticketClientRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee2d3;
+}
+
+.ticketClientRow small {
+  display: block;
+  margin-top: 3px;
+  opacity: .72;
+}
+
+.ticketClientActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.ticketDayFooter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 2px solid #d8c5a7;
+}
+
+@media (max-width: 650px) {
+  .ticketClientRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ticketClientActions {
+    justify-content: flex-start;
+  }
+
+  .ticketClientActions button,
+  .ticketDayFooter button {
+    flex: 1 1 130px;
+  }
+}

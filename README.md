@@ -1,11 +1,10 @@
-# Fratello v3.7.7 — Validaciones y tickets
+# Fratello v3.7.8 — Sección Tickets por día
 
-Mejoras:
-- Volvieron las sugerencias para producto ambiguo.
-- Volvieron las opciones para elegir unidad, docena o kilogramo.
-- Los avisos aparecen dentro del pedido correspondiente.
-- Los pedidos de hoy generan ticket PDF y JPG.
-- Los pedidos de hoy conservan productos procesados para control de cobro.
-- La impresión agrupa hasta varios tickets en una hoja A4.
-- El tamaño de impresión es consistente desde celular y computadora.
-- El guardado JPG usa compartir/guardar archivo en celular y descarga normal en computadora.
+- Nueva subsección Tickets dentro de Pedidos.
+- Pestañas desplegables por día.
+- Tickets individuales por cliente.
+- Acciones Ver, Imprimir y JPG por cliente.
+- Al final de cada día: imprimir todos, guardar todos en JPG o PDF.
+- Ya no toma automáticamente pedidos de otros días.
+- El usuario elige explícitamente qué día desea imprimir.
+- Incluye pedidos normales y pedidos para hoy en su fecha correspondiente.

@@ -477,6 +477,7 @@ function guardarPedidoHoyDesdeFormulario() {
   guardarPedidosHoy();
   limpiarFormularioPedidoHoy();
   renderPedidosHoy();
+  renderTicketsPorDia();
 }
 
 function editarPedidoHoy(id) {
@@ -1403,6 +1404,10 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
   if (idSeccion === "seccionNotificaciones") {
     cargarHistorialNotificaciones();
     marcarNotificacionesComoVistas();
+  }
+
+  if (idSeccion === "seccionTickets") {
+    renderTicketsPorDia();
   }
 
   if (idSeccion === "seccionPedidos") {
@@ -4622,6 +4627,7 @@ function pedidosConfirmadosParaFecha(fecha) {
 function renderPedidosCargados() {
   renderPanelPedidosSemana();
   actualizarAvisoUnidadesAmbiguas();
+  renderTicketsPorDia();
 }
 
 
@@ -5081,6 +5087,268 @@ function normalizarUnidadPrecio(unidad) {
 
 function precioUnitarioItem(producto,unidad,cliente=""){if(!producto)return 0;return precioLista(producto.id,unidad,listaPrecioCliente(cliente));}
 
+
+let ticketsSeleccionadosActuales = [];
+
+function pedidosTicketParaFecha(fecha) {
+  const normales = pedidos.filter(pedido => fechaEntregaPedido(pedido) === fecha);
+  const deHoy = pedidosHoy
+    .filter(pedido => (pedido.jornada || pedido.fechaEntrega || pedido.fecha) === fecha)
+    .map(pedido => ({ ...pedido, esPedidoHoy: true }));
+
+  const combinados = [...normales, ...deHoy];
+  const vistos = new Set();
+
+  return combinados.filter(pedido => {
+    const clave = `${pedido.esPedidoHoy ? "hoy" : "normal"}-${pedido.id}`;
+    if (vistos.has(clave)) return false;
+    vistos.add(clave);
+    return true;
+  }).sort((a, b) =>
+    String(a.cliente || "").localeCompare(String(b.cliente || ""), "es")
+  );
+}
+
+function fechasDisponiblesTickets() {
+  return [...new Set([
+    ...pedidos.map(fechaEntregaPedido),
+    ...pedidosHoy.map(pedido => pedido.jornada || pedido.fechaEntrega || pedido.fecha)
+  ].filter(Boolean))].sort();
+}
+
+function etiquetaFechaTickets(fecha) {
+  const d = new Date(fecha + "T12:00:00");
+  const nombre = d.toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit"
+  });
+  return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+}
+
+function renderTicketsPorDia() {
+  const panel = $("panelTicketsPorDia");
+  if (!panel) return;
+
+  const fechas = fechasDisponiblesTickets();
+
+  if (!fechas.length) {
+    panel.innerHTML = '<p class="weeklyEmpty">No hay pedidos con tickets disponibles.</p>';
+    return;
+  }
+
+  panel.innerHTML = fechas.map((fecha, indice) => {
+    const lista = pedidosTicketParaFecha(fecha);
+
+    return `<details class="ticketDayPanel" data-ticket-fecha="${fecha}" ${indice === 0 ? "open" : ""}>
+      <summary>
+        <span>${etiquetaFechaTickets(fecha)}</span>
+        <span class="weeklyCount">${lista.length}</span>
+      </summary>
+      <div class="ticketDayBody">
+        ${lista.map(pedido => {
+          const tipo = pedido.esPedidoHoy ? "hoy" : "normal";
+          return `<article class="ticketClientRow">
+            <div>
+              <strong>${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</strong>
+              <small>${pedido.esPedidoHoy ? `Pedido de hoy${pedido.horaEntrega ? ` · ${pedido.horaEntrega}` : ""}` : etiquetaOrigenPedido(pedido)}</small>
+            </div>
+            <div class="ticketClientActions">
+              <button type="button" onclick="verTicketIndividual('${tipo}', ${pedido.id})">👁 Ver</button>
+              <button type="button" onclick="imprimirTicketIndividual('${tipo}', ${pedido.id})">🖨 Imprimir</button>
+              <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', ${pedido.id})">🖼 JPG</button>
+            </div>
+          </article>`;
+        }).join("")}
+        <div class="ticketDayFooter">
+          <button type="button" class="primary" onclick="imprimirTicketsDelDia('${fecha}')">🖨 Imprimir todos los tickets de ${etiquetaFechaTickets(fecha)}</button>
+          <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG</button>
+          <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF</button>
+        </div>
+      </div>
+    </details>`;
+  }).join("");
+}
+
+function buscarPedidoTicket(tipo, id) {
+  const lista = tipo === "hoy" ? pedidosHoy : pedidos;
+  return lista.find(pedido => Number(pedido.id) === Number(id)) || null;
+}
+
+function cargarCanvasTickets(lista) {
+  const canvas = $("canvasPedidosImpresion");
+  if (!canvas) return false;
+
+  ticketsSeleccionadosActuales = [...lista];
+  const tickets = lista.map(datosTicketPedido);
+  const W = 1400;
+  const cols = 2;
+  const cellW = W / cols;
+  const cellH = 900;
+  const rows = Math.ceil(tickets.length / cols);
+
+  canvas.width = W;
+  canvas.height = Math.max(cellH, rows * cellH);
+
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  tickets.forEach((ticket, i) =>
+    dibujarTicketEnCanvas(
+      ctx,
+      ticket,
+      (i % cols) * cellW + 8,
+      Math.floor(i / cols) * cellH + 8,
+      cellW - 16,
+      cellH - 16,
+      String(ticket.id).slice(-6)
+    )
+  );
+
+  return true;
+}
+
+function verTicketIndividual(tipo, id) {
+  const pedido = buscarPedidoTicket(tipo, id);
+  if (!pedido) return alert("No se encontró el pedido.");
+
+  cargarCanvasTickets([pedido]);
+  abrirModalImpresion();
+}
+
+function imprimirListaTickets(lista) {
+  if (!lista.length) {
+    alert("No hay tickets para imprimir.");
+    return;
+  }
+
+  const imgs = lista.map(pedido =>
+    crearCanvasTicketIndividual(datosTicketPedido(pedido)).toDataURL("image/jpeg", 0.92)
+  );
+
+  const ventana = window.open("", "_blank");
+  if (!ventana) {
+    alert("Permití ventanas emergentes para imprimir.");
+    return;
+  }
+
+  ventana.document.write(`
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          @page { size: A4 portrait; margin: 7mm; }
+          * { box-sizing: border-box; }
+          html, body { margin: 0; padding: 0; background: #fff; }
+          .sheet {
+            width: 196mm;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3mm;
+            align-items: start;
+          }
+          .ticket {
+            width: 100%;
+            height: auto;
+            max-height: 91mm;
+            object-fit: contain;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          @media screen and (max-width: 700px) {
+            .sheet { width: 100%; grid-template-columns: repeat(2, 1fr); padding: 6px; gap: 6px; }
+          }
+          @media print {
+            .sheet { width: 196mm; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="sheet">${imgs.map(src => `<img class="ticket" src="${src}">`).join("")}</div>
+        <script>window.addEventListener("load",()=>setTimeout(()=>window.print(),400));<\/script>
+      </body>
+    </html>
+  `);
+  ventana.document.close();
+}
+
+function imprimirTicketIndividual(tipo, id) {
+  const pedido = buscarPedidoTicket(tipo, id);
+  if (!pedido) return alert("No se encontró el pedido.");
+  imprimirListaTickets([pedido]);
+}
+
+function imprimirTicketsDelDia(fecha) {
+  const lista = pedidosTicketParaFecha(fecha);
+  imprimirListaTickets(lista);
+}
+
+async function guardarTicketIndividualJpg(tipo, id) {
+  const pedido = buscarPedidoTicket(tipo, id);
+  if (!pedido) return alert("No se encontró el pedido.");
+
+  const ticket = datosTicketPedido(pedido);
+  const canvas = crearCanvasTicketIndividual(ticket);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.95));
+  if (!blob) return alert("No se pudo generar la imagen.");
+
+  await descargarBlobCompatible(
+    blob,
+    `ticket-fratello-${nombreArchivoSeguro(ticket.cliente)}-${ticket.fecha}.jpg`,
+    `Ticket de ${ticket.cliente}`
+  );
+}
+
+async function guardarTicketsDelDiaJpg(fecha) {
+  const lista = pedidosTicketParaFecha(fecha);
+  if (!lista.length) return alert("No hay tickets para ese día.");
+
+  cargarCanvasTickets(lista);
+  await guardarImagenPedidos();
+}
+
+function descargarTicketsDelDiaPdf(fecha) {
+  const lista = pedidosTicketParaFecha(fecha);
+  if (!lista.length) return alert("No hay tickets para ese día.");
+
+  const J = obtenerJsPDF();
+  if (!J) return alert("No se pudo cargar el generador de PDF.");
+
+  const doc = new J({ orientation: "portrait", unit: "mm", format: "a4" });
+  const ancho = 62, margen = 6, espacio = 4;
+  let x = margen, y = margen, columna = 0, altoFila = 0;
+
+  lista.map(datosTicketPedido).forEach((ticket, indice) => {
+    const canvas = crearCanvasTicketIndividual(ticket);
+    const alto = ancho * canvas.height / canvas.width;
+
+    if (columna === 0 && y + alto > 291) {
+      doc.addPage();
+      y = margen;
+    }
+
+    agregarTicketPdf(doc, ticket, x, y, ancho);
+    altoFila = Math.max(altoFila, alto);
+    columna++;
+
+    if (columna === 3) {
+      columna = 0;
+      x = margen;
+      y += altoFila + espacio;
+      altoFila = 0;
+      if (indice < lista.length - 1 && y + 80 > 291) {
+        doc.addPage();
+        y = margen;
+      }
+    } else {
+      x = margen + columna * (ancho + espacio);
+    }
+  });
+
+  doc.save(`tickets-fratello-${fecha}.pdf`);
+}
+
 function datosTicketPedido(pedido) {
   const dc = datosClientesCompletos[pedido.cliente] || {};
   const lista = listaPrecioCliente(pedido.cliente);
@@ -5160,21 +5428,24 @@ function avisarPreciosFaltantes(lista=pedidos) {
   if(faltantes.size)alert("El ticket se generará, pero faltan precios para:\n\n"+[...faltantes].slice(0,12).join("\n")+"\n\nCargalos desde Administrar productos predeterminados.");
 }
 
-async function generarVistaPedidos(){
-  if(!pedidos.length){alert("No hay pedidos cargados.");return;}
-  avisarPreciosFaltantes(pedidos);
-  const tickets=pedidos.map(datosTicketPedido),canvas=$("canvasPedidosImpresion");
-  const W=1400,cols=2,cellW=W/cols,cellH=900,rows=Math.ceil(tickets.length/cols);
-  canvas.width=W;canvas.height=Math.max(cellH,rows*cellH);
-  const ctx=canvas.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
-  tickets.forEach((t,i)=>dibujarTicketEnCanvas(ctx,t,(i%cols)*cellW+8,Math.floor(i/cols)*cellH+8,cellW-16,cellH-16,String(t.id).slice(-6)));
-  abrirModalImpresion();
+async function generarVistaPedidos() {
+  renderTicketsPorDia();
+  abrirSeccionFratello("seccionTickets");
 }
 
 function obtenerJsPDF(){return window.jspdf?.jsPDF||null;}
 
 function agregarTicketPdf(doc,t,x,y,a){const c=crearCanvasTicketIndividual(t),h=a*c.height/c.width;doc.addImage(c.toDataURL("image/jpeg",.95),"JPEG",x,y,a,h,undefined,"FAST");return h;}
-function descargarPdfPedidos(){if(!pedidos.length){alert("No hay pedidos cargados.");return;}const J=obtenerJsPDF();if(!J){alert("No se pudo cargar el generador de PDF.");return;}avisarPreciosFaltantes(pedidos);const d=new J({orientation:"portrait",unit:"mm",format:"a4"}),a=62,m=6,g=4;let x=m,y=m,col=0,hf=0;pedidos.map(datosTicketPedido).forEach((t,idx)=>{const c=crearCanvasTicketIndividual(t),h=a*c.height/c.width;if(y+h>291&&col===0){d.addPage();y=m;}agregarTicketPdf(d,t,x,y,a);hf=Math.max(hf,h);col++;if(col===3){col=0;x=m;y+=hf+g;hf=0;if(idx<pedidos.length-1&&y+80>291){d.addPage();y=m;}}else x=m+col*(a+g);});d.save(`tickets-fratello-${hoyISO()}.pdf`);}
+function descargarPdfPedidos() {
+  const lista = ticketsSeleccionadosActuales;
+  if (!lista.length) {
+    alert("Primero elegí un día o un ticket.");
+    return;
+  }
+
+  const fecha = datosTicketPedido(lista[0]).fecha || hoyISO();
+  descargarTicketsDelDiaPdf(fecha);
+}
 function descargarPdfPedidoIndividual(id){const p=pedidos.find(x=>Number(x.id)===Number(id));if(!p){alert("No se encontró el pedido.");return;}const J=obtenerJsPDF();if(!J){alert("No se pudo cargar el generador de PDF.");return;}avisarPreciosFaltantes([p]);const t=datosTicketPedido(p),c=crearCanvasTicketIndividual(t),a=80,h=Math.max(100,a*c.height/c.width),d=new J({orientation:"portrait",unit:"mm",format:[a,h]});d.addImage(c.toDataURL("image/jpeg",.96),"JPEG",0,0,a,h,undefined,"FAST");d.save(`ticket-fratello-${nombreArchivoSeguro(t.cliente)}-${t.fecha}.pdf`);}
 
 
@@ -5277,81 +5548,7 @@ async function compartirImagenPedidos(){
   guardarImagenPedidos();
 }
 function imprimirImagenPedidos() {
-  const fechaAbierta = typeof fechaPanelSemanalAbierto === "function"
-    ? fechaPanelSemanalAbierto()
-    : "";
-
-  const lista = fechaAbierta
-    ? pedidos.filter(p => fechaEntregaPedido(p) === fechaAbierta)
-    : pedidos;
-
-  if (!lista.length) {
-    alert("No hay pedidos cargados para imprimir.");
-    return;
-  }
-
-  const imgs = lista.map(p =>
-    crearCanvasTicketIndividual(datosTicketPedido(p)).toDataURL("image/jpeg", 0.92)
-  );
-
-  const w = window.open("", "_blank");
-  if (!w) {
-    alert("Permití ventanas emergentes para imprimir.");
-    return;
-  }
-
-  w.document.write(`
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-          @page { size: A4 portrait; margin: 7mm; }
-          * { box-sizing: border-box; }
-          html, body { margin: 0; padding: 0; background: white; }
-          .sheet {
-            width: 196mm;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 3mm;
-            align-items: start;
-          }
-          .ticket {
-            display: block;
-            width: 100%;
-            height: auto;
-            max-height: 91mm;
-            object-fit: contain;
-            break-inside: avoid;
-            page-break-inside: avoid;
-            border: 0;
-          }
-          @media screen and (max-width: 700px) {
-            .sheet {
-              width: 100%;
-              grid-template-columns: repeat(2, minmax(0, 1fr));
-              gap: 6px;
-              padding: 6px;
-            }
-          }
-          @media print {
-            .sheet { width: 196mm; }
-            .ticket { max-height: 91mm; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="sheet">
-          ${imgs.map(src => `<img class="ticket" src="${src}">`).join("")}
-        </div>
-        <script>
-          window.addEventListener("load", () => {
-            setTimeout(() => window.print(), 400);
-          });
-        <\/script>
-      </body>
-    </html>
-  `);
-  w.document.close();
+  imprimirListaTickets(ticketsSeleccionadosActuales);
 }
 
 
@@ -6135,6 +6332,12 @@ window.eliminarPedidoFijo=eliminarPedidoFijo;
 window.eliminarListaPrecioPersonalizada = eliminarListaPrecioPersonalizada;
 window.descargarPdfPedidoIndividual = descargarPdfPedidoIndividual;
 window.descargarPdfPedidoHoy = descargarPdfPedidoHoy;
+window.verTicketIndividual = verTicketIndividual;
+window.imprimirTicketIndividual = imprimirTicketIndividual;
+window.guardarTicketIndividualJpg = guardarTicketIndividualJpg;
+window.imprimirTicketsDelDia = imprimirTicketsDelDia;
+window.guardarTicketsDelDiaJpg = guardarTicketsDelDiaJpg;
+window.descargarTicketsDelDiaPdf = descargarTicketsDelDiaPdf;
 window.guardarJpgPedidoHoy = guardarJpgPedidoHoy;
 window.reprocesarPedidoFormulario = reprocesarPedidoFormulario;
 window.resolverProductoPedido = resolverProductoPedido;
