@@ -6831,7 +6831,14 @@ function guardarCierreCaja() {
   else cierresCaja.push(cierre);
 
   guardarCajaLocal();
-  guardarEnNube();
+  renderCajaAdmin();
+  renderDashboardCaja();
+  Promise.resolve(guardarEnNube())
+    .then(() => {
+      renderCajaAdmin();
+      renderDashboardCaja();
+    })
+    .catch(error => console.error("Error sincronizando cierre de Caja:", error));
 
   if (estado) {
     estado.textContent = anterior
@@ -6841,7 +6848,6 @@ function guardarCierreCaja() {
   }
 
   $("avisoCierreExistente")?.classList.remove("hidden");
-  renderCajaAdmin();
 }
 
 
@@ -7037,6 +7043,7 @@ function renderCajaAdmin() {
   }
 
   renderPersonasCaja();
+  renderDashboardCaja();
 }
 
 function editarCierreDesdeAdminCaja(fecha, turno) {
@@ -7127,11 +7134,239 @@ function cambiarPinCaja() {
   registrarActividadCajaAdmin();
 }
 
+
+function inicioSemanaCaja(fecha = new Date()) {
+  const d = new Date(fecha);
+  const dia = d.getDay();
+  const diferencia = dia === 0 ? -6 : 1 - dia;
+  d.setDate(d.getDate() + diferencia);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function fechaDesdeISOCaja(iso) {
+  const [y, m, d] = String(iso).split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function formatoFechaCaja(iso, incluirDia = true) {
+  const fecha = fechaDesdeISOCaja(iso);
+  return new Intl.DateTimeFormat("es-AR", {
+    weekday: incluirDia ? "long" : undefined,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }).format(fecha);
+}
+
+function agruparCierresPorDiaCaja() {
+  const mapa = new Map();
+
+  cierresCaja.forEach(cierre => {
+    if (!cierre?.fecha) return;
+    if (!mapa.has(cierre.fecha)) {
+      mapa.set(cierre.fecha, {
+        fecha: cierre.fecha,
+        cierres: [],
+        efectivo: 0,
+        transferencias: 0,
+        gastos: 0,
+        venta: 0,
+        efectivoRendir: 0
+      });
+    }
+
+    const dia = mapa.get(cierre.fecha);
+    const totales = totalesCierreCaja(cierre);
+    dia.cierres.push(cierre);
+    dia.efectivo += totales.efectivo;
+    dia.transferencias += totales.transferencias;
+    dia.gastos += totales.gastos;
+    dia.venta += totales.venta;
+    dia.efectivoRendir += totales.efectivoRendir;
+  });
+
+  return [...mapa.values()].sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+function filtrarDiasCaja(periodo) {
+  const dias = agruparCierresPorDiaCaja();
+  const hoy = fechaDesdeISOCaja(hoyISOCaja());
+  hoy.setHours(0, 0, 0, 0);
+
+  if (periodo === "todo") return dias;
+  if (periodo === "hoy") return dias.filter(d => d.fecha === hoyISOCaja());
+
+  if (periodo === "semana") {
+    const inicio = inicioSemanaCaja(hoy);
+    const fin = new Date(inicio);
+    fin.setDate(fin.getDate() + 6);
+    return dias.filter(d => {
+      const fecha = fechaDesdeISOCaja(d.fecha);
+      return fecha >= inicio && fecha <= fin;
+    });
+  }
+
+  return dias.filter(d => {
+    const fecha = fechaDesdeISOCaja(d.fecha);
+    return fecha.getFullYear() === hoy.getFullYear() && fecha.getMonth() === hoy.getMonth();
+  });
+}
+
+function renderIndicadoresCaja() {
+  const contenedor = $("indicadoresCajaDashboard");
+  if (!contenedor) return;
+
+  const periodo = $("filtroPeriodoCaja")?.value || "mes";
+  const dias = filtrarDiasCaja(periodo);
+  const totalVentas = dias.reduce((s, d) => s + d.venta, 0);
+  const totalGastos = dias.reduce((s, d) => s + d.gastos, 0);
+  const promedio = dias.length ? totalVentas / dias.length : 0;
+  const mejor = dias.length ? [...dias].sort((a, b) => b.venta - a.venta)[0] : null;
+  const peor = dias.length ? [...dias].sort((a, b) => a.venta - b.venta)[0] : null;
+
+  contenedor.innerHTML = [
+    `<div class="cajaIndicatorCard main"><span>Ventas del período</span><strong>${formatoDineroCaja(totalVentas)}</strong><small>${dias.length} día${dias.length === 1 ? "" : "s"} con movimientos</small></div>`,
+    `<div class="cajaIndicatorCard"><span>Promedio diario</span><strong>${formatoDineroCaja(promedio)}</strong></div>`,
+    `<div class="cajaIndicatorCard"><span>Total de gastos</span><strong>${formatoDineroCaja(totalGastos)}</strong></div>`,
+    `<div class="cajaIndicatorCard best"><span>Mayor venta</span><strong>${mejor ? formatoDineroCaja(mejor.venta) : formatoDineroCaja(0)}</strong><small>${mejor ? formatoFechaCaja(mejor.fecha) : "Sin datos"}</small></div>`,
+    `<div class="cajaIndicatorCard worst"><span>Menor venta</span><strong>${peor ? formatoDineroCaja(peor.venta) : formatoDineroCaja(0)}</strong><small>${peor ? formatoFechaCaja(peor.fecha) : "Sin datos"}</small></div>`
+  ].join("");
+}
+
+function renderLibroDiarioCaja() {
+  const contenedor = $("libroDiarioCaja");
+  if (!contenedor) return;
+
+  const mesSeleccionado = $("mesLibroCaja")?.value;
+  let dias = agruparCierresPorDiaCaja();
+
+  if (mesSeleccionado) {
+    dias = dias.filter(d => d.fecha.startsWith(mesSeleccionado));
+  }
+
+  if (!dias.length) {
+    contenedor.innerHTML = '<div class="cajaBookEmpty">No hay cierres cargados para este período.</div>';
+    return;
+  }
+
+  contenedor.innerHTML = dias.map(dia => `
+    <article class="cajaDayRow">
+      <div class="cajaDayDate">
+        <strong>${formatoFechaCaja(dia.fecha)}</strong>
+        <span>${dia.cierres.length} turno${dia.cierres.length === 1 ? "" : "s"} cargado${dia.cierres.length === 1 ? "" : "s"}</span>
+      </div>
+
+      <div class="cajaDayNumbers">
+        <span><small>Venta total</small><b>${formatoDineroCaja(dia.venta)}</b></span>
+        <span><small>Gastos</small><b>${formatoDineroCaja(dia.gastos)}</b></span>
+      </div>
+
+      <button type="button" onclick="abrirDetalleDiaCaja('${dia.fecha}')">Ver detalle</button>
+    </article>
+  `).join("");
+}
+
+function renderDashboardCaja() {
+  renderIndicadoresCaja();
+  renderLibroDiarioCaja();
+}
+
+function abrirDetalleDiaCaja(fecha) {
+  const cierres = cierresCaja
+    .filter(c => c.fecha === fecha)
+    .sort((a, b) => a.turno.localeCompare(b.turno));
+
+  const dia = agruparCierresPorDiaCaja().find(d => d.fecha === fecha);
+  if (!dia) return;
+
+  if ($("tituloDetalleDiaCaja")) {
+    $("tituloDetalleDiaCaja").textContent = formatoFechaCaja(fecha);
+  }
+
+  const detalleTurnos = ["manana", "tarde"].map(turno => {
+    const cierre = cierres.find(c => c.turno === turno);
+    if (!cierre) {
+      return `<section class="cajaDayShift missing">
+        <h4>${turnoTextoCaja(turno)}</h4>
+        <p>Sin cierre cargado.</p>
+      </section>`;
+    }
+
+    const t = totalesCierreCaja(cierre);
+    const gastos = cierre.gastos?.length
+      ? `<ul>${cierre.gastos.map(g => `<li><span>${escaparCaja(g.motivo)}</span><b>${formatoDineroCaja(g.monto)}</b></li>`).join("")}</ul>`
+      : '<p class="hint">Sin gastos.</p>';
+
+    return `<section class="cajaDayShift">
+      <div class="cajaDayShiftHead">
+        <h4>${turnoTextoCaja(turno)}</h4>
+        <span>${escaparCaja(cierre.persona || "")}</span>
+      </div>
+      <div class="cajaDayShiftGrid">
+        <span>Efectivo <b>${formatoDineroCaja(t.efectivo)}</b></span>
+        <span>Transferencias <b>${formatoDineroCaja(t.transferencias)}</b></span>
+        <span>Venta del turno <b>${formatoDineroCaja(t.venta)}</b></span>
+        <span>Gastos <b>${formatoDineroCaja(t.gastos)}</b></span>
+        <span>Efectivo a rendir <b>${formatoDineroCaja(t.efectivoRendir)}</b></span>
+      </div>
+      <details>
+        <summary>Ver gastos</summary>
+        ${gastos}
+      </details>
+    </section>`;
+  }).join("");
+
+  if ($("contenidoDetalleDiaCaja")) {
+    $("contenidoDetalleDiaCaja").innerHTML = `
+      ${detalleTurnos}
+      <section class="cajaDayTotal">
+        <h4>Total del día</h4>
+        <span>Venta total <b>${formatoDineroCaja(dia.venta)}</b></span>
+        <span>Gastos <b>${formatoDineroCaja(dia.gastos)}</b></span>
+        <span>Efectivo a rendir <b>${formatoDineroCaja(dia.efectivoRendir)}</b></span>
+      </section>
+    `;
+  }
+
+  $("modalDetalleDiaCaja")?.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  registrarActividadCajaAdmin();
+}
+
+function cerrarDetalleDiaCaja() {
+  $("modalDetalleDiaCaja")?.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
+function sincronizarCajaTiempoReal() {
+  try {
+    if (!db || !doc || !onSnapshot) return;
+    const ref = doc(db, "fratello", "estado");
+
+    onSnapshot(ref, snapshot => {
+      if (!snapshot.exists()) return;
+      const data = snapshot.data();
+
+      if (Array.isArray(data.cierresCaja)) {
+        cierresCaja = data.cierresCaja;
+        guardarCajaLocal();
+        cargarCierreSeleccionadoCaja();
+        renderCajaAdmin();
+        renderDashboardCaja();
+      }
+    });
+  } catch (error) {
+    console.warn("No se pudo activar sincronización en tiempo real para Caja:", error);
+  }
+}
+
 function iniciarModuloCaja() {
   cargarCajaLocal();
 
   if ($("cajaFecha")) $("cajaFecha").value = hoyISOCaja();
   if ($("cajaAdminFecha")) $("cajaAdminFecha").value = hoyISOCaja();
+  if ($("mesLibroCaja")) $("mesLibroCaja").value = hoyISOCaja().slice(0, 7);
 
   renderPersonasCaja();
   renderGastosCaja();
@@ -7147,8 +7382,17 @@ function iniciarModuloCaja() {
     if (evento.key === "Enter") ingresarCajaAdmin();
   });
   $("btnSalirCajaAdmin")?.addEventListener("click", salirCajaAdmin);
-  $("btnActualizarCajaAdmin")?.addEventListener("click", renderCajaAdmin);
+  $("btnActualizarCajaAdmin")?.addEventListener("click", () => {
+    renderCajaAdmin();
+    renderDashboardCaja();
+  });
   $("cajaAdminFecha")?.addEventListener("change", renderCajaAdmin);
+  $("filtroPeriodoCaja")?.addEventListener("change", renderIndicadoresCaja);
+  $("mesLibroCaja")?.addEventListener("change", renderLibroDiarioCaja);
+  $("btnCerrarDetalleDiaCaja")?.addEventListener("click", cerrarDetalleDiaCaja);
+  $("modalDetalleDiaCaja")?.addEventListener("click", evento => {
+    if (evento.target?.id === "modalDetalleDiaCaja") cerrarDetalleDiaCaja();
+  });
   $("btnAgregarPersonaCaja")?.addEventListener("click", () => agregarPersonaCaja("nuevaPersonaCaja"));
   $("btnAdministrarPersonasCajaRapido")?.addEventListener("click", abrirModalPersonasCaja);
   $("btnCerrarModalPersonasCaja")?.addEventListener("click", cerrarModalPersonasCaja);
@@ -7177,6 +7421,7 @@ window.actualizarGastoCaja = actualizarGastoCaja;
 window.eliminarGastoCaja = eliminarGastoCaja;
 window.editarCierreDesdeAdminCaja = editarCierreDesdeAdminCaja;
 window.eliminarPersonaCaja = eliminarPersonaCaja;
+window.abrirDetalleDiaCaja = abrirDetalleDiaCaja;
 
 async function init() {
   iniciarModuloCaja();
@@ -7280,6 +7525,8 @@ async function init() {
   renderPersonasCaja();
   cargarCierreSeleccionadoCaja();
   renderCajaAdmin();
+  renderDashboardCaja();
+  sincronizarCajaTiempoReal();
   validarClientes();
 
   // v1.06: después de recuperar Firebase, volver a dibujar catálogo y precios.

@@ -2322,3 +2322,71 @@ body.modalAbierto {
     width:100%;
   }
 }
+
+
+/* Caja v3.9.2 — Dashboard y libro diario */
+.cajaDashboardSection{background:#fcfaf7}
+.cajaDashboardHeader,.cajaBookHeader{
+  display:flex;justify-content:space-between;align-items:flex-end;gap:12px
+}
+.cajaDashboardHeader h3,.cajaBookHeader h3{margin:0}
+.cajaDashboardHeader p{margin:4px 0 0;color:#76695e;font-size:.88rem}
+.cajaDashboardHeader select{min-width:150px}
+.cajaIndicatorsGrid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0 20px
+}
+.cajaIndicatorCard{
+  display:flex;flex-direction:column;gap:4px;padding:14px;border:1px solid #ddd1c4;
+  border-radius:12px;background:#fff
+}
+.cajaIndicatorCard.main{grid-column:1/-1;background:#efe2cf}
+.cajaIndicatorCard.best{background:#edf6ed}
+.cajaIndicatorCard.worst{background:#fff2ee}
+.cajaIndicatorCard span{font-size:.82rem;font-weight:800;color:#716357}
+.cajaIndicatorCard strong{font-size:1.28rem}
+.cajaIndicatorCard small{color:#786b60}
+.cajaBookHeader{padding-top:6px;border-top:1px solid #e2d7cb}
+.cajaBookHeader label{display:flex;flex-direction:column;gap:5px;font-weight:800}
+.cajaDailyBook{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.cajaBookEmpty{
+  padding:20px;text-align:center;border:1px dashed #ccbca9;border-radius:12px;color:#786b60
+}
+.cajaDayRow{
+  display:grid;grid-template-columns:minmax(190px,1.2fr) minmax(220px,1fr) auto;
+  gap:14px;align-items:center;padding:14px;border:1px solid #ded2c5;border-radius:12px;background:#fff
+}
+.cajaDayDate{display:flex;flex-direction:column;gap:3px}
+.cajaDayDate strong{text-transform:capitalize}
+.cajaDayDate span{font-size:.82rem;color:#786b60}
+.cajaDayNumbers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cajaDayNumbers span{display:flex;flex-direction:column;gap:2px}
+.cajaDayNumbers small{color:#786b60}
+.cajaDayNumbers b{font-size:1.02rem}
+.cajaDayDetailModal{max-width:700px;width:min(94vw,700px);position:relative}
+.cajaDayDetailModal h3{text-transform:capitalize;margin-top:0}
+.cajaDayShift{
+  margin-top:12px;padding:14px;border:1px solid #ded2c5;border-radius:12px;background:#fff
+}
+.cajaDayShift.missing{background:#f7f3ee;color:#786b60}
+.cajaDayShiftHead{display:flex;justify-content:space-between;gap:10px}
+.cajaDayShiftHead h4{margin:0}.cajaDayShiftHead span{font-weight:800}
+.cajaDayShiftGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:12px 0}
+.cajaDayShiftGrid span,.cajaDayTotal span{
+  display:flex;justify-content:space-between;gap:10px
+}
+.cajaDayShift ul{list-style:none;padding:0;margin:10px 0}
+.cajaDayShift li{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eee5dc}
+.cajaDayTotal{
+  margin-top:14px;padding:16px;border-radius:12px;background:#efe2cf;display:flex;flex-direction:column;gap:8px
+}
+.cajaDayTotal h4{margin:0 0 5px}
+@media(max-width:700px){
+  .cajaDayRow{grid-template-columns:1fr}
+  .cajaDayRow button{width:100%}
+}
+@media(max-width:560px){
+  .cajaDashboardHeader,.cajaBookHeader{flex-direction:column;align-items:stretch}
+  .cajaIndicatorsGrid{grid-template-columns:1fr}
+  .cajaIndicatorCard.main{grid-column:auto}
+  .cajaDayNumbers,.cajaDayShiftGrid{grid-template-columns:1fr}
+}

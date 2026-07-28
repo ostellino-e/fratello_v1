@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=391" />
+  <link rel="stylesheet" href="styles.css?v=392" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.9.1";
-    document.documentElement.dataset.fratelloVersion = "3.9.1";
+    window.FRATELLO_VERSION = "3.9.2";
+    document.documentElement.dataset.fratelloVersion = "3.9.2";
   </script>
 
 </head>
@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.1</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.2</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -504,6 +504,33 @@
           <div id="cierresCajaAdmin" class="cajaAdminClosures"></div>
         </div>
 
+        <section class="cajaAdminSection cajaDashboardSection">
+          <div class="cajaDashboardHeader">
+            <div>
+              <h3>📊 Resumen de ventas</h3>
+              <p>Consultá cuánto se vendió cada día y compará períodos.</p>
+            </div>
+            <select id="filtroPeriodoCaja">
+              <option value="hoy">Hoy</option>
+              <option value="semana">Esta semana</option>
+              <option value="mes" selected>Este mes</option>
+              <option value="todo">Todo</option>
+            </select>
+          </div>
+
+          <div id="indicadoresCajaDashboard" class="cajaIndicatorsGrid"></div>
+
+          <div class="cajaBookHeader">
+            <h3>📖 Libro diario de caja</h3>
+            <label>
+              Mes
+              <input id="mesLibroCaja" type="month">
+            </label>
+          </div>
+
+          <div id="libroDiarioCaja" class="cajaDailyBook"></div>
+        </section>
+
         <details class="cajaAdminSection cajaPeopleAdmin">
           <summary>👥 Administrar personas habilitadas</summary>
           <div class="cajaPersonAdd">
@@ -640,7 +667,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=391"></script>
+  <script src="app.js?v=392"></script>
 
   
 
@@ -706,6 +733,15 @@
       </div>
 
       <div id="listaPersonasCajaRapida"></div>
+    </div>
+  </div>
+
+
+  <div id="modalDetalleDiaCaja" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="tituloDetalleDiaCaja">
+    <div class="modalContent cajaDayDetailModal">
+      <button id="btnCerrarDetalleDiaCaja" class="modalClose" type="button" aria-label="Cerrar">×</button>
+      <h3 id="tituloDetalleDiaCaja">Detalle del día</h3>
+      <div id="contenidoDetalleDiaCaja"></div>
     </div>
   </div>
 
