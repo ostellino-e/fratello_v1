@@ -7441,10 +7441,13 @@ function abrirDetalleDiaCaja(fecha) {
       ? `<ul>${cierre.gastos.map(g => `<li><span>${escaparCaja(g.motivo)}</span><b>${formatoDineroCaja(g.monto)}</b></li>`).join("")}</ul>`
       : '<p class="hint">Sin gastos.</p>';
 
-    return `<section class="cajaDayShift">
+    return `<section class="cajaDayShift" data-turno="${turno}">
       <div class="cajaDayShiftHead">
-        <h4>${turnoTextoCaja(turno)}</h4>
-        <span>${escaparCaja(cierre.persona || "")}</span>
+        <div>
+          <h4>${turnoTextoCaja(turno)}</h4>
+          <span>${escaparCaja(cierre.persona || "")}</span>
+        </div>
+        <button type="button" class="btnEditarTurnoCaja" data-fecha="${fecha}" data-turno="${turno}">✏️ Editar</button>
       </div>
       <div class="cajaDayShiftGrid">
         <span>Efectivo <b>${formatoDineroCaja(t.efectivo)}</b></span>
@@ -7457,6 +7460,7 @@ function abrirDetalleDiaCaja(fecha) {
         <summary>Ver gastos</summary>
         ${gastos}
       </details>
+      <div class="cajaInlineEditHost" id="editorCaja-${fecha}-${turno}"></div>
     </section>`;
   }).join("");
 
@@ -7472,13 +7476,142 @@ function abrirDetalleDiaCaja(fecha) {
     `;
   }
 
-  $("modalDetalleDiaCaja")?.classList.remove("hidden");
+  const modalDetalle = $("modalDetalleDiaCaja");
+  modalDetalle?.classList.remove("hidden");
+  modalDetalle?.removeAttribute("aria-hidden");
   document.body.classList.add("modal-open");
   registrarActividadCajaAdmin();
 }
 
+function htmlGastoEditorCaja(gasto = {}, indice = 0) {
+  return `<div class="cajaInlineExpenseRow" data-indice="${indice}">
+    <input type="text" class="cajaInlineGastoMotivo" value="${escaparCaja(gasto.motivo || "")}" placeholder="Motivo">
+    <input type="number" class="cajaInlineGastoMonto" value="${montoCaja(gasto.monto) || ""}" min="0" step="0.01" placeholder="Monto">
+    <button type="button" class="btnQuitarGastoCajaInline" aria-label="Eliminar gasto">×</button>
+  </div>`;
+}
+
+function abrirEditorTurnoCaja(fecha, turno) {
+  const cierre = obtenerCierreCaja(fecha, turno);
+  if (!cierre) return;
+
+  document.querySelectorAll(".cajaInlineEditHost").forEach(host => {
+    host.innerHTML = "";
+  });
+
+  const host = $(`editorCaja-${fecha}-${turno}`);
+  if (!host) return;
+
+  const gastos = Array.isArray(cierre.gastos) ? cierre.gastos : [];
+  host.innerHTML = `
+    <div class="cajaInlineEditor">
+      <h5>Editar ${turnoTextoCaja(turno).toLowerCase()}</h5>
+
+      <label>Persona
+        <select class="cajaInlinePersona">
+          ${personasCaja.map(nombre => `<option value="${escaparCaja(nombre)}" ${nombre === cierre.persona ? "selected" : ""}>${escaparCaja(nombre)}</option>`).join("")}
+        </select>
+      </label>
+
+      <div class="cajaInlineMoneyGrid">
+        <label>Efectivo
+          <input type="number" class="cajaInlineEfectivo" min="0" step="0.01" value="${montoCaja(cierre.efectivo) || ""}">
+        </label>
+        <label>Transferencias
+          <input type="number" class="cajaInlineTransferencias" min="0" step="0.01" value="${montoCaja(cierre.transferencias) || ""}">
+        </label>
+      </div>
+
+      <label>Observación
+        <textarea class="cajaInlineObservacion" rows="2">${escaparCaja(cierre.observacion || "")}</textarea>
+      </label>
+
+      <div class="cajaInlineExpensesHeader">
+        <strong>Gastos</strong>
+        <button type="button" class="btnAgregarGastoCajaInline">+ Agregar gasto</button>
+      </div>
+
+      <div class="cajaInlineExpenses">
+        ${gastos.length ? gastos.map(htmlGastoEditorCaja).join("") : htmlGastoEditorCaja({}, 0)}
+      </div>
+
+      <div class="cajaInlineActions">
+        <button type="button" class="btnCancelarCajaInline">Cancelar</button>
+        <button type="button" class="primary btnGuardarCajaInline" data-fecha="${fecha}" data-turno="${turno}">Guardar cambios</button>
+      </div>
+
+      <div class="cajaInlineStatus"></div>
+    </div>
+  `;
+
+  host.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function recolectarGastosEditorCaja(host) {
+  return [...host.querySelectorAll(".cajaInlineExpenseRow")]
+    .map(fila => ({
+      motivo: String(fila.querySelector(".cajaInlineGastoMotivo")?.value || "").trim(),
+      monto: montoCaja(fila.querySelector(".cajaInlineGastoMonto")?.value)
+    }))
+    .filter(gasto => gasto.motivo || gasto.monto > 0);
+}
+
+async function guardarEdicionTurnoCaja(fecha, turno, boton) {
+  const host = $(`editorCaja-${fecha}-${turno}`);
+  if (!host) return;
+
+  const cierre = obtenerCierreCaja(fecha, turno);
+  if (!cierre) return;
+
+  const persona = String(host.querySelector(".cajaInlinePersona")?.value || "").trim();
+  const efectivo = montoCaja(host.querySelector(".cajaInlineEfectivo")?.value);
+  const transferencias = montoCaja(host.querySelector(".cajaInlineTransferencias")?.value);
+  const observacion = String(host.querySelector(".cajaInlineObservacion")?.value || "").trim();
+  const gastos = recolectarGastosEditorCaja(host);
+  const estado = host.querySelector(".cajaInlineStatus");
+
+  if (!persona) {
+    if (estado) estado.textContent = "Seleccioná una persona.";
+    return;
+  }
+
+  boton.disabled = true;
+  if (estado) estado.textContent = "Guardando...";
+
+  const actualizado = {
+    ...cierre,
+    persona,
+    efectivo,
+    transferencias,
+    observacion,
+    gastos,
+    actualizadoEn: new Date().toISOString()
+  };
+
+  const indice = cierresCaja.findIndex(c => c.fecha === fecha && c.turno === turno);
+  if (indice >= 0) cierresCaja[indice] = actualizado;
+
+  guardarCajaLocal();
+  renderCajaAdmin();
+  renderDashboardCaja();
+
+  try {
+    await Promise.resolve(guardarEnNube());
+    if (estado) estado.textContent = "✅ Cambios guardados.";
+    abrirDetalleDiaCaja(fecha);
+  } catch (error) {
+    console.error("Error guardando edición de Caja:", error);
+    if (estado) estado.textContent = "No se pudo sincronizar. Probá nuevamente.";
+    boton.disabled = false;
+  }
+}
+
 function cerrarDetalleDiaCaja() {
-  $("modalDetalleDiaCaja")?.classList.add("hidden");
+  const modal = $("modalDetalleDiaCaja");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  }
   document.body.classList.remove("modal-open");
 }
 
@@ -7537,9 +7670,60 @@ function iniciarModuloCaja() {
     if (!boton) return;
     abrirDetalleDiaCaja(boton.dataset.fechaCaja);
   });
-  $("btnCerrarDetalleDiaCaja")?.addEventListener("click", cerrarDetalleDiaCaja);
+  $("btnCerrarDetalleDiaCaja")?.addEventListener("click", evento => {
+    evento.preventDefault();
+    evento.stopPropagation();
+    cerrarDetalleDiaCaja();
+  });
+
   $("modalDetalleDiaCaja")?.addEventListener("click", evento => {
-    if (evento.target?.id === "modalDetalleDiaCaja") cerrarDetalleDiaCaja();
+    if (evento.target?.id === "modalDetalleDiaCaja") {
+      cerrarDetalleDiaCaja();
+      return;
+    }
+
+    const editar = evento.target.closest(".btnEditarTurnoCaja");
+    if (editar) {
+      abrirEditorTurnoCaja(editar.dataset.fecha, editar.dataset.turno);
+      return;
+    }
+
+    const agregarGasto = evento.target.closest(".btnAgregarGastoCajaInline");
+    if (agregarGasto) {
+      const editor = agregarGasto.closest(".cajaInlineEditor");
+      const lista = editor?.querySelector(".cajaInlineExpenses");
+      if (lista) lista.insertAdjacentHTML("beforeend", htmlGastoEditorCaja({}, lista.children.length));
+      return;
+    }
+
+    const quitarGasto = evento.target.closest(".btnQuitarGastoCajaInline");
+    if (quitarGasto) {
+      const fila = quitarGasto.closest(".cajaInlineExpenseRow");
+      const lista = quitarGasto.closest(".cajaInlineExpenses");
+      if (lista?.children.length > 1) fila?.remove();
+      else {
+        fila?.querySelectorAll("input").forEach(input => input.value = "");
+      }
+      return;
+    }
+
+    const cancelar = evento.target.closest(".btnCancelarCajaInline");
+    if (cancelar) {
+      const host = cancelar.closest(".cajaInlineEditHost");
+      if (host) host.innerHTML = "";
+      return;
+    }
+
+    const guardar = evento.target.closest(".btnGuardarCajaInline");
+    if (guardar) {
+      guardarEdicionTurnoCaja(guardar.dataset.fecha, guardar.dataset.turno, guardar);
+    }
+  });
+
+  document.addEventListener("keydown", evento => {
+    if (evento.key === "Escape" && !$("modalDetalleDiaCaja")?.classList.contains("hidden")) {
+      cerrarDetalleDiaCaja();
+    }
   });
   $("btnAgregarPersonaCaja")?.addEventListener("click", () => agregarPersonaCaja("nuevaPersonaCaja"));
   $("btnAdministrarPersonasCajaRapido")?.addEventListener("click", abrirModalPersonasCaja);
