@@ -1,15 +1,26 @@
-# Fratello v4.0.1 — Corrección de inicio de Seguridad
+# Fratello v4.0.2 — Corrección de reingreso a Administración
 
-## Error corregido
-La v4.0 intentaba ejecutar el módulo antes de declarar `SEG_STORAGE_KEY`, lo que provocaba:
+## Bug corregido
+La primera entrada a Administración funcionaba, pero al salir y volver a entrar el contenido podía quedar vacío.
 
-`ReferenceError: Cannot access 'SEG_STORAGE_KEY' before initialization`
+## Causa
+La tarjeta del menú volvía a abrir solamente la sección exterior. No restauraba el panel privado ni renderizaba nuevamente sus módulos.
 
-## Solución aplicada
-- Las constantes y funciones de Seguridad ahora se cargan al comienzo de `app.js`.
-- Después se inicia el resto de Fratello.
-- No hace falta modificar Firebase ni volver a publicar reglas para aplicar este parche.
-- Se mantienen usuarios, roles, dispositivos, auditoría y copias.
+## Solución
+Cada ingreso a Administración ahora:
+- verifica la sesión y el dispositivo;
+- vuelve a mostrar el panel privado;
+- activa la pestaña Resumen;
+- renderiza nuevamente Administración;
+- renderiza Usuarios, Dispositivos, Auditoría y Copias;
+- reinicia el control de actividad.
+
+## Prueba
+1. Entrar a Administración.
+2. Volver al inicio.
+3. Entrar nuevamente.
+4. Repetirlo varias veces.
+5. La pantalla debe mostrarse completa en cada ingreso.
 
 ## Versión esperada
-v4.0.1
+v4.0.2

@@ -1871,6 +1871,16 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
     renderTicketsPorDia();
   }
 
+  if (idSeccion === "seccionAdministracion" && tieneRolAdministrador()) {
+    administracionPrivadaActiva = true;
+    $("panelAdministracionLogin")?.classList.add("hidden");
+    $("panelAdministracionPrivado")?.classList.remove("hidden");
+    activarTabAdministracion("resumen");
+    renderAdministracionFinanciera();
+    renderSeguridadCompleta();
+    registrarActividadAdministracion();
+  }
+
   if (idSeccion === "seccionPedidos") {
     const fecha = $("fechaPedido")?.value || fechaISOManana();
     if ($("fechaPedido") && !$("fechaPedido").value) $("fechaPedido").value = fecha;
@@ -1975,7 +1985,14 @@ function iniciarNavegacionFratello() {
     const botonSeccion = evento.target.closest("[data-seccion]");
     if (botonSeccion) {
       evento.preventDefault();
-      abrirSeccionFratello(botonSeccion.dataset.seccion);
+      const destino = botonSeccion.dataset.seccion;
+
+      if (destino === "seccionAdministracion") {
+        abrirAdministracionAutenticada();
+        return;
+      }
+
+      abrirSeccionFratello(destino);
       return;
     }
 
@@ -7475,9 +7492,23 @@ function abrirAdministracionAutenticada() {
     mostrarModalAdministrador();
     return;
   }
+
   ocultarModalAdministrador();
   abrirAdministracionPrivada();
-  mostrarSeccion("seccionAdministracion");
+
+  // v4.0.2: restaura completamente Administración en cada ingreso.
+  $("panelAdministracionLogin")?.classList.add("hidden");
+  $("panelAdministracionPrivado")?.classList.remove("hidden");
+  activarTabAdministracion("resumen");
+  renderAdministracionFinanciera();
+  renderSeguridadCompleta();
+  registrarActividadAdministracion();
+
+  if (typeof mostrarSeccionFratelloSinApilar === "function") {
+    mostrarSeccionFratelloSinApilar("seccionAdministracion");
+  } else {
+    mostrarSeccion("seccionAdministracion");
+  }
 }
 
 function iniciarAccesoAdministrador() {
