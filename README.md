@@ -1,34 +1,51 @@
-# Fratello v3.9.5D.2 — Roles y Caja privada oculta
+# Fratello v3.9.5D.3 — Caja integrada en Administración
 
-## Cambios principales
-- Se eliminó de la pantalla Caja el botón “Acceso privado”.
-- Los empleados ya no ven ningún cartel, PIN ni referencia a un panel privado.
-- Caja muestra únicamente la carga de cierres y gastos.
-- El control completo de Caja fue trasladado a Administración.
-- Dentro de Administración se agregó la pestaña “Control de Caja”.
-- El acceso depende de la sesión de administrador iniciada en ese dispositivo.
-- Se agregó una estructura inicial de roles, preparada para futuras cuentas de Atención, Producción y Encargado.
-- El botón rápido para administrar personas queda oculto cuando no hay un administrador conectado.
-- Se eliminó el cambio de PIN de Caja porque el acceso ahora utiliza Firebase Authentication.
+## Corrección principal
+La versión anterior había preparado el panel, pero el acceso no quedaba suficientemente visible dentro de Administración.
 
-## Prueba recomendada
-1. Abrir la app sin iniciar sesión.
-2. Entrar a Caja.
-3. Confirmar que no aparezca “Acceso privado”, PIN ni panel administrativo.
-4. Iniciar sesión desde el ícono de usuario.
-5. Entrar a Administración.
-6. Abrir la pestaña “Control de Caja”.
-7. Confirmar que allí estén resumen, cierres, libro diario y personas.
-8. Abrir la app en otro dispositivo y confirmar que continúe sin acceso administrativo.
+En esta versión:
+- El panel privado de Caja está alojado dentro de `panelAdministracionPrivado`.
+- Se agregó la pestaña visible “🏦 Caja privada”.
+- Se agregó una tarjeta grande “Control completo de Caja” en el Resumen de Administración.
+- La tarjeta abre directamente el módulo.
+- El código verifica y relocaliza automáticamente el panel dentro de Administración si el navegador conserva una estructura anterior en caché.
+- La pantalla Caja de empleados no contiene acceso privado, PIN ni referencias administrativas.
+- La pestaña Caja privada exige una sesión con rol administrador.
+
+## Caja para empleados
+Los empleados continúan usando la pantalla Caja para:
+- registrar cierres;
+- cargar efectivo y transferencias;
+- cargar gastos;
+- consultar únicamente las funciones operativas habilitadas.
+
+## Administración > Caja privada
+Incluye:
+- resumen diario;
+- cierres del día;
+- indicadores de ventas;
+- comparación por períodos;
+- libro diario;
+- acumulados;
+- personas habilitadas.
+
+## Prueba
+1. Abrir Fratello sin iniciar sesión.
+2. Entrar a Caja y verificar que no exista “Acceso privado”.
+3. Iniciar sesión desde el ícono de usuario.
+4. Entrar a Administración.
+5. En el Resumen debe verse una tarjeta grande “Control completo de Caja”.
+6. También debe verse la pestaña “🏦 Caja privada”.
+7. Abrirla y comprobar cierres, indicadores, libro diario y personas.
 
 ## Versión
-v3.9.5D.2
+v3.9.5D.3
 
 ## Estado
 - Etapa A: 100%
 - Etapa B: 100%
-- Etapa C — Administración: 32%
-- Etapa D — Seguridad: 35%
-- Administración financiera: 45%
-- Seguridad y usuarios: 45%
+- Etapa C — Administración: 38%
+- Etapa D — Seguridad: 40%
+- Administración financiera: 50%
+- Seguridad y usuarios: 48%
 - Proyecto Fratello estimado: 93%

@@ -7618,6 +7618,7 @@ function abrirAdministracionPrivada() {
   administracionPrivadaActiva = true;
   $("panelAdministracionLogin")?.classList.add("hidden");
   $("panelAdministracionPrivado")?.classList.remove("hidden");
+  activarTabAdministracion("resumen");
   if ($("estadoLoginAdministracion")) $("estadoLoginAdministracion").textContent = "";
   if ($("pinAdministracion")) $("pinAdministracion").value = "";
   registrarActividadAdministracion();
@@ -7808,6 +7809,13 @@ function eliminarPresupuestoAdministracion(id) {
 }
 
 function activarTabAdministracion(nombre) {
+  if (nombre === "caja" && !tieneRolAdministrador()) {
+    mostrarModalAdministrador();
+    return;
+  }
+
+  asegurarCajaPrivadaDentroAdministracion();
+
   document.querySelectorAll("[data-admin-tab]").forEach(boton => {
     boton.classList.toggle("active", boton.dataset.adminTab === nombre);
   });
@@ -7821,10 +7829,19 @@ function activarTabAdministracion(nombre) {
   }
 }
 
+function asegurarCajaPrivadaDentroAdministracion() {
+  const panelCaja = $("panelCajaAdmin");
+  const panelAdministracion = $("panelAdministracionPrivado");
+  if (panelCaja && panelAdministracion && panelCaja.parentElement !== panelAdministracion) {
+    panelAdministracion.appendChild(panelCaja);
+  }
+}
+
 function iniciarModuloAdministracion() {
   if (window.__FRATELLO_ADMIN_FIN_INICIADA__) return;
   window.__FRATELLO_ADMIN_FIN_INICIADA__ = true;
 
+  asegurarCajaPrivadaDentroAdministracion();
   cargarAdministracionLocal();
   if ($("mesAdministracion")) $("mesAdministracion").value = adminFinMesActual();
 
@@ -7834,7 +7851,12 @@ function iniciarModuloAdministracion() {
   $("mesAdministracion")?.addEventListener("change", renderAdministracionFinanciera);
 
   document.querySelectorAll("[data-admin-tab]").forEach(btn => {
-    btn.addEventListener("click", () => cambiarTabAdministracion(btn.dataset.adminTab));
+    btn.addEventListener("click", () => activarTabAdministracion(btn.dataset.adminTab));
+  });
+
+  $("btnAbrirControlCajaAdministracion")?.addEventListener("click", () => {
+    activarTabAdministracion("caja");
+    document.getElementById("panelCajaAdmin")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   $("btnNuevoIngresoAdministracion")?.addEventListener("click", () => mostrarFormularioAdministracion("ingreso"));

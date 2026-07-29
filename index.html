@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=395d2" />
+  <link rel="stylesheet" href="styles.css?v=395d3" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.9.5D.2";
-    document.documentElement.dataset.fratelloVersion = "3.9.5D.2";
+    window.FRATELLO_VERSION = "3.9.5D.3";
+    document.documentElement.dataset.fratelloVersion = "3.9.5D.3";
   </script>
 
 </head>
@@ -77,7 +77,7 @@
 
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.5D.2</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.5D.3</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -449,7 +449,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">Etapa C · v1</span>
+        <span class="adminFinanceVersion">Etapa C · Administración + Caja</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -476,10 +476,20 @@
           <button type="button" data-admin-tab="ingresos">💰 Ingresos</button>
           <button type="button" data-admin-tab="gastos">💸 Gastos</button>
           <button type="button" data-admin-tab="presupuesto">📅 Presupuesto</button>
-          <button type="button" data-admin-tab="caja">💰 Control de Caja</button>
+          <button type="button" data-admin-tab="caja">🏦 Caja privada <span class="adminTabNew">NUEVO</span></button>
         </nav>
 
         <section class="adminFinanceTab active" data-admin-panel="resumen">
+          <article class="adminCajaAccessCard">
+            <div class="adminCajaAccessIcon">🏦</div>
+            <div class="adminCajaAccessText">
+              <span class="adminCajaAccessEyebrow">MÓDULO PRIVADO</span>
+              <h3>Control completo de Caja</h3>
+              <p>Cierres, ventas, libro diario, acumulados y personas habilitadas.</p>
+            </div>
+            <button id="btnAbrirControlCajaAdministracion" class="primary" type="button">Abrir Control de Caja</button>
+          </article>
+
           <div id="tarjetasResumenAdministracion" class="adminFinanceSummary"></div>
 
           <div class="adminFinanceGridTwo">
@@ -650,8 +660,8 @@
         <section id="panelCajaAdmin" class="cajaPanel adminFinanceTab" data-admin-panel="caja">
                 <div class="cajaAdminTop">
                   <div>
-                    <h3>Control privado de Caja</h3>
-                    <p>Resumen completo de cierres, ventas y acumulados.</p>
+                    <h3>🏦 Caja privada de Administración</h3>
+                    <p>Este módulo fue trasladado completamente desde la pantalla de Caja.</p>
                   </div>
                   <button id="btnVolverResumenAdministracion" type="button">← Volver al resumen</button>
                 </div>
@@ -923,7 +933,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=395d2"></script>
+  <script src="app.js?v=395d3"></script>
 
   
 
@@ -940,12 +950,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=395d2")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=395d3")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=395d2", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=395d3", {
             scope: "./",
             updateViaCache: "none"
           });

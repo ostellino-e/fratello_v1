@@ -3102,3 +3102,85 @@ body.modal-open{
 #panelCajaAdmin.adminFinanceTab.active{
   display:block;
 }
+
+
+/* Fratello v3.9.5D.3 — Caja integrada realmente en Administración */
+.adminFinanceTabs{
+  overflow-x:auto;
+  flex-wrap:nowrap;
+  scrollbar-width:thin;
+  padding-bottom:6px;
+}
+.adminFinanceTabs button{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+.adminTabNew{
+  display:inline-block;
+  margin-left:5px;
+  padding:2px 6px;
+  border-radius:999px;
+  background:#7a3e18;
+  color:#fff;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.04em;
+}
+.adminCajaAccessCard{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:16px;
+  margin-bottom:18px;
+  padding:18px;
+  border:2px solid #d7b08a;
+  border-radius:18px;
+  background:linear-gradient(135deg,#fff8ef,#f4e3d1);
+  box-shadow:0 8px 24px rgba(73,43,22,.10);
+}
+.adminCajaAccessIcon{
+  display:grid;
+  place-items:center;
+  width:58px;
+  height:58px;
+  border-radius:16px;
+  background:#fff;
+  font-size:31px;
+  box-shadow:0 4px 12px rgba(73,43,22,.10);
+}
+.adminCajaAccessEyebrow{
+  display:block;
+  margin-bottom:3px;
+  color:#8a4b20;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.09em;
+}
+.adminCajaAccessText h3{
+  margin:0 0 4px;
+}
+.adminCajaAccessText p{
+  margin:0;
+  color:#6f6258;
+}
+#panelCajaAdmin[data-admin-panel="caja"]{
+  width:100%;
+  margin:0;
+}
+#panelCajaAdmin[data-admin-panel="caja"].active{
+  display:block !important;
+}
+#seccionCaja #panelCajaAdmin,
+#seccionCaja #panelCajaAdminLogin,
+#seccionCaja .cajaModeSwitch{
+  display:none !important;
+}
+@media(max-width:720px){
+  .adminCajaAccessCard{
+    grid-template-columns:auto 1fr;
+  }
+  .adminCajaAccessCard button{
+    grid-column:1 / -1;
+    width:100%;
+  }
+}
