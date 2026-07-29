@@ -839,7 +839,7 @@ function renderPanelPedidosSemana() {
     const dia = pedidosFecha.filter(pedido => categoriaPedidoSemana(pedido) === "dia");
     const fijos = pedidosFecha.filter(pedido => categoriaPedidoSemana(pedido) === "fijos");
 
-    return `<details class="weeklyDay" data-fecha="${fecha}" ${indice === 0 ? "open" : ""}>
+    return `<details class="weeklyDay" data-fecha="${fecha}">
       <summary>
         <span>${nombreDiaPedidos(fecha, fecha === fechaOperativa)}</span>
         <span class="weeklyDayTotal">${pedidosFecha.length}</span>
@@ -4092,12 +4092,21 @@ function actualizarPedidoFijoDesdePedido(idPedido) {
 }
 
 function manejarCambioFechaPedidos() {
-  const fecha = $("fechaPedido")?.value;
-  if (!fecha) return;
+  const inputFecha = $("fechaPedido");
+  const fechaElegida = inputFecha?.value;
+  if (!fechaElegida) return;
 
   sincronizarProduccionConFechaPedido();
-  asegurarPedidosFijosParaFecha(fecha, false);
+
+  // Algunas actualizaciones internas pueden redibujar el panel.
+  // Restauramos la fecha elegida para que nunca vuelva sola a la fecha actual.
+  if (inputFecha) inputFecha.value = fechaElegida;
+  if ($("fechaCargarPedidosFijos")) $("fechaCargarPedidosFijos").value = fechaElegida;
+
+  asegurarPedidosFijosParaFecha(fechaElegida, false);
   renderPedidosCargados();
+
+  if (inputFecha) inputFecha.value = fechaElegida;
   calcularDiferencias();
   actualizarEstadoConfirmacion();
 }
@@ -4225,27 +4234,110 @@ function actualizarBadgePedidosFuturos() {
   badge.classList.toggle("empty", cantidad === 0);
 }
 
+function verPedidoFuturo(id) {
+  const pedido = pedidos.find(p => Number(p.id) === Number(id));
+  if (!pedido) {
+    alert("No se encontró el pedido.");
+    return;
+  }
+
+  const items = (pedido.items || []).filter(item => item.estado !== "NO PEDIDO");
+  const detalle = items.length
+    ? items.map(item => `
+        <div class="futureViewItem">
+          <span>${escaparHtmlCatalogo(item.producto || "Producto")}</span>
+          <strong>${fmt(item.cantidad)} ${escaparHtmlCatalogo(item.unidad || "")}</strong>
+        </div>
+      `).join("")
+    : '<p>No se detectaron productos cargados.</p>';
+
+  const modalAnterior = $("modalVerPedidoFuturo");
+  if (modalAnterior) modalAnterior.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "modalVerPedidoFuturo";
+  overlay.className = "modal";
+  overlay.innerHTML = `
+    <div class="modalContent futureViewModal">
+      <button type="button" class="modalClose" id="cerrarVerPedidoFuturo">×</button>
+      <h3>${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</h3>
+      <p><strong>Entrega:</strong> ${new Date(fechaEntregaPedido(pedido) + "T12:00:00").toLocaleDateString("es-AR")}</p>
+      <p><strong>Origen:</strong> ${etiquetaOrigenPedido(pedido)}</p>
+      <div class="futureViewItems">${detalle}</div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  document.body.classList.add("modal-open");
+
+  const cerrar = () => {
+    overlay.remove();
+    document.body.classList.remove("modal-open");
+  };
+  $("cerrarVerPedidoFuturo")?.addEventListener("click", cerrar);
+  overlay.addEventListener("click", evento => {
+    if (evento.target === overlay) cerrar();
+  });
+}
+
+function htmlFilaPedidoFuturo(pedido) {
+  return `<div class="futureOrderRow">
+    <strong>${escaparHtmlCatalogo(pedido.cliente)}</strong>
+    <span>${(pedido.items || []).filter(i => i.estado !== "NO PEDIDO").length} ítems</span>
+    <div class="futureOrderActions">
+      <button type="button" onclick="verPedidoFuturo(${pedido.id})">👁 Ver</button>
+      <button type="button" onclick="editarPedidoCargado(${pedido.id})">✏️ Editar</button>
+      <button type="button" class="dangerBtn" onclick="borrarPedido(${pedido.id})">🗑 Eliminar</button>
+    </div>
+  </div>`;
+}
+
 function renderPedidosFuturos() {
   actualizarBadgePedidosFuturos();
   const cont = $("listaPedidosFuturos");
   if (!cont) return;
+
   const entregaNormal = fechaEntregaPredeterminada();
-  const futuros = pedidos.filter(p => fechaEntregaPedido(p) > entregaNormal)
-    .sort((a,b)=>fechaEntregaPedido(a).localeCompare(fechaEntregaPedido(b)));
+  const futuros = pedidos
+    .filter(p => fechaEntregaPedido(p) > entregaNormal)
+    .sort((a, b) => fechaEntregaPedido(a).localeCompare(fechaEntregaPedido(b)));
+
   if (!futuros.length) {
     cont.innerHTML = "<p>No hay pedidos para fechas posteriores.</p>";
     return;
   }
+
   const grupos = {};
   futuros.forEach(p => {
     const fecha = fechaEntregaPedido(p);
     (grupos[fecha] ||= []).push(p);
   });
-  cont.innerHTML = Object.entries(grupos).map(([fecha,lista]) => `
-    <div class="futureDateGroup">
-      <h3>📅 ${new Date(fecha+"T12:00:00").toLocaleDateString("es-AR",{weekday:"long",day:"2-digit",month:"2-digit"})}</h3>
-      ${lista.map(p=>`<div class="futureOrderRow"><strong>${escaparHtmlCatalogo(p.cliente)}</strong><span>${(p.items||[]).filter(i=>i.estado!=="NO PEDIDO").length} ítems</span><div class="futureOrderActions"><button type="button" onclick="editarPedidoCargado(${p.id})">✏️ Editar</button><button type="button" class="dangerBtn" onclick="borrarPedido(${p.id})">🗑 Eliminar</button></div></div>`).join("")}
-    </div>`).join("");
+
+  cont.innerHTML = Object.entries(grupos).map(([fecha, lista]) => {
+    const pedidosEspeciales = lista.filter(p => !esPedidoFijoRobusto(p));
+    const pedidosFijosFecha = lista.filter(esPedidoFijoRobusto);
+
+    return `<div class="futureDateGroup">
+      <h3>📅 ${new Date(fecha + "T12:00:00").toLocaleDateString("es-AR", {
+        weekday: "long", day: "2-digit", month: "2-digit"
+      })}</h3>
+
+      <div class="futureSpecialOrders">
+        ${pedidosEspeciales.length
+          ? pedidosEspeciales.map(htmlFilaPedidoFuturo).join("")
+          : '<p class="weeklyEmpty">No hay pedidos especiales cargados.</p>'}
+      </div>
+
+      ${pedidosFijosFecha.length ? `
+        <details class="futureFixedOrders">
+          <summary>🔁 Pedidos fijos <span>${pedidosFijosFecha.length}</span></summary>
+          <div class="futureFixedOrdersBody">
+            ${pedidosFijosFecha.map(htmlFilaPedidoFuturo).join("")}
+          </div>
+        </details>
+      ` : ""}
+    </div>`;
+  }).join("");
 }
 
 function migrarPedidosFijosV301() {
@@ -5270,7 +5362,28 @@ function normalizarUnidadPrecio(unidad) {
   return u;
 }
 
-function precioUnitarioItem(producto,unidad,cliente=""){if(!producto)return 0;return precioLista(producto.id,unidad,listaPrecioCliente(cliente));}
+function precioUnitarioItem(producto, unidad, cliente = "") {
+  if (!producto) return 0;
+
+  const listaCliente = listaPrecioCliente(cliente);
+  let precio = precioLista(producto.id, unidad, listaCliente);
+  if (precio > 0) return precio;
+
+  // Si Fratello, Giuliano u otro cliente no tiene un precio específico,
+  // usar la lista general de cliente para que el ticket pueda calcular totales.
+  if (listaCliente !== "cliente") {
+    precio = precioLista(producto.id, unidad, "cliente");
+    if (precio > 0) return precio;
+  }
+
+  // Último respaldo: tomar el primer precio válido disponible para ese producto/unidad.
+  const clave = clavePrecio(producto.id, normalizarUnidadPrecio(unidad));
+  const preciosDisponibles = Object.values(listasPrecios?.[clave] || {})
+    .map(Number)
+    .filter(valor => valor > 0);
+
+  return preciosDisponibles[0] || 0;
+}
 
 
 let ticketsSeleccionadosActuales = [];
@@ -6847,7 +6960,17 @@ function guardarCierreCaja() {
     estado.className = "cajaSaveStatus success";
   }
 
-  $("avisoCierreExistente")?.classList.remove("hidden");
+  // Dejar el formulario preparado para una carga nueva.
+  limpiarFormularioCaja({ conservarFechaTurno: true });
+  $("avisoCierreExistente")?.classList.add("hidden");
+
+  // Restaurar el mensaje después de limpiar el formulario.
+  if (estado) {
+    estado.textContent = anterior
+      ? `✅ Cierre del turno ${turnoTextoCaja(turno).toLowerCase()} actualizado correctamente.`
+      : `✅ Cierre del turno ${turnoTextoCaja(turno).toLowerCase()} guardado correctamente.`;
+    estado.className = "cajaSaveStatus success";
+  }
 }
 
 
@@ -6878,9 +7001,23 @@ function detenerTemporizadorCajaAdmin() {
 function bloquearCajaAdmin(mensaje = "") {
   cajaAdminActivo = false;
   detenerTemporizadorCajaAdmin();
+  cerrarDetalleDiaCaja();
+  cerrarModalPersonasCaja();
 
-  $("panelCajaAdmin")?.classList.add("hidden");
+  const panel = $("panelCajaAdmin");
+  panel?.classList.add("hidden");
+  if (panel) {
+    panel.style.display = "none";
+    panel.setAttribute("aria-hidden", "true");
+  }
+
   $("panelCajaAdminLogin")?.classList.remove("hidden");
+  if ($("panelCajaAdminLogin")) $("panelCajaAdminLogin").style.display = "";
+
+  if ($("resumenCajaAdmin")) $("resumenCajaAdmin").innerHTML = "";
+  if ($("cierresCajaAdmin")) $("cierresCajaAdmin").innerHTML = "";
+  if ($("indicadoresCajaDashboard")) $("indicadoresCajaDashboard").innerHTML = "";
+  if ($("libroDiarioCaja")) $("libroDiarioCaja").innerHTML = "";
 
   if ($("cajaAdminPin")) $("cajaAdminPin").value = "";
   if ($("estadoLoginCaja")) $("estadoLoginCaja").textContent = mensaje;
@@ -6945,6 +7082,10 @@ function ingresarCajaAdmin() {
   }
 
   cajaAdminActivo = true;
+  if ($("panelCajaAdmin")) {
+    $("panelCajaAdmin").style.display = "";
+    $("panelCajaAdmin").removeAttribute("aria-hidden");
+  }
   if ($("cajaAdminPin")) $("cajaAdminPin").value = "";
   if (estado) estado.textContent = "";
   iniciarTemporizadorCajaAdmin();
@@ -7262,7 +7403,7 @@ function renderLibroDiarioCaja() {
         <span><small>Gastos</small><b>${formatoDineroCaja(dia.gastos)}</b></span>
       </div>
 
-      <button type="button" onclick="abrirDetalleDiaCaja('${dia.fecha}')">Ver detalle</button>
+      <button type="button" class="btnDetalleDiaCaja" data-fecha-caja="${dia.fecha}">Ver detalle</button>
     </article>
   `).join("");
 }
@@ -7389,6 +7530,11 @@ function iniciarModuloCaja() {
   $("cajaAdminFecha")?.addEventListener("change", renderCajaAdmin);
   $("filtroPeriodoCaja")?.addEventListener("change", renderIndicadoresCaja);
   $("mesLibroCaja")?.addEventListener("change", renderLibroDiarioCaja);
+  $("libroDiarioCaja")?.addEventListener("click", evento => {
+    const boton = evento.target.closest(".btnDetalleDiaCaja");
+    if (!boton) return;
+    abrirDetalleDiaCaja(boton.dataset.fechaCaja);
+  });
   $("btnCerrarDetalleDiaCaja")?.addEventListener("click", cerrarDetalleDiaCaja);
   $("modalDetalleDiaCaja")?.addEventListener("click", evento => {
     if (evento.target?.id === "modalDetalleDiaCaja") cerrarDetalleDiaCaja();
@@ -7476,6 +7622,12 @@ async function init() {
   depurarPedidosHoyPorJornada();
   renderPedidosHoy();
   iniciarNavegacionFratello();
+
+  document.addEventListener("click", evento => {
+    const salida = evento.target.closest("#btnInicio, [data-volver='true'], .volverInicio, .menuButton");
+    if (salida && cajaAdminActivo) bloquearCajaAdmin();
+  });
+
   procesarEntradaDesdeNotificacion();
 
   const btnActualizarNotificaciones = $("btnActualizarNotificaciones");
@@ -7535,7 +7687,7 @@ async function init() {
   escucharCambiosNube();
   escucharHistorialNotificaciones();
   aplicarPermisosUsuario();
-  if ($("fechaPedido")) $("fechaPedido").value = fechaEntregaPredeterminada();
+  if ($("fechaPedido") && !$("fechaPedido").value) $("fechaPedido").value = fechaEntregaPredeterminada();
   if ($("fechaCargarPedidosFijos")) $("fechaCargarPedidosFijos").value = fechaISOManana();
   actualizarSelectorPedidoFuturo();
   fechasDesdeHoyHastaDomingo().forEach(fecha => asegurarPedidosFijosParaFecha(fecha, false));
@@ -7623,6 +7775,7 @@ window.verPedidoFormularioEnFecha=verPedidoFormularioEnFecha;
 window.alternarConfirmacionPedido=alternarConfirmacionPedido;
 window.cambiarPestanaPedidos=cambiarPestanaPedidos;
 window.editarPedidoCargado=editarPedidoCargado;
+window.verPedidoFuturo=verPedidoFuturo;
 window.repetirPedidoHistorial=repetirPedidoHistorial;
 window.editarPedidoFijo=editarPedidoFijo;
 window.alternarPedidoFijo=alternarPedidoFijo;
