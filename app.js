@@ -7447,7 +7447,7 @@ function abrirDetalleDiaCaja(fecha) {
           <h4>${turnoTextoCaja(turno)}</h4>
           <span>${escaparCaja(cierre.persona || "")}</span>
         </div>
-        <button type="button" class="btnEditarTurnoCaja" data-fecha="${fecha}" data-turno="${turno}">✏️ Editar</button>
+        <button type="button" class="btnEditarTurnoCaja" data-fecha="${fecha}" data-turno="${turno}" onclick="event.preventDefault();event.stopPropagation();window.abrirEditorTurnoCaja(\'${fecha}\', \'${turno}\')">✏️ Editar</button>
       </div>
       <div class="cajaDayShiftGrid">
         <span>Efectivo <b>${formatoDineroCaja(t.efectivo)}</b></span>
@@ -7487,7 +7487,7 @@ function htmlGastoEditorCaja(gasto = {}, indice = 0) {
   return `<div class="cajaInlineExpenseRow" data-indice="${indice}">
     <input type="text" class="cajaInlineGastoMotivo" value="${escaparCaja(gasto.motivo || "")}" placeholder="Motivo">
     <input type="number" class="cajaInlineGastoMonto" value="${montoCaja(gasto.monto) || ""}" min="0" step="0.01" placeholder="Monto">
-    <button type="button" class="btnQuitarGastoCajaInline" aria-label="Eliminar gasto">×</button>
+    <button type="button" class="btnQuitarGastoCajaInline" aria-label="Eliminar gasto" onclick="event.preventDefault();event.stopPropagation();window.quitarGastoCajaInline(this)">×</button>
   </div>`;
 }
 
@@ -7528,7 +7528,7 @@ function abrirEditorTurnoCaja(fecha, turno) {
 
       <div class="cajaInlineExpensesHeader">
         <strong>Gastos</strong>
-        <button type="button" class="btnAgregarGastoCajaInline">+ Agregar gasto</button>
+        <button type="button" class="btnAgregarGastoCajaInline" onclick="event.preventDefault();event.stopPropagation();window.agregarGastoCajaInline(this)">+ Agregar gasto</button>
       </div>
 
       <div class="cajaInlineExpenses">
@@ -7536,8 +7536,8 @@ function abrirEditorTurnoCaja(fecha, turno) {
       </div>
 
       <div class="cajaInlineActions">
-        <button type="button" class="btnCancelarCajaInline">Cancelar</button>
-        <button type="button" class="primary btnGuardarCajaInline" data-fecha="${fecha}" data-turno="${turno}">Guardar cambios</button>
+        <button type="button" class="btnCancelarCajaInline" onclick="event.preventDefault();event.stopPropagation();window.cancelarEdicionCajaInline(this)">Cancelar</button>
+        <button type="button" class="primary btnGuardarCajaInline" data-fecha="${fecha}" data-turno="${turno}" onclick="event.preventDefault();event.stopPropagation();window.guardarEdicionTurnoCaja(\'${fecha}\', \'${turno}\', this)">Guardar cambios</button>
       </div>
 
       <div class="cajaInlineStatus"></div>
@@ -7545,6 +7545,32 @@ function abrirEditorTurnoCaja(fecha, turno) {
   `;
 
   host.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+
+function agregarGastoCajaInline(boton) {
+  const editor = boton?.closest(".cajaInlineEditor");
+  const lista = editor?.querySelector(".cajaInlineExpenses");
+  if (lista) {
+    lista.insertAdjacentHTML("beforeend", htmlGastoEditorCaja({}, lista.children.length));
+  }
+}
+
+function quitarGastoCajaInline(boton) {
+  const fila = boton?.closest(".cajaInlineExpenseRow");
+  const lista = boton?.closest(".cajaInlineExpenses");
+  if (!fila || !lista) return;
+
+  if (lista.children.length > 1) {
+    fila.remove();
+  } else {
+    fila.querySelectorAll("input").forEach(input => input.value = "");
+  }
+}
+
+function cancelarEdicionCajaInline(boton) {
+  const host = boton?.closest(".cajaInlineEditHost");
+  if (host) host.innerHTML = "";
 }
 
 function recolectarGastosEditorCaja(host) {
@@ -7754,6 +7780,12 @@ window.eliminarGastoCaja = eliminarGastoCaja;
 window.editarCierreDesdeAdminCaja = editarCierreDesdeAdminCaja;
 window.eliminarPersonaCaja = eliminarPersonaCaja;
 window.abrirDetalleDiaCaja = abrirDetalleDiaCaja;
+window.cerrarDetalleDiaCaja = cerrarDetalleDiaCaja;
+window.abrirEditorTurnoCaja = abrirEditorTurnoCaja;
+window.guardarEdicionTurnoCaja = guardarEdicionTurnoCaja;
+window.agregarGastoCajaInline = agregarGastoCajaInline;
+window.quitarGastoCajaInline = quitarGastoCajaInline;
+window.cancelarEdicionCajaInline = cancelarEdicionCajaInline;
 
 async function init() {
   iniciarModuloCaja();
