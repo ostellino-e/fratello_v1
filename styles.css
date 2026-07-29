@@ -2437,3 +2437,74 @@ body.modalAbierto {
   display:none !important;
   visibility:hidden !important;
 }
+
+
+/* Fratello v3.9.3A.1 — corrección general de ventanas emergentes */
+body.modal-open{
+  overflow:hidden !important;
+}
+
+.modal{
+  position:fixed !important;
+  inset:0 !important;
+  z-index:10000 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  padding:16px !important;
+  background:rgba(25,18,12,.66) !important;
+  backdrop-filter:blur(3px);
+  box-sizing:border-box;
+}
+
+.modal.hidden{
+  display:none !important;
+}
+
+.modalContent{
+  position:relative !important;
+  width:min(94vw,700px);
+  max-height:90vh;
+  overflow:auto;
+  box-sizing:border-box;
+  padding:22px;
+  border-radius:20px;
+  background:#fffaf3;
+  box-shadow:0 22px 70px rgba(0,0,0,.38);
+}
+
+.modalClose{
+  position:absolute !important;
+  top:10px !important;
+  right:10px !important;
+  z-index:2;
+  width:42px !important;
+  height:42px !important;
+  min-width:42px !important;
+  padding:0 !important;
+  border-radius:50% !important;
+  display:grid !important;
+  place-items:center !important;
+  font-size:25px !important;
+  line-height:1 !important;
+}
+
+.futureViewModal,
+.cajaDayDetailModal,
+.cajaPeopleModal{
+  margin:0 !important;
+}
+
+@media(max-width:560px){
+  .modal{
+    align-items:flex-end !important;
+    padding:8px !important;
+  }
+
+  .modalContent{
+    width:100% !important;
+    max-height:88vh;
+    border-radius:20px 20px 12px 12px;
+    padding:20px 16px;
+  }
+}

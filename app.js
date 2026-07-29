@@ -6868,21 +6868,19 @@ function cargarCierreSeleccionadoCaja() {
   const cierre = obtenerCierreCaja(fecha, turno);
   const aviso = $("avisoCierreExistente");
 
+  // La pantalla del empleado nunca muestra nuevamente los importes guardados.
+  // Solo informa que ese turno ya fue cargado.
+  limpiarFormularioCaja({ conservarFechaTurno: true });
+
   if (!cierre) {
-    limpiarFormularioCaja({ conservarFechaTurno: true });
+    aviso?.classList.add("hidden");
     return;
   }
 
-  if ($("cajaPersona")) $("cajaPersona").value = cierre.persona || personasCaja[0] || "";
-  if ($("cajaEfectivo")) $("cajaEfectivo").value = montoCaja(cierre.efectivo) || "";
-  if ($("cajaTransferencias")) $("cajaTransferencias").value = montoCaja(cierre.transferencias) || "";
-  if ($("cajaObservacion")) $("cajaObservacion").value = cierre.observacion || "";
-  gastosCajaEdicion = Array.isArray(cierre.gastos)
-    ? cierre.gastos.map(gasto => ({ motivo: gasto.motivo || "", monto: montoCaja(gasto.monto) }))
-    : [];
-
-  aviso?.classList.remove("hidden");
-  renderGastosCaja();
+  if (aviso) {
+    aviso.textContent = `✅ El cierre del turno ${turnoTextoCaja(turno).toLowerCase()} de esta fecha ya fue cargado.`;
+    aviso.classList.remove("hidden");
+  }
 }
 
 function validarCierreCaja() {
@@ -6960,9 +6958,13 @@ function guardarCierreCaja() {
     estado.className = "cajaSaveStatus success";
   }
 
-  // Dejar el formulario preparado para una carga nueva.
+  // Dejar el formulario preparado para una carga nueva sin exponer los importes guardados.
   limpiarFormularioCaja({ conservarFechaTurno: true });
-  $("avisoCierreExistente")?.classList.add("hidden");
+  const avisoGuardado = $("avisoCierreExistente");
+  if (avisoGuardado) {
+    avisoGuardado.textContent = `✅ El cierre del turno ${turnoTextoCaja(turno).toLowerCase()} de esta fecha ya fue cargado.`;
+    avisoGuardado.classList.remove("hidden");
+  }
 
   // Restaurar el mensaje después de limpiar el formulario.
   if (estado) {
