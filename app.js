@@ -611,7 +611,7 @@ function debeNotificarPedido(pedido) {
 }
 
 function emitirNotificacionPedidoSiCorresponde(pedido, opciones = {}) {
-  if (!pedido || !debeNotificarPedido(pedido)) return false;
+  if (!pedido || !debeNotificarPedido(pedido) || !notificacionesPermitidasParaPedido(pedido)) return false;
 
   const titulo = opciones.titulo || "Nuevo pedido";
   const cliente = pedido.cliente || "Cliente";
@@ -964,6 +964,7 @@ function limpiarFormularioClienteCompleto() {
   const barrio = $("nuevoClienteBarrio");
   const listaPrecio = $("nuevoClienteListaPrecio");
   const recordatorio = $("nuevoClienteRecordatorio");
+  const notificaciones = $("nuevoClienteNotificaciones");
   const boton = $("btnGuardarClienteCompleto");
 
   if (nombre) {
@@ -975,6 +976,7 @@ function limpiarFormularioClienteCompleto() {
   if (barrio) barrio.value = "";
   if (listaPrecio) renderSelectorListasCliente("auto");
   if (recordatorio) recordatorio.checked = false;
+  if (notificaciones) notificaciones.checked = true;
   if (boton) boton.textContent = "➕ Agregar cliente";
 }
 
@@ -996,6 +998,7 @@ function guardarClienteCompleto() {
     const barrioInput = $("nuevoClienteBarrio");
     const listaPrecioInput = $("nuevoClienteListaPrecio");
     const recordatorioInput = $("nuevoClienteRecordatorio");
+    const notificacionesInput = $("nuevoClienteNotificaciones");
 
     if (!nombreInput) {
       alert("No se encontró el formulario de clientes.");
@@ -1008,6 +1011,7 @@ function guardarClienteCompleto() {
     const barrio = barrioInput?.value.trim() || "";
     const listaPrecio = listaPrecioInput?.value || "auto";
     const enviarRecordatorio = Boolean(recordatorioInput?.checked);
+    const recibirNotificaciones = notificacionesInput ? Boolean(notificacionesInput.checked) : true;
     const nombreAnterior = nombreInput.dataset.editando || "";
 
     if (!nombre) {
@@ -1047,7 +1051,7 @@ function guardarClienteCompleto() {
     }
 
     datosClientesCompletos[nombre] = {
-      nombre, telefono, direccion, barrio, listaPrecio, enviarRecordatorio,
+      nombre, telefono, direccion, barrio, listaPrecio, enviarRecordatorio, recibirNotificaciones,
       actualizado: new Date().toISOString()
     };
 
@@ -1070,7 +1074,8 @@ function editarClienteCompleto(nombre) {
     direccion: "",
     barrio: "",
     listaPrecio: "auto",
-    enviarRecordatorio: false
+    enviarRecordatorio: false,
+    recibirNotificaciones: true
   };
 
   const nombreInput = $("nuevoClienteNombre");
@@ -1084,6 +1089,7 @@ function editarClienteCompleto(nombre) {
   if ($("nuevoClienteBarrio")) $("nuevoClienteBarrio").value = datos.barrio || "";
   renderSelectorListasCliente(datos.listaPrecio || "auto");
   if ($("nuevoClienteRecordatorio")) $("nuevoClienteRecordatorio").checked = Boolean(datos.enviarRecordatorio);
+  if ($("nuevoClienteNotificaciones")) $("nuevoClienteNotificaciones").checked = datos.recibirNotificaciones !== false;
   if ($("btnGuardarClienteCompleto")) $("btnGuardarClienteCompleto").textContent = "💾 Guardar cambios";
 
   abrirSeccionFratello("seccionClientes");
@@ -1116,6 +1122,7 @@ function renderListaClientesCompleta() {
     const tel = datos.telefono || "Sin teléfono";
     const dir = datos.direccion || "Sin dirección";
     const rec = datos.enviarRecordatorio ? "🔔 Recordatorio activado" : "🔕 Sin recordatorio";
+    const recibirNotificaciones = datos.recibirNotificaciones !== false;
     const seguro = nombre.replace(/'/g, "\\'");
 
     return `<div class="clienteCompletoCard">
@@ -1124,6 +1131,12 @@ function renderListaClientesCompleta() {
         <span>📞 ${tel}</span>
         <span>📍 ${dir}</span>
         <small>${rec}</small>
+        <label class="clienteNotificationToggle">
+          <input type="checkbox"
+            ${recibirNotificaciones ? "checked" : ""}
+            onchange="alternarNotificacionesCliente('${seguro}', this.checked)">
+          <span>${recibirNotificaciones ? "🔔 Notificar pedidos" : "🔕 Pedidos silenciados"}</span>
+        </label>
       </div>
       <div class="clienteCompletoActions">
         <button type="button" onclick="editarClienteCompleto('${seguro}')">✏️ Editar</button>
@@ -1165,6 +1178,132 @@ function mostrarInicioFratello(limpiarPila = true) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+
+
+const CLAVE_CONFIG_NOTIFICACIONES = "fratello_config_notificaciones";
+let configuracionNotificaciones = {
+  activas: true,
+  sonido: true,
+  vibracion: true,
+  banners: true,
+  agrupar: true,
+  ...(JSON.parse(localStorage.getItem(CLAVE_CONFIG_NOTIFICACIONES) || "{}"))
+};
+
+let colaNotificacionesPedidos = [];
+let temporizadorGrupoNotificaciones = null;
+
+function guardarConfiguracionNotificaciones() {
+  localStorage.setItem(
+    CLAVE_CONFIG_NOTIFICACIONES,
+    JSON.stringify(configuracionNotificaciones)
+  );
+  enviarPreferenciasNotificacionesAlServiceWorker();
+  renderConfiguracionNotificaciones();
+}
+
+function clienteAceptaNotificaciones(nombreCliente) {
+  const nombre = String(nombreCliente || "").trim();
+  if (!nombre) return true;
+
+  const clave = Object.keys(datosClientesCompletos || {}).find(
+    item => normalizar(item) === normalizar(nombre)
+  );
+  const datos = clave ? datosClientesCompletos[clave] : null;
+
+  // Compatibilidad: clientes existentes siguen notificando hasta que el usuario los desactive.
+  return datos?.recibirNotificaciones !== false;
+}
+
+function notificacionesPermitidasParaPedido(pedido) {
+  if (!configuracionNotificaciones.activas) return false;
+  if (!configuracionNotificaciones.banners) return false;
+  return clienteAceptaNotificaciones(pedido?.cliente);
+}
+
+async function enviarPreferenciasNotificacionesAlServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+
+  const clientesSilenciados = Object.entries(datosClientesCompletos || {})
+    .filter(([, datos]) => datos?.recibirNotificaciones === false)
+    .map(([nombre]) => normalizar(nombre));
+
+  const mensaje = {
+    type: "ACTUALIZAR_PREFERENCIAS_NOTIFICACIONES",
+    configuracion: configuracionNotificaciones,
+    clientesSilenciados
+  };
+
+  try {
+    const registro = await navigator.serviceWorker.ready;
+    registro.active?.postMessage(mensaje);
+    navigator.serviceWorker.controller?.postMessage(mensaje);
+  } catch (error) {
+    console.error("No se pudieron enviar preferencias al Service Worker:", error);
+  }
+}
+
+function renderConfiguracionNotificaciones() {
+  const ids = {
+    chkNotificacionesActivas: "activas",
+    chkNotificacionesSonido: "sonido",
+    chkNotificacionesVibracion: "vibracion",
+    chkNotificacionesBanners: "banners",
+    chkNotificacionesAgrupar: "agrupar"
+  };
+
+  Object.entries(ids).forEach(([id, clave]) => {
+    const input = $(id);
+    if (input) input.checked = Boolean(configuracionNotificaciones[clave]);
+  });
+
+  const estado = $("estadoConfiguracionNotificaciones");
+  if (estado) {
+    estado.textContent = configuracionNotificaciones.activas
+      ? "✅ Avisos generales activados"
+      : "🔕 Todos los avisos están pausados";
+  }
+}
+
+function cambiarConfiguracionNotificacionesDesdePantalla() {
+  configuracionNotificaciones = {
+    activas: Boolean($("chkNotificacionesActivas")?.checked),
+    sonido: Boolean($("chkNotificacionesSonido")?.checked),
+    vibracion: Boolean($("chkNotificacionesVibracion")?.checked),
+    banners: Boolean($("chkNotificacionesBanners")?.checked),
+    agrupar: Boolean($("chkNotificacionesAgrupar")?.checked)
+  };
+  guardarConfiguracionNotificaciones();
+}
+
+function alternarNotificacionesCliente(nombre, activo) {
+  if (!datosClientesCompletos[nombre]) {
+    datosClientesCompletos[nombre] = {
+      nombre,
+      telefono: "",
+      direccion: "",
+      barrio: "",
+      listaPrecio: "auto",
+      enviarRecordatorio: false
+    };
+  }
+
+  datosClientesCompletos[nombre].recibirNotificaciones = Boolean(activo);
+  datosClientesCompletos[nombre].actualizado = new Date().toISOString();
+
+  guardarTodo();
+  renderListaClientesCompleta();
+  enviarPreferenciasNotificacionesAlServiceWorker();
+}
+
+function marcarNotificacionesVistasAlAbrirApp() {
+  ultimaNotificacionVista = new Date().toISOString();
+  localStorage.setItem(
+    "fratello_ultima_notificacion_vista",
+    ultimaNotificacionVista
+  );
+  actualizarCampanaNotificaciones();
+}
 
 let notificacionesHistorial = [];
 let unsubscribeHistorialNotificaciones = null;
@@ -1719,6 +1858,8 @@ if (messaging) {
     // Los push sin origen explícito se descartan.
     // Esto evita que pedidos fijos o avisos viejos reaparezcan al actualizar.
     if (!origenNotificacionPermitido(datos)) return;
+    if (!configuracionNotificaciones.activas || !configuracionNotificaciones.banners) return;
+    if (!clienteAceptaNotificaciones(datos.cliente || datos.nombreCliente || "")) return;
 
     const titulo = payload.notification?.title || "Fratello";
     const cuerpo = payload.notification?.body || "Tenés un nuevo pedido.";
@@ -1731,6 +1872,8 @@ if (messaging) {
         badge: "./icon-192.png",
         tag: datos.tag || `fratello-pedido-${datos.pedidoId || Date.now()}`,
         renotify: false,
+        silent: !configuracionNotificaciones.sonido,
+        vibrate: configuracionNotificaciones.vibracion ? [180, 80, 180] : [],
         data: datos
       });
     } catch (error) {
@@ -1846,6 +1989,7 @@ async function activarNotificacionesFratello() {
     tokenNotificaciones = token;
     localStorage.setItem("fratello_token_notificaciones", token);
     await guardarTokenNotificaciones(token);
+    await enviarPreferenciasNotificacionesAlServiceWorker();
 
     actualizarEstadoNotificaciones();
 
@@ -2423,25 +2567,65 @@ function renderPedidosRecibidosFormulario() {
 
 async function mostrarNotificacionLocalPedido(pedido) {
   if (!pedido || pedido.origen !== "formulario_cliente") return;
+  if (!notificacionesPermitidasParaPedido(pedido)) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
 
+  colaNotificacionesPedidos.push(pedido);
+
+  if (!configuracionNotificaciones.agrupar) {
+    await vaciarColaNotificacionesPedidos();
+    return;
+  }
+
+  clearTimeout(temporizadorGrupoNotificaciones);
+  temporizadorGrupoNotificaciones = setTimeout(
+    vaciarColaNotificacionesPedidos,
+    1800
+  );
+}
+
+async function vaciarColaNotificacionesPedidos() {
+  if (!colaNotificacionesPedidos.length) return;
+
+  const pedidosPendientes = [...colaNotificacionesPedidos];
+  colaNotificacionesPedidos = [];
+
   try {
-    const registro = await navigator.serviceWorker.ready;
-    await registro.showNotification("Nuevo pedido recibido", {
-      body: `${pedido.cliente || "Un cliente"} envió un pedido para ${new Date(fechaEntregaPedido(pedido)+"T12:00:00").toLocaleDateString("es-AR")}.`,
+    const registro = await obtenerRegistroServiceWorkerNotificaciones();
+    const cantidad = pedidosPendientes.length;
+    const ultimo = pedidosPendientes[pedidosPendientes.length - 1];
+
+    const titulo = cantidad === 1
+      ? "Nuevo pedido recibido"
+      : `${cantidad} pedidos nuevos`;
+
+    const cuerpo = cantidad === 1
+      ? `${ultimo.cliente || "Un cliente"} envió un pedido para ${new Date(fechaEntregaPedido(ultimo) + "T12:00:00").toLocaleDateString("es-AR")}.`
+      : pedidosPendientes
+          .map(pedido => pedido.cliente || "Cliente")
+          .slice(0, 5)
+          .join(" · ");
+
+    await registro.showNotification(titulo, {
+      body: cuerpo,
       icon: "./icon-192.png",
       badge: "./icon-192.png",
-      tag: `pedido-cliente-${pedido.id}`,
+      tag: configuracionNotificaciones.agrupar
+        ? "fratello-pedidos-nuevos"
+        : `pedido-cliente-${ultimo.id}`,
       renotify: false,
+      silent: !configuracionNotificaciones.sonido,
+      vibrate: configuracionNotificaciones.vibracion ? [180, 80, 180] : [],
       data: {
-        url: `./index.html?abrir=pedidos&fecha=${encodeURIComponent(fechaEntregaPedido(pedido))}&pedido=${encodeURIComponent(pedido.id)}`
+        url: `./index.html?abrir=pedidos&fecha=${encodeURIComponent(fechaEntregaPedido(ultimo))}&pedido=${encodeURIComponent(ultimo.id)}`,
+        cliente: ultimo.cliente || "",
+        pedidoId: ultimo.id
       }
     });
   } catch (error) {
     console.error("No se pudo mostrar la notificación local:", error);
   }
 }
-
 function pedidoDebeNotificar(pedido) {
   return Boolean(pedido && pedido.origen === "formulario_cliente");
 }
@@ -7953,6 +8137,20 @@ async function init() {
   }
 
   const btnActivarNotificaciones = $("btnActivarNotificaciones");
+
+  [
+    "chkNotificacionesActivas",
+    "chkNotificacionesSonido",
+    "chkNotificacionesVibracion",
+    "chkNotificacionesBanners",
+    "chkNotificacionesAgrupar"
+  ].forEach(id => {
+    $(id)?.addEventListener("change", cambiarConfiguracionNotificacionesDesdePantalla);
+  });
+
+  renderConfiguracionNotificaciones();
+  enviarPreferenciasNotificacionesAlServiceWorker();
+  marcarNotificacionesVistasAlAbrirApp();
   const btnProbarNotificacion = $("btnProbarNotificacion");
 
   if (btnActivarNotificaciones) {
@@ -8124,3 +8322,5 @@ window.enviarSiguienteRecordatorioPendiente = enviarSiguienteRecordatorioPendien
 window.borrarTodasLasNotificaciones = borrarTodasLasNotificaciones;
 
 
+
+window.alternarNotificacionesCliente = alternarNotificacionesCliente;

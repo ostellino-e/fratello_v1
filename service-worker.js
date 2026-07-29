@@ -4,7 +4,56 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-com
 firebase.initializeApp({"apiKey": "AIzaSyDPg7UWyqOKYxP5qEelgqjcfTjXD3BXYQY", "authDomain": "fratello-c1765.firebaseapp.com", "projectId": "fratello-c1765", "storageBucket": "fratello-c1765.firebasestorage.app", "messagingSenderId": "897400694131", "appId": "1:897400694131:web:4262fca5934bcc56629106"});
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage(payload => {
+const CACHE_PREFERENCIAS = "fratello-preferencias-notificaciones";
+const ARCHIVO_PREFERENCIAS = "/__fratello_notificaciones__.json";
+
+async function guardarPreferenciasNotificacionesSW(datos) {
+  const cache = await caches.open(CACHE_PREFERENCIAS);
+  const respuesta = new Response(JSON.stringify(datos || {}), {
+    headers: { "Content-Type": "application/json" }
+  });
+  await cache.put(ARCHIVO_PREFERENCIAS, respuesta);
+}
+
+async function leerPreferenciasNotificacionesSW() {
+  try {
+    const cache = await caches.open(CACHE_PREFERENCIAS);
+    const respuesta = await cache.match(ARCHIVO_PREFERENCIAS);
+    if (!respuesta) {
+      return {
+        configuracion: { activas: true, banners: true, sonido: true, vibracion: true, agrupar: true },
+        clientesSilenciados: []
+      };
+    }
+    return await respuesta.json();
+  } catch (_) {
+    return {
+      configuracion: { activas: true, banners: true, sonido: true, vibracion: true, agrupar: true },
+      clientesSilenciados: []
+    };
+  }
+}
+
+self.addEventListener("message", event => {
+  if (event.data?.type === "ACTUALIZAR_PREFERENCIAS_NOTIFICACIONES") {
+    event.waitUntil(guardarPreferenciasNotificacionesSW({
+      configuracion: event.data.configuracion || {},
+      clientesSilenciados: event.data.clientesSilenciados || []
+    }));
+  }
+});
+
+function normalizarClienteSW(valor) {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+
+
+messaging.onBackgroundMessage(async payload => {
   const datos = payload?.data || {};
   const origen = String(
     datos.origen ||
@@ -25,6 +74,18 @@ messaging.onBackgroundMessage(payload => {
   // Rechazar cualquier push sin origen válido, incluidos pedidos fijos.
   if (!permitido) return;
 
+  const preferencias = await leerPreferenciasNotificacionesSW();
+  const configuracion = preferencias.configuracion || {};
+  if (configuracion.activas === false || configuracion.banners === false) return;
+
+  const cliente = normalizarClienteSW(
+    datos.cliente || datos.nombreCliente || payload.notification?.cliente || ""
+  );
+  const silenciados = Array.isArray(preferencias.clientesSilenciados)
+    ? preferencias.clientesSilenciados
+    : [];
+  if (cliente && silenciados.includes(cliente)) return;
+
   const titulo = payload.notification?.title || "Fratello";
   const opciones = {
     body: payload.notification?.body || "Tenés un nuevo pedido.",
@@ -32,6 +93,8 @@ messaging.onBackgroundMessage(payload => {
     badge: "./icon-192.png",
     tag: datos.tag || `fratello-pedido-${datos.pedidoId || Date.now()}`,
     renotify: false,
+    silent: configuracion.sonido === false,
+    vibrate: configuracion.vibracion === false ? [] : [180, 80, 180],
     data: datos
   };
 
@@ -69,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v393b1";
+const CACHE_NAME = "fratello-v393b2";
 const ARCHIVOS = [
   "./",
   "./index.html",

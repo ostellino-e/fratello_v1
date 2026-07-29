@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=393b1" />
+  <link rel="stylesheet" href="styles.css?v=393b2" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.9.3B.1";
-    document.documentElement.dataset.fratelloVersion = "3.9.3B.1";
+    window.FRATELLO_VERSION = "3.9.3B.2";
+    document.documentElement.dataset.fratelloVersion = "3.9.3B.2";
   </script>
 
 </head>
@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.3B.1</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.3B.2</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -329,6 +329,11 @@
       <label class="checkControl">
         <input type="checkbox" id="nuevoClienteRecordatorio">
         Enviar recordatorio de pedido a este contacto
+      </label>
+
+      <label class="checkControl">
+        <input type="checkbox" id="nuevoClienteNotificaciones" checked>
+        Recibir una notificación cuando este cliente envíe un pedido
       </label>
 
       <div class="toolbar">
@@ -652,6 +657,38 @@
         </div>
       </div>
 
+      <section class="notificationSettingsCard">
+        <h3>⚙️ Configuración de avisos</h3>
+        <p id="estadoConfiguracionNotificaciones" class="hint"></p>
+
+        <label class="notificationSettingRow">
+          <span><strong>Notificaciones generales</strong><small>Pausa o activa todos los avisos.</small></span>
+          <input id="chkNotificacionesActivas" type="checkbox">
+        </label>
+
+        <label class="notificationSettingRow">
+          <span><strong>Mostrar banner</strong><small>Mostrar el aviso en el teléfono o computadora.</small></span>
+          <input id="chkNotificacionesBanners" type="checkbox">
+        </label>
+
+        <label class="notificationSettingRow">
+          <span><strong>Sonido</strong><small>Permitir sonido cuando el dispositivo lo admita.</small></span>
+          <input id="chkNotificacionesSonido" type="checkbox">
+        </label>
+
+        <label class="notificationSettingRow">
+          <span><strong>Vibración</strong><small>Vibrar al recibir pedidos en dispositivos compatibles.</small></span>
+          <input id="chkNotificacionesVibracion" type="checkbox">
+        </label>
+
+        <label class="notificationSettingRow">
+          <span><strong>Agrupar pedidos</strong><small>Juntar pedidos recibidos casi al mismo tiempo.</small></span>
+          <input id="chkNotificacionesAgrupar" type="checkbox">
+        </label>
+
+        <p class="hint">La notificación individual de cada cliente se controla desde la pantalla Clientes.</p>
+      </section>
+
       <div id="estadoListaNotificaciones" class="notificationsStatus">
         Cargando avisos...
       </div>
@@ -667,7 +704,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=393b1"></script>
+  <script src="app.js?v=393b2"></script>
 
   
 
@@ -684,12 +721,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=383")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=393b2")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=383", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=393b2", {
             scope: "./",
             updateViaCache: "none"
           });

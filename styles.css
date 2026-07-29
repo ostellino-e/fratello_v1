@@ -2606,3 +2606,63 @@ body.modal-open{
     width:100%;
   }
 }
+
+
+/* Fratello v3.9.3B.2 — notificaciones configurables */
+.clienteNotificationToggle{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:10px;
+  padding:9px 11px;
+  border-radius:11px;
+  background:#f5efe8;
+  font-weight:800;
+  cursor:pointer;
+}
+.clienteNotificationToggle input{
+  width:20px;
+  height:20px;
+  flex:0 0 auto;
+}
+.notificationSettingsCard{
+  margin:16px 0;
+  padding:16px;
+  border:1px solid #dbc9b6;
+  border-radius:16px;
+  background:#fffaf5;
+}
+.notificationSettingsCard h3{
+  margin-top:0;
+}
+.notificationSettingRow{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  padding:13px 0;
+  border-bottom:1px solid #eadfd4;
+  cursor:pointer;
+}
+.notificationSettingRow:last-of-type{
+  border-bottom:0;
+}
+.notificationSettingRow span{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.notificationSettingRow small{
+  font-weight:400;
+  opacity:.72;
+}
+.notificationSettingRow input{
+  width:23px;
+  height:23px;
+  flex:0 0 auto;
+}
+@media(max-width:560px){
+  .notificationSettingRow{
+    align-items:flex-start;
+  }
+}
