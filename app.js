@@ -1933,39 +1933,129 @@ function datosActuales() {
   };
 }
 
+
+function claveCierreCajaSync(cierre) {
+  if (!cierre || typeof cierre !== "object") return "";
+  return String(cierre.id || `${cierre.fecha || ""}_${cierre.turno || ""}`);
+}
+
+function fechaCambioCierreCaja(cierre) {
+  const valor = cierre?.actualizadoEn || cierre?.actualizado || cierre?.creado || "";
+  const tiempo = Date.parse(valor);
+  return Number.isFinite(tiempo) ? tiempo : 0;
+}
+
+function fusionarCierresCaja(remotos = [], locales = []) {
+  const mapa = new Map();
+
+  [...(Array.isArray(remotos) ? remotos : []), ...(Array.isArray(locales) ? locales : [])]
+    .forEach(cierre => {
+      const clave = claveCierreCajaSync(cierre);
+      if (!clave) return;
+
+      const anterior = mapa.get(clave);
+      if (!anterior || fechaCambioCierreCaja(cierre) >= fechaCambioCierreCaja(anterior)) {
+        mapa.set(clave, cierre);
+      }
+    });
+
+  return [...mapa.values()].sort((a, b) => {
+    const porFecha = String(a.fecha || "").localeCompare(String(b.fecha || ""));
+    if (porFecha !== 0) return porFecha;
+    return String(a.turno || "").localeCompare(String(b.turno || ""));
+  });
+}
+
+function firmaCierresCaja(lista = cierresCaja) {
+  return JSON.stringify(
+    (Array.isArray(lista) ? lista : []).map(cierre => [
+      claveCierreCajaSync(cierre),
+      cierre?.actualizadoEn || cierre?.actualizado || cierre?.creado || "",
+      cierre?.efectivo || 0,
+      cierre?.transferencias || 0,
+      Array.isArray(cierre?.gastos) ? cierre.gastos.length : 0
+    ])
+  );
+}
+
+let ultimaFirmaCajaRenderizada = "";
+
+function aplicarCierresCajaDesdeNube(listaRemota) {
+  const fusionados = fusionarCierresCaja(listaRemota, cierresCaja);
+  const nuevaFirma = firmaCierresCaja(fusionados);
+
+  if (nuevaFirma === ultimaFirmaCajaRenderizada) return false;
+
+  cierresCaja = fusionados;
+  ultimaFirmaCajaRenderizada = nuevaFirma;
+  guardarCajaLocal();
+  cargarCierreSeleccionadoCaja();
+  renderCajaAdmin();
+  renderDashboardCaja();
+  return true;
+}
+
 let temporizadorGuardadoNube = null;
 let guardadoNubeEnCurso = false;
 let guardadoNubePendiente = false;
 
 function guardarEnNube() {
-  if (!db || cargandoDesdeNube) return;
+  if (!db || cargandoDesdeNube) return Promise.resolve(false);
 
   guardadoNubePendiente = true;
   clearTimeout(temporizadorGuardadoNube);
 
-  temporizadorGuardadoNube = setTimeout(async () => {
-    if (guardadoNubeEnCurso || !guardadoNubePendiente || !db || cargandoDesdeNube) return;
-
-    guardadoNubeEnCurso = true;
-    guardadoNubePendiente = false;
-
-    try {
-      await db.collection("fratello").doc("estado").set(datosActuales(), { merge: true });
-      setEstadoSync("Guardado online");
-    } catch (error) {
-      console.error("Error guardando en Firebase:", error);
-      setEstadoSync("Error al guardar online");
-      guardadoNubePendiente = true;
-    } finally {
-      guardadoNubeEnCurso = false;
-
-      if (guardadoNubePendiente) {
-        setTimeout(guardarEnNube, 900);
+  return new Promise(resolve => {
+    temporizadorGuardadoNube = setTimeout(async () => {
+      if (guardadoNubeEnCurso || !guardadoNubePendiente || !db || cargandoDesdeNube) {
+        resolve(false);
+        return;
       }
-    }
-  }, 450);
-}
 
+      guardadoNubeEnCurso = true;
+      guardadoNubePendiente = false;
+      setEstadoSync("Sincronizando...");
+
+      try {
+        const referencia = db.collection("fratello").doc("estado");
+        let cierresFusionados = cierresCaja;
+
+        await db.runTransaction(async transaccion => {
+          const snapshot = await transaccion.get(referencia);
+          const remoto = snapshot.exists ? snapshot.data() : {};
+          cierresFusionados = fusionarCierresCaja(remoto.cierresCaja, cierresCaja);
+
+          transaccion.set(
+            referencia,
+            {
+              ...datosActuales(),
+              cierresCaja: cierresFusionados,
+              actualizado: new Date().toISOString()
+            },
+            { merge: true }
+          );
+        });
+
+        cierresCaja = cierresFusionados;
+        ultimaFirmaCajaRenderizada = firmaCierresCaja(cierresCaja);
+        guardarCajaLocal();
+        setEstadoSync("Guardado online");
+        resolve(true);
+      } catch (error) {
+        console.error("Error guardando en Firebase:", error);
+        setEstadoSync(navigator.onLine ? "Error al guardar online" : "Sin conexión — cambio pendiente");
+        guardadoNubePendiente = true;
+        resolve(false);
+      } finally {
+        guardadoNubeEnCurso = false;
+
+        if (guardadoNubePendiente && navigator.onLine) {
+          setTimeout(() => guardarEnNube(), 1200);
+        }
+      }
+    }, 300);
+  });
+}
 async function cargarDesdeNube() {
   if (!db) {
     console.error("Firebase no se inicializó. Revisar scripts o conexión.");
@@ -1997,9 +2087,8 @@ async function cargarDesdeNube() {
         ? data.exclusionesPedidosFijos
         : exclusionesPedidosFijos;
 
-      cierresCaja = Array.isArray(data.cierresCaja)
-        ? data.cierresCaja
-        : cierresCaja;
+      cierresCaja = fusionarCierresCaja(data.cierresCaja, cierresCaja);
+      ultimaFirmaCajaRenderizada = firmaCierresCaja(cierresCaja);
       personasCaja = Array.isArray(data.personasCaja) && data.personasCaja.length
         ? data.personasCaja
         : personasCaja;
@@ -2421,6 +2510,19 @@ function escucharCambiosNube() {
       correspondePedido = data.correspondePedido || correspondePedido;
       memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
       jornadasCerradas = Array.isArray(data.jornadasCerradas) ? data.jornadasCerradas : jornadasCerradas;
+
+      if (Array.isArray(data.cierresCaja)) {
+        aplicarCierresCajaDesdeNube(data.cierresCaja);
+      }
+      if (Array.isArray(data.personasCaja) && data.personasCaja.length) {
+        personasCaja = data.personasCaja;
+        guardarCajaLocal();
+        renderPersonasCaja();
+      }
+      if (data.configuracionCaja && typeof data.configuracionCaja === "object") {
+        configuracionCaja = { ...configuracionCaja, ...data.configuracionCaja };
+        guardarCajaLocal();
+      }
 
       validarClientes();
 
@@ -7611,6 +7713,7 @@ async function guardarEdicionTurnoCaja(fecha, turno, boton) {
     transferencias,
     observacion,
     gastos,
+    actualizado: new Date().toISOString(),
     actualizadoEn: new Date().toISOString()
   };
 
@@ -7642,26 +7745,19 @@ function cerrarDetalleDiaCaja() {
 }
 
 function sincronizarCajaTiempoReal() {
-  try {
-    if (!db || !doc || !onSnapshot) return;
-    const ref = doc(db, "fratello", "estado");
-
-    onSnapshot(ref, snapshot => {
-      if (!snapshot.exists()) return;
-      const data = snapshot.data();
-
-      if (Array.isArray(data.cierresCaja)) {
-        cierresCaja = data.cierresCaja;
-        guardarCajaLocal();
-        cargarCierreSeleccionadoCaja();
-        renderCajaAdmin();
-        renderDashboardCaja();
-      }
-    });
-  } catch (error) {
-    console.warn("No se pudo activar sincronización en tiempo real para Caja:", error);
-  }
+  // Caja se sincroniza desde escucharCambiosNube(), usando la API compatible
+  // ya cargada por la aplicación. Evita crear un segundo listener duplicado.
+  ultimaFirmaCajaRenderizada = firmaCierresCaja(cierresCaja);
 }
+
+window.addEventListener("online", () => {
+  setEstadoSync("Conexión recuperada — sincronizando...");
+  if (guardadoNubePendiente) guardarEnNube();
+});
+
+window.addEventListener("offline", () => {
+  setEstadoSync("Sin conexión — modo local");
+});
 
 function iniciarModuloCaja() {
   cargarCajaLocal();
