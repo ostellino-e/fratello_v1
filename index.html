@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=402" />
+  <link rel="stylesheet" href="styles.css?v=410" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -77,7 +77,7 @@
 
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v4.0.2</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v4.1</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -449,7 +449,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v4.0.2 · Seguridad profesional</span>
+        <span class="adminFinanceVersion">v4.1 · Seguridad profesional</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -520,7 +520,7 @@
           </article>
         </section>
 
-        <section class="adminFinanceTab" data-admin-panel="ingresos">
+        <section class="adminFinanceTab hidden" data-admin-panel="ingresos">
           <article class="adminFinanceBox">
             <div class="adminFinanceBoxHeader">
               <div>
@@ -567,7 +567,7 @@
           </article>
         </section>
 
-        <section class="adminFinanceTab" data-admin-panel="gastos">
+        <section class="adminFinanceTab hidden" data-admin-panel="gastos">
           <article class="adminFinanceBox">
             <div class="adminFinanceBoxHeader">
               <div>
@@ -625,7 +625,7 @@
           </article>
         </section>
 
-        <section class="adminFinanceTab" data-admin-panel="presupuesto">
+        <section class="adminFinanceTab hidden" data-admin-panel="presupuesto">
           <article class="adminFinanceBox">
             <div class="adminFinanceBoxHeader">
               <div>
@@ -1018,7 +1018,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=402"></script>
+  <script src="app.js?v=410"></script>
 
   
 
@@ -1035,12 +1035,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=402")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=410")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=402", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=410", {
             scope: "./",
             updateViaCache: "none"
           });

@@ -3201,3 +3201,12 @@ body.modal-open{
 .backupGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.backupCard{display:grid;gap:9px;padding:18px;border:1px solid #e4d3c4;border-radius:17px;background:#fff}.backupCard>span{font-size:30px}.backupCard h4,.backupCard p{margin:0}.backupCard p{color:#6f655d}.backupHistoryHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 12px}
 @media(max-width:760px){.securityHero{align-items:flex-start;flex-direction:column}.securityForm,.backupGrid{grid-template-columns:1fr}.securityRow{grid-template-columns:auto 1fr}.securityRow>.securityStatus,.securityRow>.securityRowActions{grid-column:2}.securityHeroActions{width:100%;flex-wrap:wrap}.securityHeroActions select{flex:1}}
 @media print{body *{visibility:hidden!important}#seccionAdministracion,#seccionAdministracion *{visibility:visible!important}#seccionAdministracion{position:absolute;inset:0}.adminFinanceTabs,.adminFinanceToolbarActions,.securityPanel,.adminCajaAccessCard{display:none!important}}
+
+/* Fratello v4.1 — Estabilización de Administración */
+#panelAdministracionPrivado{min-height:320px}
+#panelAdministracionPrivado .adminFinanceTab{width:100%;min-height:120px}
+#panelAdministracionPrivado .adminFinanceTab.hidden{display:none!important}
+#panelAdministracionPrivado .adminFinanceTab.active{display:block!important}
+#panelCajaAdmin[data-admin-panel="caja"]{position:static!important;visibility:visible;opacity:1}
+.adminRenderError{padding:24px;border:1px solid #e7c6a7;border-radius:16px;background:#fff8ef}
+.adminRenderError h3,.adminRenderError p{margin-top:0}

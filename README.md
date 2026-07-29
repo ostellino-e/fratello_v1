@@ -1,26 +1,22 @@
-# Fratello v4.0.2 — Corrección de reingreso a Administración
+# Fratello v4.1 — Estabilización de Administración
 
-## Bug corregido
-La primera entrada a Administración funcionaba, pero al salir y volver a entrar el contenido podía quedar vacío.
+## Correcciones
+- Administración se reconstruye cada vez que se abre.
+- Se puede salir y volver a entrar repetidamente.
+- Control de Caja abre dentro de Administración sin pantalla en blanco.
+- Un único controlador administra todas las pestañas.
+- Fallback automático al Resumen si falta un panel.
+- Caja privada se relocaliza y valida dentro de Administración.
+- Cada pestaña vuelve a renderizar sus datos al abrirse.
+- Si Caja encuentra un error, muestra una pantalla recuperable en vez de quedar en blanco.
 
-## Causa
-La tarjeta del menú volvía a abrir solamente la sección exterior. No restauraba el panel privado ni renderizaba nuevamente sus módulos.
-
-## Solución
-Cada ingreso a Administración ahora:
-- verifica la sesión y el dispositivo;
-- vuelve a mostrar el panel privado;
-- activa la pestaña Resumen;
-- renderiza nuevamente Administración;
-- renderiza Usuarios, Dispositivos, Auditoría y Copias;
-- reinicia el control de actividad.
-
-## Prueba
-1. Entrar a Administración.
-2. Volver al inicio.
-3. Entrar nuevamente.
-4. Repetirlo varias veces.
-5. La pantalla debe mostrarse completa en cada ingreso.
+## Pestañas revisadas
+Resumen, Ingresos, Gastos, Presupuesto, Caja privada, Usuarios, Dispositivos, Auditoría y Copias.
 
 ## Versión esperada
-v4.0.2
+v4.1
+
+## Progreso
+- Etapa D — Seguridad y usuarios: 92%
+- Estabilidad de Administración: 100%
+- Proyecto Fratello estimado: 95%

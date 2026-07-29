@@ -7950,19 +7950,21 @@ function renderAdministracionFinanciera() {
 function abrirAdministracionPrivada() {
   if (!tieneRolAdministrador()) {
     administracionPrivadaActiva = false;
-    $("panelAdministracionPrivado")?.classList.add("hidden");
     $("panelAdministracionLogin")?.classList.remove("hidden");
-    return;
+    $("panelAdministracionPrivado")?.classList.add("hidden");
+    return false;
   }
-
   administracionPrivadaActiva = true;
+  asegurarCajaPrivadaDentroAdministracion();
+  instalarNavegacionAdministracionEstable();
   $("panelAdministracionLogin")?.classList.add("hidden");
   $("panelAdministracionPrivado")?.classList.remove("hidden");
+  $("panelAdministracionPrivado")?.removeAttribute("style");
   activarTabAdministracion("resumen");
-  if ($("estadoLoginAdministracion")) $("estadoLoginAdministracion").textContent = "";
-  if ($("pinAdministracion")) $("pinAdministracion").value = "";
-  registrarActividadAdministracion();
   renderAdministracionFinanciera();
+  renderSeguridadCompleta();
+  registrarActividadAdministracion();
+  return true;
 }
 
 function ingresarAdministracion() {
@@ -8148,34 +8150,84 @@ function eliminarPresupuestoAdministracion(id) {
   guardarAdministracion();
 }
 
-function activarTabAdministracion(nombre) {
-  const tabsSeguras = ["caja","usuarios","dispositivos","auditoria","backup"];
+function activarTabAdministracion(nombre = "resumen") {
+  const tabsSeguras = ["caja", "usuarios", "dispositivos", "auditoria", "backup"];
   if (tabsSeguras.includes(nombre) && !tieneRolAdministrador()) {
     mostrarModalAdministrador();
-    return;
+    return false;
   }
-
   asegurarCajaPrivadaDentroAdministracion();
-
-  document.querySelectorAll("[data-admin-tab]").forEach(boton => {
-    boton.classList.toggle("active", boton.dataset.adminTab === nombre);
-  });
-  document.querySelectorAll("[data-admin-panel]").forEach(panel => {
-    panel.classList.toggle("active", panel.dataset.adminPanel === nombre);
-  });
-  if (nombre === "caja" && tieneRolAdministrador()) {
-    cajaAdminActivo = true;
-    renderCajaAdmin();
-    renderDashboardCaja();
+  const botones = [...document.querySelectorAll("#panelAdministracionPrivado [data-admin-tab]")];
+  const paneles = [...document.querySelectorAll("#panelAdministracionPrivado [data-admin-panel]")];
+  let botonObjetivo = botones.find(b => b.dataset.adminTab === nombre);
+  let panelObjetivo = paneles.find(p => p.dataset.adminPanel === nombre);
+  if (!botonObjetivo || !panelObjetivo) {
+    nombre = "resumen";
+    botonObjetivo = botones.find(b => b.dataset.adminTab === nombre);
+    panelObjetivo = paneles.find(p => p.dataset.adminPanel === nombre);
   }
+  botones.forEach(boton => {
+    const activo = boton === botonObjetivo;
+    boton.classList.toggle("active", activo);
+    boton.setAttribute("aria-selected", activo ? "true" : "false");
+  });
+  paneles.forEach(panel => {
+    const activo = panel === panelObjetivo;
+    panel.classList.toggle("active", activo);
+    panel.classList.toggle("hidden", !activo);
+    panel.setAttribute("aria-hidden", activo ? "false" : "true");
+    panel.style.display = activo ? "block" : "none";
+  });
+  if (!panelObjetivo) {
+    console.error("Administración: no se encontró el panel solicitado", nombre);
+    return false;
+  }
+  switch (nombre) {
+    case "resumen": case "ingresos": case "gastos": case "presupuesto":
+      renderAdministracionFinanciera(); break;
+    case "caja":
+      cajaAdminActivo = true; renderCajaAdminSeguro(); break;
+    case "usuarios": case "dispositivos": case "auditoria": case "backup":
+      renderSeguridadCompleta(); break;
+  }
+  panelObjetivo.scrollTop = 0;
+  return true;
 }
 
 function asegurarCajaPrivadaDentroAdministracion() {
   const panelCaja = $("panelCajaAdmin");
   const panelAdministracion = $("panelAdministracionPrivado");
-  if (panelCaja && panelAdministracion && panelCaja.parentElement !== panelAdministracion) {
-    panelAdministracion.appendChild(panelCaja);
+  const tabs = panelAdministracion?.querySelector(".adminFinanceTabs");
+  if (!panelCaja || !panelAdministracion) return false;
+  if (panelCaja.parentElement !== panelAdministracion) panelAdministracion.appendChild(panelCaja);
+  panelCaja.dataset.adminPanel = "caja";
+  panelCaja.classList.add("adminFinanceTab");
+  panelCaja.classList.remove("hidden");
+  panelCaja.removeAttribute("style");
+  if (tabs && !tabs.querySelector('[data-admin-tab="caja"]')) {
+    const botonCaja = document.createElement("button");
+    botonCaja.type = "button"; botonCaja.dataset.adminTab = "caja";
+    botonCaja.innerHTML = '🏦 Caja privada <span class="adminTabNew">NUEVO</span>';
+    tabs.appendChild(botonCaja);
   }
+  return true;
+}
+
+
+function instalarNavegacionAdministracionEstable() {
+  const panel = $("panelAdministracionPrivado");
+  if (!panel || panel.dataset.navEstable === "1") return;
+  panel.dataset.navEstable = "1";
+  panel.addEventListener("click", evento => {
+    const boton = evento.target.closest("[data-admin-tab]");
+    if (!boton || !panel.contains(boton)) return;
+    evento.preventDefault();
+    activarTabAdministracion(boton.dataset.adminTab || "resumen");
+  });
+  $("btnAbrirControlCajaAdministracion")?.addEventListener("click", evento => {
+    evento.preventDefault();
+    if (activarTabAdministracion("caja")) $("panelCajaAdmin")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 
 function iniciarModuloAdministracion() {
@@ -8183,6 +8235,7 @@ function iniciarModuloAdministracion() {
   window.__FRATELLO_ADMIN_FIN_INICIADA__ = true;
 
   asegurarCajaPrivadaDentroAdministracion();
+  instalarNavegacionAdministracionEstable();
   iniciarSeguridadFratello();
   cargarAdministracionLocal();
   if ($("mesAdministracion")) $("mesAdministracion").value = adminFinMesActual();
@@ -8191,10 +8244,6 @@ function iniciarModuloAdministracion() {
   $("btnSalirAdministracion")?.addEventListener("click", cerrarSesionAdministrador);
   $("btnActualizarAdministracion")?.addEventListener("click", renderAdministracionFinanciera);
   $("mesAdministracion")?.addEventListener("change", renderAdministracionFinanciera);
-
-  document.querySelectorAll("[data-admin-tab]").forEach(btn => {
-    btn.addEventListener("click", () => activarTabAdministracion(btn.dataset.adminTab));
-  });
 
   $("btnAbrirControlCajaAdministracion")?.addEventListener("click", () => {
     activarTabAdministracion("caja");
@@ -8696,6 +8745,26 @@ function renderCajaAdmin() {
   renderPersonasCaja();
   renderDashboardCaja();
 }
+
+function renderCajaAdminSeguro() {
+  const panel = $("panelCajaAdmin");
+  if (!panel) {
+    console.error("Caja privada: panelCajaAdmin no existe.");
+    return false;
+  }
+  try {
+    panel.classList.remove("hidden");
+    panel.style.display = "block";
+    renderCajaAdmin();
+    if (typeof renderDashboardCaja === "function") renderDashboardCaja();
+    return true;
+  } catch (error) {
+    console.error("Caja privada: error al renderizar", error);
+    panel.innerHTML = `<article class="adminRenderError"><h3>⚠️ No se pudo cargar Control de Caja</h3><p>La pantalla se recuperó sin quedar en blanco. Actualizá los datos o volvé a intentar.</p><button type="button" onclick="renderCajaAdminSeguro()">Reintentar</button></article>`;
+    return false;
+  }
+}
+
 
 function editarCierreDesdeAdminCaja(fecha, turno) {
   if ($("cajaFecha")) $("cajaFecha").value = fecha;
