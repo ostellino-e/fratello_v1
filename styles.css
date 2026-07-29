@@ -2666,3 +2666,312 @@ body.modal-open{
     align-items:flex-start;
   }
 }
+
+
+/* =========================================================
+   FRATELLO v3.9.4C.1 — Administración financiera privada
+   ========================================================= */
+.homeMainCard.administracion{
+  background:linear-gradient(135deg,#18382c,#235844);
+  color:#fff;
+}
+.privateMiniBadge{
+  display:inline-block;
+  margin-left:6px;
+  padding:2px 6px;
+  border-radius:999px;
+  font-size:9px;
+  font-style:normal;
+  letter-spacing:.08em;
+  background:#f0c96a;
+  color:#2e2415;
+  vertical-align:middle;
+}
+.adminFinanceHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:14px;
+}
+.adminFinanceHeader h2{margin-bottom:3px}
+.adminFinanceVersion{
+  padding:7px 10px;
+  border-radius:999px;
+  background:#e9f4ef;
+  color:#235844;
+  font-size:12px;
+  font-weight:800;
+}
+.adminFinanceLogin{
+  max-width:560px;
+  margin:28px auto;
+  padding:26px;
+  border:1px solid #decfbd;
+  border-radius:20px;
+  background:#fffaf4;
+  text-align:center;
+  box-shadow:0 12px 34px rgba(54,39,24,.08);
+}
+.adminFinanceLoginIcon{font-size:42px}
+.adminFinanceLogin h3{margin:8px 0}
+.adminFinanceLogin p{color:#6f6255;line-height:1.45}
+.adminFinanceLoginRow{
+  display:flex;
+  gap:10px;
+  max-width:360px;
+  margin:18px auto 8px;
+}
+.adminFinanceLoginRow input{flex:1}
+#estadoLoginAdministracion{color:#b42318;font-weight:700}
+.adminFinanceToolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  padding:13px 15px;
+  border-radius:15px;
+  background:#1f4b3a;
+  color:#fff;
+}
+.adminFinanceToolbar>div:first-child{
+  display:flex;
+  flex-direction:column;
+}
+.adminFinanceToolbar small{opacity:.78}
+.adminFinanceToolbarActions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.adminFinanceToolbarActions input,
+.adminFinanceToolbarActions button{
+  min-height:40px;
+}
+.adminFinanceTabs{
+  display:flex;
+  gap:8px;
+  overflow:auto;
+  padding:14px 0 8px;
+}
+.adminFinanceTabs button{
+  flex:0 0 auto;
+  border:1px solid #d7c8b7;
+  background:#fff;
+  border-radius:999px;
+  padding:9px 14px;
+  font-weight:800;
+}
+.adminFinanceTabs button.active{
+  background:#235844;
+  border-color:#235844;
+  color:#fff;
+}
+.adminFinanceTab{display:none}
+.adminFinanceTab.active{display:block}
+.adminFinanceSummary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin:10px 0 14px;
+}
+.adminFinanceSummary article{
+  min-height:118px;
+  padding:16px;
+  border:1px solid #ded2c4;
+  border-radius:16px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.adminFinanceSummary article span{font-size:13px;color:#6c6055;font-weight:700}
+.adminFinanceSummary article strong{font-size:24px;line-height:1.1}
+.adminFinanceSummary article small{color:#7e7267}
+.adminFinanceSummary article.positive{background:#edf8f1;border-color:#acd9ba}
+.adminFinanceSummary article.negative{background:#fff0ee;border-color:#f0b5ae}
+.adminFinanceSummary article.pending{background:#fff8e7;border-color:#ecd28d}
+.adminFinanceGridTwo{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.adminFinanceBox{
+  margin:14px 0;
+  padding:16px;
+  border:1px solid #ded2c4;
+  border-radius:17px;
+  background:#fff;
+}
+.adminFinanceBoxHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:13px;
+}
+.adminFinanceBoxHeader h3{margin:0 0 3px}
+.adminFinanceBoxHeader small{color:#776b60}
+.originBadge{
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.05em;
+  white-space:nowrap;
+}
+.originBadge.auto{background:#e8f2ff;color:#175a9e}
+.originBadge.caja{background:#fff2cc;color:#795b00}
+.adminFinanceBreakdown>div{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 0;
+  border-bottom:1px solid #eee5db;
+}
+.adminFinanceBreakdown>div:last-child{border-bottom:0}
+.adminFinanceBreakdown .pending{color:#9a6500}
+.adminFinanceBreakdown .total{
+  margin-top:4px;
+  font-size:16px;
+  font-weight:800;
+}
+.adminFinanceForm{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:11px;
+  margin:12px 0 16px;
+  padding:14px;
+  border-radius:14px;
+  background:#f7f2ec;
+}
+.adminFinanceForm.compact{grid-template-columns:repeat(3,minmax(0,1fr))}
+.adminFinanceForm label{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  font-size:12px;
+  font-weight:800;
+}
+.adminFinanceForm input,
+.adminFinanceForm select{width:100%}
+.adminFinanceFormWide{grid-column:span 2}
+.adminCheckLabel{
+  flex-direction:row!important;
+  align-items:center;
+  align-self:end;
+  min-height:43px;
+}
+.adminCheckLabel input{width:auto!important}
+.adminFinanceFormActions{
+  grid-column:1/-1;
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+.adminFinanceTableWrap{
+  width:100%;
+  overflow:auto;
+}
+.adminFinanceTable{
+  width:100%;
+  min-width:680px;
+  border-collapse:collapse;
+}
+.adminFinanceTable th{
+  padding:9px 8px;
+  background:#f1ebe4;
+  color:#61574e;
+  font-size:11px;
+  text-align:left;
+  text-transform:uppercase;
+}
+.adminFinanceTable td{
+  padding:10px 8px;
+  border-bottom:1px solid #eee5db;
+  vertical-align:middle;
+}
+.adminFinanceTable td small{
+  display:block;
+  margin-top:2px;
+  color:#81756a;
+}
+.adminFinanceRowActions{
+  white-space:nowrap;
+  text-align:right;
+}
+.adminFinanceRowActions button{
+  padding:6px 8px;
+  font-size:11px;
+}
+.statusPill{
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800;
+}
+.statusPill.paid{background:#e7f6ec;color:#176437}
+.statusPill.pending{background:#fff2cc;color:#805d00}
+.adminFinanceEmpty{
+  padding:20px;
+  border:1px dashed #d8cab9;
+  border-radius:12px;
+  color:#74685d;
+  text-align:center;
+}
+.amountPositive{color:#14703b}
+.amountNegative{color:#b42318}
+.adminBudgetOverview{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.adminBudgetOverview>div{
+  display:flex;
+  flex-direction:column;
+  padding:11px;
+  border-radius:12px;
+  background:#f7f2ec;
+}
+.adminBudgetOverview span{font-size:12px;color:#75695e}
+.adminBudgetOverview strong{font-size:18px;margin-top:3px}
+.adminBudgetBar{
+  height:13px;
+  margin:14px 0 6px;
+  border-radius:999px;
+  overflow:hidden;
+  background:#eee5db;
+}
+.adminBudgetBar i{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:#235844;
+}
+
+@media(max-width:900px){
+  .adminFinanceSummary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .adminFinanceGridTwo{grid-template-columns:1fr}
+}
+@media(max-width:650px){
+  .adminFinanceHeader,
+  .adminFinanceToolbar,
+  .adminFinanceBoxHeader{
+    flex-direction:column;
+  }
+  .adminFinanceToolbarActions{width:100%}
+  .adminFinanceToolbarActions input{flex:1}
+  .adminFinanceSummary{grid-template-columns:1fr 1fr}
+  .adminFinanceForm,
+  .adminFinanceForm.compact{grid-template-columns:1fr}
+  .adminFinanceFormWide{grid-column:auto}
+  .adminFinanceFormActions{grid-column:auto}
+  .adminBudgetOverview{grid-template-columns:1fr}
+}
+@media(max-width:430px){
+  .adminFinanceSummary{grid-template-columns:1fr}
+  .adminFinanceLoginRow{flex-direction:column}
+}

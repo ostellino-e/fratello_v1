@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=393b3" />
+  <link rel="stylesheet" href="styles.css?v=394c1" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.9.3B.3";
-    document.documentElement.dataset.fratelloVersion = "3.9.3B.3";
+    window.FRATELLO_VERSION = "3.9.4C.1";
+    document.documentElement.dataset.fratelloVersion = "3.9.4C.1";
   </script>
 
 </head>
@@ -34,7 +34,7 @@
 </header>
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.3B.3</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.4C.1</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -54,6 +54,11 @@
       </a>
       <a class="homeMainCard caja" href="#seccionCaja" data-seccion="seccionCaja">
         <span class="homeMainIcon">💰</span><span><strong>Caja</strong><small>Cierres por turno, gastos y control privado.</small></span><b>›</b>
+      </a>
+      <a class="homeMainCard administracion" href="#seccionAdministracion" data-seccion="seccionAdministracion">
+        <span class="homeMainIcon">📊</span>
+        <span><strong>Administración <em class="privateMiniBadge">PRIVADO</em></strong><small>Ingresos, gastos, presupuesto y resultado.</small></span>
+        <b>›</b>
       </a>
       <a class="homeMainCard tareas" href="#seccionTareas" data-seccion="seccionTareas">
         <span class="homeMainIcon">✅</span><span><strong>Tareas</strong><small>Próximamente.</small></span><b>›</b>
@@ -392,6 +397,219 @@
   
     
 
+
+    <section class="card appSection administracionModule" id="seccionAdministracion">
+      <a class="volverInicio" href="#" data-volver="true">← Volver</a>
+
+      <div class="adminFinanceHeader">
+        <div>
+          <h2>📊 Administración</h2>
+          <p class="hint">Panel financiero privado de Fratello.</p>
+        </div>
+        <span class="adminFinanceVersion">Etapa C · v1</span>
+      </div>
+
+      <section id="panelAdministracionLogin" class="adminFinanceLogin">
+        <div class="adminFinanceLoginIcon">🔐</div>
+        <h3>Acceso exclusivo del administrador</h3>
+        <p>Usá el mismo PIN privado de Caja. Los empleados no pueden ver importes ni movimientos.</p>
+        <div class="adminFinanceLoginRow">
+          <input id="pinAdministracion" type="password" inputmode="numeric" maxlength="8" placeholder="PIN">
+          <button id="btnIngresarAdministracion" class="primary" type="button">Ingresar</button>
+        </div>
+        <small id="estadoLoginAdministracion"></small>
+      </section>
+
+      <section id="panelAdministracionPrivado" class="hidden">
+        <div class="adminFinanceToolbar">
+          <div>
+            <strong>Panel financiero privado</strong>
+            <small id="periodoAdministracionTexto">Mes actual</small>
+          </div>
+          <div class="adminFinanceToolbarActions">
+            <input id="mesAdministracion" type="month">
+            <button id="btnActualizarAdministracion" type="button">🔄 Actualizar</button>
+            <button id="btnSalirAdministracion" type="button">Cerrar sesión</button>
+          </div>
+        </div>
+
+        <nav class="adminFinanceTabs" aria-label="Secciones administrativas">
+          <button class="active" type="button" data-admin-tab="resumen">📊 Resumen</button>
+          <button type="button" data-admin-tab="ingresos">💰 Ingresos</button>
+          <button type="button" data-admin-tab="gastos">💸 Gastos</button>
+          <button type="button" data-admin-tab="presupuesto">📅 Presupuesto</button>
+        </nav>
+
+        <section class="adminFinanceTab active" data-admin-panel="resumen">
+          <div id="tarjetasResumenAdministracion" class="adminFinanceSummary"></div>
+
+          <div class="adminFinanceGridTwo">
+            <article class="adminFinanceBox">
+              <div class="adminFinanceBoxHeader">
+                <div><h3>Ingresos del mes</h3><small>Caja + clientes externos cobrados</small></div>
+              </div>
+              <div id="resumenIngresosAdministracion"></div>
+            </article>
+
+            <article class="adminFinanceBox">
+              <div class="adminFinanceBoxHeader">
+                <div><h3>Gastos del mes</h3><small>Caja + gastos administrativos pagados</small></div>
+              </div>
+              <div id="resumenGastosAdministracion"></div>
+            </article>
+          </div>
+
+          <article class="adminFinanceBox">
+            <div class="adminFinanceBoxHeader">
+              <div><h3>Control de presupuesto</h3><small>Presupuestado comparado con lo gastado</small></div>
+            </div>
+            <div id="resumenPresupuestoAdministracion"></div>
+          </article>
+        </section>
+
+        <section class="adminFinanceTab" data-admin-panel="ingresos">
+          <article class="adminFinanceBox">
+            <div class="adminFinanceBoxHeader">
+              <div>
+                <h3>Ingresos automáticos de Caja</h3>
+                <small>Se toman de los cierres y no se vuelven a cargar.</small>
+              </div>
+              <span class="originBadge auto">AUTOMÁTICO</span>
+            </div>
+            <div id="ingresosCajaAdministracion"></div>
+          </article>
+
+          <article class="adminFinanceBox">
+            <div class="adminFinanceBoxHeader">
+              <div>
+                <h3>Clientes e ingresos por fuera de Caja</h3>
+                <small>Giuli, Luis, Sindicato, Líbano u otros clientes.</small>
+              </div>
+              <button id="btnNuevoIngresoAdministracion" class="primary" type="button">＋ Nuevo ingreso</button>
+            </div>
+
+            <div id="formIngresoAdministracion" class="adminFinanceForm hidden">
+              <input id="ingresoAdminId" type="hidden">
+              <label>Fecha<input id="ingresoAdminFecha" type="date"></label>
+              <label>Cliente<input id="ingresoAdminCliente" type="text" placeholder="Ej.: Giuli"></label>
+              <label>Monto<input id="ingresoAdminMonto" type="number" min="0" step="1" placeholder="0"></label>
+              <label>Modo de pago
+                <select id="ingresoAdminMedio">
+                  <option>Efectivo</option>
+                  <option>Transferencia</option>
+                  <option>Mercado Pago</option>
+                  <option>Cheque</option>
+                  <option>Otro</option>
+                </select>
+              </label>
+              <label class="adminCheckLabel"><input id="ingresoAdminCobrado" type="checkbox" checked> Cobrado</label>
+              <label class="adminFinanceFormWide">Descripción<input id="ingresoAdminDescripcion" type="text" placeholder="Detalle opcional"></label>
+              <div class="adminFinanceFormActions">
+                <button id="btnCancelarIngresoAdministracion" type="button">Cancelar</button>
+                <button id="btnGuardarIngresoAdministracion" class="primary" type="button">Guardar ingreso</button>
+              </div>
+            </div>
+
+            <div id="listaIngresosExternosAdministracion"></div>
+          </article>
+        </section>
+
+        <section class="adminFinanceTab" data-admin-panel="gastos">
+          <article class="adminFinanceBox">
+            <div class="adminFinanceBoxHeader">
+              <div>
+                <h3>Gastos cargados por las chicas en Caja</h3>
+                <small>Aparecen automáticamente. No los vuelvas a cargar.</small>
+              </div>
+              <span class="originBadge caja">ORIGEN CAJA</span>
+            </div>
+            <div id="gastosCajaAdministracion"></div>
+          </article>
+
+          <article class="adminFinanceBox">
+            <div class="adminFinanceBoxHeader">
+              <div>
+                <h3>Gastos por fuera de Caja</h3>
+                <small>Empleados, proveedores, panadería y gastos generales.</small>
+              </div>
+              <button id="btnNuevoGastoAdministracion" class="primary" type="button">＋ Nuevo gasto</button>
+            </div>
+
+            <div id="formGastoAdministracion" class="adminFinanceForm hidden">
+              <input id="gastoAdminId" type="hidden">
+              <label>Fecha<input id="gastoAdminFecha" type="date"></label>
+              <label>Categoría
+                <select id="gastoAdminCategoria">
+                  <option>Empleados</option>
+                  <option>Proveedores / Insumos</option>
+                  <option>Panadería</option>
+                  <option>Gastos generales</option>
+                  <option>Impuestos y servicios</option>
+                  <option>Préstamos</option>
+                  <option>Ahorro / Inversión</option>
+                  <option>Otros</option>
+                </select>
+              </label>
+              <label>Motivo<input id="gastoAdminMotivo" type="text" placeholder="Ej.: Bowen, sueldo Arnold, luz"></label>
+              <label>Monto<input id="gastoAdminMonto" type="number" min="0" step="1" placeholder="0"></label>
+              <label>Modo de pago
+                <select id="gastoAdminMedio">
+                  <option>Efectivo</option>
+                  <option>Transferencia</option>
+                  <option>Mercado Pago</option>
+                  <option>Cheque</option>
+                  <option>Otro</option>
+                </select>
+              </label>
+              <label class="adminCheckLabel"><input id="gastoAdminPagado" type="checkbox" checked> Pagado</label>
+              <div class="adminFinanceFormActions">
+                <button id="btnCancelarGastoAdministracion" type="button">Cancelar</button>
+                <button id="btnGuardarGastoAdministracion" class="primary" type="button">Guardar gasto</button>
+              </div>
+            </div>
+
+            <div id="listaGastosManualesAdministracion"></div>
+          </article>
+        </section>
+
+        <section class="adminFinanceTab" data-admin-panel="presupuesto">
+          <article class="adminFinanceBox">
+            <div class="adminFinanceBoxHeader">
+              <div>
+                <h3>Presupuesto mensual</h3>
+                <small>Cargá cuánto estimás gastar en cada concepto.</small>
+              </div>
+              <button id="btnNuevoPresupuestoAdministracion" class="primary" type="button">＋ Agregar concepto</button>
+            </div>
+
+            <div id="formPresupuestoAdministracion" class="adminFinanceForm compact hidden">
+              <input id="presupuestoAdminId" type="hidden">
+              <label>Concepto<input id="presupuestoAdminConcepto" type="text" placeholder="Ej.: Materia prima"></label>
+              <label>Categoría
+                <select id="presupuestoAdminCategoria">
+                  <option>Empleados</option>
+                  <option>Proveedores / Insumos</option>
+                  <option>Panadería</option>
+                  <option>Gastos generales</option>
+                  <option>Impuestos y servicios</option>
+                  <option>Préstamos</option>
+                  <option>Ahorro / Inversión</option>
+                  <option>Otros</option>
+                </select>
+              </label>
+              <label>Monto previsto<input id="presupuestoAdminMonto" type="number" min="0" step="1" placeholder="0"></label>
+              <div class="adminFinanceFormActions">
+                <button id="btnCancelarPresupuestoAdministracion" type="button">Cancelar</button>
+                <button id="btnGuardarPresupuestoAdministracion" class="primary" type="button">Guardar</button>
+              </div>
+            </div>
+
+            <div id="listaPresupuestoAdministracion"></div>
+          </article>
+        </section>
+      </section>
+    </section>
+
     <section class="card appSection cajaModule" id="seccionCaja">
       <a class="volverInicio" href="#" data-volver="true">← Volver</a>
 
@@ -704,7 +922,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=393b3"></script>
+  <script src="app.js?v=394c1"></script>
 
   
 
@@ -721,12 +939,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=393b3")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=394c1")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=393b3", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=394c1", {
             scope: "./",
             updateViaCache: "none"
           });

@@ -2110,6 +2110,7 @@ function datosActuales() {
     cierresCaja,
     personasCaja,
     configuracionCaja,
+    administracionFinanciera,
     actualizado: new Date().toISOString()
   };
 }
@@ -2173,6 +2174,7 @@ function aplicarCierresCajaDesdeNube(listaRemota) {
   cargarCierreSeleccionadoCaja();
   renderCajaAdmin();
   renderDashboardCaja();
+  renderAdministracionFinanciera();
   return true;
 }
 
@@ -2743,6 +2745,22 @@ function escucharCambiosNube() {
       if (data.configuracionCaja && typeof data.configuracionCaja === "object") {
         configuracionCaja = { ...configuracionCaja, ...data.configuracionCaja };
         guardarCajaLocal();
+      }
+
+      if (data.administracionFinanciera && typeof data.administracionFinanciera === "object") {
+        administracionFinanciera = {
+          ingresosExternos: Array.isArray(data.administracionFinanciera.ingresosExternos)
+            ? data.administracionFinanciera.ingresosExternos
+            : administracionFinanciera.ingresosExternos,
+          gastosManuales: Array.isArray(data.administracionFinanciera.gastosManuales)
+            ? data.administracionFinanciera.gastosManuales
+            : administracionFinanciera.gastosManuales,
+          presupuestos: Array.isArray(data.administracionFinanciera.presupuestos)
+            ? data.administracionFinanciera.presupuestos
+            : administracionFinanciera.presupuestos
+        };
+        guardarAdministracionLocal();
+        renderAdministracionFinanciera();
       }
 
       validarClientes();
@@ -7019,6 +7037,634 @@ function repararPedidosConParserV311() {
 
 
 
+
+/* =========================================================
+   FRATELLO ADMINISTRACIÓN FINANCIERA — v3.9.4C.1
+   ========================================================= */
+
+const ADMIN_FIN_STORAGE_KEY = "fratello_administracion_v394c1";
+let administracionFinanciera = {
+  ingresosExternos: [],
+  gastosManuales: [],
+  presupuestos: []
+};
+let administracionPrivadaActiva = false;
+let temporizadorAdministracion = null;
+const ADMIN_FIN_TIMEOUT_MS = 3 * 60 * 1000;
+
+function adminFinId(prefijo) {
+  return `${prefijo}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function adminFinHoy() {
+  const ahora = new Date();
+  const local = new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function adminFinMesActual() {
+  return adminFinHoy().slice(0, 7);
+}
+
+function adminFinMonto(valor) {
+  const numero = Number(valor || 0);
+  return Number.isFinite(numero) && numero >= 0 ? numero : 0;
+}
+
+function adminFinDinero(valor) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0
+  }).format(Number(valor || 0));
+}
+
+function adminFinEscapar(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function cargarAdministracionLocal() {
+  try {
+    const guardado = leerJsonLocalSeguro(ADMIN_FIN_STORAGE_KEY, {});
+    administracionFinanciera = {
+      ingresosExternos: Array.isArray(guardado.ingresosExternos) ? guardado.ingresosExternos : [],
+      gastosManuales: Array.isArray(guardado.gastosManuales) ? guardado.gastosManuales : [],
+      presupuestos: Array.isArray(guardado.presupuestos) ? guardado.presupuestos : []
+    };
+  } catch (error) {
+    console.error("No se pudo cargar Administración:", error);
+  }
+}
+
+function guardarAdministracionLocal() {
+  localStorage.setItem(ADMIN_FIN_STORAGE_KEY, JSON.stringify(administracionFinanciera));
+}
+
+function guardarAdministracion() {
+  guardarAdministracionLocal();
+  renderAdministracionFinanciera();
+  guardarEnNube();
+}
+
+function mesSeleccionadoAdministracion() {
+  return $("mesAdministracion")?.value || adminFinMesActual();
+}
+
+function fechaEnMesAdministracion(fecha, mes = mesSeleccionadoAdministracion()) {
+  return String(fecha || "").slice(0, 7) === mes;
+}
+
+function ingresosCajaDelMesAdministracion() {
+  const mes = mesSeleccionadoAdministracion();
+  return (Array.isArray(cierresCaja) ? cierresCaja : [])
+    .filter(cierre => fechaEnMesAdministracion(cierre.fecha, mes))
+    .map(cierre => ({
+      id: `caja_ingreso_${cierre.id}`,
+      fecha: cierre.fecha,
+      cliente: "Fratello",
+      descripcion: `Caja ${turnoTextoCaja(cierre.turno)}`,
+      efectivo: adminFinMonto(cierre.efectivo),
+      transferencias: adminFinMonto(cierre.transferencias),
+      monto: adminFinMonto(cierre.efectivo) + adminFinMonto(cierre.transferencias),
+      origen: "Caja"
+    }))
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+}
+
+function gastosCajaDelMesAdministracion() {
+  const mes = mesSeleccionadoAdministracion();
+  const resultado = [];
+
+  (Array.isArray(cierresCaja) ? cierresCaja : [])
+    .filter(cierre => fechaEnMesAdministracion(cierre.fecha, mes))
+    .forEach(cierre => {
+      (Array.isArray(cierre.gastos) ? cierre.gastos : []).forEach((gasto, indice) => {
+        resultado.push({
+          id: `caja_gasto_${cierre.id}_${indice}`,
+          fecha: cierre.fecha,
+          categoria: "Gasto de Caja",
+          motivo: gasto.motivo || "Gasto sin descripción",
+          monto: adminFinMonto(gasto.monto),
+          medio: "Efectivo",
+          origen: `Caja ${turnoTextoCaja(cierre.turno)}`
+        });
+      });
+    });
+
+  return resultado.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+}
+
+function ingresosExternosDelMesAdministracion() {
+  const mes = mesSeleccionadoAdministracion();
+  return administracionFinanciera.ingresosExternos
+    .filter(item => fechaEnMesAdministracion(item.fecha, mes))
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+}
+
+function gastosManualesDelMesAdministracion() {
+  const mes = mesSeleccionadoAdministracion();
+  return administracionFinanciera.gastosManuales
+    .filter(item => fechaEnMesAdministracion(item.fecha, mes))
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+}
+
+function presupuestosDelMesAdministracion() {
+  const mes = mesSeleccionadoAdministracion();
+  return administracionFinanciera.presupuestos
+    .filter(item => item.mes === mes)
+    .sort((a, b) => String(a.categoria).localeCompare(String(b.categoria)));
+}
+
+function resumenNumericoAdministracion() {
+  const ingresosCaja = ingresosCajaDelMesAdministracion();
+  const ingresosExternos = ingresosExternosDelMesAdministracion();
+  const gastosCaja = gastosCajaDelMesAdministracion();
+  const gastosManuales = gastosManualesDelMesAdministracion();
+
+  const totalCaja = ingresosCaja.reduce((s, x) => s + x.monto, 0);
+  const externosCobrados = ingresosExternos
+    .filter(x => x.cobrado !== false)
+    .reduce((s, x) => s + adminFinMonto(x.monto), 0);
+  const externosPendientes = ingresosExternos
+    .filter(x => x.cobrado === false)
+    .reduce((s, x) => s + adminFinMonto(x.monto), 0);
+
+  const totalGastosCaja = gastosCaja.reduce((s, x) => s + x.monto, 0);
+  const manualesPagados = gastosManuales
+    .filter(x => x.pagado !== false)
+    .reduce((s, x) => s + adminFinMonto(x.monto), 0);
+  const manualesPendientes = gastosManuales
+    .filter(x => x.pagado === false)
+    .reduce((s, x) => s + adminFinMonto(x.monto), 0);
+
+  const ingresos = totalCaja + externosCobrados;
+  const gastos = totalGastosCaja + manualesPagados;
+
+  return {
+    ingresos,
+    gastos,
+    resultado: ingresos - gastos,
+    totalCaja,
+    externosCobrados,
+    externosPendientes,
+    totalGastosCaja,
+    manualesPagados,
+    manualesPendientes
+  };
+}
+
+function adminFinVacio(texto) {
+  return `<div class="adminFinanceEmpty">${adminFinEscapar(texto)}</div>`;
+}
+
+function adminFinTabla(encabezados, filas) {
+  if (!filas.length) return "";
+  return `
+    <div class="adminFinanceTableWrap">
+      <table class="adminFinanceTable">
+        <thead><tr>${encabezados.map(x => `<th>${x}</th>`).join("")}</tr></thead>
+        <tbody>${filas.join("")}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderResumenAdministracion() {
+  const r = resumenNumericoAdministracion();
+  const resultadoClase = r.resultado >= 0 ? "positive" : "negative";
+
+  if ($("tarjetasResumenAdministracion")) {
+    $("tarjetasResumenAdministracion").innerHTML = `
+      <article><span>Ingresos totales</span><strong>${adminFinDinero(r.ingresos)}</strong><small>Caja + ingresos externos cobrados</small></article>
+      <article><span>Gastos totales</span><strong>${adminFinDinero(r.gastos)}</strong><small>Caja + gastos administrativos pagados</small></article>
+      <article class="${resultadoClase}"><span>Resultado estimado</span><strong>${adminFinDinero(r.resultado)}</strong><small>Ingresos menos gastos</small></article>
+      <article class="pending"><span>Compromisos pendientes</span><strong>${adminFinDinero(r.manualesPendientes)}</strong><small>Gastos cargados todavía no pagados</small></article>`;
+  }
+
+  if ($("resumenIngresosAdministracion")) {
+    $("resumenIngresosAdministracion").innerHTML = `
+      <div class="adminFinanceBreakdown">
+        <div><span>Fratello / Cajas</span><b>${adminFinDinero(r.totalCaja)}</b></div>
+        <div><span>Clientes externos cobrados</span><b>${adminFinDinero(r.externosCobrados)}</b></div>
+        <div class="pending"><span>Clientes pendientes de cobro</span><b>${adminFinDinero(r.externosPendientes)}</b></div>
+        <div class="total"><span>Total contabilizado</span><b>${adminFinDinero(r.ingresos)}</b></div>
+      </div>`;
+  }
+
+  if ($("resumenGastosAdministracion")) {
+    $("resumenGastosAdministracion").innerHTML = `
+      <div class="adminFinanceBreakdown">
+        <div><span>Gastos tomados de Caja</span><b>${adminFinDinero(r.totalGastosCaja)}</b></div>
+        <div><span>Gastos externos pagados</span><b>${adminFinDinero(r.manualesPagados)}</b></div>
+        <div class="pending"><span>Gastos pendientes</span><b>${adminFinDinero(r.manualesPendientes)}</b></div>
+        <div class="total"><span>Total contabilizado</span><b>${adminFinDinero(r.gastos)}</b></div>
+      </div>`;
+  }
+
+  renderResumenPresupuestoAdministracion();
+}
+
+function renderIngresosAdministracion() {
+  const caja = ingresosCajaDelMesAdministracion();
+  const externos = ingresosExternosDelMesAdministracion();
+
+  if ($("ingresosCajaAdministracion")) {
+    $("ingresosCajaAdministracion").innerHTML = caja.length
+      ? adminFinTabla(
+          ["Fecha", "Origen", "Efectivo", "Transferencia", "Total"],
+          caja.map(item => `<tr>
+            <td>${adminFinEscapar(item.fecha)}</td>
+            <td>${adminFinEscapar(item.descripcion)}</td>
+            <td>${adminFinDinero(item.efectivo)}</td>
+            <td>${adminFinDinero(item.transferencias)}</td>
+            <td><strong>${adminFinDinero(item.monto)}</strong></td>
+          </tr>`)
+        )
+      : adminFinVacio("Todavía no hay cierres de Caja para este mes.");
+  }
+
+  if ($("listaIngresosExternosAdministracion")) {
+    $("listaIngresosExternosAdministracion").innerHTML = externos.length
+      ? adminFinTabla(
+          ["Fecha", "Cliente", "Medio", "Estado", "Monto", ""],
+          externos.map(item => `<tr>
+            <td>${adminFinEscapar(item.fecha)}</td>
+            <td><strong>${adminFinEscapar(item.cliente)}</strong><small>${adminFinEscapar(item.descripcion || "")}</small></td>
+            <td>${adminFinEscapar(item.medio || "")}</td>
+            <td><span class="statusPill ${item.cobrado !== false ? "paid" : "pending"}">${item.cobrado !== false ? "Cobrado" : "Pendiente"}</span></td>
+            <td><strong>${adminFinDinero(item.monto)}</strong></td>
+            <td class="adminFinanceRowActions">
+              <button type="button" onclick="editarIngresoAdministracion('${item.id}')">Editar</button>
+              <button type="button" onclick="eliminarIngresoAdministracion('${item.id}')">Eliminar</button>
+            </td>
+          </tr>`)
+        )
+      : adminFinVacio("No cargaste ingresos externos en este mes.");
+  }
+}
+
+function renderGastosAdministracion() {
+  const caja = gastosCajaDelMesAdministracion();
+  const manuales = gastosManualesDelMesAdministracion();
+
+  if ($("gastosCajaAdministracion")) {
+    $("gastosCajaAdministracion").innerHTML = caja.length
+      ? adminFinTabla(
+          ["Fecha", "Motivo", "Origen", "Monto"],
+          caja.map(item => `<tr>
+            <td>${adminFinEscapar(item.fecha)}</td>
+            <td><strong>${adminFinEscapar(item.motivo)}</strong></td>
+            <td><span class="originBadge caja">${adminFinEscapar(item.origen)}</span></td>
+            <td><strong>${adminFinDinero(item.monto)}</strong></td>
+          </tr>`)
+        )
+      : adminFinVacio("No hay gastos cargados en los cierres de Caja de este mes.");
+  }
+
+  if ($("listaGastosManualesAdministracion")) {
+    $("listaGastosManualesAdministracion").innerHTML = manuales.length
+      ? adminFinTabla(
+          ["Fecha", "Categoría", "Motivo", "Medio", "Estado", "Monto", ""],
+          manuales.map(item => `<tr>
+            <td>${adminFinEscapar(item.fecha)}</td>
+            <td>${adminFinEscapar(item.categoria)}</td>
+            <td><strong>${adminFinEscapar(item.motivo)}</strong></td>
+            <td>${adminFinEscapar(item.medio || "")}</td>
+            <td><span class="statusPill ${item.pagado !== false ? "paid" : "pending"}">${item.pagado !== false ? "Pagado" : "Pendiente"}</span></td>
+            <td><strong>${adminFinDinero(item.monto)}</strong></td>
+            <td class="adminFinanceRowActions">
+              <button type="button" onclick="editarGastoAdministracion('${item.id}')">Editar</button>
+              <button type="button" onclick="eliminarGastoAdministracion('${item.id}')">Eliminar</button>
+            </td>
+          </tr>`)
+        )
+      : adminFinVacio("No cargaste gastos por fuera de Caja en este mes.");
+  }
+}
+
+function gastoRealPorCategoriaAdministracion(categoria) {
+  const manual = gastosManualesDelMesAdministracion()
+    .filter(x => x.pagado !== false && x.categoria === categoria)
+    .reduce((s, x) => s + adminFinMonto(x.monto), 0);
+
+  // Los gastos de Caja se muestran separados porque las chicas no eligen categoría.
+  const caja = categoria === "Gastos de Caja"
+    ? gastosCajaDelMesAdministracion().reduce((s, x) => s + x.monto, 0)
+    : 0;
+
+  return manual + caja;
+}
+
+function renderPresupuestoAdministracion() {
+  const items = presupuestosDelMesAdministracion();
+
+  if (!$("listaPresupuestoAdministracion")) return;
+
+  $("listaPresupuestoAdministracion").innerHTML = items.length
+    ? adminFinTabla(
+        ["Concepto", "Categoría", "Presupuestado", "Gastado", "Diferencia", ""],
+        items.map(item => {
+          const gastado = gastoRealPorCategoriaAdministracion(item.categoria);
+          const diferencia = adminFinMonto(item.monto) - gastado;
+          return `<tr>
+            <td><strong>${adminFinEscapar(item.concepto)}</strong></td>
+            <td>${adminFinEscapar(item.categoria)}</td>
+            <td>${adminFinDinero(item.monto)}</td>
+            <td>${adminFinDinero(gastado)}</td>
+            <td class="${diferencia >= 0 ? "amountPositive" : "amountNegative"}"><strong>${adminFinDinero(diferencia)}</strong></td>
+            <td class="adminFinanceRowActions">
+              <button type="button" onclick="editarPresupuestoAdministracion('${item.id}')">Editar</button>
+              <button type="button" onclick="eliminarPresupuestoAdministracion('${item.id}')">Eliminar</button>
+            </td>
+          </tr>`;
+        })
+      )
+    : adminFinVacio("Todavía no cargaste el presupuesto para este mes.");
+}
+
+function renderResumenPresupuestoAdministracion() {
+  const items = presupuestosDelMesAdministracion();
+  if (!$("resumenPresupuestoAdministracion")) return;
+
+  if (!items.length) {
+    $("resumenPresupuestoAdministracion").innerHTML = adminFinVacio("Cargá el presupuesto del mes para ver el comparativo.");
+    return;
+  }
+
+  const previsto = items.reduce((s, x) => s + adminFinMonto(x.monto), 0);
+  const categorias = [...new Set(items.map(x => x.categoria))];
+  const gastado = categorias.reduce((s, categoria) => s + gastoRealPorCategoriaAdministracion(categoria), 0);
+  const diferencia = previsto - gastado;
+  const porcentaje = previsto > 0 ? Math.min(100, Math.round(gastado / previsto * 100)) : 0;
+
+  $("resumenPresupuestoAdministracion").innerHTML = `
+    <div class="adminBudgetOverview">
+      <div><span>Presupuesto</span><strong>${adminFinDinero(previsto)}</strong></div>
+      <div><span>Gastado</span><strong>${adminFinDinero(gastado)}</strong></div>
+      <div class="${diferencia >= 0 ? "amountPositive" : "amountNegative"}"><span>Disponible / Exceso</span><strong>${adminFinDinero(diferencia)}</strong></div>
+    </div>
+    <div class="adminBudgetBar"><i style="width:${porcentaje}%"></i></div>
+    <small>${porcentaje}% del presupuesto utilizado.</small>`;
+}
+
+function renderAdministracionFinanciera() {
+  if (!administracionPrivadaActiva) return;
+  const mes = mesSeleccionadoAdministracion();
+  if ($("periodoAdministracionTexto")) {
+    const fecha = new Date(`${mes}-01T12:00:00`);
+    $("periodoAdministracionTexto").textContent = fecha.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+  }
+  renderResumenAdministracion();
+  renderIngresosAdministracion();
+  renderGastosAdministracion();
+  renderPresupuestoAdministracion();
+}
+
+function abrirAdministracionPrivada() {
+  administracionPrivadaActiva = true;
+  $("panelAdministracionLogin")?.classList.add("hidden");
+  $("panelAdministracionPrivado")?.classList.remove("hidden");
+  if ($("estadoLoginAdministracion")) $("estadoLoginAdministracion").textContent = "";
+  if ($("pinAdministracion")) $("pinAdministracion").value = "";
+  registrarActividadAdministracion();
+  renderAdministracionFinanciera();
+}
+
+function ingresarAdministracion() {
+  const pin = String($("pinAdministracion")?.value || "").trim();
+  if (pin !== String(configuracionCaja.pinAdmin || "2580")) {
+    if ($("estadoLoginAdministracion")) $("estadoLoginAdministracion").textContent = "PIN incorrecto.";
+    return;
+  }
+  abrirAdministracionPrivada();
+}
+
+function bloquearAdministracion() {
+  administracionPrivadaActiva = false;
+  clearTimeout(temporizadorAdministracion);
+  $("panelAdministracionPrivado")?.classList.add("hidden");
+  $("panelAdministracionLogin")?.classList.remove("hidden");
+  if ($("pinAdministracion")) $("pinAdministracion").value = "";
+}
+
+function registrarActividadAdministracion() {
+  if (!administracionPrivadaActiva) return;
+  clearTimeout(temporizadorAdministracion);
+  temporizadorAdministracion = setTimeout(bloquearAdministracion, ADMIN_FIN_TIMEOUT_MS);
+}
+
+function cambiarTabAdministracion(nombre) {
+  document.querySelectorAll("[data-admin-tab]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.adminTab === nombre);
+  });
+  document.querySelectorAll("[data-admin-panel]").forEach(panel => {
+    panel.classList.toggle("active", panel.dataset.adminPanel === nombre);
+  });
+}
+
+function mostrarFormularioAdministracion(tipo, datos = null) {
+  const id = tipo === "ingreso" ? "formIngresoAdministracion"
+    : tipo === "gasto" ? "formGastoAdministracion"
+    : "formPresupuestoAdministracion";
+  $(id)?.classList.remove("hidden");
+
+  if (tipo === "ingreso") {
+    $("ingresoAdminId").value = datos?.id || "";
+    $("ingresoAdminFecha").value = datos?.fecha || adminFinHoy();
+    $("ingresoAdminCliente").value = datos?.cliente || "";
+    $("ingresoAdminMonto").value = datos?.monto || "";
+    $("ingresoAdminMedio").value = datos?.medio || "Transferencia";
+    $("ingresoAdminCobrado").checked = datos?.cobrado !== false;
+    $("ingresoAdminDescripcion").value = datos?.descripcion || "";
+  } else if (tipo === "gasto") {
+    $("gastoAdminId").value = datos?.id || "";
+    $("gastoAdminFecha").value = datos?.fecha || adminFinHoy();
+    $("gastoAdminCategoria").value = datos?.categoria || "Proveedores / Insumos";
+    $("gastoAdminMotivo").value = datos?.motivo || "";
+    $("gastoAdminMonto").value = datos?.monto || "";
+    $("gastoAdminMedio").value = datos?.medio || "Transferencia";
+    $("gastoAdminPagado").checked = datos?.pagado !== false;
+  } else {
+    $("presupuestoAdminId").value = datos?.id || "";
+    $("presupuestoAdminConcepto").value = datos?.concepto || "";
+    $("presupuestoAdminCategoria").value = datos?.categoria || "Proveedores / Insumos";
+    $("presupuestoAdminMonto").value = datos?.monto || "";
+  }
+}
+
+function ocultarFormularioAdministracion(tipo) {
+  const id = tipo === "ingreso" ? "formIngresoAdministracion"
+    : tipo === "gasto" ? "formGastoAdministracion"
+    : "formPresupuestoAdministracion";
+  $(id)?.classList.add("hidden");
+}
+
+function guardarIngresoAdministracion() {
+  const id = $("ingresoAdminId")?.value || adminFinId("ing");
+  const item = {
+    id,
+    fecha: $("ingresoAdminFecha")?.value || adminFinHoy(),
+    cliente: String($("ingresoAdminCliente")?.value || "").trim(),
+    monto: adminFinMonto($("ingresoAdminMonto")?.value),
+    medio: $("ingresoAdminMedio")?.value || "Transferencia",
+    cobrado: Boolean($("ingresoAdminCobrado")?.checked),
+    descripcion: String($("ingresoAdminDescripcion")?.value || "").trim(),
+    actualizadoEn: new Date().toISOString()
+  };
+
+  if (!item.cliente || !item.monto) {
+    alert("Completá cliente y monto.");
+    return;
+  }
+
+  const indice = administracionFinanciera.ingresosExternos.findIndex(x => x.id === id);
+  if (indice >= 0) administracionFinanciera.ingresosExternos[indice] = item;
+  else administracionFinanciera.ingresosExternos.push(item);
+
+  ocultarFormularioAdministracion("ingreso");
+  guardarAdministracion();
+}
+
+function editarIngresoAdministracion(id) {
+  const item = administracionFinanciera.ingresosExternos.find(x => x.id === id);
+  if (!item) return;
+  cambiarTabAdministracion("ingresos");
+  mostrarFormularioAdministracion("ingreso", item);
+}
+
+function eliminarIngresoAdministracion(id) {
+  if (!confirm("¿Eliminar este ingreso?")) return;
+  administracionFinanciera.ingresosExternos = administracionFinanciera.ingresosExternos.filter(x => x.id !== id);
+  guardarAdministracion();
+}
+
+function guardarGastoAdministracion() {
+  const id = $("gastoAdminId")?.value || adminFinId("gas");
+  const item = {
+    id,
+    fecha: $("gastoAdminFecha")?.value || adminFinHoy(),
+    categoria: $("gastoAdminCategoria")?.value || "Otros",
+    motivo: String($("gastoAdminMotivo")?.value || "").trim(),
+    monto: adminFinMonto($("gastoAdminMonto")?.value),
+    medio: $("gastoAdminMedio")?.value || "Transferencia",
+    pagado: Boolean($("gastoAdminPagado")?.checked),
+    origen: "Manual",
+    actualizadoEn: new Date().toISOString()
+  };
+
+  if (!item.motivo || !item.monto) {
+    alert("Completá motivo y monto.");
+    return;
+  }
+
+  const indice = administracionFinanciera.gastosManuales.findIndex(x => x.id === id);
+  if (indice >= 0) administracionFinanciera.gastosManuales[indice] = item;
+  else administracionFinanciera.gastosManuales.push(item);
+
+  ocultarFormularioAdministracion("gasto");
+  guardarAdministracion();
+}
+
+function editarGastoAdministracion(id) {
+  const item = administracionFinanciera.gastosManuales.find(x => x.id === id);
+  if (!item) return;
+  cambiarTabAdministracion("gastos");
+  mostrarFormularioAdministracion("gasto", item);
+}
+
+function eliminarGastoAdministracion(id) {
+  if (!confirm("¿Eliminar este gasto?")) return;
+  administracionFinanciera.gastosManuales = administracionFinanciera.gastosManuales.filter(x => x.id !== id);
+  guardarAdministracion();
+}
+
+function guardarPresupuestoAdministracion() {
+  const id = $("presupuestoAdminId")?.value || adminFinId("pre");
+  const item = {
+    id,
+    mes: mesSeleccionadoAdministracion(),
+    concepto: String($("presupuestoAdminConcepto")?.value || "").trim(),
+    categoria: $("presupuestoAdminCategoria")?.value || "Otros",
+    monto: adminFinMonto($("presupuestoAdminMonto")?.value),
+    actualizadoEn: new Date().toISOString()
+  };
+
+  if (!item.concepto || !item.monto) {
+    alert("Completá concepto y monto previsto.");
+    return;
+  }
+
+  const indice = administracionFinanciera.presupuestos.findIndex(x => x.id === id);
+  if (indice >= 0) administracionFinanciera.presupuestos[indice] = item;
+  else administracionFinanciera.presupuestos.push(item);
+
+  ocultarFormularioAdministracion("presupuesto");
+  guardarAdministracion();
+}
+
+function editarPresupuestoAdministracion(id) {
+  const item = administracionFinanciera.presupuestos.find(x => x.id === id);
+  if (!item) return;
+  cambiarTabAdministracion("presupuesto");
+  mostrarFormularioAdministracion("presupuesto", item);
+}
+
+function eliminarPresupuestoAdministracion(id) {
+  if (!confirm("¿Eliminar este concepto del presupuesto?")) return;
+  administracionFinanciera.presupuestos = administracionFinanciera.presupuestos.filter(x => x.id !== id);
+  guardarAdministracion();
+}
+
+function iniciarModuloAdministracion() {
+  if (window.__FRATELLO_ADMIN_FIN_INICIADA__) return;
+  window.__FRATELLO_ADMIN_FIN_INICIADA__ = true;
+
+  cargarAdministracionLocal();
+  if ($("mesAdministracion")) $("mesAdministracion").value = adminFinMesActual();
+
+  $("btnIngresarAdministracion")?.addEventListener("click", ingresarAdministracion);
+  $("pinAdministracion")?.addEventListener("keydown", evento => {
+    if (evento.key === "Enter") ingresarAdministracion();
+  });
+  $("btnSalirAdministracion")?.addEventListener("click", bloquearAdministracion);
+  $("btnActualizarAdministracion")?.addEventListener("click", renderAdministracionFinanciera);
+  $("mesAdministracion")?.addEventListener("change", renderAdministracionFinanciera);
+
+  document.querySelectorAll("[data-admin-tab]").forEach(btn => {
+    btn.addEventListener("click", () => cambiarTabAdministracion(btn.dataset.adminTab));
+  });
+
+  $("btnNuevoIngresoAdministracion")?.addEventListener("click", () => mostrarFormularioAdministracion("ingreso"));
+  $("btnCancelarIngresoAdministracion")?.addEventListener("click", () => ocultarFormularioAdministracion("ingreso"));
+  $("btnGuardarIngresoAdministracion")?.addEventListener("click", guardarIngresoAdministracion);
+
+  $("btnNuevoGastoAdministracion")?.addEventListener("click", () => mostrarFormularioAdministracion("gasto"));
+  $("btnCancelarGastoAdministracion")?.addEventListener("click", () => ocultarFormularioAdministracion("gasto"));
+  $("btnGuardarGastoAdministracion")?.addEventListener("click", guardarGastoAdministracion);
+
+  $("btnNuevoPresupuestoAdministracion")?.addEventListener("click", () => mostrarFormularioAdministracion("presupuesto"));
+  $("btnCancelarPresupuestoAdministracion")?.addEventListener("click", () => ocultarFormularioAdministracion("presupuesto"));
+  $("btnGuardarPresupuestoAdministracion")?.addEventListener("click", guardarPresupuestoAdministracion);
+
+  ["click", "touchstart", "keydown", "input"].forEach(nombre => {
+    document.addEventListener(nombre, registrarActividadAdministracion, { passive: true });
+  });
+
+  window.addEventListener("pagehide", bloquearAdministracion);
+}
+
+window.editarIngresoAdministracion = editarIngresoAdministracion;
+window.eliminarIngresoAdministracion = eliminarIngresoAdministracion;
+window.editarGastoAdministracion = editarGastoAdministracion;
+window.eliminarGastoAdministracion = eliminarGastoAdministracion;
+window.editarPresupuestoAdministracion = editarPresupuestoAdministracion;
+window.eliminarPresupuestoAdministracion = eliminarPresupuestoAdministracion;
+
+
 /* =========================================================
    FRATELLO CAJA v1 — v3.9.0
    ========================================================= */
@@ -8115,6 +8761,7 @@ window.cancelarEdicionCajaInline = cancelarEdicionCajaInline;
 
 async function init() {
   iniciarModuloCaja();
+  iniciarModuloAdministracion();
 
   // v3.0.1: los pedidos fijos se guardan desde cada tarjeta del cliente.
   if ($("btnCargarPedidosFijosFecha")) $("btnCargarPedidosFijosFecha").onclick=cargarPedidosFijosParaFecha;
@@ -8170,6 +8817,7 @@ async function init() {
   document.addEventListener("click", evento => {
     const salida = evento.target.closest("#btnInicio, [data-volver='true'], .volverInicio, .menuButton");
     if (salida && cajaAdminActivo) bloquearCajaAdmin();
+    if (salida && administracionPrivadaActiva) bloquearAdministracion();
   });
 
   procesarEntradaDesdeNotificacion();
