@@ -1,36 +1,36 @@
-# Fratello v3.9.3B.2 — Notificaciones configurables
+# Fratello v3.9.3B.3 — Estabilidad y optimización
 
-## Clientes
-- Cada cliente tiene un interruptor para activar o silenciar notificaciones de pedidos.
-- El pedido sigue entrando aunque el cliente esté silenciado.
-- Los clientes existentes quedan activados por defecto.
-- La preferencia queda guardada y sincronizada con los datos generales.
+## Mejoras realizadas
+- Protección contra datos locales dañados o JSON inválido.
+- Registro local de los últimos 20 errores para diagnóstico.
+- Prevención de inicialización duplicada de la aplicación.
+- Prevención de listeners duplicados en el módulo Caja.
+- Reintento de sincronización más limpio al recuperar Internet.
+- El Service Worker ya no borra las preferencias de notificaciones al actualizarse.
+- Mejor tolerancia ante errores de caché y navegación.
+- Renovación completa del caché a v3.9.3B.3.
 
-## Configuración general
-- Activar o pausar todas las notificaciones.
-- Mostrar u ocultar banners.
-- Activar o desactivar sonido.
-- Activar o desactivar vibración.
-- Agrupar pedidos que llegan casi al mismo tiempo.
+## Qué debería notarse
+- Menor posibilidad de pantalla en blanco al iniciar.
+- Menor riesgo de botones duplicados o acciones ejecutadas dos veces.
+- Las preferencias de notificaciones deberían mantenerse después de actualizar la app.
+- Mejor recuperación después de perder conexión.
+- Mayor estabilidad general sin cambiar la forma de usar Fratello.
 
-## Funcionamiento
-- Los avisos locales respetan la preferencia de cada cliente.
-- Los mensajes de Firebase en primer plano también la respetan.
-- El Service Worker recibe y guarda las preferencias para filtrar avisos con la app cerrada.
-- Al abrir Fratello, las notificaciones internas quedan marcadas como vistas.
-- Se actualizó el Service Worker y el caché a v3.9.3B.2.
-
-## Pruebas recomendadas
-1. Desactivar notificaciones para un cliente.
-2. Enviar un pedido desde su enlace: debe entrar sin mostrar aviso.
-3. Reactivarlo y enviar otro pedido: debe mostrar aviso.
-4. Enviar dos pedidos seguidos: deben agruparse.
-5. Pausar notificaciones generales: ningún cliente debe generar banner.
+## Prueba recomendada
+1. Actualizar a v3.9.3B.3.
+2. Configurar un cliente con notificaciones silenciadas.
+3. Cerrar y volver a abrir la app.
+4. Verificar que siga silenciado.
+5. Abrir Caja y editar un turno.
+6. Cortar Internet, guardar un cambio y volver a conectarse.
+7. Confirmar que sincronice sin duplicar el cierre.
 
 ## Estado
 - v3.9.3B.1: 100%
 - v3.9.3B.2: 100%
-- v3.9.3B.3: 0%
-- Módulo Caja: 92%
-- Sistema de notificaciones: 90%
-- Proyecto Fratello estimado: 87%
+- v3.9.3B.3: 100%
+- Etapa B: 100%
+- Módulo Caja estimado: 94%
+- Sistema de notificaciones estimado: 93%
+- Proyecto Fratello estimado: 89%

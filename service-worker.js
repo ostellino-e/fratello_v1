@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v393b2";
+const CACHE_NAME = "fratello-v393b3";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -153,7 +153,11 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
+      Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME && key !== CACHE_PREFERENCIAS)
+          .map(key => caches.delete(key))
+      )
     ).then(() => self.clients.claim())
   );
 });

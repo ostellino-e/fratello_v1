@@ -1187,7 +1187,7 @@ let configuracionNotificaciones = {
   vibracion: true,
   banners: true,
   agrupar: true,
-  ...(JSON.parse(localStorage.getItem(CLAVE_CONFIG_NOTIFICACIONES) || "{}"))
+  ...leerJsonLocalSeguro(CLAVE_CONFIG_NOTIFICACIONES, {})
 };
 
 let colaNotificacionesPedidos = [];
@@ -1798,6 +1798,43 @@ function crearPredeterminadasIniciales() {
 
 // --- SINCRONIZACIÓN ONLINE FIREBASE ---
 // Pegá acá el firebaseConfig de Firebase.
+
+function leerJsonLocalSeguro(clave, valorPredeterminado = {}) {
+  try {
+    const valor = localStorage.getItem(clave);
+    if (!valor) return valorPredeterminado;
+    const resultado = JSON.parse(valor);
+    return resultado ?? valorPredeterminado;
+  } catch (error) {
+    console.warn(`Dato local inválido en ${clave}. Se restaurará el valor predeterminado.`, error);
+    try { localStorage.removeItem(clave); } catch (_) {}
+    return valorPredeterminado;
+  }
+}
+
+function registrarErrorFratello(tipo, error) {
+  try {
+    const clave = "fratello_registro_errores";
+    const historial = leerJsonLocalSeguro(clave, []);
+    const lista = Array.isArray(historial) ? historial : [];
+    lista.push({
+      tipo,
+      mensaje: String(error?.message || error || "Error desconocido"),
+      fecha: new Date().toISOString(),
+      version: window.FRATELLO_VERSION || "desconocida"
+    });
+    localStorage.setItem(clave, JSON.stringify(lista.slice(-20)));
+  } catch (_) {}
+}
+
+window.addEventListener("error", evento => {
+  registrarErrorFratello("error", evento.error || evento.message);
+});
+
+window.addEventListener("unhandledrejection", evento => {
+  registrarErrorFratello("promesa", evento.reason);
+});
+
 const firebaseConfig = {
   apiKey: "AIzaSyDPg7UWyqOKYxP5qEelgqjcfTjXD3BXYQY",
   authDomain: "fratello-c1765.firebaseapp.com",
@@ -7936,6 +7973,7 @@ function sincronizarCajaTiempoReal() {
 
 window.addEventListener("online", () => {
   setEstadoSync("Conexión recuperada — sincronizando...");
+  clearTimeout(temporizadorGuardadoNube);
   if (guardadoNubePendiente) guardarEnNube();
 });
 
@@ -7944,6 +7982,14 @@ window.addEventListener("offline", () => {
 });
 
 function iniciarModuloCaja() {
+  if (window.__FRATELLO_CAJA_INICIADA__) {
+    cargarCierreSeleccionadoCaja();
+    renderCajaAdmin();
+    renderDashboardCaja();
+    return;
+  }
+  window.__FRATELLO_CAJA_INICIADA__ = true;
+
   cargarCajaLocal();
 
   if ($("cajaFecha")) $("cajaFecha").value = hoyISOCaja();
@@ -8309,11 +8355,16 @@ window.resolverUnidadPedido = resolverUnidadPedido;
 window.editarClienteCompleto = editarClienteCompleto;
 window.eliminarClienteCompleto = eliminarClienteCompleto;
  
-init().catch(error => {
-  console.error("Error iniciando Fratello:", error);
-  const estado = document.getElementById("estadoSync");
-  if (estado) estado.textContent = "Error parcial al iniciar";
-});
+if (!window.__FRATELLO_INICIADO__) {
+  window.__FRATELLO_INICIADO__ = true;
+
+  init().catch(error => {
+    console.error("Error iniciando Fratello:", error);
+    registrarErrorFratello("inicio", error);
+    const estado = document.getElementById("estadoSync");
+    if (estado) estado.textContent = "Error parcial al iniciar";
+  });
+}
 
 
 window.recordarClientePendiente = recordarClientePendiente;
