@@ -1854,6 +1854,18 @@ if (FIREBASE_ACTIVO && typeof firebase !== "undefined") {
   db = firebase.firestore();
 }
 
+let authFratello = null;
+let usuarioAdministradorActual = null;
+
+if (FIREBASE_ACTIVO && typeof firebase !== "undefined" && firebase.auth) {
+  try {
+    authFratello = firebase.auth();
+    authFratello.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  } catch (error) {
+    console.error("No se pudo iniciar Firebase Authentication:", error);
+  }
+}
+
 
 const CLAVE_VAPID_NOTIFICACIONES = "BG6gYJciGDS2YKNz1pIUx_Y1qMauuao5J3PY5uinZ1zLLbG7rY5ZQyO_fXbJPoY4kaXECH7EunZPq4EeBmct2QU";
 let messaging = null;
@@ -7038,6 +7050,163 @@ function repararPedidosConParserV311() {
 
 
 
+
+/* =========================================================
+   FRATELLO ACCESO ADMINISTRADOR — v3.9.5D.1
+   ========================================================= */
+
+function mostrarModalAdministrador() {
+  $("modalAccesoAdministrador")?.classList.remove("hidden");
+  actualizarPanelSesionAdministrador();
+  setTimeout(() => {
+    if (!usuarioAdministradorActual) $("usuarioAdministrador")?.focus();
+  }, 60);
+}
+
+function ocultarModalAdministrador() {
+  $("modalAccesoAdministrador")?.classList.add("hidden");
+  if ($("claveAdministrador")) $("claveAdministrador").value = "";
+  if ($("estadoAccesoAdministrador")) $("estadoAccesoAdministrador").textContent = "";
+}
+
+function actualizarInterfazAdministrador() {
+  const conectado = Boolean(usuarioAdministradorActual);
+  $("tarjetaAdministracionInicio")?.classList.toggle("hidden", !conectado);
+
+  if ($("iconoUsuarioAdministrador")) {
+    $("iconoUsuarioAdministrador").textContent = conectado ? "🔐" : "👤";
+  }
+  if ($("textoUsuarioAdministrador")) {
+    $("textoUsuarioAdministrador").textContent = conectado ? "Administrador" : "Ingresar";
+  }
+
+  if (!conectado) {
+    bloquearAdministracion();
+    const seccion = document.getElementById("seccionAdministracion");
+    if (seccion?.classList.contains("active")) mostrarInicio();
+  }
+}
+
+function actualizarPanelSesionAdministrador() {
+  const conectado = Boolean(usuarioAdministradorActual);
+  $("panelLoginAdministrador")?.classList.toggle("hidden", conectado);
+  $("panelSesionAdministrador")?.classList.toggle("hidden", !conectado);
+
+  if ($("correoSesionAdministrador")) {
+    $("correoSesionAdministrador").textContent = usuarioAdministradorActual?.email || "Administrador";
+  }
+}
+
+async function ingresarAdministradorConUsuario() {
+  if (!authFratello) {
+    if ($("estadoAccesoAdministrador")) {
+      $("estadoAccesoAdministrador").textContent = "Firebase Authentication no está disponible.";
+    }
+    return;
+  }
+
+  const usuario = String($("usuarioAdministrador")?.value || "").trim();
+  const clave = String($("claveAdministrador")?.value || "");
+
+  if (!usuario || !clave) {
+    $("estadoAccesoAdministrador").textContent = "Completá usuario y contraseña.";
+    return;
+  }
+
+  const boton = $("btnIngresarAdministrador");
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = "Ingresando...";
+  }
+
+  try {
+    await authFratello.signInWithEmailAndPassword(usuario, clave);
+    if ($("estadoAccesoAdministrador")) $("estadoAccesoAdministrador").textContent = "";
+  } catch (error) {
+    console.error("Error de acceso:", error);
+    const mensajes = {
+      "auth/invalid-credential": "Usuario o contraseña incorrectos.",
+      "auth/user-not-found": "Usuario o contraseña incorrectos.",
+      "auth/wrong-password": "Usuario o contraseña incorrectos.",
+      "auth/too-many-requests": "Demasiados intentos. Esperá unos minutos.",
+      "auth/network-request-failed": "No se pudo conectar. Revisá Internet.",
+      "auth/operation-not-allowed": "Activá Email/Password en Firebase Authentication."
+    };
+    if ($("estadoAccesoAdministrador")) {
+      $("estadoAccesoAdministrador").textContent =
+        mensajes[error?.code] || "No se pudo iniciar sesión.";
+    }
+  } finally {
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = "Ingresar";
+    }
+  }
+}
+
+async function cerrarSesionAdministrador() {
+  if (!authFratello) return;
+
+  try {
+    await authFratello.signOut();
+    ocultarModalAdministrador();
+    mostrarInicio();
+  } catch (error) {
+    console.error("No se pudo cerrar la sesión:", error);
+  }
+}
+
+function abrirAdministracionAutenticada() {
+  if (!usuarioAdministradorActual) {
+    mostrarModalAdministrador();
+    return;
+  }
+  ocultarModalAdministrador();
+  abrirAdministracionPrivada();
+  mostrarSeccion("seccionAdministracion");
+}
+
+function iniciarAccesoAdministrador() {
+  if (window.__FRATELLO_ACCESO_ADMIN_INICIADO__) return;
+  window.__FRATELLO_ACCESO_ADMIN_INICIADO__ = true;
+
+  $("btnUsuarioAdministrador")?.addEventListener("click", mostrarModalAdministrador);
+  $("btnCerrarModalAdministrador")?.addEventListener("click", ocultarModalAdministrador);
+  $("btnIngresarAdministrador")?.addEventListener("click", ingresarAdministradorConUsuario);
+  $("btnCerrarSesionAdministrador")?.addEventListener("click", cerrarSesionAdministrador);
+  $("btnAbrirAdministracionDesdeUsuario")?.addEventListener("click", abrirAdministracionAutenticada);
+
+  $("claveAdministrador")?.addEventListener("keydown", evento => {
+    if (evento.key === "Enter") ingresarAdministradorConUsuario();
+  });
+  $("usuarioAdministrador")?.addEventListener("keydown", evento => {
+    if (evento.key === "Enter") $("claveAdministrador")?.focus();
+  });
+
+  $("modalAccesoAdministrador")?.addEventListener("click", evento => {
+    if (evento.target?.id === "modalAccesoAdministrador") ocultarModalAdministrador();
+  });
+
+  document.addEventListener("keydown", evento => {
+    if (evento.key === "Escape") ocultarModalAdministrador();
+  });
+
+  if (authFratello) {
+    authFratello.onAuthStateChanged(usuario => {
+      usuarioAdministradorActual = usuario || null;
+      actualizarInterfazAdministrador();
+      actualizarPanelSesionAdministrador();
+
+      if (usuarioAdministradorActual) {
+        abrirAdministracionPrivada();
+      }
+    });
+  } else {
+    actualizarInterfazAdministrador();
+  }
+}
+
+
 /* =========================================================
    FRATELLO ADMINISTRACIÓN FINANCIERA — v3.9.4C.1
    ========================================================= */
@@ -7425,6 +7594,13 @@ function renderAdministracionFinanciera() {
 }
 
 function abrirAdministracionPrivada() {
+  if (!usuarioAdministradorActual) {
+    administracionPrivadaActiva = false;
+    $("panelAdministracionPrivado")?.classList.add("hidden");
+    $("panelAdministracionLogin")?.classList.remove("hidden");
+    return;
+  }
+
   administracionPrivadaActiva = true;
   $("panelAdministracionLogin")?.classList.add("hidden");
   $("panelAdministracionPrivado")?.classList.remove("hidden");
@@ -7435,9 +7611,8 @@ function abrirAdministracionPrivada() {
 }
 
 function ingresarAdministracion() {
-  const pin = String($("pinAdministracion")?.value || "").trim();
-  if (pin !== String(configuracionCaja.pinAdmin || "2580")) {
-    if ($("estadoLoginAdministracion")) $("estadoLoginAdministracion").textContent = "PIN incorrecto.";
+  if (!usuarioAdministradorActual) {
+    mostrarModalAdministrador();
     return;
   }
   abrirAdministracionPrivada();
@@ -7447,8 +7622,7 @@ function bloquearAdministracion() {
   administracionPrivadaActiva = false;
   clearTimeout(temporizadorAdministracion);
   $("panelAdministracionPrivado")?.classList.add("hidden");
-  $("panelAdministracionLogin")?.classList.remove("hidden");
-  if ($("pinAdministracion")) $("pinAdministracion").value = "";
+  $("panelAdministracionLogin")?.classList.toggle("hidden", Boolean(usuarioAdministradorActual));
 }
 
 function registrarActividadAdministracion() {
@@ -7626,11 +7800,8 @@ function iniciarModuloAdministracion() {
   cargarAdministracionLocal();
   if ($("mesAdministracion")) $("mesAdministracion").value = adminFinMesActual();
 
-  $("btnIngresarAdministracion")?.addEventListener("click", ingresarAdministracion);
-  $("pinAdministracion")?.addEventListener("keydown", evento => {
-    if (evento.key === "Enter") ingresarAdministracion();
-  });
-  $("btnSalirAdministracion")?.addEventListener("click", bloquearAdministracion);
+
+  $("btnSalirAdministracion")?.addEventListener("click", cerrarSesionAdministrador);
   $("btnActualizarAdministracion")?.addEventListener("click", renderAdministracionFinanciera);
   $("mesAdministracion")?.addEventListener("change", renderAdministracionFinanciera);
 
@@ -8761,6 +8932,7 @@ window.cancelarEdicionCajaInline = cancelarEdicionCajaInline;
 
 async function init() {
   iniciarModuloCaja();
+  iniciarAccesoAdministrador();
   iniciarModuloAdministracion();
 
   // v3.0.1: los pedidos fijos se guardan desde cada tarjeta del cliente.

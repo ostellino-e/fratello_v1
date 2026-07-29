@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=394c1" />
+  <link rel="stylesheet" href="styles.css?v=395d1" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.9.4C.1";
-    document.documentElement.dataset.fratelloVersion = "3.9.4C.1";
+    window.FRATELLO_VERSION = "3.9.5D.1";
+    document.documentElement.dataset.fratelloVersion = "3.9.5D.1";
   </script>
 
 </head>
@@ -30,11 +30,54 @@
       </div>
     </div>
     <div class="headerSpacer" aria-hidden="true"></div>
+  <button id="btnUsuarioAdministrador" class="adminUserButton" type="button" title="Acceso de usuario" aria-label="Acceso de usuario">
+    <span id="iconoUsuarioAdministrador">👤</span>
+    <small id="textoUsuarioAdministrador">Ingresar</small>
+  </button>
   <button id="btnActualizarGlobal" class="globalRefreshButton" type="button" title="Actualizar todos los datos" aria-label="Actualizar datos">🔄</button>
 </header>
+
+<div id="modalAccesoAdministrador" class="adminAccessOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="tituloAccesoAdministrador">
+  <div class="adminAccessModal">
+    <button id="btnCerrarModalAdministrador" class="adminAccessClose" type="button" aria-label="Cerrar">×</button>
+
+    <div id="panelLoginAdministrador">
+      <div class="adminAccessIcon">👤</div>
+      <h2 id="tituloAccesoAdministrador">Acceso de administrador</h2>
+      <p>La sesión se abrirá únicamente en este dispositivo.</p>
+
+      <label>Usuario
+        <input id="usuarioAdministrador" type="email" autocomplete="username" placeholder="correo@ejemplo.com">
+      </label>
+
+      <label>Contraseña
+        <input id="claveAdministrador" type="password" autocomplete="current-password" placeholder="Contraseña">
+      </label>
+
+      <label class="adminRememberInfo">
+        <span>📱</span>
+        <span><strong>Sesión por dispositivo</strong><small>Iniciar sesión aquí no abre Administración en otros celulares o computadoras.</small></span>
+      </label>
+
+      <button id="btnIngresarAdministrador" class="primary adminAccessSubmit" type="button">Ingresar</button>
+      <small id="estadoAccesoAdministrador" class="adminAccessStatus"></small>
+    </div>
+
+    <div id="panelSesionAdministrador" class="hidden">
+      <div class="adminAccessIcon">✅</div>
+      <h2>Administrador conectado</h2>
+      <p id="correoSesionAdministrador"></p>
+      <div class="adminSessionActions">
+        <button id="btnAbrirAdministracionDesdeUsuario" class="primary" type="button">Abrir Administración</button>
+        <button id="btnCerrarSesionAdministrador" type="button">Cerrar sesión en este dispositivo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.4C.1</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.5D.1</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -55,7 +98,7 @@
       <a class="homeMainCard caja" href="#seccionCaja" data-seccion="seccionCaja">
         <span class="homeMainIcon">💰</span><span><strong>Caja</strong><small>Cierres por turno, gastos y control privado.</small></span><b>›</b>
       </a>
-      <a class="homeMainCard administracion" href="#seccionAdministracion" data-seccion="seccionAdministracion">
+      <a id="tarjetaAdministracionInicio" class="homeMainCard administracion hidden" href="#seccionAdministracion" data-seccion="seccionAdministracion">
         <span class="homeMainIcon">📊</span>
         <span><strong>Administración <em class="privateMiniBadge">PRIVADO</em></strong><small>Ingresos, gastos, presupuesto y resultado.</small></span>
         <b>›</b>
@@ -409,15 +452,10 @@
         <span class="adminFinanceVersion">Etapa C · v1</span>
       </div>
 
-      <section id="panelAdministracionLogin" class="adminFinanceLogin">
+      <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
         <div class="adminFinanceLoginIcon">🔐</div>
-        <h3>Acceso exclusivo del administrador</h3>
-        <p>Usá el mismo PIN privado de Caja. Los empleados no pueden ver importes ni movimientos.</p>
-        <div class="adminFinanceLoginRow">
-          <input id="pinAdministracion" type="password" inputmode="numeric" maxlength="8" placeholder="PIN">
-          <button id="btnIngresarAdministracion" class="primary" type="button">Ingresar</button>
-        </div>
-        <small id="estadoLoginAdministracion"></small>
+        <h3>Sesión de administrador requerida</h3>
+        <p>Ingresá desde el ícono de usuario ubicado arriba a la derecha.</p>
       </section>
 
       <section id="panelAdministracionPrivado" class="hidden">
@@ -919,10 +957,11 @@
 </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=394c1"></script>
+  <script src="app.js?v=395d1"></script>
 
   
 
@@ -939,12 +978,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=394c1")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=395d1")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=394c1", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=395d1", {
             scope: "./",
             updateViaCache: "none"
           });

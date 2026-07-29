@@ -2975,3 +2975,116 @@ body.modal-open{
   .adminFinanceSummary{grid-template-columns:1fr}
   .adminFinanceLoginRow{flex-direction:column}
 }
+
+
+/* Fratello v3.9.5D.1 — acceso de administrador */
+.adminUserButton{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-height:42px;
+  padding:7px 10px;
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:12px;
+  background:rgba(255,255,255,.1);
+  color:inherit;
+}
+.adminUserButton span{font-size:20px}
+.adminUserButton small{
+  font-size:11px;
+  font-weight:800;
+}
+.adminAccessOverlay{
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(20,15,11,.66);
+  backdrop-filter:blur(4px);
+}
+.adminAccessModal{
+  position:relative;
+  width:min(440px,100%);
+  padding:25px;
+  border-radius:20px;
+  background:#fffaf5;
+  box-shadow:0 24px 70px rgba(0,0,0,.28);
+}
+.adminAccessClose{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:38px;
+  height:38px;
+  border:0;
+  border-radius:50%;
+  background:#eee4da;
+  font-size:25px;
+  line-height:1;
+}
+.adminAccessIcon{
+  font-size:42px;
+  text-align:center;
+}
+.adminAccessModal h2{
+  margin:8px 0 4px;
+  text-align:center;
+}
+.adminAccessModal>div>p{
+  margin:0 0 18px;
+  color:#72665b;
+  text-align:center;
+}
+.adminAccessModal label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin:12px 0;
+  font-weight:800;
+}
+.adminAccessModal input{
+  width:100%;
+  min-height:46px;
+}
+.adminRememberInfo{
+  flex-direction:row!important;
+  align-items:flex-start;
+  padding:11px;
+  border-radius:12px;
+  background:#eef6f2;
+  font-weight:400!important;
+}
+.adminRememberInfo>span:last-child{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.adminRememberInfo small{
+  color:#65756d;
+}
+.adminAccessSubmit{
+  width:100%;
+  min-height:47px;
+  margin-top:7px;
+}
+.adminAccessStatus{
+  display:block;
+  min-height:19px;
+  margin-top:9px;
+  color:#b42318;
+  font-weight:800;
+  text-align:center;
+}
+.adminSessionActions{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:18px;
+}
+@media(max-width:560px){
+  .adminUserButton small{display:none}
+  .adminUserButton{padding:7px 9px}
+}
