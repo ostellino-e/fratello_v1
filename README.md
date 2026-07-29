@@ -1,43 +1,34 @@
-# Fratello v3.9.5D.1 — Acceso de Administrador
+# Fratello v3.9.5D.2 — Roles y Caja privada oculta
 
-## Cambios
-- Se agregó un ícono de usuario en la esquina superior derecha.
-- Administración permanece oculta mientras no exista una sesión iniciada.
-- Inicio de sesión con usuario y contraseña mediante Firebase Authentication.
-- La sesión se guarda únicamente en el navegador o dispositivo donde se inició.
-- Iniciar sesión en un celular no abre Administración en otros dispositivos.
-- Cierre de sesión independiente por dispositivo.
-- El acceso anterior mediante PIN fue reemplazado para Administración.
-- Caja conserva su funcionamiento actual.
+## Cambios principales
+- Se eliminó de la pantalla Caja el botón “Acceso privado”.
+- Los empleados ya no ven ningún cartel, PIN ni referencia a un panel privado.
+- Caja muestra únicamente la carga de cierres y gastos.
+- El control completo de Caja fue trasladado a Administración.
+- Dentro de Administración se agregó la pestaña “Control de Caja”.
+- El acceso depende de la sesión de administrador iniciada en ese dispositivo.
+- Se agregó una estructura inicial de roles, preparada para futuras cuentas de Atención, Producción y Encargado.
+- El botón rápido para administrar personas queda oculto cuando no hay un administrador conectado.
+- Se eliminó el cambio de PIN de Caja porque el acceso ahora utiliza Firebase Authentication.
 
-## Configuración necesaria en Firebase
-1. Abrir Firebase Console.
-2. Ir a Authentication.
-3. Presionar “Comenzar”.
-4. Abrir “Método de acceso”.
-5. Habilitar “Correo electrónico/contraseña”.
-6. Ir a “Usuarios”.
-7. Crear el usuario administrador con su correo y contraseña.
+## Prueba recomendada
+1. Abrir la app sin iniciar sesión.
+2. Entrar a Caja.
+3. Confirmar que no aparezca “Acceso privado”, PIN ni panel administrativo.
+4. Iniciar sesión desde el ícono de usuario.
+5. Entrar a Administración.
+6. Abrir la pestaña “Control de Caja”.
+7. Confirmar que allí estén resumen, cierres, libro diario y personas.
+8. Abrir la app en otro dispositivo y confirmar que continúe sin acceso administrativo.
 
-No escribas la contraseña dentro del código.
-
-## Prueba
-1. Abrir Fratello en tu dispositivo.
-2. Tocar el ícono 👤.
-3. Ingresar el usuario creado en Firebase.
-4. Confirmar que aparezca la tarjeta Administración.
-5. Abrir Fratello en otro celular: Administración debe continuar oculta.
-6. Cerrar sesión en tu dispositivo: la tarjeta debe desaparecer.
-
-## Alcance de seguridad
-Esta versión controla el acceso visible y la sesión por dispositivo.
-La autorización de dispositivos específicos y las reglas privadas de Firestore se completarán en D.2 y D.3.
+## Versión
+v3.9.5D.2
 
 ## Estado
 - Etapa A: 100%
 - Etapa B: 100%
-- Etapa C: 25%
-- Etapa D: 20%
-- Administración Financiera: 40%
-- Seguridad y usuarios: 35%
-- Proyecto Fratello estimado: 92%
+- Etapa C — Administración: 32%
+- Etapa D — Seguridad: 35%
+- Administración financiera: 45%
+- Seguridad y usuarios: 45%
+- Proyecto Fratello estimado: 93%

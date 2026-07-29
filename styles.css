@@ -3088,3 +3088,17 @@ body.modal-open{
   .adminUserButton small{display:none}
   .adminUserButton{padding:7px 9px}
 }
+
+
+/* Fratello v3.9.5D.2 — Caja privada dentro de Administración */
+#seccionCaja .cajaModeSwitch,
+#seccionCaja #panelCajaAdminLogin,
+#seccionCaja #panelCajaAdmin{
+  display:none !important;
+}
+#panelCajaAdmin.adminFinanceTab{
+  padding-top:4px;
+}
+#panelCajaAdmin.adminFinanceTab.active{
+  display:block;
+}

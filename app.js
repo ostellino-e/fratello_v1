@@ -1856,6 +1856,18 @@ if (FIREBASE_ACTIVO && typeof firebase !== "undefined") {
 
 let authFratello = null;
 let usuarioAdministradorActual = null;
+let rolUsuarioActual = null;
+
+function obtenerRolUsuario(usuario) {
+  if (!usuario) return null;
+  // v3.9.5D.2: la cuenta autenticada recibe rol administrador.
+  // Queda preparado para leer roles específicos desde Firestore en D.3.
+  return "administrador";
+}
+
+function tieneRolAdministrador() {
+  return Boolean(usuarioAdministradorActual && rolUsuarioActual === "administrador");
+}
 
 if (FIREBASE_ACTIVO && typeof firebase !== "undefined" && firebase.auth) {
   try {
@@ -7070,8 +7082,9 @@ function ocultarModalAdministrador() {
 }
 
 function actualizarInterfazAdministrador() {
-  const conectado = Boolean(usuarioAdministradorActual);
+  const conectado = tieneRolAdministrador();
   $("tarjetaAdministracionInicio")?.classList.toggle("hidden", !conectado);
+  $("btnAdministrarPersonasCajaRapido")?.classList.toggle("hidden", !conectado);
 
   if ($("iconoUsuarioAdministrador")) {
     $("iconoUsuarioAdministrador").textContent = conectado ? "🔐" : "👤";
@@ -7088,7 +7101,7 @@ function actualizarInterfazAdministrador() {
 }
 
 function actualizarPanelSesionAdministrador() {
-  const conectado = Boolean(usuarioAdministradorActual);
+  const conectado = tieneRolAdministrador();
   $("panelLoginAdministrador")?.classList.toggle("hidden", conectado);
   $("panelSesionAdministrador")?.classList.toggle("hidden", !conectado);
 
@@ -7157,7 +7170,7 @@ async function cerrarSesionAdministrador() {
 }
 
 function abrirAdministracionAutenticada() {
-  if (!usuarioAdministradorActual) {
+  if (!tieneRolAdministrador()) {
     mostrarModalAdministrador();
     return;
   }
@@ -7194,6 +7207,7 @@ function iniciarAccesoAdministrador() {
   if (authFratello) {
     authFratello.onAuthStateChanged(usuario => {
       usuarioAdministradorActual = usuario || null;
+      rolUsuarioActual = obtenerRolUsuario(usuarioAdministradorActual);
       actualizarInterfazAdministrador();
       actualizarPanelSesionAdministrador();
 
@@ -7594,7 +7608,7 @@ function renderAdministracionFinanciera() {
 }
 
 function abrirAdministracionPrivada() {
-  if (!usuarioAdministradorActual) {
+  if (!tieneRolAdministrador()) {
     administracionPrivadaActiva = false;
     $("panelAdministracionPrivado")?.classList.add("hidden");
     $("panelAdministracionLogin")?.classList.remove("hidden");
@@ -7611,7 +7625,7 @@ function abrirAdministracionPrivada() {
 }
 
 function ingresarAdministracion() {
-  if (!usuarioAdministradorActual) {
+  if (!tieneRolAdministrador()) {
     mostrarModalAdministrador();
     return;
   }
@@ -7791,6 +7805,20 @@ function eliminarPresupuestoAdministracion(id) {
   if (!confirm("¿Eliminar este concepto del presupuesto?")) return;
   administracionFinanciera.presupuestos = administracionFinanciera.presupuestos.filter(x => x.id !== id);
   guardarAdministracion();
+}
+
+function activarTabAdministracion(nombre) {
+  document.querySelectorAll("[data-admin-tab]").forEach(boton => {
+    boton.classList.toggle("active", boton.dataset.adminTab === nombre);
+  });
+  document.querySelectorAll("[data-admin-panel]").forEach(panel => {
+    panel.classList.toggle("active", panel.dataset.adminPanel === nombre);
+  });
+  if (nombre === "caja" && tieneRolAdministrador()) {
+    cajaAdminActivo = true;
+    renderCajaAdmin();
+    renderDashboardCaja();
+  }
 }
 
 function iniciarModuloAdministracion() {
@@ -8153,9 +8181,6 @@ function bloquearCajaAdmin(mensaje = "") {
     panel.setAttribute("aria-hidden", "true");
   }
 
-  $("panelCajaAdminLogin")?.classList.remove("hidden");
-  if ($("panelCajaAdminLogin")) $("panelCajaAdminLogin").style.display = "";
-
   if ($("resumenCajaAdmin")) $("resumenCajaAdmin").innerHTML = "";
   if ($("cierresCajaAdmin")) $("cierresCajaAdmin").innerHTML = "";
   if ($("indicadoresCajaDashboard")) $("indicadoresCajaDashboard").innerHTML = "";
@@ -8176,14 +8201,12 @@ function alternarVisibilidadPinCaja(inputId, botonId) {
 }
 
 function abrirModalPersonasCaja() {
-  if (!cajaAdminActivo) {
-    mostrarModoCaja("admin");
-    if ($("estadoLoginCaja")) {
-      $("estadoLoginCaja").textContent = "Ingresá el PIN para editar los nombres.";
-    }
+  if (!tieneRolAdministrador()) {
+    mostrarModalAdministrador();
     return;
   }
 
+  cajaAdminActivo = true;
   renderPersonasCaja();
   $("modalPersonasCaja")?.classList.remove("hidden");
   document.body.classList.add("modal-open");
@@ -8195,48 +8218,29 @@ function cerrarModalPersonasCaja() {
   document.body.classList.remove("modal-open");
 }
 
-function mostrarModoCaja(modo) {
-  const empleado = modo === "empleado";
-  $("btnModoCajaEmpleado")?.classList.toggle("active", empleado);
-  $("btnModoCajaAdmin")?.classList.toggle("active", !empleado);
-  $("panelCajaEmpleado")?.classList.toggle("hidden", !empleado);
+function mostrarModoCaja(modo = "empleado") {
+  $("panelCajaEmpleado")?.classList.remove("hidden");
 
-  if (empleado) {
-    bloquearCajaAdmin();
-    $("panelCajaAdminLogin")?.classList.add("hidden");
-    $("panelCajaAdmin")?.classList.add("hidden");
-    cargarCierreSeleccionadoCaja();
-    return;
+  if (modo === "admin") {
+    if (!tieneRolAdministrador()) {
+      mostrarModalAdministrador();
+      return;
+    }
+    cajaAdminActivo = true;
+    renderCajaAdmin();
+    renderDashboardCaja();
+    activarTabAdministracion("caja");
+    mostrarSeccion("seccionAdministracion");
   }
-
-  $("panelCajaAdminLogin")?.classList.toggle("hidden", cajaAdminActivo);
-  $("panelCajaAdmin")?.classList.toggle("hidden", !cajaAdminActivo);
-  if (cajaAdminActivo) renderCajaAdmin();
 }
 
 function ingresarCajaAdmin() {
-  const pin = String($("cajaAdminPin")?.value || "");
-  const estado = $("estadoLoginCaja");
-
-  if (pin !== String(configuracionCaja.pinAdmin || "2580")) {
-    if (estado) estado.textContent = "PIN incorrecto.";
-    return;
-  }
-
-  cajaAdminActivo = true;
-  if ($("panelCajaAdmin")) {
-    $("panelCajaAdmin").style.display = "";
-    $("panelCajaAdmin").removeAttribute("aria-hidden");
-  }
-  if ($("cajaAdminPin")) $("cajaAdminPin").value = "";
-  if (estado) estado.textContent = "";
-  iniciarTemporizadorCajaAdmin();
   mostrarModoCaja("admin");
 }
 
 function salirCajaAdmin() {
-  bloquearCajaAdmin();
-  mostrarModoCaja("empleado");
+  cajaAdminActivo = false;
+  activarTabAdministracion("resumen");
 }
 
 function totalesCierreCaja(cierre) {
@@ -8332,7 +8336,7 @@ function renderCajaAdmin() {
 function editarCierreDesdeAdminCaja(fecha, turno) {
   if ($("cajaFecha")) $("cajaFecha").value = fecha;
   if ($("cajaTurno")) $("cajaTurno").value = turno;
-  mostrarModoCaja("empleado");
+  $("panelCajaEmpleado")?.classList.remove("hidden");
   cargarCierreSeleccionadoCaja();
   $("cajaEfectivo")?.focus();
 }
@@ -8816,17 +8820,11 @@ function iniciarModuloCaja() {
   renderPersonasCaja();
   renderGastosCaja();
 
-  $("btnModoCajaEmpleado")?.addEventListener("click", () => mostrarModoCaja("empleado"));
-  $("btnModoCajaAdmin")?.addEventListener("click", () => mostrarModoCaja("admin"));
   $("btnAgregarGastoCaja")?.addEventListener("click", agregarGastoCaja);
   $("btnGuardarCierreCaja")?.addEventListener("click", guardarCierreCaja);
   $("cajaFecha")?.addEventListener("change", cargarCierreSeleccionadoCaja);
   $("cajaTurno")?.addEventListener("change", cargarCierreSeleccionadoCaja);
-  $("btnIngresarCajaAdmin")?.addEventListener("click", ingresarCajaAdmin);
-  $("cajaAdminPin")?.addEventListener("keydown", evento => {
-    if (evento.key === "Enter") ingresarCajaAdmin();
-  });
-  $("btnSalirCajaAdmin")?.addEventListener("click", salirCajaAdmin);
+  $("btnVolverResumenAdministracion")?.addEventListener("click", () => activarTabAdministracion("resumen"));
   $("btnActualizarCajaAdmin")?.addEventListener("click", () => {
     renderCajaAdmin();
     renderDashboardCaja();
@@ -8901,18 +8899,11 @@ function iniciarModuloCaja() {
   $("modalPersonasCaja")?.addEventListener("click", evento => {
     if (evento.target?.id === "modalPersonasCaja") cerrarModalPersonasCaja();
   });
-  $("btnCambiarPinCaja")?.addEventListener("click", cambiarPinCaja);
-  $("btnMostrarNuevoPinCaja")?.addEventListener("click", () => alternarVisibilidadPinCaja("nuevoPinCaja", "btnMostrarNuevoPinCaja"));
-  $("btnMostrarConfirmarPinCaja")?.addEventListener("click", () => alternarVisibilidadPinCaja("confirmarPinCaja", "btnMostrarConfirmarPinCaja"));
 
   ["click", "touchstart", "keydown", "input"].forEach(nombreEvento => {
     document.addEventListener(nombreEvento, registrarActividadCajaAdmin, { passive: true });
   });
 
-  window.addEventListener("pagehide", () => bloquearCajaAdmin());
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) bloquearCajaAdmin();
-  });
 
   mostrarModoCaja("empleado");
 }
