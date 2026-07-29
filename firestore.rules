@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function adminDoc() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return adminDoc() &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.active == true &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.role == "administrador";
+    }
+
+    // Datos operativos compartidos. Ajustar permisos por rol cuando se creen cuentas de empleados.
+    match /fratello/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    // Finanzas privadas y configuración de seguridad.
+    match /administracion/{document=**} {
+      allow read, write: if isAdmin();
+    }
+    match /seguridadFratello/{document=**} {
+      allow read, write: if isAdmin();
+    }
+    match /adminUsers/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

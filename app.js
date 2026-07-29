@@ -7205,14 +7205,22 @@ function iniciarAccesoAdministrador() {
   });
 
   if (authFratello) {
-    authFratello.onAuthStateChanged(usuario => {
+    authFratello.onAuthStateChanged(async usuario => {
       usuarioAdministradorActual = usuario || null;
+      if (usuarioAdministradorActual) {
+        await segVerificarDispositivo(usuarioAdministradorActual);
+      } else {
+        dispositivoAutorizadoActual = false;
+      }
       rolUsuarioActual = obtenerRolUsuario(usuarioAdministradorActual);
       actualizarInterfazAdministrador();
       actualizarPanelSesionAdministrador();
+      segAplicarPermisosUI();
 
-      if (usuarioAdministradorActual) {
+      if (usuarioAdministradorActual && dispositivoAutorizadoActual) {
+        await segAuditar("sesion", "Inicio de sesión", usuarioAdministradorActual.email || "");
         abrirAdministracionPrivada();
+        renderSeguridadCompleta();
       }
     });
   } else {
@@ -7809,7 +7817,8 @@ function eliminarPresupuestoAdministracion(id) {
 }
 
 function activarTabAdministracion(nombre) {
-  if (nombre === "caja" && !tieneRolAdministrador()) {
+  const tabsSeguras = ["caja","usuarios","dispositivos","auditoria","backup"];
+  if (tabsSeguras.includes(nombre) && !tieneRolAdministrador()) {
     mostrarModalAdministrador();
     return;
   }
@@ -7842,6 +7851,7 @@ function iniciarModuloAdministracion() {
   window.__FRATELLO_ADMIN_FIN_INICIADA__ = true;
 
   asegurarCajaPrivadaDentroAdministracion();
+  iniciarSeguridadFratello();
   cargarAdministracionLocal();
   if ($("mesAdministracion")) $("mesAdministracion").value = adminFinMesActual();
 
@@ -9208,3 +9218,305 @@ window.borrarTodasLasNotificaciones = borrarTodasLasNotificaciones;
 
 
 window.alternarNotificacionesCliente = alternarNotificacionesCliente;
+
+
+/* =========================================================
+   FRATELLO v4.0 — SEGURIDAD, USUARIOS, DISPOSITIVOS Y BACKUPS
+   ========================================================= */
+
+const SEG_STORAGE_KEY = "fratello_seguridad_v400";
+const SEG_DEVICE_KEY = "fratello_device_id_v400";
+const SEG_DEVICE_NAME_KEY = "fratello_device_name_v400";
+const SEG_AUDIT_LIMIT = 250;
+let seguridadFratello = { usuarios: [], dispositivos: [], auditoria: [], backups: [] };
+let dispositivoFratelloActual = null;
+let dispositivoAutorizadoActual = false;
+let usuarioSeguridadEdicionId = null;
+
+function segId(prefijo) {
+  return `${prefijo}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+function segAhora() { return new Date().toISOString(); }
+function segEscapar(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+function segCargarLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SEG_STORAGE_KEY) || "null");
+    if (raw && typeof raw === "object") seguridadFratello = {
+      usuarios: Array.isArray(raw.usuarios) ? raw.usuarios : [],
+      dispositivos: Array.isArray(raw.dispositivos) ? raw.dispositivos : [],
+      auditoria: Array.isArray(raw.auditoria) ? raw.auditoria : [],
+      backups: Array.isArray(raw.backups) ? raw.backups : []
+    };
+  } catch (e) { console.warn("Seguridad local:", e); }
+}
+function segGuardarLocal() {
+  localStorage.setItem(SEG_STORAGE_KEY, JSON.stringify(seguridadFratello));
+}
+function segNombreDispositivo() {
+  const ua = navigator.userAgent || "";
+  const movil = /Android|iPhone|iPad/i.test(ua);
+  const navegador = /Edg/i.test(ua) ? "Edge" : /Chrome/i.test(ua) ? "Chrome" : /Firefox/i.test(ua) ? "Firefox" : /Safari/i.test(ua) ? "Safari" : "Navegador";
+  const sistema = /Windows/i.test(ua) ? "Windows" : /Android/i.test(ua) ? "Android" : /iPhone|iPad/i.test(ua) ? "iPhone/iPad" : /Mac/i.test(ua) ? "Mac" : "Equipo";
+  return `${movil ? "Celular" : "PC"} ${sistema} · ${navegador}`;
+}
+function segObtenerDispositivoActual() {
+  let id = localStorage.getItem(SEG_DEVICE_KEY);
+  if (!id) {
+    id = segId("device");
+    localStorage.setItem(SEG_DEVICE_KEY, id);
+  }
+  let nombre = localStorage.getItem(SEG_DEVICE_NAME_KEY);
+  if (!nombre) {
+    nombre = segNombreDispositivo();
+    localStorage.setItem(SEG_DEVICE_NAME_KEY, nombre);
+  }
+  return { id, nombre, userAgent: navigator.userAgent || "", ultimaActividad: segAhora() };
+}
+async function segGuardarRemoto() {
+  segGuardarLocal();
+  if (!db || !usuarioAdministradorActual?.uid) return;
+  try {
+    await db.collection("seguridadFratello").doc("configuracion").set(seguridadFratello, { merge: true });
+  } catch (e) {
+    console.warn("No se pudo sincronizar seguridad:", e);
+  }
+}
+async function segCargarRemoto() {
+  segCargarLocal();
+  if (!db || !usuarioAdministradorActual?.uid) return;
+  try {
+    const snap = await db.collection("seguridadFratello").doc("configuracion").get();
+    if (snap.exists) {
+      const data = snap.data() || {};
+      seguridadFratello = {
+        usuarios: Array.isArray(data.usuarios) ? data.usuarios : seguridadFratello.usuarios,
+        dispositivos: Array.isArray(data.dispositivos) ? data.dispositivos : seguridadFratello.dispositivos,
+        auditoria: Array.isArray(data.auditoria) ? data.auditoria : seguridadFratello.auditoria,
+        backups: Array.isArray(data.backups) ? data.backups : seguridadFratello.backups
+      };
+      segGuardarLocal();
+    }
+  } catch (e) {
+    console.warn("Seguridad remota no disponible; se usa copia local:", e);
+  }
+}
+async function segAuditar(tipo, accion, detalle = "") {
+  const item = {
+    id: segId("audit"), fecha: segAhora(), tipo, accion, detalle,
+    usuario: usuarioAdministradorActual?.email || "Sin identificar",
+    uid: usuarioAdministradorActual?.uid || "",
+    dispositivoId: dispositivoFratelloActual?.id || "",
+    dispositivo: dispositivoFratelloActual?.nombre || segNombreDispositivo()
+  };
+  seguridadFratello.auditoria.unshift(item);
+  seguridadFratello.auditoria = seguridadFratello.auditoria.slice(0, SEG_AUDIT_LIMIT);
+  await segGuardarRemoto();
+  renderAuditoriaSeguridad();
+}
+function segPermisosPorRol(rol) {
+  const mapa = {
+    administrador: ["produccion","pedidos","caja","administracion","configuracion"],
+    encargado: ["produccion","pedidos","caja"],
+    atencion: ["pedidos","caja"],
+    produccion: ["produccion","pedidos"]
+  };
+  return mapa[rol] || [];
+}
+function segRolDelUsuario(usuario) {
+  if (!usuario) return null;
+  const email = String(usuario.email || "").toLowerCase();
+  const registrado = seguridadFratello.usuarios.find(u => String(u.email || "").toLowerCase() === email && u.activo !== false);
+  if (registrado) return registrado.rol || "atencion";
+  return "administrador"; // compatibilidad y primer administrador
+}
+function obtenerRolUsuario(usuario) {
+  return segRolDelUsuario(usuario);
+}
+function tieneRolAdministrador() {
+  return Boolean(usuarioAdministradorActual && rolUsuarioActual === "administrador" && dispositivoAutorizadoActual);
+}
+function segAplicarPermisosUI() {
+  const rol = rolUsuarioActual;
+  const usuario = seguridadFratello.usuarios.find(u => String(u.email || "").toLowerCase() === String(usuarioAdministradorActual?.email || "").toLowerCase());
+  const permisos = usuario?.permisos?.length ? usuario.permisos : segPermisosPorRol(rol);
+  const puedeAdmin = permisos.includes("administracion") && dispositivoAutorizadoActual;
+  $("tarjetaAdministracionInicio")?.classList.toggle("hidden", !puedeAdmin);
+  document.body.dataset.rolFratello = rol || "invitado";
+}
+async function segVerificarDispositivo(usuario) {
+  dispositivoFratelloActual = segObtenerDispositivoActual();
+  if (!usuario) {
+    dispositivoAutorizadoActual = false;
+    return false;
+  }
+  await segCargarRemoto();
+  const existentes = seguridadFratello.dispositivos.filter(d => d.uid === usuario.uid);
+  let actual = existentes.find(d => d.id === dispositivoFratelloActual.id);
+  if (!actual) {
+    const primerDispositivo = existentes.length === 0;
+    actual = {
+      ...dispositivoFratelloActual,
+      uid: usuario.uid,
+      email: usuario.email || "",
+      estado: primerDispositivo ? "autorizado" : "pendiente",
+      creadoEn: segAhora(),
+      ultimaActividad: segAhora()
+    };
+    seguridadFratello.dispositivos.unshift(actual);
+    await segGuardarRemoto();
+    await segAuditar("dispositivo", primerDispositivo ? "Primer dispositivo autorizado" : "Nuevo dispositivo pendiente", actual.nombre);
+  } else {
+    actual.ultimaActividad = segAhora();
+    actual.nombre = actual.nombre || dispositivoFratelloActual.nombre;
+    await segGuardarRemoto();
+  }
+  dispositivoAutorizadoActual = actual.estado === "autorizado";
+  renderDispositivosSeguridad();
+  if (!dispositivoAutorizadoActual) {
+    alert("Este dispositivo todavía no está autorizado. Ingresá desde un equipo autorizado para aprobarlo.");
+    try { await authFratello?.signOut(); } catch {}
+    return false;
+  }
+  return true;
+}
+function renderUsuariosSeguridad() {
+  const cont = $("listaUsuariosSeguridad");
+  if (!cont) return;
+  if (!seguridadFratello.usuarios.length) {
+    cont.innerHTML = '<div class="securityEmpty">Todavía no agregaste usuarios. Tu cuenta actual continúa como administrador principal.</div>';
+    return;
+  }
+  cont.innerHTML = seguridadFratello.usuarios.map(u => `
+    <article class="securityRow">
+      <div class="securityAvatar">${u.rol === "administrador" ? "👑" : u.rol === "produccion" ? "👨‍🍳" : u.rol === "atencion" ? "🧾" : "👨‍💼"}</div>
+      <div class="securityRowMain"><strong>${segEscapar(u.nombre || u.email)}</strong><small>${segEscapar(u.email)} · ${segEscapar(u.rol)}</small>
+      <div class="securityPermissionTags">${(u.permisos || []).map(p => `<span>${segEscapar(p)}</span>`).join("")}</div></div>
+      <span class="securityStatus ${u.activo === false ? "blocked" : "authorized"}">${u.activo === false ? "Bloqueado" : "Activo"}</span>
+      <div class="securityRowActions"><button onclick="editarUsuarioSeguridad('${u.id}')">Editar</button><button onclick="alternarUsuarioSeguridad('${u.id}')">${u.activo === false ? "Activar" : "Bloquear"}</button><button class="danger" onclick="eliminarUsuarioSeguridad('${u.id}')">Eliminar</button></div>
+    </article>`).join("");
+}
+function mostrarFormUsuarioSeguridad(item = null) {
+  usuarioSeguridadEdicionId = item?.id || null;
+  $("formUsuarioSeguridad")?.classList.remove("hidden");
+  $("segUsuarioNombre").value = item?.nombre || "";
+  $("segUsuarioEmail").value = item?.email || "";
+  $("segUsuarioRol").value = item?.rol || "atencion";
+  $("segUsuarioActivo").checked = item?.activo !== false;
+  const permisos = item?.permisos || segPermisosPorRol($("segUsuarioRol").value);
+  document.querySelectorAll("[data-seg-permiso]").forEach(c => c.checked = permisos.includes(c.dataset.segPermiso));
+}
+function ocultarFormUsuarioSeguridad() {
+  usuarioSeguridadEdicionId = null;
+  $("formUsuarioSeguridad")?.classList.add("hidden");
+}
+async function guardarUsuarioSeguridad() {
+  const email = String($("segUsuarioEmail")?.value || "").trim().toLowerCase();
+  const nombre = String($("segUsuarioNombre")?.value || "").trim();
+  if (!email || !email.includes("@")) return alert("Ingresá un correo válido.");
+  const permisos = [...document.querySelectorAll("[data-seg-permiso]:checked")].map(c => c.dataset.segPermiso);
+  const item = {
+    id: usuarioSeguridadEdicionId || segId("user"), nombre, email,
+    rol: $("segUsuarioRol").value, activo: $("segUsuarioActivo").checked,
+    permisos, actualizadoEn: segAhora()
+  };
+  const idx = seguridadFratello.usuarios.findIndex(u => u.id === item.id);
+  if (idx >= 0) seguridadFratello.usuarios[idx] = item; else seguridadFratello.usuarios.unshift(item);
+  await segGuardarRemoto();
+  await segAuditar("usuario", idx >= 0 ? "Usuario actualizado" : "Usuario agregado", `${email} · ${item.rol}`);
+  ocultarFormUsuarioSeguridad();
+  renderUsuariosSeguridad();
+}
+window.editarUsuarioSeguridad = id => mostrarFormUsuarioSeguridad(seguridadFratello.usuarios.find(u => u.id === id));
+window.alternarUsuarioSeguridad = async id => {
+  const u = seguridadFratello.usuarios.find(x => x.id === id); if (!u) return;
+  u.activo = u.activo === false; await segGuardarRemoto(); await segAuditar("usuario", u.activo ? "Usuario activado" : "Usuario bloqueado", u.email); renderUsuariosSeguridad();
+};
+window.eliminarUsuarioSeguridad = async id => {
+  const u = seguridadFratello.usuarios.find(x => x.id === id); if (!u || !confirm(`¿Eliminar a ${u.email}?`)) return;
+  seguridadFratello.usuarios = seguridadFratello.usuarios.filter(x => x.id !== id); await segGuardarRemoto(); await segAuditar("usuario","Usuario eliminado",u.email); renderUsuariosSeguridad();
+};
+function renderDispositivosSeguridad() {
+  const actual = dispositivoFratelloActual || segObtenerDispositivoActual();
+  if ($("segDispositivoActualNombre")) $("segDispositivoActualNombre").textContent = actual.nombre;
+  const estadoActual = seguridadFratello.dispositivos.find(d => d.id === actual.id)?.estado || "pendiente";
+  const badge = $("segDispositivoActualEstado");
+  if (badge) { badge.textContent = estadoActual; badge.className = `securityStatus ${estadoActual === "autorizado" ? "authorized" : estadoActual === "bloqueado" ? "blocked" : "pending"}`; }
+  const cont = $("listaDispositivosSeguridad");
+  if (!cont) return;
+  const lista = seguridadFratello.dispositivos.filter(d => !usuarioAdministradorActual?.uid || d.uid === usuarioAdministradorActual.uid);
+  cont.innerHTML = lista.length ? lista.map(d => `
+    <article class="securityRow">
+      <div class="securityAvatar">${/Celular|Android|iPhone/i.test(d.nombre) ? "📱" : "💻"}</div>
+      <div class="securityRowMain"><strong>${segEscapar(d.nombre)}</strong><small>${segEscapar(d.email || "")}<br>Última actividad: ${new Date(d.ultimaActividad || d.creadoEn).toLocaleString("es-AR")}${d.id === actual.id ? " · Este dispositivo" : ""}</small></div>
+      <span class="securityStatus ${d.estado === "autorizado" ? "authorized" : d.estado === "bloqueado" ? "blocked" : "pending"}">${segEscapar(d.estado)}</span>
+      <div class="securityRowActions">${d.estado !== "autorizado" ? `<button onclick="autorizarDispositivoSeguridad('${d.id}')">Autorizar</button>` : ""}<button onclick="bloquearDispositivoSeguridad('${d.id}')">${d.estado === "bloqueado" ? "Desbloquear" : "Bloquear"}</button><button class="danger" onclick="eliminarDispositivoSeguridad('${d.id}')">Eliminar</button></div>
+    </article>`).join("") : '<div class="securityEmpty">No hay dispositivos registrados.</div>';
+}
+window.autorizarDispositivoSeguridad = async id => { const d=seguridadFratello.dispositivos.find(x=>x.id===id); if(!d)return; d.estado="autorizado"; await segGuardarRemoto(); await segAuditar("dispositivo","Dispositivo autorizado",d.nombre); renderDispositivosSeguridad(); };
+window.bloquearDispositivoSeguridad = async id => { const d=seguridadFratello.dispositivos.find(x=>x.id===id); if(!d)return; d.estado=d.estado==="bloqueado"?"autorizado":"bloqueado"; await segGuardarRemoto(); await segAuditar("dispositivo",d.estado==="bloqueado"?"Dispositivo bloqueado":"Dispositivo desbloqueado",d.nombre); renderDispositivosSeguridad(); if(d.id===dispositivoFratelloActual?.id && d.estado==="bloqueado") authFratello?.signOut(); };
+window.eliminarDispositivoSeguridad = async id => { const d=seguridadFratello.dispositivos.find(x=>x.id===id); if(!d||!confirm("¿Eliminar este dispositivo?"))return; seguridadFratello.dispositivos=seguridadFratello.dispositivos.filter(x=>x.id!==id); await segGuardarRemoto(); await segAuditar("dispositivo","Dispositivo eliminado",d.nombre); renderDispositivosSeguridad(); };
+function renderAuditoriaSeguridad() {
+  const cont = $("listaAuditoriaSeguridad"); if (!cont) return;
+  const filtro = $("filtroAuditoriaSeguridad")?.value || "";
+  const lista = seguridadFratello.auditoria.filter(a => !filtro || a.tipo === filtro);
+  cont.innerHTML = lista.length ? lista.map(a => `<article class="auditRow"><div class="auditDot"></div><div><strong>${segEscapar(a.accion)}</strong><small>${new Date(a.fecha).toLocaleString("es-AR")} · ${segEscapar(a.usuario)} · ${segEscapar(a.dispositivo)}</small>${a.detalle ? `<p>${segEscapar(a.detalle)}</p>` : ""}</div><span>${segEscapar(a.tipo)}</span></article>`).join("") : '<div class="securityEmpty">Todavía no hay movimientos para mostrar.</div>';
+}
+function segDatosBackup() {
+  const claves = Object.keys(localStorage).filter(k => k.startsWith("fratello"));
+  const local = {}; claves.forEach(k => local[k] = localStorage.getItem(k));
+  return { formato:"FratelloBackup", version:"4.0", creadoEn:segAhora(), usuario:usuarioAdministradorActual?.email || "", localStorage:local };
+}
+function segDescargar(nombre, contenido, tipo="application/json") {
+  const blob = new Blob([contenido], {type:tipo}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=nombre; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function descargarBackupCompleto() {
+  const datos=segDatosBackup(); const fecha=adminFinHoy(); segDescargar(`fratello_backup_${fecha}.json`,JSON.stringify(datos,null,2));
+  seguridadFratello.backups.unshift({id:segId("backup"),fecha:segAhora(),tipo:"Descarga completa",usuario:usuarioAdministradorActual?.email||""});
+  seguridadFratello.backups=seguridadFratello.backups.slice(0,50); await segGuardarRemoto(); await segAuditar("backup","Copia completa descargada",fecha); renderBackupsSeguridad();
+}
+async function restaurarBackupCompleto() {
+  const archivo=$("archivoRestaurarBackup")?.files?.[0]; if(!archivo)return alert("Seleccioná un archivo de copia.");
+  if(!confirm("La restauración reemplazará datos locales de Fratello. ¿Continuar?"))return;
+  try { const datos=JSON.parse(await archivo.text()); if(datos.formato!=="FratelloBackup"||!datos.localStorage)throw new Error("Formato inválido");
+    Object.entries(datos.localStorage).forEach(([k,v])=>localStorage.setItem(k,v)); await segAuditar("backup","Copia restaurada",archivo.name); alert("Copia restaurada. La aplicación se recargará."); location.reload();
+  } catch(e){ alert("No se pudo restaurar: "+e.message); }
+}
+function exportarAdministracionCSV() {
+  const filas=[["Tipo","Fecha","Concepto","Categoría/Cliente","Medio","Monto","Estado"]];
+  (administracionFinanciera.ingresosExternos||[]).forEach(x=>filas.push(["Ingreso",x.fecha,x.descripcion||"",x.cliente||"",x.medio||"",x.monto||0,x.cobrado===false?"Pendiente":"Cobrado"]));
+  (administracionFinanciera.gastosManuales||[]).forEach(x=>filas.push(["Gasto",x.fecha,x.motivo||"",x.categoria||"",x.medio||"",x.monto||0,x.pagado===false?"Pendiente":"Pagado"]));
+  (administracionFinanciera.presupuestos||[]).forEach(x=>filas.push(["Presupuesto",x.mes||"",x.concepto||"",x.categoria||"","",x.monto||0,""]));
+  const csv="\ufeff"+filas.map(f=>f.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\n");
+  segDescargar(`fratello_administracion_${adminFinHoy()}.csv`,csv,"text/csv;charset=utf-8"); segAuditar("backup","Administración exportada a CSV","");
+}
+function imprimirInformeAdministracion() {
+  renderAdministracionFinanciera(); segAuditar("backup","Informe enviado a impresión/PDF",""); window.print();
+}
+function renderBackupsSeguridad() {
+  const cont=$("listaBackupsSeguridad"); if(!cont)return;
+  cont.innerHTML=seguridadFratello.backups.length?seguridadFratello.backups.map(b=>`<article class="securityRow"><div class="securityAvatar">💾</div><div class="securityRowMain"><strong>${segEscapar(b.tipo)}</strong><small>${new Date(b.fecha).toLocaleString("es-AR")} · ${segEscapar(b.usuario)}</small></div></article>`).join(""):'<div class="securityEmpty">Todavía no hay copias registradas.</div>';
+}
+async function registrarBackupManual() {
+  seguridadFratello.backups.unshift({id:segId("backup"),fecha:segAhora(),tipo:"Registro manual",usuario:usuarioAdministradorActual?.email||""});
+  seguridadFratello.backups=seguridadFratello.backups.slice(0,50); await segGuardarRemoto(); await segAuditar("backup","Copia registrada manualmente",""); renderBackupsSeguridad();
+}
+function renderSeguridadCompleta() { renderUsuariosSeguridad(); renderDispositivosSeguridad(); renderAuditoriaSeguridad(); renderBackupsSeguridad(); segAplicarPermisosUI(); }
+function iniciarSeguridadFratello() {
+  if (window.__FRATELLO_SEGURIDAD_V400__) return; window.__FRATELLO_SEGURIDAD_V400__=true;
+  segCargarLocal(); dispositivoFratelloActual=segObtenerDispositivoActual();
+  $("btnNuevoUsuarioSeguridad")?.addEventListener("click",()=>mostrarFormUsuarioSeguridad());
+  $("btnCancelarUsuarioSeguridad")?.addEventListener("click",ocultarFormUsuarioSeguridad);
+  $("btnGuardarUsuarioSeguridad")?.addEventListener("click",guardarUsuarioSeguridad);
+  $("segUsuarioRol")?.addEventListener("change",()=>{const p=segPermisosPorRol($("segUsuarioRol").value);document.querySelectorAll("[data-seg-permiso]").forEach(c=>c.checked=p.includes(c.dataset.segPermiso));});
+  $("btnActualizarDispositivos")?.addEventListener("click",async()=>{await segCargarRemoto();renderDispositivosSeguridad();});
+  $("btnActualizarAuditoria")?.addEventListener("click",async()=>{await segCargarRemoto();renderAuditoriaSeguridad();});
+  $("filtroAuditoriaSeguridad")?.addEventListener("change",renderAuditoriaSeguridad);
+  $("btnDescargarBackupCompleto")?.addEventListener("click",descargarBackupCompleto);
+  $("btnRestaurarBackup")?.addEventListener("click",restaurarBackupCompleto);
+  $("btnExportarAdministracionCSV")?.addEventListener("click",exportarAdministracionCSV);
+  $("btnImprimirInformeAdministracion")?.addEventListener("click",imprimirInformeAdministracion);
+  $("btnCrearRegistroBackup")?.addEventListener("click",registrarBackupManual);
+  renderSeguridadCompleta();
+}

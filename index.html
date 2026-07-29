@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=395d3" />
+  <link rel="stylesheet" href="styles.css?v=400" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "3.9.5D.3";
-    document.documentElement.dataset.fratelloVersion = "3.9.5D.3";
+    window.FRATELLO_VERSION = "4.0";
+    document.documentElement.dataset.fratelloVersion = "4.0";
   </script>
 
 </head>
@@ -77,7 +77,7 @@
 
 <section class="syncPanel">
     <strong>Sincronización:</strong>
-    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v3.9.5D.3</small>
+    <span id="estadoSync">Modo local</span><small id="versionFratello" style="margin-left:8px;opacity:.65">v4.0</small>
   </section>
 
   <section id="panelInicio" class="dashboard dashboardV21">
@@ -449,7 +449,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">Etapa C · Administración + Caja</span>
+        <span class="adminFinanceVersion">v4.0 · Seguridad profesional</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -477,6 +477,10 @@
           <button type="button" data-admin-tab="gastos">💸 Gastos</button>
           <button type="button" data-admin-tab="presupuesto">📅 Presupuesto</button>
           <button type="button" data-admin-tab="caja">🏦 Caja privada <span class="adminTabNew">NUEVO</span></button>
+          <button type="button" data-admin-tab="usuarios">👥 Usuarios</button>
+          <button type="button" data-admin-tab="dispositivos">📱 Dispositivos</button>
+          <button type="button" data-admin-tab="auditoria">📜 Auditoría</button>
+          <button type="button" data-admin-tab="backup">💾 Copias</button>
         </nav>
 
         <section class="adminFinanceTab active" data-admin-panel="resumen">
@@ -716,6 +720,87 @@
                   <div id="listaPersonasCaja"></div>
                 </details>
               </section>
+
+        <section class="adminFinanceTab securityPanel" data-admin-panel="usuarios">
+          <article class="securityHero">
+            <div><span class="securityEyebrow">CONTROL DE ACCESO</span><h3>Usuarios y roles</h3>
+            <p>Definí qué puede ver cada persona. Las cuentas de acceso se crean en Firebase Authentication y acá se asignan sus permisos.</p></div>
+            <button id="btnNuevoUsuarioSeguridad" class="primary" type="button">＋ Agregar usuario</button>
+          </article>
+          <div id="formUsuarioSeguridad" class="securityForm hidden">
+            <input id="segUsuarioId" type="hidden">
+            <label>Nombre<input id="segUsuarioNombre" type="text" placeholder="Ej.: Sofía"></label>
+            <label>Correo de acceso<input id="segUsuarioEmail" type="email" placeholder="nombre@fratello.com"></label>
+            <label>Rol<select id="segUsuarioRol">
+              <option value="administrador">👑 Administrador</option>
+              <option value="encargado">👨‍💼 Encargado</option>
+              <option value="atencion">🧾 Atención</option>
+              <option value="produccion">👨‍🍳 Producción</option>
+            </select></label>
+            <label class="adminCheckLabel"><input id="segUsuarioActivo" type="checkbox" checked> Usuario activo</label>
+            <div class="securityPermissions">
+              <strong>Módulos permitidos</strong>
+              <label><input type="checkbox" data-seg-permiso="produccion"> Producción</label>
+              <label><input type="checkbox" data-seg-permiso="pedidos"> Pedidos</label>
+              <label><input type="checkbox" data-seg-permiso="caja"> Caja operativa</label>
+              <label><input type="checkbox" data-seg-permiso="administracion"> Administración</label>
+              <label><input type="checkbox" data-seg-permiso="configuracion"> Configuración</label>
+            </div>
+            <div class="securityFormActions">
+              <button id="btnCancelarUsuarioSeguridad" type="button">Cancelar</button>
+              <button id="btnGuardarUsuarioSeguridad" class="primary" type="button">Guardar usuario</button>
+            </div>
+          </div>
+          <div id="listaUsuariosSeguridad" class="securityList"></div>
+        </section>
+
+        <section class="adminFinanceTab securityPanel" data-admin-panel="dispositivos">
+          <article class="securityHero">
+            <div><span class="securityEyebrow">SESIONES POR EQUIPO</span><h3>Dispositivos autorizados</h3>
+            <p>El primer equipo del administrador se autoriza automáticamente. Los nuevos equipos quedan pendientes hasta ser aprobados.</p></div>
+            <button id="btnActualizarDispositivos" type="button">🔄 Actualizar</button>
+          </article>
+          <div class="securityCurrentDevice">
+            <div><strong>Este dispositivo</strong><small id="segDispositivoActualNombre">Detectando...</small></div>
+            <span id="segDispositivoActualEstado" class="securityStatus pending">Verificando</span>
+          </div>
+          <div id="listaDispositivosSeguridad" class="securityList"></div>
+        </section>
+
+        <section class="adminFinanceTab securityPanel" data-admin-panel="auditoria">
+          <article class="securityHero">
+            <div><span class="securityEyebrow">TRAZABILIDAD</span><h3>Auditoría de actividad</h3>
+            <p>Registro de accesos, cambios administrativos, dispositivos, copias y acciones sensibles.</p></div>
+            <div class="securityHeroActions">
+              <select id="filtroAuditoriaSeguridad">
+                <option value="">Todas las acciones</option>
+                <option value="sesion">Sesiones</option>
+                <option value="usuario">Usuarios</option>
+                <option value="dispositivo">Dispositivos</option>
+                <option value="backup">Copias</option>
+                <option value="administracion">Administración</option>
+              </select>
+              <button id="btnActualizarAuditoria" type="button">🔄 Actualizar</button>
+            </div>
+          </article>
+          <div id="listaAuditoriaSeguridad" class="securityAuditList"></div>
+        </section>
+
+        <section class="adminFinanceTab securityPanel" data-admin-panel="backup">
+          <article class="securityHero">
+            <div><span class="securityEyebrow">RESGUARDO DE INFORMACIÓN</span><h3>Copias y exportación</h3>
+            <p>Generá una copia completa descargable, restaurá información y exportá movimientos administrativos.</p></div>
+          </article>
+          <div class="backupGrid">
+            <article class="backupCard"><span>💾</span><h4>Copia completa</h4><p>Descarga un archivo JSON con la información local de Fratello.</p><button id="btnDescargarBackupCompleto" class="primary" type="button">Descargar copia</button></article>
+            <article class="backupCard"><span>♻️</span><h4>Restaurar copia</h4><p>Seleccioná una copia anterior. Antes de reemplazar datos se pedirá confirmación.</p><input id="archivoRestaurarBackup" type="file" accept=".json,application/json"><button id="btnRestaurarBackup" type="button">Restaurar archivo</button></article>
+            <article class="backupCard"><span>📊</span><h4>Exportar movimientos</h4><p>Genera un CSV compatible con Excel con ingresos, gastos y presupuestos.</p><button id="btnExportarAdministracionCSV" type="button">Exportar a Excel/CSV</button></article>
+            <article class="backupCard"><span>🖨️</span><h4>Informe imprimible</h4><p>Abre una vista lista para guardar como PDF desde el navegador.</p><button id="btnImprimirInformeAdministracion" type="button">Imprimir / PDF</button></article>
+          </div>
+          <div class="backupHistoryHeader"><h3>Historial de copias</h3><button id="btnCrearRegistroBackup" type="button">Registrar copia ahora</button></div>
+          <div id="listaBackupsSeguridad" class="securityList"></div>
+        </section>
+
       </section>
     </section>
 
@@ -933,7 +1018,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=395d3"></script>
+  <script src="app.js?v=400"></script>
 
   
 
@@ -950,12 +1035,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=395d3")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=400")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=395d3", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=400", {
             scope: "./",
             updateViaCache: "none"
           });

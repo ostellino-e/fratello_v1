@@ -3184,3 +3184,20 @@ body.modal-open{
     width:100%;
   }
 }
+
+
+/* Fratello v4.0 — Seguridad profesional */
+.securityPanel{padding-top:4px}
+.securityHero{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:20px;margin-bottom:16px;border:1px solid #e5d1be;border-radius:18px;background:linear-gradient(135deg,#fffaf5,#f7eadc)}
+.securityHero h3{margin:3px 0 5px;font-size:21px}.securityHero p{margin:0;color:#6d6259;max-width:700px}.securityEyebrow{font-size:10px;font-weight:900;letter-spacing:.1em;color:#8a4b20}
+.securityHeroActions{display:flex;gap:8px;align-items:center}.securityForm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:18px;margin-bottom:16px;border:1px solid #dfc7b1;border-radius:16px;background:#fff}
+.securityForm label{display:grid;gap:6px;font-weight:700}.securityPermissions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;padding:12px;border-radius:12px;background:#faf5ef}.securityPermissions strong{width:100%}.securityPermissions label{display:flex;align-items:center;gap:6px;font-weight:600}
+.securityFormActions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px}.securityList{display:grid;gap:10px}.securityRow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:14px;border:1px solid #e5d7ca;border-radius:15px;background:#fff}
+.securityAvatar{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:#f7eee5;font-size:22px}.securityRowMain{display:grid;gap:3px}.securityRowMain small{color:#756b62}.securityPermissionTags{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.securityPermissionTags span{padding:3px 7px;border-radius:999px;background:#f3eee9;font-size:10px}
+.securityRowActions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.securityRowActions button{padding:7px 9px}.securityRowActions .danger{color:#9b2525}.securityStatus{padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900;text-transform:capitalize}.securityStatus.authorized{background:#e7f6ea;color:#216a35}.securityStatus.pending{background:#fff3ce;color:#855f00}.securityStatus.blocked{background:#fde7e7;color:#9a2424}
+.securityCurrentDevice{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px;margin-bottom:14px;border:2px solid #d7b08a;border-radius:15px;background:#fff9f1}.securityCurrentDevice div{display:grid;gap:3px}.securityCurrentDevice small{color:#756b62}
+.securityEmpty{padding:24px;text-align:center;color:#766b62;border:1px dashed #d7c7b8;border-radius:14px;background:#fff}
+.securityAuditList{display:grid;gap:8px}.auditRow{display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:start;padding:13px;border-bottom:1px solid #eee1d5}.auditDot{width:10px;height:10px;margin-top:5px;border-radius:50%;background:#8d572f}.auditRow div:nth-child(2){display:grid;gap:3px}.auditRow small{color:#756b62}.auditRow p{margin:3px 0 0}.auditRow>span{padding:4px 7px;border-radius:999px;background:#f4eee8;font-size:10px}
+.backupGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.backupCard{display:grid;gap:9px;padding:18px;border:1px solid #e4d3c4;border-radius:17px;background:#fff}.backupCard>span{font-size:30px}.backupCard h4,.backupCard p{margin:0}.backupCard p{color:#6f655d}.backupHistoryHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 12px}
+@media(max-width:760px){.securityHero{align-items:flex-start;flex-direction:column}.securityForm,.backupGrid{grid-template-columns:1fr}.securityRow{grid-template-columns:auto 1fr}.securityRow>.securityStatus,.securityRow>.securityRowActions{grid-column:2}.securityHeroActions{width:100%;flex-wrap:wrap}.securityHeroActions select{flex:1}}
+@media print{body *{visibility:hidden!important}#seccionAdministracion,#seccionAdministracion *{visibility:visible!important}#seccionAdministracion{position:absolute;inset:0}.adminFinanceTabs,.adminFinanceToolbarActions,.securityPanel,.adminCajaAccessCard{display:none!important}}
