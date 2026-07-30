@@ -6194,7 +6194,9 @@ function mostrarPestanaTickets(pestana) {
   $("btnTicketsPendientes")?.classList.toggle("active", !esSemana);
 }
 
-function htmlPanelTicketsFechas(fechas, abrirPrimero = true) {
+let fechaTicketAbierta = "";
+
+function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
   if (!fechas.length) {
     return '<p class="weeklyEmpty">No hay tickets en esta sección.</p>';
   }
@@ -6202,7 +6204,7 @@ function htmlPanelTicketsFechas(fechas, abrirPrimero = true) {
   return fechas.map((fecha, indice) => {
     const lista = pedidosTicketParaFecha(fecha);
 
-    return `<details class="ticketDayPanel" data-ticket-fecha="${fecha}" ${abrirPrimero && indice === 0 ? "open" : ""}>
+    return `<details class="ticketDayPanel" data-ticket-fecha="${fecha}" ${fechaAbierta === fecha ? "open" : ""}>
       <summary>
         <span>${etiquetaFechaTickets(fecha)}</span>
         <span class="weeklyCount">${lista.length}</span>
@@ -6216,6 +6218,7 @@ function htmlPanelTicketsFechas(fechas, abrirPrimero = true) {
               <small>${pedido.esPedidoHoy ? `Pedido de hoy${pedido.horaEntrega ? ` · ${pedido.horaEntrega}` : ""}` : etiquetaOrigenPedido(pedido)}${pedido.entregado ? " · ✅ Entregado" : ""}</small>
             </div>
             <div class="ticketClientActions">
+              <button type="button" class="primary" onclick="abrirEntregaTicket('${pedido.claveMemoria}')">📦 Entrega / cobro</button>
               <button type="button" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">👁 Ver</button>
               <button type="button" onclick="imprimirTicketIndividual('${tipo}', '${pedido.claveMemoria}')">🖨 Imprimir</button>
               <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG</button>
@@ -6246,8 +6249,25 @@ function renderTicketsPorDia() {
   );
   const fechasPendientes = fechas.filter(fecha => fecha < limites.inicio);
 
-  if (panelSemana) panelSemana.innerHTML = htmlPanelTicketsFechas(fechasSemana, true);
-  if (panelPendientes) panelPendientes.innerHTML = htmlPanelTicketsFechas(fechasPendientes.reverse(), true);
+  if (panelSemana) panelSemana.innerHTML = htmlPanelTicketsFechas(fechasSemana, fechaTicketAbierta);
+  if (panelPendientes) panelPendientes.innerHTML = htmlPanelTicketsFechas(fechasPendientes.reverse(), fechaTicketAbierta);
+
+  [panelSemana, panelPendientes].filter(Boolean).forEach(panel => {
+    if (panel.dataset.ticketToggleInstalado === "1") return;
+    panel.dataset.ticketToggleInstalado = "1";
+    panel.addEventListener("toggle", evento => {
+      const detalle = evento.target.closest?.(".ticketDayPanel");
+      if (!detalle) return;
+      if (detalle.open) {
+        fechaTicketAbierta = detalle.dataset.ticketFecha || "";
+        panel.querySelectorAll(".ticketDayPanel[open]").forEach(otro => {
+          if (otro !== detalle) otro.removeAttribute("open");
+        });
+      } else if (fechaTicketAbierta === detalle.dataset.ticketFecha) {
+        fechaTicketAbierta = "";
+      }
+    }, true);
+  });
 
   const cantidadSemana = fechasSemana.reduce(
     (total, fecha) => total + pedidosTicketParaFecha(fecha).length,
@@ -6282,20 +6302,33 @@ function buscarPedidoTicket(tipo, id) {
 
 function cargarCanvasTickets(lista) {
   const canvas = $("canvasPedidosImpresion");
-  if (!canvas) return false;
+  if (!canvas || !Array.isArray(lista) || !lista.length) return false;
 
   ticketsSeleccionadosActuales = [...lista];
   const tickets = lista.map(datosTicketPedido);
+  const ctx = canvas.getContext("2d");
+
+  if (tickets.length === 1) {
+    const ticket = tickets[0];
+    const individual = crearCanvasTicketIndividual(ticket, 640);
+    canvas.width = individual.width;
+    canvas.height = individual.height;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(individual, 0, 0);
+    canvas.dataset.ticketIndividual = "1";
+    return true;
+  }
+
+  canvas.dataset.ticketIndividual = "0";
   const W = 1400;
   const cols = 2;
   const cellW = W / cols;
-  const cellH = 900;
+  const alturas = tickets.map(ticket => calcularAltoTicket(ticket, cellW - 16));
   const rows = Math.ceil(tickets.length / cols);
+  const cellH = Math.max(900, ...alturas) + 16;
 
   canvas.width = W;
   canvas.height = Math.max(cellH, rows * cellH);
-
-  const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -6306,7 +6339,7 @@ function cargarCanvasTickets(lista) {
       (i % cols) * cellW + 8,
       Math.floor(i / cols) * cellH + 8,
       cellW - 16,
-      cellH - 16,
+      calcularAltoTicket(ticket, cellW - 16),
       String(ticket.id).slice(-6)
     )
   );
@@ -6466,8 +6499,12 @@ function descargarTicketsDelDiaPdf(fecha) {
 function datosTicketPedido(pedido) {
   const dc = datosClientesCompletos[pedido.cliente] || {};
   const lista = listaPrecioCliente(pedido.cliente);
-  const itemsOrigen = Array.isArray(pedido.items) && pedido.items.length
-    ? pedido.items
+  const itemsBase = pedido.entregaConfirmada && Array.isArray(pedido.entregaItems)
+    ? pedido.entregaItems
+    : pedido.items;
+
+  const itemsOrigen = Array.isArray(itemsBase) && itemsBase.length
+    ? itemsBase
     : procesarTextoPedido(
         pedido.textoOriginal || pedido.texto || "",
         pedido.cliente || "Cliente",
@@ -6498,7 +6535,12 @@ function datosTicketPedido(pedido) {
     listaPrecio: lista,
     listaPrecioNombre: etiquetaListaPrecio(lista),
     items,
-    total: items.reduce((a, i) => a + i.total, 0)
+    total: items.reduce((a, i) => a + i.total, 0),
+    entregaConfirmada: Boolean(pedido.entregaConfirmada),
+    observacionEntrega: pedido.observacionEntrega || "",
+    saldoAnterior: saldoAnteriorTicket(pedido),
+    pagoHoy: pagoTicketActual(pedido),
+    saldoFinal: saldoFinalTicket(pedido)
   };
 }
 
@@ -6527,10 +6569,461 @@ function cortarTextoCanvas(ctx, texto, maxWidth) {
   return lineas.length ? lineas : [""];
 }
 
-function calcularAltoTicket(t,a=640){return Math.max(720,430+t.items.reduce((x,i)=>x+(String(i.descripcion).length>25?74:58),0)+(t.direccion||t.barrio?90:35));}
-function dibujarTicketEnCanvas(ctx,t,x,y,a,h,n=""){const p=26,l=x+p,r=x+a-p;let yy=y+38;ctx.save();ctx.fillStyle="#fff";ctx.fillRect(x,y,a,h);ctx.strokeStyle="#111";ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,a-2,h-2);ctx.fillStyle="#111";ctx.textAlign="center";ctx.font="bold 29px Arial";ctx.fillText("PANADERÍA FRATELLO",x+a/2,yy);yy+=30;ctx.font="14px Arial";ctx.fillText("PEDIDO / TICKET DE ENTREGA",x+a/2,yy);yy+=28;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=26;ctx.textAlign="left";ctx.font="bold 17px Arial";ctx.fillText(`Cliente: ${t.cliente}`,l,yy);yy+=24;ctx.font="15px Arial";ctx.fillText(`Fecha: ${new Date(t.fecha+"T12:00:00").toLocaleDateString("es-AR")}${t.horaEntrega ? ` · Entrega ${t.horaEntrega}` : ""}`,l,yy);ctx.textAlign="right";ctx.fillText(`Pedido Nº ${n}`,r,yy);yy+=22;ctx.textAlign="left";ctx.font="bold 13px Arial";ctx.fillText(`Lista de precios: ${t.listaPrecioNombre || "Cliente"}`,l,yy);yy+=22;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=24;ctx.textAlign="left";ctx.font="bold 14px Arial";ctx.fillText("DESCRIPCIÓN",l,yy);yy+=22;ctx.font="bold 13px Arial";ctx.fillText("CANT.",l,yy);ctx.textAlign="right";ctx.fillText("P. UNIT.",x+a*.70,yy);ctx.fillText("TOTAL",r,yy);yy+=16;ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();yy+=24;for(const i of t.items){ctx.textAlign="left";ctx.font="bold 15px Arial";const ls=cortarTextoCanvas(ctx,i.descripcion,a-p*2).slice(0,2);ls.forEach((v,j)=>ctx.fillText(v,l,yy+j*18));yy+=ls.length*18+8;ctx.font="14px Arial";ctx.fillText(`${fmt(i.cantidad)} ${i.unidad}`,l,yy);ctx.textAlign="right";ctx.fillText(i.precioUnitario>0?formatoDineroTicket(i.precioUnitario):"Sin precio",x+a*.70,yy);ctx.fillText(i.precioUnitario>0?formatoDineroTicket(i.total):"—",r,yy);yy+=18;ctx.strokeStyle="#bbb";ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle="#111";yy+=20;}ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();yy+=34;ctx.font="bold 25px Arial";ctx.textAlign="left";ctx.fillText("TOTAL",l,yy);ctx.textAlign="right";ctx.fillText(formatoDineroTicket(t.total),r,yy);yy+=34;ctx.lineWidth=2;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(l,yy);ctx.lineTo(r,yy);ctx.stroke();ctx.setLineDash([]);yy+=30;ctx.textAlign="left";ctx.font="bold 16px Arial";ctx.fillText("DIRECCIÓN DE ENTREGA",l,yy);yy+=24;ctx.font="15px Arial";if(t.direccion){cortarTextoCanvas(ctx,t.direccion,a-p*2).forEach(v=>{ctx.fillText(v,l,yy);yy+=20;});}else{ctx.fillText("Sin dirección cargada",l,yy);yy+=20;}if(t.barrio){ctx.fillText(`Barrio: ${t.barrio}`,l,yy);yy+=22;}yy+=12;ctx.textAlign="center";ctx.font="14px Arial";ctx.fillText("Gracias por elegir Panadería Fratello",x+a/2,yy);ctx.restore();}
+function calcularAltoTicket(t, a = 640) {
+  const altoItems = (t.items || []).reduce(
+    (total, item) => total + (String(item.descripcion || "").length > 25 ? 74 : 58),
+    0
+  );
+  const altoDireccion = t.direccion || t.barrio ? 90 : 35;
+  const altoCuenta = 150;
+  const altoObservacion = t.observacionEntrega ? 55 : 0;
+  return Math.max(760, 470 + altoItems + altoDireccion + altoCuenta + altoObservacion);
+}
+
+function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
+  const p = 26;
+  const l = x + p;
+  const r = x + a - p;
+  let yy = y + 38;
+
+  ctx.save();
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(x, y, a, h);
+  ctx.strokeStyle = "#111";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, a - 2, h - 2);
+  ctx.fillStyle = "#111";
+
+  ctx.textAlign = "center";
+  ctx.font = "bold 29px Arial";
+  ctx.fillText("PANADERÍA FRATELLO", x + a / 2, yy);
+  yy += 30;
+  ctx.font = "14px Arial";
+  ctx.fillText(t.entregaConfirmada ? "COMPROBANTE DE ENTREGA" : "PEDIDO / TICKET DE ENTREGA", x + a / 2, yy);
+  yy += 28;
+
+  ctx.setLineDash([8, 5]);
+  ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
+  ctx.setLineDash([]);
+  yy += 26;
+
+  ctx.textAlign = "left";
+  ctx.font = "bold 17px Arial";
+  ctx.fillText(`Cliente: ${t.cliente}`, l, yy);
+  yy += 24;
+  ctx.font = "15px Arial";
+  ctx.fillText(
+    `Fecha: ${new Date(t.fecha + "T12:00:00").toLocaleDateString("es-AR")}${t.horaEntrega ? ` · Entrega ${t.horaEntrega}` : ""}`,
+    l, yy
+  );
+  ctx.textAlign = "right";
+  ctx.fillText(`Pedido Nº ${n}`, r, yy);
+  yy += 22;
+
+  ctx.textAlign = "left";
+  ctx.font = "bold 13px Arial";
+  ctx.fillText(`Lista de precios: ${t.listaPrecioNombre || "Cliente"}`, l, yy);
+  yy += 22;
+
+  ctx.setLineDash([8, 5]);
+  ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
+  ctx.setLineDash([]);
+  yy += 24;
+
+  ctx.font = "bold 14px Arial";
+  ctx.textAlign = "left";
+  ctx.fillText("DESCRIPCIÓN", l, yy);
+  yy += 22;
+  ctx.font = "bold 13px Arial";
+  ctx.fillText("CANT.", l, yy);
+  ctx.textAlign = "right";
+  ctx.fillText("P. UNIT.", x + a * .70, yy);
+  ctx.fillText("TOTAL", r, yy);
+  yy += 16;
+  ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
+  yy += 24;
+
+  for (const i of t.items || []) {
+    ctx.textAlign = "left";
+    ctx.font = "bold 15px Arial";
+    const lineas = cortarTextoCanvas(ctx, i.descripcion, a - p * 2).slice(0, 2);
+    lineas.forEach((linea, j) => ctx.fillText(linea, l, yy + j * 18));
+    yy += lineas.length * 18 + 8;
+
+    ctx.font = "14px Arial";
+    ctx.fillText(`${fmt(i.cantidad)} ${i.unidad}`, l, yy);
+    ctx.textAlign = "right";
+    ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.precioUnitario) : "Sin precio", x + a * .70, yy);
+    ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.total) : "—", r, yy);
+    yy += 18;
+
+    ctx.strokeStyle = "#bbb";
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = "#111";
+    yy += 20;
+  }
+
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
+  yy += 34;
+  ctx.font = "bold 23px Arial";
+  ctx.textAlign = "left";
+  ctx.fillText("COMPRA DE HOY", l, yy);
+  ctx.textAlign = "right";
+  ctx.fillText(formatoDineroTicket(t.total), r, yy);
+  yy += 32;
+
+  ctx.lineWidth = 1;
+  ctx.font = "15px Arial";
+  ctx.textAlign = "left";
+  ctx.fillText("Saldo anterior", l, yy);
+  ctx.textAlign = "right";
+  ctx.fillText(formatoDineroTicket(t.saldoAnterior), r, yy);
+  yy += 25;
+
+  if (Number(t.pagoHoy || 0) > 0) {
+    ctx.textAlign = "left";
+    ctx.fillText("Pago recibido", l, yy);
+    ctx.textAlign = "right";
+    ctx.fillText(`- ${formatoDineroTicket(t.pagoHoy)}`, r, yy);
+    yy += 25;
+  }
+
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
+  yy += 34;
+  ctx.font = "bold 25px Arial";
+  ctx.textAlign = "left";
+  ctx.fillText("TOTAL PENDIENTE", l, yy);
+  ctx.textAlign = "right";
+  ctx.fillText(formatoDineroTicket(t.saldoFinal), r, yy);
+  yy += 34;
+
+  if (t.observacionEntrega) {
+    ctx.setLineDash([8, 5]);
+    ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
+    ctx.setLineDash([]);
+    yy += 24;
+    ctx.textAlign = "left";
+    ctx.font = "bold 14px Arial";
+    ctx.fillText("OBSERVACIÓN DE ENTREGA", l, yy);
+    yy += 21;
+    ctx.font = "14px Arial";
+    cortarTextoCanvas(ctx, t.observacionEntrega, a - p * 2).slice(0, 2).forEach(linea => {
+      ctx.fillText(linea, l, yy);
+      yy += 19;
+    });
+  }
+
+  ctx.setLineDash([8, 5]);
+  ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
+  ctx.setLineDash([]);
+  yy += 28;
+
+  ctx.textAlign = "left";
+  ctx.font = "bold 16px Arial";
+  ctx.fillText("DIRECCIÓN DE ENTREGA", l, yy);
+  yy += 24;
+  ctx.font = "15px Arial";
+  if (t.direccion) {
+    cortarTextoCanvas(ctx, t.direccion, a - p * 2).forEach(linea => {
+      ctx.fillText(linea, l, yy);
+      yy += 20;
+    });
+  } else {
+    ctx.fillText("Sin dirección cargada", l, yy);
+    yy += 20;
+  }
+  if (t.barrio) {
+    ctx.fillText(`Barrio: ${t.barrio}`, l, yy);
+    yy += 22;
+  }
+
+  yy += 12;
+  ctx.textAlign = "center";
+  ctx.font = "14px Arial";
+  ctx.fillText("Gracias por elegir Panadería Fratello", x + a / 2, yy);
+  ctx.restore();
+}
 
 function crearCanvasTicketIndividual(t,a=640){const h=calcularAltoTicket(t,a),c=document.createElement("canvas");c.width=a;c.height=h;dibujarTicketEnCanvas(c.getContext("2d"),t,0,0,a,h,String(t.id).slice(-6));return c;}
+
+
+const CUENTA_CORRIENTE_KEY_V42 = "fratello_cuenta_corriente_v42";
+let cuentaCorrienteV42 = JSON.parse(localStorage.getItem(CUENTA_CORRIENTE_KEY_V42) || "[]");
+
+function guardarCuentaCorrienteV42() {
+  localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  if (typeof guardarEnNube === "function") guardarEnNube();
+}
+
+function movimientosClienteV42(cliente) {
+  return (Array.isArray(cuentaCorrienteV42) ? cuentaCorrienteV42 : [])
+    .filter(m => String(m.cliente || "") === String(cliente || ""))
+    .sort((a, b) =>
+      String(a.fecha || "").localeCompare(String(b.fecha || "")) ||
+      String(a.creado || "").localeCompare(String(b.creado || ""))
+    );
+}
+
+function saldoClienteV42(cliente, excluirClave = "") {
+  return movimientosClienteV42(cliente).reduce((saldo, mov) => {
+    if (excluirClave && mov.claveTicket === excluirClave) return saldo;
+    return saldo + Number(mov.cargo || 0) - Number(mov.pago || 0);
+  }, 0);
+}
+
+function movimientoTicketV42(pedido) {
+  const clave = pedido?.claveMemoria || claveTicketMemoria(pedido, pedido?.tipoTicket || "normal");
+  return cuentaCorrienteV42.find(m => m.claveTicket === clave) || null;
+}
+
+function saldoAnteriorTicket(pedido) {
+  const clave = pedido?.claveMemoria || claveTicketMemoria(pedido, pedido?.tipoTicket || "normal");
+  return Math.max(0, saldoClienteV42(pedido?.cliente, clave));
+}
+
+function pagoTicketActual(pedido) {
+  return Number(movimientoTicketV42(pedido)?.pago || pedido?.pagoEntrega || 0);
+}
+
+function saldoFinalTicket(pedido) {
+  const anterior = saldoAnteriorTicket(pedido);
+  const compra = pedido?.entregaConfirmada
+    ? totalEntregaPedidoV42(pedido)
+    : datosTicketTotalOriginalV42(pedido);
+  return Math.max(0, anterior + compra - pagoTicketActual(pedido));
+}
+
+function datosTicketTotalOriginalV42(pedido) {
+  const items = Array.isArray(pedido?.items) ? pedido.items : [];
+  return items
+    .filter(item => item.estado !== "NO PEDIDO")
+    .reduce((total, item) => {
+      const producto = productoPorId(item.productoId);
+      return total + Number(item.cantidad || 0) *
+        Number(precioUnitarioItem(producto, item.unidad, pedido.cliente) || 0);
+    }, 0);
+}
+
+function totalEntregaPedidoV42(pedido) {
+  const items = Array.isArray(pedido?.entregaItems) ? pedido.entregaItems : [];
+  return items
+    .filter(item => item.estado !== "NO PEDIDO" && Number(item.cantidad || 0) > 0)
+    .reduce((total, item) => {
+      const producto = productoPorId(item.productoId);
+      return total + Number(item.cantidad || 0) *
+        Number(precioUnitarioItem(producto, item.unidad, pedido.cliente) || 0);
+    }, 0);
+}
+
+function asegurarModalEntregaV42() {
+  if ($("modalEntregaTicketV42")) return;
+
+  const modal = document.createElement("div");
+  modal.id = "modalEntregaTicketV42";
+  modal.className = "deliveryModalV42 hidden";
+  modal.innerHTML = `
+    <div class="deliveryModalCardV42">
+      <button type="button" class="deliveryCloseV42" onclick="cerrarEntregaTicketV42()">×</button>
+      <div id="contenidoEntregaTicketV42"></div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  modal.addEventListener("click", evento => {
+    if (evento.target === modal) cerrarEntregaTicketV42();
+  });
+}
+
+function abrirEntregaTicket(clave) {
+  sincronizarMemoriaTickets();
+  const pedido = ticketsMemoria.find(t => String(t.claveMemoria) === String(clave));
+  if (!pedido) return alert("No se encontró el ticket.");
+
+  asegurarModalEntregaV42();
+  const items = (pedido.entregaConfirmada && Array.isArray(pedido.entregaItems)
+    ? pedido.entregaItems
+    : pedido.items || []
+  ).filter(item => item.estado !== "NO PEDIDO");
+
+  const saldoAnterior = saldoAnteriorTicket(pedido);
+  const pagoActual = pagoTicketActual(pedido);
+
+  $("contenidoEntregaTicketV42").innerHTML = `
+    <header class="deliveryHeaderV42">
+      <div>
+        <span class="deliveryEyebrowV42">Entrega real</span>
+        <h2>${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</h2>
+        <p>El pedido original no se modifica. Acá registrás únicamente lo que realmente salió.</p>
+      </div>
+      <span class="deliveryStatusV42">${pedido.entregaConfirmada ? "✅ Entrega guardada" : "Pendiente"}</span>
+    </header>
+
+    <input type="hidden" id="entregaClaveV42" value="${escaparHtmlCatalogo(clave)}">
+
+    <div class="deliveryItemsV42">
+      ${items.map((item, indice) => {
+        const producto = productoPorId(item.productoId);
+        const precio = precioUnitarioItem(producto, item.unidad, pedido.cliente);
+        const original = (pedido.items || []).find(i =>
+          String(i.itemId || "") === String(item.itemId || "") ||
+          String(i.productoId || "") === String(item.productoId || "")
+        );
+        return `
+          <article class="deliveryItemV42" data-index="${indice}">
+            <div>
+              <strong>${escaparHtmlCatalogo(producto?.nombre || item.producto || "Producto")}</strong>
+              <small>Pedido: ${fmt(Number(original?.cantidad ?? item.cantidad ?? 0))} ${escaparHtmlCatalogo(item.unidad || "")} · ${formatoDineroTicket(precio)} c/u</small>
+            </div>
+            <label>
+              Entregado
+              <input class="entregaCantidadV42" type="number" min="0" step="0.01"
+                value="${Number(item.cantidad || 0)}"
+                data-item='${escaparHtmlCatalogo(JSON.stringify(item))}'>
+            </label>
+            <button type="button" onclick="marcarNoEntregadoV42(this)">No se llevó</button>
+          </article>`;
+      }).join("")}
+    </div>
+
+    <div class="deliverySummaryV42">
+      <label>
+        Observación
+        <textarea id="entregaObservacionV42" rows="2" placeholder="Ej.: faltaron 2 kg de pan">${escaparHtmlCatalogo(pedido.observacionEntrega || "")}</textarea>
+      </label>
+      <div class="deliveryAccountV42">
+        <div><span>Saldo anterior</span><strong>${formatoDineroTicket(saldoAnterior)}</strong></div>
+        <div><span>Entrega de hoy</span><strong id="entregaTotalV42">$ 0</strong></div>
+        <label>
+          Pago recibido hoy
+          <input id="entregaPagoV42" type="number" min="0" step="1" value="${pagoActual}">
+        </label>
+        <div class="deliveryGrandV42"><span>Saldo final estimado</span><strong id="entregaSaldoFinalV42">$ 0</strong></div>
+      </div>
+    </div>
+
+    <div class="deliveryActionsV42">
+      <button type="button" onclick="cerrarEntregaTicketV42()">Cancelar</button>
+      <button type="button" class="primary" onclick="guardarEntregaTicketV42()">Guardar entrega y actualizar ticket</button>
+    </div>`;
+
+  $("modalEntregaTicketV42").classList.remove("hidden");
+  $("modalEntregaTicketV42").querySelectorAll(".entregaCantidadV42, #entregaPagoV42").forEach(campo => {
+    campo.addEventListener("input", recalcularEntregaV42);
+  });
+  recalcularEntregaV42();
+}
+
+function marcarNoEntregadoV42(boton) {
+  const input = boton.closest(".deliveryItemV42")?.querySelector(".entregaCantidadV42");
+  if (input) {
+    input.value = "0";
+    recalcularEntregaV42();
+  }
+}
+
+function cerrarEntregaTicketV42() {
+  $("modalEntregaTicketV42")?.classList.add("hidden");
+}
+
+function itemsFormularioEntregaV42() {
+  return [...document.querySelectorAll(".entregaCantidadV42")].map(input => {
+    let base = {};
+    try { base = JSON.parse(input.dataset.item || "{}"); } catch {}
+    return {
+      ...base,
+      cantidad: Math.max(0, Number(input.value || 0)),
+      estado: Number(input.value || 0) > 0 ? (base.estado || "OK") : "NO ENTREGADO"
+    };
+  });
+}
+
+function totalFormularioEntregaV42() {
+  const clave = $("entregaClaveV42")?.value || "";
+  const pedido = ticketsMemoria.find(t => String(t.claveMemoria) === String(clave));
+  if (!pedido) return 0;
+
+  return itemsFormularioEntregaV42().reduce((total, item) => {
+    if (Number(item.cantidad || 0) <= 0) return total;
+    const producto = productoPorId(item.productoId);
+    const precio = precioUnitarioItem(producto, item.unidad, pedido.cliente);
+    return total + Number(item.cantidad || 0) * Number(precio || 0);
+  }, 0);
+}
+
+function recalcularEntregaV42() {
+  const clave = $("entregaClaveV42")?.value || "";
+  const pedido = ticketsMemoria.find(t => String(t.claveMemoria) === String(clave));
+  if (!pedido) return;
+
+  const total = totalFormularioEntregaV42();
+  const anterior = saldoAnteriorTicket(pedido);
+  const pago = Math.max(0, Number($("entregaPagoV42")?.value || 0));
+  const saldo = Math.max(0, anterior + total - pago);
+
+  if ($("entregaTotalV42")) $("entregaTotalV42").textContent = formatoDineroTicket(total);
+  if ($("entregaSaldoFinalV42")) $("entregaSaldoFinalV42").textContent = formatoDineroTicket(saldo);
+}
+
+function actualizarPedidoOrigenEntregaV42(ticketActualizado) {
+  [pedidos, pedidosHoy].forEach(lista => {
+    const pedido = lista.find(p => Number(p.id) === Number(ticketActualizado.id));
+    if (!pedido) return;
+    pedido.entregaConfirmada = ticketActualizado.entregaConfirmada;
+    pedido.entregaItems = ticketActualizado.entregaItems;
+    pedido.observacionEntrega = ticketActualizado.observacionEntrega;
+    pedido.pagoEntrega = ticketActualizado.pagoEntrega;
+    pedido.entregado = true;
+  });
+
+  if (typeof guardarPedidos === "function") guardarPedidos();
+  if (typeof guardarPedidosHoy === "function") guardarPedidosHoy();
+}
+
+function guardarEntregaTicketV42() {
+  const clave = $("entregaClaveV42")?.value || "";
+  const pedido = ticketsMemoria.find(t => String(t.claveMemoria) === String(clave));
+  if (!pedido) return alert("No se encontró el ticket.");
+
+  const entregaItems = itemsFormularioEntregaV42();
+  const total = totalFormularioEntregaV42();
+  const pago = Math.max(0, Number($("entregaPagoV42")?.value || 0));
+  const observacion = $("entregaObservacionV42")?.value.trim() || "";
+
+  pedido.entregaConfirmada = true;
+  pedido.entregaItems = entregaItems;
+  pedido.observacionEntrega = observacion;
+  pedido.pagoEntrega = pago;
+  pedido.entregado = true;
+  pedido.fechaEntregaReal = new Date().toISOString();
+
+  const existente = cuentaCorrienteV42.findIndex(m => m.claveTicket === clave);
+  const movimiento = {
+    id: existente >= 0 ? cuentaCorrienteV42[existente].id : Date.now(),
+    claveTicket: clave,
+    cliente: pedido.cliente,
+    fecha: pedido.fechaTicket || pedido.fechaEntrega || hoyISO(),
+    cargo: total,
+    pago,
+    observacion,
+    creado: existente >= 0 ? cuentaCorrienteV42[existente].creado : new Date().toISOString(),
+    actualizado: new Date().toISOString()
+  };
+
+  if (existente >= 0) cuentaCorrienteV42[existente] = movimiento;
+  else cuentaCorrienteV42.push(movimiento);
+
+  actualizarPedidoOrigenEntregaV42(pedido);
+  guardarMemoriaTickets();
+  guardarCuentaCorrienteV42();
+  renderTicketsPorDia();
+  cerrarEntregaTicketV42();
+
+  alert(`Entrega guardada.\n\nCompra de hoy: ${formatoDineroTicket(total)}\nPago recibido: ${formatoDineroTicket(pago)}\nSaldo final: ${formatoDineroTicket(saldoFinalTicket(pedido))}`);
+}
+
 
 function avisarPreciosFaltantes(lista=pedidos) {
   const faltantes=new Set();
@@ -9593,6 +10086,10 @@ window.imprimirTicketsDelDia = imprimirTicketsDelDia;
 window.guardarTicketsDelDiaJpg = guardarTicketsDelDiaJpg;
 window.descargarTicketsDelDiaPdf = descargarTicketsDelDiaPdf;
 window.guardarJpgPedidoHoy = guardarJpgPedidoHoy;
+window.abrirEntregaTicket = abrirEntregaTicket;
+window.cerrarEntregaTicketV42 = cerrarEntregaTicketV42;
+window.marcarNoEntregadoV42 = marcarNoEntregadoV42;
+window.guardarEntregaTicketV42 = guardarEntregaTicketV42;
 window.reprocesarPedidoFormulario = reprocesarPedidoFormulario;
 window.resolverProductoPedido = resolverProductoPedido;
 window.resolverUnidadPedido = resolverUnidadPedido;
