@@ -3364,12 +3364,22 @@ body.modal-open{
 
 
 /* Fratello v4.2.1 — reparación de pedidos fijos */
-.ticketRepairButtonV421 {
+.ticketRepairButtonV422 {
   border: 1px solid #b67a24;
   background: #fff3d8;
   color: #6e4307;
   font-weight: 800;
 }
-.ticketRepairButtonV421:hover {
+.ticketRepairButtonV422:hover {
   background: #f8e3b8;
+}
+
+
+/* Fratello v4.2.2 — tickets entregados y Pedido Hoy */
+.ticketClientRow.isDelivered {
+  border-left: 5px solid #2f8a4c;
+  background: #f2fbf4;
+}
+.ticketClientRow.isDelivered strong {
+  color: #1d6234;
 }

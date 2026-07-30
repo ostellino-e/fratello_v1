@@ -1,31 +1,39 @@
-# Fratello v4.2.1 — Reparación de pedidos fijos duplicados
+# Fratello v4.2.2 — Recuperación y conservación de Tickets de Hoy
 
 ## Corrección principal
-- Evita que un pedido fijo se vuelva a crear para el mismo cliente y fecha.
-- Reconoce pedidos antiguos aunque hayan quedado asociados a otro identificador fijo.
-- Antes de generar tickets, elimina automáticamente los pedidos fijos repetidos.
-- Los pedidos manuales no se eliminan.
-- Si un duplicado tenía una entrega, un cobro o una modificación registrada, esos datos se priorizan y se conservan.
+- Los tickets creados desde `Pedido Hoy` permanecen visibles aunque ya no estén en la lista operativa.
+- Los tickets entregados permanecen visibles aunque el pedido original ya no esté entre los pedidos confirmados.
+- Los tickets que tengan cobro registrado tampoco se eliminan.
+- Se recuperan automáticamente tickets antiguos cuya clave comienza con `hoy-`.
 
-## Tickets
-- Los tickets huérfanos de jornadas activas dejan de acumularse.
-- La cantidad de tickets vuelve a sincronizarse con la cantidad real de pedidos.
-- Cada día tiene el botón `🧹 Reparar pedidos y tickets`.
-- El botón informa cuántos pedidos duplicados y tickets antiguos eliminó.
+## Reparación de duplicados
+El botón `🧹 Reparar pedidos y tickets` ahora:
+- elimina únicamente pedidos fijos duplicados;
+- no borra tickets de Pedido Hoy;
+- no borra tickets entregados;
+- no borra tickets con cobros;
+- vuelve a sincronizar la pantalla.
 
-## Cómo reparar el jueves actual
-1. Entrar en Tickets.
-2. Abrir el jueves.
-3. Presionar `🧹 Reparar pedidos y tickets`.
-4. Confirmar la reparación.
-5. Verificar que quede un solo ticket por cliente.
+## Estado visual
+- Los entregados aparecen con indicador verde y `✅ Entregado`.
+- Los pendientes muestran `⏳ Pendiente`.
+- Dentro del día, los entregados aparecen primero.
+
+## Prueba recomendada
+1. Abrir Tickets.
+2. Abrir el día de hoy.
+3. Verificar que aparezcan los tickets confirmados desde Pedido Hoy.
+4. Confirmar una entrega.
+5. Salir y volver a entrar en Tickets.
+6. Comprobar que el ticket entregado continúe visible.
+7. Presionar Reparar y confirmar que el ticket no desaparezca.
 
 ## Versión esperada
-v4.2.1
+v4.2.2
 
 ## Progreso
-- Duplicación de pedidos fijos: 100%
-- Reparación manual por día: 100%
-- Sincronización Pedidos/Tickets: 100%
-- Entrega real y cuenta corriente inicial: 100%
+- Conservación de Pedido Hoy: 100%
+- Conservación de entregas y cobros: 100%
+- Reparación segura de duplicados: 100%
+- Estado visual de entrega: 100%
 - Proyecto Fratello estimado: 96%

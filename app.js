@@ -6258,20 +6258,8 @@ function repararPedidosYTicketsDelDia(fecha) {
 
   const resultado = repararDuplicadosPedidosFijos(fecha, false);
 
-  // Quita tickets huérfanos de esa fecha que ya no tienen un pedido vigente.
-  const clavesVigentes = new Set([
-    ...pedidos.map(p => claveTicketMemoria(p, "normal")),
-    ...pedidosHoy.map(p => claveTicketMemoria(p, "hoy"))
-  ]);
-
-  const antes = ticketsMemoria.length;
-  ticketsMemoria = ticketsMemoria.filter(ticket =>
-    ticket.fechaTicket !== fecha || clavesVigentes.has(
-      ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal")
-    )
-  );
-  const huerfanos = antes - ticketsMemoria.length;
-
+  // v4.2.2: la reparación ya no elimina tickets operativos ni históricos.
+  // Únicamente limpia pedidos fijos duplicados y luego vuelve a sincronizar.
   guardarMemoriaTickets();
   sincronizarMemoriaTickets();
   renderPedidosCargados();
@@ -6280,8 +6268,9 @@ function repararPedidosYTicketsDelDia(fecha) {
   alert(
     `Reparación terminada.\n\n` +
     `Pedidos fijos duplicados eliminados: ${resultado.eliminados}\n` +
-    `Tickets antiguos eliminados: ${huerfanos}\n\n` +
-    "La pantalla de Tickets volvió a sincronizarse con Pedidos."
+    `Tickets de Pedido Hoy conservados: sí\n` +
+    `Tickets entregados o con cobro conservados: sí\n\n` +
+    "La pantalla de Tickets volvió a sincronizarse sin borrar comprobantes."
   );
 }
 
@@ -6295,7 +6284,34 @@ function guardarMemoriaTickets() {
   guardarEnNube();
 }
 
+function recuperarTicketsPedidoHoyV422() {
+  if (!Array.isArray(ticketsMemoria)) return 0;
+  let recuperados = 0;
+
+  ticketsMemoria.forEach(ticket => {
+    const clave = String(ticket.claveMemoria || "");
+    if (
+      ticket.tipoTicket === "hoy" ||
+      ticket.esPedidoHoy === true ||
+      clave.startsWith("hoy-")
+    ) {
+      if (ticket.tipoTicket !== "hoy" || ticket.esPedidoHoy !== true) {
+        ticket.tipoTicket = "hoy";
+        ticket.esPedidoHoy = true;
+        recuperados += 1;
+      }
+    }
+  });
+
+  if (recuperados) {
+    localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  }
+  return recuperados;
+}
+
 function sincronizarMemoriaTickets() {
+  recuperarTicketsPedidoHoyV422();
+
   // Corrige automáticamente duplicados de pedidos fijos antes de construir tickets.
   repararDuplicadosPedidosFijos("", false);
 
@@ -6312,9 +6328,26 @@ function sincronizarMemoriaTickets() {
     (Array.isArray(ticketsMemoria) ? ticketsMemoria : [])
       .filter(ticket => {
         const clave = ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal");
-        // Conserva tickets históricos cerrados, pero elimina huérfanos de jornadas aún activas.
         const fecha = ticket.fechaTicket || ticket.fechaEntrega || ticket.fecha || "";
-        return clavesActuales.has(clave) || jornadaEstaCerrada(fecha);
+        const esPedidoHoy = ticket.tipoTicket === "hoy" || ticket.esPedidoHoy === true;
+        const tieneEntrega = Boolean(
+          ticket.entregado ||
+          ticket.entregaConfirmada ||
+          ticket.fechaEntregaReal ||
+          (Array.isArray(ticket.entregaItems) && ticket.entregaItems.length)
+        );
+        const tieneCobro = Number(ticket.pagoEntrega || 0) > 0;
+
+        // v4.2.2:
+        // Los pedidos de hoy, entregas y cobros son comprobantes históricos.
+        // Se conservan aunque ya no estén en las listas operativas actuales.
+        return (
+          clavesActuales.has(clave) ||
+          esPedidoHoy ||
+          tieneEntrega ||
+          tieneCobro ||
+          jornadaEstaCerrada(fecha)
+        );
       })
       .map(ticket => [
         ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal"),
@@ -6361,9 +6394,12 @@ function ticketsMemoriaParaFecha(fecha) {
       ...ticket,
       esPedidoHoy: ticket.tipoTicket === "hoy"
     }))
-    .sort((a, b) =>
-      String(a.cliente || "").localeCompare(String(b.cliente || ""), "es")
-    );
+    .sort((a, b) => {
+      const entregadoA = Boolean(a.entregado || a.entregaConfirmada);
+      const entregadoB = Boolean(b.entregado || b.entregaConfirmada);
+      if (entregadoA !== entregadoB) return entregadoA ? -1 : 1;
+      return String(a.cliente || "").localeCompare(String(b.cliente || ""), "es");
+    });
 }
 
 function pedidosTicketParaFecha(fecha) {
@@ -6413,10 +6449,10 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
       <div class="ticketDayBody">
         ${lista.map(pedido => {
           const tipo = "archivo";
-          return `<article class="ticketClientRow ${pedido.entregado ? "isDelivered" : ""}">
+          return `<article class="ticketClientRow ${(pedido.entregado || pedido.entregaConfirmada) ? "isDelivered" : ""}">
             <div>
               <strong>${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</strong>
-              <small>${pedido.esPedidoHoy ? `Pedido de hoy${pedido.horaEntrega ? ` · ${pedido.horaEntrega}` : ""}` : etiquetaOrigenPedido(pedido)}${pedido.entregado ? " · ✅ Entregado" : ""}</small>
+              <small>${pedido.esPedidoHoy ? `Pedido de hoy${pedido.horaEntrega ? ` · ${pedido.horaEntrega}` : ""}` : etiquetaOrigenPedido(pedido)}${(pedido.entregado || pedido.entregaConfirmada) ? " · ✅ Entregado" : " · ⏳ Pendiente"}</small>
             </div>
             <div class="ticketClientActions">
               <button type="button" class="primary" onclick="abrirEntregaTicket('${pedido.claveMemoria}')">📦 Entrega / cobro</button>
@@ -6427,7 +6463,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
           </article>`;
         }).join("")}
         <div class="ticketDayFooter">
-          <button type="button" class="ticketRepairButtonV421" onclick="repararPedidosYTicketsDelDia('${fecha}')">🧹 Reparar pedidos y tickets</button>
+          <button type="button" class="ticketRepairButtonV422" onclick="repararPedidosYTicketsDelDia('${fecha}')">🧹 Reparar pedidos y tickets</button>
           <button type="button" class="primary" onclick="imprimirTicketsDelDia('${fecha}')">🖨 Imprimir todos los tickets de ${etiquetaFechaTickets(fecha)}</button>
           <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG</button>
           <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF</button>
