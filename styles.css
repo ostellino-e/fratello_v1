@@ -3385,30 +3385,38 @@ body.modal-open{
 }
 
 
-/* v5 UI administración */
-.adminFinanceTabs{
-display:grid;
-grid-template-columns:repeat(2,minmax(150px,1fr));
-gap:14px;
-margin:20px 0;
+/* Fratello v5.0.1 — Administración en dos columnas, sin alterar funcionalidad */
+#panelAdministracionPrivado .adminFinanceTabs{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  overflow:visible;
+  padding:16px 0 12px;
 }
-.adminFinanceTabs button{
-min-height:88px;
-border-radius:18px;
-font-size:1.05rem;
-font-weight:700;
-padding:18px 14px;
-box-shadow:0 6px 16px rgba(0,0,0,.12);
-transition:transform .15s ease,box-shadow .15s ease;
+#panelAdministracionPrivado .adminFinanceTabs button{
+  width:100%;
+  min-height:72px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  white-space:normal;
+  text-align:center;
+  border-radius:16px;
+  padding:12px 10px;
+  font-size:15px;
+  line-height:1.15;
+  box-shadow:0 4px 12px rgba(44,28,18,.08);
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
 }
-.adminFinanceTabs button:hover{
-transform:translateY(-2px);
-box-shadow:0 10px 22px rgba(0,0,0,.18);
+#panelAdministracionPrivado .adminFinanceTabs button:active{
+  transform:scale(.98);
+  box-shadow:0 2px 7px rgba(44,28,18,.10);
 }
-.adminFinanceToolbar{
-flex-wrap:wrap;
-gap:14px;
+#panelAdministracionPrivado .adminFinanceTabs button:last-child:nth-child(odd){
+  grid-column:1 / -1;
 }
-@media (max-width:700px){
-.adminFinanceTabs{grid-template-columns:1fr;}
+@media (max-width:420px){
+  #panelAdministracionPrivado .adminFinanceTabs{gap:9px}
+  #panelAdministracionPrivado .adminFinanceTabs button{min-height:66px;font-size:14px;padding:10px 7px}
 }

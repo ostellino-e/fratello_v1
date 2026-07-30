@@ -2307,7 +2307,7 @@ async function obtenerRegistroServiceWorkerNotificaciones() {
   let registro = await navigator.serviceWorker.getRegistration("./");
 
   if (!registro) {
-    registro = await navigator.serviceWorker.register("service-worker.js?v=330", {
+    registro = await navigator.serviceWorker.register("service-worker.js?v=501", {
       scope: "./",
       updateViaCache: "none"
     });
