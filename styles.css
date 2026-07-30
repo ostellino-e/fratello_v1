@@ -3385,7 +3385,7 @@ body.modal-open{
 }
 
 
-/* Fratello v5.0.1 — Administración en dos columnas, sin alterar funcionalidad */
+/* Fratello v5.0.2 — Administración en dos columnas, sin alterar funcionalidad */
 #panelAdministracionPrivado .adminFinanceTabs{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -3419,4 +3419,70 @@ body.modal-open{
 @media (max-width:420px){
   #panelAdministracionPrivado .adminFinanceTabs{gap:9px}
   #panelAdministracionPrivado .adminFinanceTabs button{min-height:66px;font-size:14px;padding:10px 7px}
+}
+
+
+/* Fratello v5.0.2 — Administración compacta y navegación por pantallas */
+#panelAdministracionPrivado .adminFinanceToolbarCompacta{
+  min-height:54px;
+  padding:7px 10px;
+  gap:10px;
+}
+#panelAdministracionPrivado .adminMonthPicker{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+  margin:0;
+}
+#panelAdministracionPrivado .adminMonthPicker span{font-size:18px}
+#panelAdministracionPrivado .adminMonthPicker input{
+  min-height:38px;
+  max-width:185px;
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:10px;
+  background:#fff;
+  color:#26362f;
+  padding:5px 8px;
+  font-weight:800;
+}
+#panelAdministracionPrivado .adminLogoutButton{
+  min-height:38px;
+  margin-left:auto;
+  border:1px solid rgba(255,255,255,.45);
+  border-radius:10px;
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  padding:7px 11px;
+  font-weight:800;
+}
+#panelAdministracionPrivado .adminViewHeader{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:14px 0 12px;
+  padding-bottom:11px;
+  border-bottom:1px solid #e4d7c9;
+}
+#panelAdministracionPrivado .adminViewHeader.hidden{display:none!important}
+#panelAdministracionPrivado .adminViewHeader button{
+  min-height:40px;
+  border:1px solid #d7c8b7;
+  border-radius:12px;
+  background:#fff;
+  padding:8px 12px;
+  font-weight:800;
+}
+#panelAdministracionPrivado .adminViewHeader h3{
+  margin:0;
+  font-size:20px;
+}
+#panelAdministracionPrivado.adminSubvistaActiva .adminFinanceTabs{display:none!important}
+#panelAdministracionPrivado:not(.adminSubvistaActiva) .adminFinanceTab{display:none!important}
+@media(max-width:520px){
+  #panelAdministracionPrivado .adminFinanceToolbarCompacta{flex-wrap:nowrap}
+  #panelAdministracionPrivado .adminMonthPicker{flex:1}
+  #panelAdministracionPrivado .adminMonthPicker input{width:100%;max-width:none;font-size:13px}
+  #panelAdministracionPrivado .adminLogoutButton{font-size:12px;padding:7px 9px;white-space:nowrap}
+  #panelAdministracionPrivado .adminViewHeader{align-items:flex-start;flex-direction:column;gap:8px}
 }

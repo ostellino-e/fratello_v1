@@ -8230,7 +8230,7 @@ function abrirAdministracionAutenticada() {
   // v4.0.2: restaura completamente Administración en cada ingreso.
   $("panelAdministracionLogin")?.classList.add("hidden");
   $("panelAdministracionPrivado")?.classList.remove("hidden");
-  activarTabAdministracion("resumen");
+  mostrarMenuAdministracion();
   renderAdministracionFinanciera();
   renderSeguridadCompleta();
   registrarActividadAdministracion();
@@ -8881,6 +8881,41 @@ function eliminarPresupuestoAdministracion(id) {
   guardarAdministracion();
 }
 
+function tituloTabAdministracion(nombre) {
+  const titulos = {
+    resumen: "📊 Resumen",
+    ingresos: "💰 Ingresos",
+    gastos: "💸 Gastos",
+    presupuesto: "📅 Presupuesto",
+    caja: "🏦 Caja privada",
+    usuarios: "👥 Usuarios",
+    dispositivos: "📱 Dispositivos",
+    auditoria: "📜 Auditoría",
+    backup: "💾 Copias"
+  };
+  return titulos[nombre] || "Administración";
+}
+
+function mostrarMenuAdministracion() {
+  asegurarCajaPrivadaDentroAdministracion();
+  const panel = $("panelAdministracionPrivado");
+  if (!panel) return;
+  panel.classList.remove("adminSubvistaActiva");
+  panel.querySelector(".adminFinanceTabs")?.classList.remove("hidden");
+  $("adminVistaEncabezado")?.classList.add("hidden");
+  panel.querySelectorAll("[data-admin-tab]").forEach(boton => {
+    boton.classList.remove("active");
+    boton.setAttribute("aria-selected", "false");
+  });
+  panel.querySelectorAll("[data-admin-panel]").forEach(seccion => {
+    seccion.classList.remove("active");
+    seccion.classList.add("hidden");
+    seccion.setAttribute("aria-hidden", "true");
+    seccion.style.display = "none";
+  });
+  window.scrollTo({ top: document.getElementById("seccionAdministracion")?.offsetTop || 0, behavior: "smooth" });
+}
+
 function activarTabAdministracion(nombre = "resumen") {
   const tabsSeguras = ["caja", "usuarios", "dispositivos", "auditoria", "backup"];
   if (tabsSeguras.includes(nombre) && !tieneRolAdministrador()) {
@@ -8888,6 +8923,11 @@ function activarTabAdministracion(nombre = "resumen") {
     return false;
   }
   asegurarCajaPrivadaDentroAdministracion();
+  const panelAdministracion = $("panelAdministracionPrivado");
+  panelAdministracion?.classList.add("adminSubvistaActiva");
+  panelAdministracion?.querySelector(".adminFinanceTabs")?.classList.add("hidden");
+  $("adminVistaEncabezado")?.classList.remove("hidden");
+  if ($("tituloVistaAdministracion")) $("tituloVistaAdministracion").textContent = tituloTabAdministracion(nombre);
   const botones = [...document.querySelectorAll("#panelAdministracionPrivado [data-admin-tab]")];
   const paneles = [...document.querySelectorAll("#panelAdministracionPrivado [data-admin-panel]")];
   let botonObjetivo = botones.find(b => b.dataset.adminTab === nombre);
@@ -8975,6 +9015,7 @@ function iniciarModuloAdministracion() {
   $("btnSalirAdministracion")?.addEventListener("click", cerrarSesionAdministrador);
   $("btnActualizarAdministracion")?.addEventListener("click", renderAdministracionFinanciera);
   $("mesAdministracion")?.addEventListener("change", renderAdministracionFinanciera);
+  $("btnVolverMenuAdministracion")?.addEventListener("click", mostrarMenuAdministracion);
 
   $("btnAbrirControlCajaAdministracion")?.addEventListener("click", () => {
     activarTabAdministracion("caja");

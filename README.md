@@ -1,22 +1,17 @@
-# Fratello v5.0.1 — Administración restaurada
+# Fratello v5.0.2 — Administración por pantallas
 
 ## Cambios
-- Menú de Administración organizado en dos columnas.
-- Orden conservado: Resumen / Ingresos, Gastos / Presupuesto y el resto de módulos existentes.
-- Se restauran todos los paneles y botones originales de Administración.
-- Se conserva la misma clave de almacenamiento local para mantener ingresos, gastos y presupuestos ya cargados.
-- Caja continúa leyendo los cierres y movimientos existentes.
-- No se modifican Firebase, pedidos, tickets ni datos.
+- Barra verde compacta: selector de mes y cerrar sesión.
+- Los botones de Administración abren una vista propia.
+- Botón para volver al menú de Administración.
+- Se mantienen los datos y funciones de v5.0.1.
 
 ## Versión esperada
-`v5.0.1`
+`v5.0.2`
 
 ## Publicación
 ```bash
 git add .
-git commit -m "Fratello v5.0.1 - administracion en dos columnas y funciones restauradas"
+git commit -m "Fratello v5.0.2 - administracion compacta y navegacion por pantallas"
 git push
 ```
-
-## Actualización
-https://fratello-v1.vercel.app/actualizar.html
