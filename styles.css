@@ -3361,3 +3361,15 @@ body.modal-open{
     width: 100%;
   }
 }
+
+
+/* Fratello v4.2.1 — reparación de pedidos fijos */
+.ticketRepairButtonV421 {
+  border: 1px solid #b67a24;
+  background: #fff3d8;
+  color: #6e4307;
+  font-weight: 800;
+}
+.ticketRepairButtonV421:hover {
+  background: #f8e3b8;
+}

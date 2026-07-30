@@ -1,54 +1,31 @@
-# Fratello v4.2 — Tickets, entregas y cuenta corriente
+# Fratello v4.2.1 — Reparación de pedidos fijos duplicados
 
-## 1. Días de Tickets
-- Ningún día queda abierto al entrar.
-- Al seleccionar un día, permanece abierto aunque la vista se renderice nuevamente.
-- Al abrir otro día, se cierra el anterior.
-- Ya no vuelve automáticamente al martes.
+## Corrección principal
+- Evita que un pedido fijo se vuelva a crear para el mismo cliente y fecha.
+- Reconoce pedidos antiguos aunque hayan quedado asociados a otro identificador fijo.
+- Antes de generar tickets, elimina automáticamente los pedidos fijos repetidos.
+- Los pedidos manuales no se eliminan.
+- Si un duplicado tenía una entrega, un cobro o una modificación registrada, esos datos se priorizan y se conservan.
 
-## 2. Ticket individual compacto
-- El visor individual usa únicamente el ancho y alto real del ticket.
-- Se eliminó la mitad blanca que aparecía a la derecha.
-- El PDF individual mantiene formato angosto tipo ticket/remito.
+## Tickets
+- Los tickets huérfanos de jornadas activas dejan de acumularse.
+- La cantidad de tickets vuelve a sincronizarse con la cantidad real de pedidos.
+- Cada día tiene el botón `🧹 Reparar pedidos y tickets`.
+- El botón informa cuántos pedidos duplicados y tickets antiguos eliminó.
 
-## 3. Pedido original y entrega real
-- El pedido original nunca se borra ni se modifica.
-- Nuevo botón `Entrega / cobro`.
-- Permite cambiar la cantidad realmente entregada.
-- Permite marcar un artículo como `No se llevó`.
-- Permite dejar una observación.
-- El ticket se recalcula usando solamente lo efectivamente entregado.
-- La entrega puede corregirse y volver a guardarse sin duplicar el movimiento.
-
-## 4. Cuenta corriente
-Cada entrega guarda:
-- saldo anterior;
-- importe entregado hoy;
-- pago recibido hoy;
-- saldo final pendiente.
-
-El ticket muestra automáticamente:
-- Compra de hoy
-- Saldo anterior
-- Pago recibido
-- Total pendiente
-
-## Prueba recomendada
-1. Abrir Tickets y comprobar que todos los días estén cerrados.
-2. Abrir un día distinto de martes.
-3. Abrir un ticket individual y verificar que no tenga espacio blanco lateral.
-4. Entrar en `Entrega / cobro`.
-5. Colocar 0 en un producto o usar `No se llevó`.
-6. Registrar un pago parcial.
-7. Guardar y abrir nuevamente el ticket.
-8. Confirmar que el total corresponda a lo entregado y que aparezca el saldo pendiente.
+## Cómo reparar el jueves actual
+1. Entrar en Tickets.
+2. Abrir el jueves.
+3. Presionar `🧹 Reparar pedidos y tickets`.
+4. Confirmar la reparación.
+5. Verificar que quede un solo ticket por cliente.
 
 ## Versión esperada
-v4.2
+v4.2.1
 
 ## Progreso
-- Correcciones solicitadas en Tickets: 100%
-- Entrega real vs pedido: 100%
-- Cuenta corriente inicial: 100%
-- Etapa Seguridad y usuarios: 92%
+- Duplicación de pedidos fijos: 100%
+- Reparación manual por día: 100%
+- Sincronización Pedidos/Tickets: 100%
+- Entrega real y cuenta corriente inicial: 100%
 - Proyecto Fratello estimado: 96%

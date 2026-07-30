@@ -4648,6 +4648,9 @@ function excluirPedidoFijoEnFecha(pedido) {
 function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
   if (!fecha || !Array.isArray(pedidosFijos)) return 0;
 
+  // v4.2.1: evita que una programación fija ya duplicada vuelva a multiplicarse.
+  repararDuplicadosPedidosFijos(fecha, false);
+
   const jornadaYaEnviada =
     jornadaEstaCerrada(fecha) ||
     (
@@ -4671,8 +4674,11 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
 
     let pedido = pedidos.find(item =>
       item.origen === "pedido_fijo" &&
-      Number(item.pedidoFijoId) === Number(fijo.id) &&
-      fechaEntregaPedido(item) === fecha
+      fechaEntregaPedido(item) === fecha &&
+      (
+        Number(item.pedidoFijoId) === Number(fijo.id) ||
+        normalizarClienteReparacion(item.cliente) === normalizarClienteReparacion(fijo.cliente)
+      )
     );
 
     const itemsCorrectos = procesarTextoPedido(fijo.texto || "", fijo.cliente, fecha);
@@ -6099,6 +6105,187 @@ function limitesSemanaTickets(fechaBase = fechaOperativaActual()) {
   };
 }
 
+
+function normalizarClienteReparacion(valor) {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function puntajePedidoConservar(pedido) {
+  let puntos = 0;
+  if (pedido?.entregaConfirmada) puntos += 1000;
+  if (pedido?.entregado) puntos += 500;
+  if (Number(pedido?.pagoEntrega || 0) > 0) puntos += 400;
+  if (pedido?.modificadoDesdeFijo) puntos += 250;
+  if (Array.isArray(pedido?.entregaItems) && pedido.entregaItems.length) puntos += 200;
+  if (Array.isArray(pedido?.items) && pedido.items.length) puntos += 50;
+  if (pedido?.textoOriginal) puntos += 20;
+  puntos += Number(pedido?.id || 0) / 1e15;
+  return puntos;
+}
+
+function claveSemanticaPedidoFijo(pedido) {
+  if (!pedido || pedido.origen !== "pedido_fijo") return "";
+  const fecha = fechaEntregaPedido(pedido);
+  const cliente = normalizarClienteReparacion(pedido.cliente);
+  if (!fecha || !cliente) return "";
+  return `${fecha}::${cliente}`;
+}
+
+function fusionarDatosPedidoDuplicado(destino, origen) {
+  if (!destino || !origen) return destino;
+
+  const camposProtegidos = [
+    "entregaConfirmada", "entregaItems", "observacionEntrega", "pagoEntrega",
+    "entregado", "fechaEntregaReal", "modificadoDesdeFijo"
+  ];
+
+  camposProtegidos.forEach(campo => {
+    const valorDestino = destino[campo];
+    const valorOrigen = origen[campo];
+    const destinoVacio =
+      valorDestino === undefined ||
+      valorDestino === null ||
+      valorDestino === false ||
+      valorDestino === "" ||
+      (Array.isArray(valorDestino) && !valorDestino.length) ||
+      (typeof valorDestino === "number" && valorDestino === 0);
+
+    if (destinoVacio && valorOrigen !== undefined && valorOrigen !== null) {
+      destino[campo] = valorOrigen;
+    }
+  });
+
+  if ((!Array.isArray(destino.items) || !destino.items.length) && Array.isArray(origen.items)) {
+    destino.items = origen.items;
+  }
+  if (!destino.textoOriginal && origen.textoOriginal) destino.textoOriginal = origen.textoOriginal;
+  if (!destino.textoFijoOriginal && origen.textoFijoOriginal) destino.textoFijoOriginal = origen.textoFijoOriginal;
+  if (!destino.pedidoFijoId && origen.pedidoFijoId) destino.pedidoFijoId = origen.pedidoFijoId;
+
+  return destino;
+}
+
+function repararDuplicadosPedidosFijos(fechaObjetivo = "", mostrarAviso = false) {
+  if (!Array.isArray(pedidos)) pedidos = [];
+  if (!Array.isArray(ticketsMemoria)) ticketsMemoria = [];
+
+  const grupos = new Map();
+
+  pedidos.forEach(pedido => {
+    if (pedido?.origen !== "pedido_fijo") return;
+    const fecha = fechaEntregaPedido(pedido);
+    if (fechaObjetivo && fecha !== fechaObjetivo) return;
+
+    const clave = claveSemanticaPedidoFijo(pedido);
+    if (!clave) return;
+    if (!grupos.has(clave)) grupos.set(clave, []);
+    grupos.get(clave).push(pedido);
+  });
+
+  const idsEliminados = new Set();
+  let gruposReparados = 0;
+
+  grupos.forEach(lista => {
+    if (lista.length <= 1) return;
+
+    lista.sort((a, b) => puntajePedidoConservar(b) - puntajePedidoConservar(a));
+    const conservar = lista[0];
+
+    lista.slice(1).forEach(duplicado => {
+      fusionarDatosPedidoDuplicado(conservar, duplicado);
+      idsEliminados.add(String(duplicado.id));
+    });
+
+    gruposReparados += 1;
+  });
+
+  if (idsEliminados.size) {
+    pedidos = pedidos.filter(pedido => !idsEliminados.has(String(pedido.id)));
+
+    ticketsMemoria = ticketsMemoria.filter(ticket => {
+      const tipo = ticket.tipoTicket || "normal";
+      return !(tipo === "normal" && idsEliminados.has(String(ticket.id)));
+    });
+
+    // Los movimientos de cuenta corriente de tickets eliminados se fusionan
+    // en el ticket conservado por cliente y fecha, evitando saldos duplicados.
+    if (Array.isArray(cuentaCorrienteV42)) {
+      const movimientosAEliminar = new Set(
+        [...idsEliminados].map(id => `normal-${id}`)
+      );
+
+      cuentaCorrienteV42 = cuentaCorrienteV42.filter(movimiento =>
+        !movimientosAEliminar.has(String(movimiento.claveTicket || ""))
+      );
+      localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+    }
+
+    localStorage.setItem("pedidos", JSON.stringify(pedidos));
+    localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+
+    if (typeof guardarTodo === "function") guardarTodo();
+    else if (typeof guardarEnNube === "function") guardarEnNube();
+  }
+
+  if (mostrarAviso) {
+    alert(
+      idsEliminados.size
+        ? `Reparación terminada.\n\nSe eliminaron ${idsEliminados.size} pedido(s) fijo(s) duplicado(s) en ${gruposReparados} cliente(s).\nLos pedidos manuales se conservaron.`
+        : "No se encontraron pedidos fijos duplicados para reparar."
+    );
+  }
+
+  return {
+    eliminados: idsEliminados.size,
+    grupos: gruposReparados
+  };
+}
+
+function repararPedidosYTicketsDelDia(fecha) {
+  if (!fecha) return;
+
+  const etiqueta = etiquetaFechaTickets(fecha);
+  if (!confirm(
+    `¿Reparar los pedidos y tickets de ${etiqueta}?\n\n` +
+    "Se eliminarán únicamente los pedidos fijos repetidos del mismo cliente. " +
+    "Los pedidos manuales y las entregas registradas se conservarán."
+  )) return;
+
+  const resultado = repararDuplicadosPedidosFijos(fecha, false);
+
+  // Quita tickets huérfanos de esa fecha que ya no tienen un pedido vigente.
+  const clavesVigentes = new Set([
+    ...pedidos.map(p => claveTicketMemoria(p, "normal")),
+    ...pedidosHoy.map(p => claveTicketMemoria(p, "hoy"))
+  ]);
+
+  const antes = ticketsMemoria.length;
+  ticketsMemoria = ticketsMemoria.filter(ticket =>
+    ticket.fechaTicket !== fecha || clavesVigentes.has(
+      ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal")
+    )
+  );
+  const huerfanos = antes - ticketsMemoria.length;
+
+  guardarMemoriaTickets();
+  sincronizarMemoriaTickets();
+  renderPedidosCargados();
+  renderTicketsPorDia();
+
+  alert(
+    `Reparación terminada.\n\n` +
+    `Pedidos fijos duplicados eliminados: ${resultado.eliminados}\n` +
+    `Tickets antiguos eliminados: ${huerfanos}\n\n` +
+    "La pantalla de Tickets volvió a sincronizarse con Pedidos."
+  );
+}
+
+
 function claveTicketMemoria(pedido, tipo = "normal") {
   return `${tipo}-${String(pedido.id)}`;
 }
@@ -6109,16 +6296,30 @@ function guardarMemoriaTickets() {
 }
 
 function sincronizarMemoriaTickets() {
+  // Corrige automáticamente duplicados de pedidos fijos antes de construir tickets.
+  repararDuplicadosPedidosFijos("", false);
+
   const actuales = [
     ...pedidos.map(pedido => ({ pedido, tipo: "normal" })),
     ...pedidosHoy.map(pedido => ({ pedido, tipo: "hoy" }))
   ];
 
+  const clavesActuales = new Set(
+    actuales.map(({ pedido, tipo }) => claveTicketMemoria(pedido, tipo))
+  );
+
   const porClave = new Map(
-    (Array.isArray(ticketsMemoria) ? ticketsMemoria : []).map(ticket => [
-      ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal"),
-      ticket
-    ])
+    (Array.isArray(ticketsMemoria) ? ticketsMemoria : [])
+      .filter(ticket => {
+        const clave = ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal");
+        // Conserva tickets históricos cerrados, pero elimina huérfanos de jornadas aún activas.
+        const fecha = ticket.fechaTicket || ticket.fechaEntrega || ticket.fecha || "";
+        return clavesActuales.has(clave) || jornadaEstaCerrada(fecha);
+      })
+      .map(ticket => [
+        ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal"),
+        ticket
+      ])
   );
 
   actuales.forEach(({ pedido, tipo }) => {
@@ -6226,6 +6427,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
           </article>`;
         }).join("")}
         <div class="ticketDayFooter">
+          <button type="button" class="ticketRepairButtonV421" onclick="repararPedidosYTicketsDelDia('${fecha}')">🧹 Reparar pedidos y tickets</button>
           <button type="button" class="primary" onclick="imprimirTicketsDelDia('${fecha}')">🖨 Imprimir todos los tickets de ${etiquetaFechaTickets(fecha)}</button>
           <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG</button>
           <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF</button>
@@ -10090,6 +10292,7 @@ window.abrirEntregaTicket = abrirEntregaTicket;
 window.cerrarEntregaTicketV42 = cerrarEntregaTicketV42;
 window.marcarNoEntregadoV42 = marcarNoEntregadoV42;
 window.guardarEntregaTicketV42 = guardarEntregaTicketV42;
+window.repararPedidosYTicketsDelDia = repararPedidosYTicketsDelDia;
 window.reprocesarPedidoFormulario = reprocesarPedidoFormulario;
 window.resolverProductoPedido = resolverProductoPedido;
 window.resolverUnidadPedido = resolverUnidadPedido;
