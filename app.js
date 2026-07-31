@@ -3102,7 +3102,11 @@ function escucharCambiosNube() {
             : administracionFinanciera.gastosManuales,
           presupuestos: Array.isArray(data.administracionFinanciera.presupuestos)
             ? data.administracionFinanciera.presupuestos
-            : administracionFinanciera.presupuestos
+            : administracionFinanciera.presupuestos,
+          plataRealManual: data.administracionFinanciera.plataRealManual &&
+            typeof data.administracionFinanciera.plataRealManual === "object"
+            ? data.administracionFinanciera.plataRealManual
+            : (administracionFinanciera.plataRealManual || {})
         };
         guardarAdministracionLocal();
         renderAdministracionFinanciera();
@@ -8347,7 +8351,8 @@ const ADMIN_FIN_STORAGE_KEY = "fratello_administracion_v394c1";
 let administracionFinanciera = {
   ingresosExternos: [],
   gastosManuales: [],
-  presupuestos: []
+  presupuestos: [],
+  plataRealManual: {}
 };
 let administracionPrivadaActiva = false;
 let temporizadorAdministracion = null;
@@ -8395,7 +8400,10 @@ function cargarAdministracionLocal() {
     administracionFinanciera = {
       ingresosExternos: Array.isArray(guardado.ingresosExternos) ? guardado.ingresosExternos : [],
       gastosManuales: Array.isArray(guardado.gastosManuales) ? guardado.gastosManuales : [],
-      presupuestos: Array.isArray(guardado.presupuestos) ? guardado.presupuestos : []
+      presupuestos: Array.isArray(guardado.presupuestos) ? guardado.presupuestos : [],
+      plataRealManual: guardado.plataRealManual && typeof guardado.plataRealManual === "object"
+        ? guardado.plataRealManual
+        : {}
     };
   } catch (error) {
     console.error("No se pudo cargar Administración:", error);
@@ -8413,7 +8421,60 @@ function guardarAdministracion() {
 }
 
 function mesSeleccionadoAdministracion() {
-  return $("mesAdministracion")?.value || adminFinMesActual();
+  return $("mesAdministracionRapido")?.value ||
+    $("mesAdministracion")?.value ||
+    adminFinMesActual();
+}
+
+function sincronizarSelectoresMesAdministracion(valor, origen = "") {
+  const mes = valor || adminFinMesActual();
+  if (origen !== "rapido" && $("mesAdministracionRapido")) {
+    $("mesAdministracionRapido").value = mes;
+  }
+  if (origen !== "principal" && $("mesAdministracion")) {
+    $("mesAdministracion").value = mes;
+  }
+}
+
+function plataRealManualMes(mes = mesSeleccionadoAdministracion()) {
+  const base = administracionFinanciera.plataRealManual || {};
+  const registro = base[mes] || {};
+  return {
+    efectivo: adminFinMonto(registro.efectivo),
+    transferencias: adminFinMonto(registro.transferencias),
+    cheques: adminFinMonto(registro.cheques)
+  };
+}
+
+function guardarPlataRealManualDesdeResumen() {
+  const mes = mesSeleccionadoAdministracion();
+  administracionFinanciera.plataRealManual ||= {};
+  administracionFinanciera.plataRealManual[mes] = {
+    efectivo: adminFinMonto($("plataRealEfectivoManual")?.value),
+    transferencias: adminFinMonto($("plataRealTransferenciasManual")?.value),
+    cheques: adminFinMonto($("plataRealChequesManual")?.value),
+    actualizadoEn: new Date().toISOString()
+  };
+  guardarAdministracionLocal();
+  guardarEnNube();
+  renderResumenMovilAdministracion();
+}
+
+function recalcularPlataRealManualEnPantalla() {
+  const efectivo = adminFinMonto($("plataRealEfectivoManual")?.value);
+  const transferencias = adminFinMonto($("plataRealTransferenciasManual")?.value);
+  const cheques = adminFinMonto($("plataRealChequesManual")?.value);
+  const total = efectivo + transferencias + cheques;
+  const resultado = resumenNumericoAdministracion().resultado;
+  const diferencia = total - resultado;
+  const clase = Math.abs(diferencia) < 0.01 ? "ok" : diferencia > 0 ? "positive" : "negative";
+
+  if ($("plataRealTotalManual")) $("plataRealTotalManual").textContent = adminFinDinero(total);
+  if ($("plataRealDiferenciaManual")) {
+    $("plataRealDiferenciaManual").textContent = adminFinDinero(diferencia);
+    $("plataRealDiferenciaManual").closest("article")?.classList.remove("ok", "positive", "negative");
+    $("plataRealDiferenciaManual").closest("article")?.classList.add(clase);
+  }
 }
 
 function fechaEnMesAdministracion(fecha, mes = mesSeleccionadoAdministracion()) {
@@ -8558,14 +8619,18 @@ function datosResumenMovilAdministracion() {
     else efectivo += monto;
   });
 
-  const plataReal = efectivo + transferencias + cheques;
+  const manual = plataRealManualMes();
+  const plataReal = manual.efectivo + manual.transferencias + manual.cheques;
   const diferencia = plataReal - r.resultado;
   return {
     ...r,
     clientes: [...porCliente.entries()].sort((a, b) => b[1] - a[1]),
-    efectivo,
-    transferencias,
-    cheques,
+    efectivoCalculado: efectivo,
+    transferenciasCalculadas: transferencias,
+    chequesCalculados: cheques,
+    efectivo: manual.efectivo,
+    transferencias: manual.transferencias,
+    cheques: manual.cheques,
     plataReal,
     diferencia
   };
@@ -8590,15 +8655,35 @@ function renderResumenMovilAdministracion() {
       <article><span>Total dinero</span><strong>${adminFinDinero(d.ingresos)}</strong></article>
       <article class="expense"><span>Total gastos</span><strong>${adminFinDinero(d.gastos)}</strong></article>
       <article class="profit"><span>Ganancia</span><strong>${adminFinDinero(d.resultado)}</strong></article>
-      <article><span>Plata real</span><strong>${adminFinDinero(d.plataReal)}</strong><small>Efectivo + transferencias + cheques</small></article>
-      <article class="difference ${diferenciaClase}"><span>Diferencia</span><strong>${adminFinDinero(d.diferencia)}</strong><small>Plata real menos ganancia</small></article>
+      <article class="realMoneyEditable">
+        <span>Plata real</span>
+        <strong id="plataRealTotalManual">${adminFinDinero(d.plataReal)}</strong>
+        <small>Ingresada manualmente</small>
+      </article>
+      <article class="difference ${diferenciaClase}">
+        <span>Diferencia</span>
+        <strong id="plataRealDiferenciaManual">${adminFinDinero(d.diferencia)}</strong>
+        <small>Plata real menos ganancia</small>
+      </article>
     </div>
-    <details class="adminMobileRealBreakdown">
-      <summary>Ver composición de plata real</summary>
-      <div><span>Efectivo</span><b>${adminFinDinero(d.efectivo)}</b></div>
-      <div><span>Transferencias</span><b>${adminFinDinero(d.transferencias)}</b></div>
-      <div><span>Cheques</span><b>${adminFinDinero(d.cheques)}</b></div>
-    </details>`;
+    <section class="adminMobileRealEditor">
+      <div class="realEditorTitle">
+        <strong>✍️ Cargar plata real</strong>
+        <small>Valores contados y verificados por vos</small>
+      </div>
+      <div class="realEditorGrid">
+        <label>Efectivo
+          <input id="plataRealEfectivoManual" inputmode="decimal" type="number" min="0" step="1" value="${d.efectivo}">
+        </label>
+        <label>Transferencias
+          <input id="plataRealTransferenciasManual" inputmode="decimal" type="number" min="0" step="1" value="${d.transferencias}">
+        </label>
+        <label>Cheques
+          <input id="plataRealChequesManual" inputmode="decimal" type="number" min="0" step="1" value="${d.cheques}">
+        </label>
+      </div>
+      <button id="btnGuardarPlataRealManual" class="primary" type="button">Guardar plata real</button>
+    </section>`;
 }
 
 function renderResumenAdministracion() {
@@ -9124,12 +9209,30 @@ function iniciarModuloAdministracion() {
   instalarNavegacionAdministracionEstable();
   iniciarSeguridadFratello();
   cargarAdministracionLocal();
-  if ($("mesAdministracion")) $("mesAdministracion").value = adminFinMesActual();
+  sincronizarSelectoresMesAdministracion(adminFinMesActual());
 
 
   $("btnSalirAdministracion")?.addEventListener("click", cerrarSesionAdministrador);
   $("btnActualizarAdministracion")?.addEventListener("click", renderAdministracionFinanciera);
-  $("mesAdministracion")?.addEventListener("change", renderAdministracionFinanciera);
+  $("mesAdministracion")?.addEventListener("change", evento => {
+    sincronizarSelectoresMesAdministracion(evento.target.value, "principal");
+    renderAdministracionFinanciera();
+  });
+  $("mesAdministracionRapido")?.addEventListener("change", evento => {
+    sincronizarSelectoresMesAdministracion(evento.target.value, "rapido");
+    renderAdministracionFinanciera();
+  });
+
+  $("resumenMovilAdministracion")?.addEventListener("input", evento => {
+    if (evento.target.matches("#plataRealEfectivoManual, #plataRealTransferenciasManual, #plataRealChequesManual")) {
+      recalcularPlataRealManualEnPantalla();
+    }
+  });
+  $("resumenMovilAdministracion")?.addEventListener("click", evento => {
+    if (evento.target.closest("#btnGuardarPlataRealManual")) {
+      guardarPlataRealManualDesdeResumen();
+    }
+  });
   $("btnVolverMenuAdministracion")?.addEventListener("click", mostrarMenuAdministracion);
 
   $("btnAbrirControlCajaAdministracion")?.addEventListener("click", () => {

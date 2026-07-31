@@ -3637,3 +3637,165 @@ body.modal-open{
   .adminMobileKpis{gap:6px!important}
   .adminMobileKpis article{min-height:70px!important;padding:8px!important;border-radius:11px!important}
 }
+
+
+/* Fratello v5.0.7 — identidad compacta, mes en sincronización y Plata Real manual */
+.syncPanel{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.syncStatusCompact{
+  display:flex;
+  align-items:center;
+  min-width:0;
+}
+.syncAdminMonth{
+  display:none;
+  align-items:center;
+  gap:4px;
+}
+.syncAdminMonth input{
+  border:1px solid rgba(55,86,70,.25);
+  background:rgba(255,255,255,.78);
+}
+
+.adminMobileRealEditor{
+  display:none;
+}
+
+@media(max-width:650px){
+  /* Recupera la identidad anterior, manteniendo una altura razonable */
+  .appHeader{
+    min-height:54px!important;
+    height:54px!important;
+    padding:4px 7px!important;
+    gap:6px!important;
+  }
+  .appHeader .brandLogo{
+    display:block!important;
+    width:39px!important;
+    height:39px!important;
+    border-radius:10px!important;
+  }
+  .appHeader .brandWrap{
+    display:flex!important;
+    flex:1!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:7px!important;
+    min-width:0!important;
+  }
+  .appHeader .brandWrap>div{
+    min-width:0!important;
+  }
+  .appHeader h1{
+    font-size:16px!important;
+    line-height:1!important;
+    letter-spacing:.7px!important;
+    margin:0!important;
+  }
+  .appHeader .brandWrap p{
+    display:block!important;
+    margin:3px 0 0!important;
+    font-size:7.5px!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+  }
+
+  /* Estado y mes comparten la franja tenue */
+  .syncPanel{
+    width:calc(100% - 16px)!important;
+    max-width:none!important;
+    min-height:30px!important;
+    margin:3px 8px 3px!important;
+    padding:3px 6px!important;
+    border-radius:8px!important;
+    font-size:8.5px!important;
+    line-height:1!important;
+  }
+  .syncStatusCompact{
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+  }
+  .syncPanel strong,
+  .syncPanel #versionFratello{display:none!important}
+  .syncPanel #estadoSync:before{content:'● ';color:#2f8a4c}
+  body:has(#seccionAdministracion.active) .syncAdminMonth{
+    display:flex!important;
+  }
+  .syncAdminMonth span{font-size:11px}
+  .syncAdminMonth input{
+    width:112px!important;
+    height:23px!important;
+    min-height:23px!important;
+    padding:1px 4px!important;
+    margin:0!important;
+    border-radius:6px!important;
+    font-size:9px!important;
+  }
+
+  /* Se oculta la antigua línea del mes: ahora vive arriba */
+  #panelAdministracionPrivado .adminFinanceToolbarCompacta{
+    display:none!important;
+  }
+
+  .adminMobileRealEditor{
+    display:block;
+    margin-top:7px;
+    padding:10px;
+    border:1px solid #d5c6b5;
+    border-radius:12px;
+    background:#fff;
+  }
+  .realEditorTitle{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    align-items:center;
+    margin-bottom:8px;
+  }
+  .realEditorTitle strong{font-size:13px}
+  .realEditorTitle small{font-size:8.5px;color:#73675d;text-align:right}
+  .realEditorGrid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:6px;
+  }
+  .realEditorGrid label{
+    display:grid;
+    gap:4px;
+    font-size:8.5px;
+    font-weight:900;
+    color:#5e5349;
+  }
+  .realEditorGrid input{
+    width:100%;
+    min-width:0;
+    height:33px;
+    margin:0;
+    padding:4px 5px;
+    border-radius:8px;
+    font-size:11px;
+  }
+  .adminMobileRealEditor button{
+    width:100%;
+    min-height:34px;
+    margin-top:8px;
+    padding:6px 9px;
+    font-size:11px;
+  }
+  .adminMobileKpis article.realMoneyEditable{
+    background:#fff9e9;
+    border-color:#e5cc8d;
+  }
+}
+
+@media(max-width:390px){
+  .appHeader .brandWrap p{font-size:6.8px!important}
+  .appHeader h1{font-size:15px!important}
+  .syncAdminMonth input{width:105px!important}
+  .realEditorGrid{grid-template-columns:1fr}
+}
