@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v505-resumen-movil";
+const CACHE_NAME = "fratello-v506-interfaz-compacta";
 const ARCHIVOS = [
   "./",
   "./index.html",
