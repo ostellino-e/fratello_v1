@@ -3486,3 +3486,43 @@ body.modal-open{
   #panelAdministracionPrivado .adminLogoutButton{font-size:12px;padding:7px 9px;white-space:nowrap}
   #panelAdministracionPrivado .adminViewHeader{align-items:flex-start;flex-direction:column;gap:8px}
 }
+
+
+/* Fratello v5.0.5 — resumen móvil prioritario y navegación estable */
+.adminMobileOverview{display:none}
+@media(max-width:650px){
+  [data-admin-panel="resumen"] .adminCajaAccessCard{display:none!important}
+  .adminMobileOverview{display:block;margin:0 0 12px}
+  .adminMobileClients{
+    padding:13px;border:1px solid #d8cab9;border-radius:16px;background:#fff;margin-bottom:10px
+  }
+  .adminMobileClients h3{margin:0 0 8px;font-size:15px}
+  .adminMobileClientList>div,.adminMobileClientTotal{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #eee5db
+  }
+  .adminMobileClientList>div span{font-size:13px;font-weight:700;color:#554b42}
+  .adminMobileClientList>div strong{font-size:14px}
+  .adminMobileClientTotal{border-bottom:0;margin-top:3px;padding-top:10px;font-weight:900}
+  .adminMobileClientTotal strong{font-size:19px;color:#235844}
+  .adminMobileKpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .adminMobileKpis article{
+    min-height:84px;padding:11px;border:1px solid #ded2c4;border-radius:14px;background:#fff;display:flex;flex-direction:column;gap:4px
+  }
+  .adminMobileKpis article span{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#6c6055;font-weight:900}
+  .adminMobileKpis article strong{font-size:18px;line-height:1.15}
+  .adminMobileKpis article small{font-size:9px;color:#796e64;line-height:1.2}
+  .adminMobileKpis article.expense{background:#fff3f1;border-color:#ecc5bf}
+  .adminMobileKpis article.profit{background:#edf8f1;border-color:#acd9ba}
+  .adminMobileKpis article.difference{grid-column:1/-1;min-height:75px}
+  .adminMobileKpis article.difference.ok{background:#edf8f1;border-color:#91cea5}
+  .adminMobileKpis article.difference.positive{background:#eef5ff;border-color:#b8cee8}
+  .adminMobileKpis article.difference.negative{background:#fff0ee;border-color:#efb2aa}
+  .adminMobileRealBreakdown{margin-top:8px;padding:9px 11px;border:1px solid #ded2c4;border-radius:12px;background:#fff}
+  .adminMobileRealBreakdown summary{font-size:12px;font-weight:900;cursor:pointer}
+  .adminMobileRealBreakdown div{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee5db;font-size:12px}
+  .adminMobileRealBreakdown div:last-child{border-bottom:0}
+  .adminMobileEmpty{font-size:12px;color:#786c61;padding:8px 0}
+  [data-admin-panel="resumen"]>.adminFinanceSummary,
+  [data-admin-panel="resumen"]>.adminFinanceGridTwo,
+  [data-admin-panel="resumen"]>.adminFinanceBox{margin-top:18px}
+}

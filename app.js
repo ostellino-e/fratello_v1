@@ -1872,10 +1872,13 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
   }
 
   if (idSeccion === "seccionAdministracion" && tieneRolAdministrador()) {
+    const yaEstabaEnAdministracion = seccionActualFratello === "seccionAdministracion";
+    const teniaSubvistaAbierta = $("panelAdministracionPrivado")?.classList.contains("adminSubvistaActiva");
     administracionPrivadaActiva = true;
     $("panelAdministracionLogin")?.classList.add("hidden");
     $("panelAdministracionPrivado")?.classList.remove("hidden");
-    mostrarMenuAdministracion();
+    // No volver al menú por una resincronización o re-render mientras el usuario trabaja.
+    if (!yaEstabaEnAdministracion && !teniaSubvistaAbierta) mostrarMenuAdministracion();
     renderAdministracionFinanciera();
     renderSeguridadCompleta();
     registrarActividadAdministracion();
@@ -8531,8 +8534,76 @@ function adminFinTabla(encabezados, filas) {
     </div>`;
 }
 
+function datosResumenMovilAdministracion() {
+  const r = resumenNumericoAdministracion();
+  const caja = ingresosCajaDelMesAdministracion();
+  const externos = ingresosExternosDelMesAdministracion();
+
+  const porCliente = new Map();
+  porCliente.set("Fratello", caja.reduce((s, x) => s + adminFinMonto(x.monto), 0));
+  externos.forEach(item => {
+    const cliente = String(item.cliente || "Otros").trim() || "Otros";
+    porCliente.set(cliente, (porCliente.get(cliente) || 0) + adminFinMonto(item.monto));
+  });
+
+  let efectivo = caja.reduce((s, x) => s + adminFinMonto(x.efectivo), 0);
+  let transferencias = caja.reduce((s, x) => s + adminFinMonto(x.transferencias), 0);
+  let cheques = 0;
+
+  externos.filter(x => x.cobrado !== false).forEach(item => {
+    const medio = String(item.medio || "").toLowerCase();
+    const monto = adminFinMonto(item.monto);
+    if (medio.includes("cheque")) cheques += monto;
+    else if (medio.includes("transfer") || medio.includes("mercado") || medio.includes("mp")) transferencias += monto;
+    else efectivo += monto;
+  });
+
+  const plataReal = efectivo + transferencias + cheques;
+  const diferencia = plataReal - r.resultado;
+  return {
+    ...r,
+    clientes: [...porCliente.entries()].sort((a, b) => b[1] - a[1]),
+    efectivo,
+    transferencias,
+    cheques,
+    plataReal,
+    diferencia
+  };
+}
+
+function renderResumenMovilAdministracion() {
+  const host = $("resumenMovilAdministracion");
+  if (!host) return;
+  const d = datosResumenMovilAdministracion();
+  const diferenciaClase = Math.abs(d.diferencia) < 0.01 ? "ok" : d.diferencia > 0 ? "positive" : "negative";
+  const clientesHtml = d.clientes.length
+    ? d.clientes.map(([cliente, monto]) => `<div><span>${adminFinEscapar(cliente)}</span><strong>${adminFinDinero(monto)}</strong></div>`).join("")
+    : `<div class="adminMobileEmpty">Todavía no hay ingresos cargados en este mes.</div>`;
+
+  host.innerHTML = `
+    <article class="adminMobileClients">
+      <h3>💰 Plata generada por cliente</h3>
+      <div class="adminMobileClientList">${clientesHtml}</div>
+      <div class="adminMobileClientTotal"><span>Total generado</span><strong>${adminFinDinero(d.ingresos)}</strong></div>
+    </article>
+    <div class="adminMobileKpis">
+      <article><span>Total dinero</span><strong>${adminFinDinero(d.ingresos)}</strong></article>
+      <article class="expense"><span>Total gastos</span><strong>${adminFinDinero(d.gastos)}</strong></article>
+      <article class="profit"><span>Ganancia</span><strong>${adminFinDinero(d.resultado)}</strong></article>
+      <article><span>Plata real</span><strong>${adminFinDinero(d.plataReal)}</strong><small>Efectivo + transferencias + cheques</small></article>
+      <article class="difference ${diferenciaClase}"><span>Diferencia</span><strong>${adminFinDinero(d.diferencia)}</strong><small>Plata real menos ganancia</small></article>
+    </div>
+    <details class="adminMobileRealBreakdown">
+      <summary>Ver composición de plata real</summary>
+      <div><span>Efectivo</span><b>${adminFinDinero(d.efectivo)}</b></div>
+      <div><span>Transferencias</span><b>${adminFinDinero(d.transferencias)}</b></div>
+      <div><span>Cheques</span><b>${adminFinDinero(d.cheques)}</b></div>
+    </details>`;
+}
+
 function renderResumenAdministracion() {
   const r = resumenNumericoAdministracion();
+  renderResumenMovilAdministracion();
   const resultadoClase = r.resultado >= 0 ? "positive" : "negative";
 
   if ($("tarjetasResumenAdministracion")) {

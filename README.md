@@ -1,4 +1,4 @@
-# Fratello v5.0.4
+# Fratello v5.0.5
 
 Corrección de navegación al ingresar a Administración.
 
@@ -11,7 +11,7 @@ Corrección de navegación al ingresar a Administración.
 ## Publicación
 ```bash
 git add .
-git commit -m "Fratello v5.0.4 - administracion abre en el menu"
+git commit -m "Fratello v5.0.5 - administracion abre en el menu"
 git push
 ```
 
