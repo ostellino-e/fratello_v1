@@ -3799,3 +3799,85 @@ body.modal-open{
   .syncAdminMonth input{width:105px!important}
   .realEditorGrid{grid-template-columns:1fr}
 }
+
+
+/* Fratello v5.0.8 — fecha visible, versión en estado y Resumen operativo */
+.syncVersionBadge{
+  margin-left:6px;
+  padding-left:6px;
+  border-left:1px solid rgba(35,88,68,.25);
+  opacity:.78;
+  white-space:nowrap;
+}
+
+.adminMobileSummary{
+  display:none;
+}
+
+@media(max-width:650px){
+  .syncPanel{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+  }
+  .syncStatusCompact{
+    display:flex!important;
+    align-items:center!important;
+    flex:1 1 auto!important;
+    min-width:0!important;
+  }
+  .syncPanel #estadoSync{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .syncPanel #versionFratello{
+    display:inline-block!important;
+    font-size:8px!important;
+    flex:0 0 auto!important;
+  }
+  .admin-authenticated .syncAdminMonth{
+    display:flex!important;
+    flex:0 0 auto!important;
+  }
+  .syncAdminMonth input{
+    display:block!important;
+  }
+
+  /* No dependemos de :has(), que algunos celulares/PWA no aplican bien. */
+  body:has(#seccionAdministracion.active) .syncAdminMonth{
+    display:flex!important;
+  }
+
+  #resumenMovilAdministracion.adminMobileSummary{
+    display:block!important;
+  }
+  #resumenMovilAdministracion .adminMobileRealEditor{
+    display:block!important;
+  }
+  #resumenMovilAdministracion:empty{
+    display:none!important;
+  }
+
+  /* El resumen móvil es la vista principal; lo secundario queda oculto. */
+  [data-admin-panel="resumen"] > .adminCajaAccessCard,
+  [data-admin-panel="resumen"] > .adminFinanceSummary,
+  [data-admin-panel="resumen"] > .adminFinanceGridTwo,
+  [data-admin-panel="resumen"] > .adminFinanceBox{
+    display:none!important;
+  }
+}
+
+@media(max-width:390px){
+  .syncStatusCompact{
+    max-width:54%;
+  }
+  .syncVersionBadge{
+    font-size:7.4px!important;
+    margin-left:4px;
+    padding-left:4px;
+  }
+  .syncAdminMonth input{
+    width:103px!important;
+  }
+}

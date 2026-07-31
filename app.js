@@ -8140,6 +8140,7 @@ function ocultarModalAdministrador() {
 function actualizarInterfazAdministrador() {
   const conectado = tieneRolAdministrador();
   $("tarjetaAdministracionInicio")?.classList.toggle("hidden", !conectado);
+  document.body.classList.toggle("admin-authenticated", conectado);
   $("btnAdministrarPersonasCajaRapido")?.classList.toggle("hidden", !conectado);
 
   if ($("iconoUsuarioAdministrador")) {
@@ -8458,6 +8459,17 @@ function guardarPlataRealManualDesdeResumen() {
   guardarAdministracionLocal();
   guardarEnNube();
   renderResumenMovilAdministracion();
+
+  const boton = $("btnGuardarPlataRealManual");
+  if (boton) {
+    const textoOriginal = boton.textContent;
+    boton.textContent = "✓ Plata real guardada";
+    boton.disabled = true;
+    setTimeout(() => {
+      boton.textContent = textoOriginal;
+      boton.disabled = false;
+    }, 1200);
+  }
 }
 
 function recalcularPlataRealManualEnPantalla() {
@@ -8601,11 +8613,13 @@ function datosResumenMovilAdministracion() {
   const externos = ingresosExternosDelMesAdministracion();
 
   const porCliente = new Map();
-  porCliente.set("Fratello", caja.reduce((s, x) => s + adminFinMonto(x.monto), 0));
-  externos.forEach(item => {
-    const cliente = String(item.cliente || "Otros").trim() || "Otros";
-    porCliente.set(cliente, (porCliente.get(cliente) || 0) + adminFinMonto(item.monto));
-  });
+  porCliente.set("Panadería Fratello", caja.reduce((s, x) => s + adminFinMonto(x.monto), 0));
+  externos
+    .filter(item => item.cobrado !== false)
+    .forEach(item => {
+      const cliente = String(item.cliente || "Otros").trim() || "Otros";
+      porCliente.set(cliente, (porCliente.get(cliente) || 0) + adminFinMonto(item.monto));
+    });
 
   let efectivo = caja.reduce((s, x) => s + adminFinMonto(x.efectivo), 0);
   let transferencias = caja.reduce((s, x) => s + adminFinMonto(x.transferencias), 0);
@@ -8647,12 +8661,12 @@ function renderResumenMovilAdministracion() {
 
   host.innerHTML = `
     <article class="adminMobileClients">
-      <h3>💰 Plata generada por cliente</h3>
+      <h3>💰 Ingresos de la panadería y pagos externos</h3>
       <div class="adminMobileClientList">${clientesHtml}</div>
-      <div class="adminMobileClientTotal"><span>Total generado</span><strong>${adminFinDinero(d.ingresos)}</strong></div>
+      <div class="adminMobileClientTotal"><span>Total de ingresos</span><strong>${adminFinDinero(d.ingresos)}</strong></div>
     </article>
     <div class="adminMobileKpis">
-      <article><span>Total dinero</span><strong>${adminFinDinero(d.ingresos)}</strong></article>
+      <article><span>Total ingresos</span><strong>${adminFinDinero(d.ingresos)}</strong></article>
       <article class="expense"><span>Total gastos</span><strong>${adminFinDinero(d.gastos)}</strong></article>
       <article class="profit"><span>Ganancia</span><strong>${adminFinDinero(d.resultado)}</strong></article>
       <article class="realMoneyEditable">
@@ -8663,7 +8677,7 @@ function renderResumenMovilAdministracion() {
       <article class="difference ${diferenciaClase}">
         <span>Diferencia</span>
         <strong id="plataRealDiferenciaManual">${adminFinDinero(d.diferencia)}</strong>
-        <small>Plata real menos ganancia</small>
+        <small>Plata real − ganancia esperada</small>
       </article>
     </div>
     <section class="adminMobileRealEditor">
