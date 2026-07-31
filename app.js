@@ -8268,22 +8268,66 @@ function iniciarAccesoAdministrador() {
   });
 
   if (authFratello) {
-    authFratello.onAuthStateChanged(async usuario => {
+    // v5.0.3: mostrar la sesión restaurada de inmediato, sin esperar a Firestore.
+    // Firebase conserva la sesión LOCAL; cuando currentUser ya está disponible,
+    // la interfaz de administrador se pinta antes de iniciar la sincronización remota.
+    const usuarioEnMemoria = authFratello.currentUser;
+    if (usuarioEnMemoria) {
+      usuarioAdministradorActual = usuarioEnMemoria;
+      rolUsuarioActual = obtenerRolUsuario(usuarioEnMemoria);
+      segCargarLocal();
+      dispositivoFratelloActual = segObtenerDispositivoActual();
+      const dispositivoLocal = seguridadFratello.dispositivos.find(
+        d => d.id === dispositivoFratelloActual.id && d.uid === usuarioEnMemoria.uid
+      );
+      dispositivoAutorizadoActual = !dispositivoLocal || dispositivoLocal.estado === "autorizado";
+      actualizarInterfazAdministrador();
+      actualizarPanelSesionAdministrador();
+      segAplicarPermisosUI();
+    }
+
+    authFratello.onAuthStateChanged(usuario => {
+      // Primera pintura inmediata: no bloquear el botón Administrador por lecturas remotas.
       usuarioAdministradorActual = usuario || null;
+      rolUsuarioActual = obtenerRolUsuario(usuarioAdministradorActual);
+
       if (usuarioAdministradorActual) {
-        await segVerificarDispositivo(usuarioAdministradorActual);
+        segCargarLocal();
+        dispositivoFratelloActual = segObtenerDispositivoActual();
+        const dispositivoLocal = seguridadFratello.dispositivos.find(
+          d => d.id === dispositivoFratelloActual.id && d.uid === usuarioAdministradorActual.uid
+        );
+        dispositivoAutorizadoActual = !dispositivoLocal || dispositivoLocal.estado === "autorizado";
       } else {
         dispositivoAutorizadoActual = false;
       }
-      rolUsuarioActual = obtenerRolUsuario(usuarioAdministradorActual);
+
       actualizarInterfazAdministrador();
       actualizarPanelSesionAdministrador();
       segAplicarPermisosUI();
 
-      if (usuarioAdministradorActual && dispositivoAutorizadoActual) {
-        await segAuditar("sesion", "Inicio de sesión", usuarioAdministradorActual.email || "");
-        abrirAdministracionPrivada();
-        renderSeguridadCompleta();
+      // Verificación y auditoría en segundo plano. La app ya queda utilizable.
+      if (usuarioAdministradorActual) {
+        const usuarioVerificado = usuarioAdministradorActual;
+        Promise.resolve()
+          .then(() => segVerificarDispositivo(usuarioVerificado))
+          .then(autorizado => {
+            if (authFratello.currentUser?.uid !== usuarioVerificado.uid) return;
+            dispositivoAutorizadoActual = Boolean(autorizado);
+            rolUsuarioActual = obtenerRolUsuario(usuarioVerificado);
+            actualizarInterfazAdministrador();
+            actualizarPanelSesionAdministrador();
+            segAplicarPermisosUI();
+            if (autorizado) {
+              abrirAdministracionPrivada();
+              renderSeguridadCompleta();
+              segAuditar("sesion", "Inicio de sesión", usuarioVerificado.email || "").catch(() => {});
+            }
+          })
+          .catch(error => {
+            // Ante una demora o corte de Internet se mantiene la sesión local restaurada.
+            console.warn("Verificación de administrador en segundo plano:", error);
+          });
       }
     });
   } else {

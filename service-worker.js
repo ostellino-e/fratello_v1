@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v502";
+const CACHE_NAME = "fratello-v503-rapido";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -172,30 +172,38 @@ self.addEventListener("fetch", event => {
   if (!["http:", "https:"].includes(url.protocol)) return;
   if (url.origin !== self.location.origin) return;
 
-  const archivoCritico =
+  const esInicioOArchivoPrincipal =
+    request.mode === "navigate" ||
     url.pathname.endsWith("/") ||
     url.pathname.endsWith("/index.html") ||
     url.pathname.endsWith("/app.js") ||
-    url.pathname.endsWith("/service-worker.js") ||
-    url.pathname.endsWith("/actualizar.html");
+    url.pathname.endsWith("/styles.css");
 
-  if (archivoCritico) {
-    event.respondWith(
-      fetch(new Request(request, { cache: "no-store" }))
-        .then(response => response)
-        .catch(() => caches.match(request))
-    );
+  // v5.0.3: arranque instantáneo desde caché y actualización silenciosa detrás.
+  // Evita que el ícono instalado espere a la red para mostrar Fratello.
+  if (esInicioOArchivoPrincipal) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const guardado = await cache.match(request, { ignoreSearch: true });
+      const actualizar = fetch(new Request(request, { cache: "no-store" }))
+        .then(response => {
+          if (response && response.ok && response.type !== "opaque") {
+            cache.put(request, response.clone()).catch(() => {});
+          }
+          return response;
+        })
+        .catch(() => null);
+      return guardado || await actualizar || Response.error();
+    })());
     return;
   }
 
   event.respondWith(
-    fetch(request)
-      .then(response => {
-        if (!response || !response.ok || response.type === "opaque") return response;
-        const copia = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, copia).catch(() => {}));
-        return response;
-      })
-      .catch(() => caches.match(request))
+    caches.match(request).then(guardado => guardado || fetch(request).then(response => {
+      if (!response || !response.ok || response.type === "opaque") return response;
+      const copia = response.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(request, copia).catch(() => {}));
+      return response;
+    }))
   );
 });
