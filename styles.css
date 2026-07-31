@@ -3951,3 +3951,225 @@ body.modal-open{
     grid-template-columns:1fr;
   }
 }
+
+
+/* Fratello v5.1.0 — mismo lenguaje visual del celular aplicado a PC */
+@media(min-width:651px){
+  #resumenMovilAdministracion.adminMobileSummary{
+    display:block!important;
+    max-width:1120px;
+    margin:0 auto;
+  }
+
+  #resumenMovilAdministracion .adminMobileClients{
+    padding:18px 20px;
+    margin-bottom:16px;
+    border:1px solid #dfd1c4;
+    border-radius:16px;
+    background:#fff;
+    box-shadow:0 8px 24px rgba(61,42,26,.08);
+  }
+
+  #resumenMovilAdministracion .adminMobileClients h3{
+    margin:0 0 14px;
+    font-size:18px;
+  }
+
+  #resumenMovilAdministracion .adminMobileClientList{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px 14px;
+  }
+
+  #resumenMovilAdministracion .adminMobileClientList > div{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    min-height:48px;
+    padding:11px 13px;
+    border:1px solid #eadfd5;
+    border-radius:12px;
+    background:#fcfaf8;
+  }
+
+  #resumenMovilAdministracion .adminMobileClientList span{
+    font-weight:700;
+    color:#4f463f;
+  }
+
+  #resumenMovilAdministracion .adminMobileClientList strong{
+    font-size:17px;
+    white-space:nowrap;
+  }
+
+  #resumenMovilAdministracion .adminMobileClientTotal{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:16px;
+    margin-top:12px;
+    padding:14px 16px;
+    border-radius:12px;
+    background:#1f5b47;
+    color:#fff;
+  }
+
+  #resumenMovilAdministracion .adminMobileClientTotal span{
+    font-weight:900;
+    letter-spacing:.02em;
+  }
+
+  #resumenMovilAdministracion .adminMobileClientTotal strong{
+    font-size:22px;
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis{
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:12px;
+    margin-bottom:16px;
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis article{
+    display:grid;
+    align-content:center;
+    min-height:116px;
+    padding:16px;
+    border:1px solid #e3d6ca;
+    border-radius:15px;
+    background:#fff;
+    box-shadow:0 6px 18px rgba(61,42,26,.07);
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis article span{
+    margin-bottom:8px;
+    color:#6d6258;
+    font-size:12px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis article strong{
+    font-size:21px;
+    line-height:1.1;
+    overflow-wrap:anywhere;
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis article small{
+    margin-top:7px;
+    color:#756a60;
+    line-height:1.25;
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis article.expense{
+    background:#fff7f7;
+    border-color:#efcaca;
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis article.profit{
+    background:#f2fbf4;
+    border-color:#c9e5cf;
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis article.realMoneyEditable{
+    background:#fff9e9;
+    border-color:#ead18b;
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis article.difference.ok{
+    background:#eef9f0;
+    border-color:#bedfc5;
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis article.difference.positive{
+    background:#eef6ff;
+    border-color:#bfd6f2;
+  }
+
+  #resumenMovilAdministracion .adminMobileKpis article.difference.negative{
+    background:#fff0f0;
+    border-color:#efbcbc;
+  }
+
+  #resumenMovilAdministracion .adminMobileRealEditor{
+    display:block!important;
+    max-width:none;
+    margin:0;
+    padding:18px 20px;
+    border:1px solid #dfd1c4;
+    border-radius:16px;
+    background:#fff;
+    box-shadow:0 8px 24px rgba(61,42,26,.08);
+  }
+
+  #resumenMovilAdministracion .realEditorTitle{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:20px;
+    margin-bottom:14px;
+  }
+
+  #resumenMovilAdministracion .realEditorTitle strong{
+    font-size:17px;
+  }
+
+  #resumenMovilAdministracion .realEditorTitle small{
+    color:#74695f;
+  }
+
+  #resumenMovilAdministracion .realEditorGrid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:12px;
+  }
+
+  #resumenMovilAdministracion .realEditorGrid label{
+    display:grid;
+    gap:7px;
+    font-weight:800;
+    color:#51473f;
+  }
+
+  #resumenMovilAdministracion .realEditorGrid input{
+    width:100%;
+    height:44px;
+    margin:0;
+    padding:8px 10px;
+    border:1px solid #d8cabb;
+    border-radius:10px;
+    background:#fff;
+    font-size:16px;
+  }
+
+  #resumenMovilAdministracion .adminMobileRealEditor button{
+    width:auto;
+    min-width:190px;
+    margin-top:14px;
+    padding:10px 18px;
+  }
+
+  /* Compacta la barra verde para que no compita con el tablero */
+  #panelAdministracionPrivado .adminFinanceToolbarCompacta{
+    min-height:48px;
+    padding:7px 10px;
+    border-radius:12px;
+  }
+
+  /* Oculta información de cabecera que no aporta al trabajo diario */
+  #seccionAdministracion .sectionIntro,
+  #seccionAdministracion .versionPill{
+    display:none!important;
+  }
+}
+
+@media(min-width:651px) and (max-width:980px){
+  #resumenMovilAdministracion .adminMobileKpis{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  #resumenMovilAdministracion .adminMobileClientList{
+    grid-template-columns:1fr;
+  }
+}

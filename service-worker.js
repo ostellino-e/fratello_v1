@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v509-interfaz-compacta";
+const CACHE_NAME = "fratello-v510-interfaz-compacta";
 const ARCHIVOS = [
   "./",
   "./index.html",

@@ -1,33 +1,16 @@
-# Fratello v5.0.9 — Resumen en PC y navegación estable
+# Fratello v5.1.0 — Resumen de PC con aspecto móvil
 
-## Correcciones
-- El mismo Resumen operativo del celular ahora se muestra también en computadora.
-- En PC se visualizan:
-  - ingresos de Panadería Fratello;
-  - pagos cobrados de clientes externos;
-  - total de ingresos;
-  - gastos;
-  - ganancia;
-  - Plata Real manual;
-  - diferencia.
-- Plata Real continúa siendo el único dato editable.
-- La distribución en PC aprovecha el ancho con clientes en dos columnas e indicadores en una fila.
+## Cambios visuales
+- El bloque de ingresos ahora usa recuadros separados para cada cliente.
+- El total de ingresos aparece destacado en una barra verde.
+- Gastos, Ganancia, Plata Real y Diferencia aparecen en tarjetas independientes.
+- Se aplicaron bordes, sombras, espacios y colores similares a la versión celular.
+- El formulario de Plata Real también quedó dentro de una tarjeta.
+- La distribución aprovecha el ancho de la computadora sin que la información quede pegada.
+- La lógica, los cálculos y los datos no fueron modificados.
 
-## Bug corregido
-Al entrar a Resumen, la verificación de Firebase podía terminar unos segundos después y ejecutar nuevamente la apertura de Administración. Eso enviaba al usuario al menú anterior.
-
-Ahora:
-- la verificación de sesión se realiza en segundo plano;
-- si ya estás dentro de Resumen, Ingresos, Gastos u otra pantalla, conserva esa vista;
-- únicamente vuelve al menú cuando vos tocás el botón correspondiente.
-
-## Prueba
-1. Entrar a Administración > Resumen.
-2. Esperar varios segundos sin tocar nada.
-3. Confirmar que no vuelva al menú.
-4. Abrir Resumen desde computadora.
-5. Confirmar que aparezca la misma información operativa del celular.
-6. Editar y guardar Plata Real.
+## Navegación
+- Se conserva la corrección de v5.0.9 para que Resumen no vuelva solo al menú anterior.
 
 ## Versión esperada
-v5.0.9
+v5.1.0
