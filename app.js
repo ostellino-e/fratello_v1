@@ -1877,8 +1877,12 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
     administracionPrivadaActiva = true;
     $("panelAdministracionLogin")?.classList.add("hidden");
     $("panelAdministracionPrivado")?.classList.remove("hidden");
-    // No volver al menú por una resincronización o re-render mientras el usuario trabaja.
-    if (!yaEstabaEnAdministracion && !teniaSubvistaAbierta) mostrarMenuAdministracion();
+    // v5.1.1: una resincronización nunca cambia la pantalla elegida por el usuario.
+    if (vistaAdministracionActual) {
+      restaurarVistaAdministracionActual();
+    } else if (!yaEstabaEnAdministracion && !teniaSubvistaAbierta) {
+      mostrarMenuAdministracion();
+    }
     renderAdministracionFinanciera();
     renderSeguridadCompleta();
     registrarActividadAdministracion();
@@ -8233,9 +8237,10 @@ function abrirAdministracionAutenticada() {
   }
 
   ocultarModalAdministrador();
+  vistaAdministracionActual = "";
   abrirAdministracionPrivada();
 
-  // v4.0.2: restaura completamente Administración en cada ingreso.
+  // Entrada explícita desde Inicio: abre el menú principal de Administración.
   $("panelAdministracionLogin")?.classList.add("hidden");
   $("panelAdministracionPrivado")?.classList.remove("hidden");
   mostrarMenuAdministracion();
@@ -8331,17 +8336,18 @@ function iniciarAccesoAdministrador() {
               // de una subpantalla de Administración (Resumen, Gastos, etc.).
               const seccionAdministracionActiva =
                 document.getElementById("seccionAdministracion")?.classList.contains("active");
-              const subvistaActiva =
-                document.getElementById("panelAdministracionPrivado")?.classList.contains("adminSubvistaActiva");
 
               if (!seccionAdministracionActiva) {
                 abrirAdministracionPrivada();
-              } else if (!subvistaActiva) {
-                mostrarMenuAdministracion();
               } else {
                 administracionPrivadaActiva = true;
                 $("panelAdministracionLogin")?.classList.add("hidden");
                 $("panelAdministracionPrivado")?.classList.remove("hidden");
+
+                if (vistaAdministracionActual) {
+                  restaurarVistaAdministracionActual();
+                }
+
                 renderAdministracionFinanciera();
               }
 
@@ -8925,10 +8931,10 @@ function abrirAdministracionPrivada() {
 
   const yaEstaEnAdministracion =
     document.getElementById("seccionAdministracion")?.classList.contains("active");
-  const yaHaySubvista =
-    $("panelAdministracionPrivado")?.classList.contains("adminSubvistaActiva");
 
-  if (!(yaEstaEnAdministracion && yaHaySubvista)) {
+  if (yaEstaEnAdministracion && vistaAdministracionActual) {
+    restaurarVistaAdministracionActual();
+  } else if (!vistaAdministracionActual) {
     mostrarMenuAdministracion();
   }
 
@@ -9136,7 +9142,15 @@ function tituloTabAdministracion(nombre) {
   return titulos[nombre] || "Administración";
 }
 
+let vistaAdministracionActual = "";
+
+function restaurarVistaAdministracionActual() {
+  if (!vistaAdministracionActual) return false;
+  return activarTabAdministracion(vistaAdministracionActual, { restaurando: true });
+}
+
 function mostrarMenuAdministracion() {
+  vistaAdministracionActual = "";
   asegurarCajaPrivadaDentroAdministracion();
   const panel = $("panelAdministracionPrivado");
   if (!panel) return;
@@ -9156,13 +9170,14 @@ function mostrarMenuAdministracion() {
   window.scrollTo({ top: document.getElementById("seccionAdministracion")?.offsetTop || 0, behavior: "smooth" });
 }
 
-function activarTabAdministracion(nombre = "resumen") {
+function activarTabAdministracion(nombre = "resumen", opciones = {}) {
   const tabsSeguras = ["caja", "usuarios", "dispositivos", "auditoria", "backup"];
   if (tabsSeguras.includes(nombre) && !tieneRolAdministrador()) {
     mostrarModalAdministrador();
     return false;
   }
   asegurarCajaPrivadaDentroAdministracion();
+  vistaAdministracionActual = nombre;
   const panelAdministracion = $("panelAdministracionPrivado");
   panelAdministracion?.classList.add("adminSubvistaActiva");
   panelAdministracion?.querySelector(".adminFinanceTabs")?.classList.add("hidden");
