@@ -1,17 +1,17 @@
-# Fratello v5.0.3
+# Fratello v5.0.4
 
-Corrección de inicio y sesión de administrador.
+Corrección de navegación al ingresar a Administración.
 
 ## Cambios
-- La sesión de administrador se muestra apenas Firebase restaura el usuario local.
-- La verificación remota del dispositivo se ejecuta en segundo plano.
-- El inicio de la PWA usa caché inmediata y actualiza archivos silenciosamente.
-- Se conservan Administración, Caja, Pedidos, Tickets y todos los datos existentes.
+- Administración abre directamente en el menú de botones.
+- Resumen ya no se abre automáticamente.
+- Cada pantalla interna vuelve al menú de Administración.
+- Se conservan los datos y funciones de Ingresos, Gastos, Presupuesto, Caja y Seguridad.
 
 ## Publicación
 ```bash
 git add .
-git commit -m "Fratello v5.0.3 - inicio rapido y administrador inmediato"
+git commit -m "Fratello v5.0.4 - administracion abre en el menu"
 git push
 ```
 

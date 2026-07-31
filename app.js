@@ -1875,7 +1875,7 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
     administracionPrivadaActiva = true;
     $("panelAdministracionLogin")?.classList.add("hidden");
     $("panelAdministracionPrivado")?.classList.remove("hidden");
-    activarTabAdministracion("resumen");
+    mostrarMenuAdministracion();
     renderAdministracionFinanciera();
     renderSeguridadCompleta();
     registrarActividadAdministracion();
@@ -8735,7 +8735,7 @@ function abrirAdministracionPrivada() {
   $("panelAdministracionLogin")?.classList.add("hidden");
   $("panelAdministracionPrivado")?.classList.remove("hidden");
   $("panelAdministracionPrivado")?.removeAttribute("style");
-  activarTabAdministracion("resumen");
+  mostrarMenuAdministracion();
   renderAdministracionFinanciera();
   renderSeguridadCompleta();
   registrarActividadAdministracion();
@@ -9469,7 +9469,7 @@ function ingresarCajaAdmin() {
 
 function salirCajaAdmin() {
   cajaAdminActivo = false;
-  activarTabAdministracion("resumen");
+  mostrarMenuAdministracion();
 }
 
 function totalesCierreCaja(cierre) {
@@ -10073,7 +10073,7 @@ function iniciarModuloCaja() {
   $("btnGuardarCierreCaja")?.addEventListener("click", guardarCierreCaja);
   $("cajaFecha")?.addEventListener("change", cargarCierreSeleccionadoCaja);
   $("cajaTurno")?.addEventListener("change", cargarCierreSeleccionadoCaja);
-  $("btnVolverResumenAdministracion")?.addEventListener("click", () => activarTabAdministracion("resumen"));
+  $("btnVolverResumenAdministracion")?.addEventListener("click", mostrarMenuAdministracion);
   $("btnActualizarCajaAdmin")?.addEventListener("click", () => {
     renderCajaAdmin();
     renderDashboardCaja();
