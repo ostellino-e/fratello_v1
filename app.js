@@ -9723,72 +9723,7 @@ function tarjetaResumenCaja(titulo, valor, clase = "") {
 
 function renderCajaAdmin() {
   if (!cajaAdminActivo) return;
-
-  const fecha = $("cajaAdminFecha")?.value || hoyISOCaja();
-  const manana = obtenerCierreCaja(fecha, "manana");
-  const tarde = obtenerCierreCaja(fecha, "tarde");
-  const cierres = [manana, tarde].filter(Boolean);
-  const suma = cierres.reduce((acum, cierre) => {
-    const t = totalesCierreCaja(cierre);
-    acum.efectivo += t.efectivo;
-    acum.transferencias += t.transferencias;
-    acum.gastos += t.gastos;
-    acum.venta += t.venta;
-    acum.efectivoRendir += t.efectivoRendir;
-    return acum;
-  }, { efectivo: 0, transferencias: 0, gastos: 0, venta: 0, efectivoRendir: 0 });
-
-  if ($("resumenCajaAdmin")) {
-    $("resumenCajaAdmin").innerHTML = [
-      tarjetaResumenCaja("Venta total", suma.venta, "primary"),
-      tarjetaResumenCaja("Efectivo vendido", suma.efectivo),
-      tarjetaResumenCaja("Transferencias", suma.transferencias),
-      tarjetaResumenCaja("Gastos en efectivo", suma.gastos, "expense"),
-      tarjetaResumenCaja("Efectivo a recibir", suma.efectivoRendir, "net")
-    ].join("");
-  }
-
-  if ($("cierresCajaAdmin")) {
-    $("cierresCajaAdmin").innerHTML = ["manana", "tarde"].map(turno => {
-      const cierre = obtenerCierreCaja(fecha, turno);
-      if (!cierre) {
-        return `<div class="cajaAdminClosure pending">
-          <div><strong>${turnoTextoCaja(turno)}</strong><span>Sin cargar</span></div>
-          <button type="button" onclick="editarCierreDesdeAdminCaja('${fecha}','${turno}')">Cargar</button>
-        </div>`;
-      }
-
-      const t = totalesCierreCaja(cierre);
-      const gastos = (cierre.gastos || []).length
-        ? `<ul>${cierre.gastos.map(g => `<li><span>${escaparCaja(g.motivo)}</span><b>${formatoDineroCaja(g.monto)}</b></li>`).join("")}</ul>`
-        : '<p class="hint">Sin gastos.</p>';
-
-      return `<article class="cajaAdminClosure">
-        <div class="cajaAdminClosureHead">
-          <div>
-            <strong>${turnoTextoCaja(turno)}</strong>
-            <span>Cerró: ${escaparCaja(cierre.persona)}</span>
-          </div>
-          <button type="button" onclick="editarCierreDesdeAdminCaja('${fecha}','${turno}')">✏️ Editar</button>
-        </div>
-        <div class="cajaAdminClosureNumbers">
-          <span>Efectivo <b>${formatoDineroCaja(t.efectivo)}</b></span>
-          <span>Transferencias <b>${formatoDineroCaja(t.transferencias)}</b></span>
-          <span>Venta del turno <b>${formatoDineroCaja(t.venta)}</b></span>
-          <span>Gastos <b>${formatoDineroCaja(t.gastos)}</b></span>
-          <span>Efectivo a rendir <b>${formatoDineroCaja(t.efectivoRendir)}</b></span>
-        </div>
-        <details>
-          <summary>Ver gastos y observación</summary>
-          ${gastos}
-          ${cierre.observacion ? `<p><strong>Observación:</strong> ${escaparCaja(cierre.observacion)}</p>` : ""}
-        </details>
-      </article>`;
-    }).join("");
-  }
-
-  renderPersonasCaja();
-  renderDashboardCaja();
+  renderLibroDiarioCaja();
 }
 
 function renderCajaAdminSeguro() {
@@ -9801,7 +9736,6 @@ function renderCajaAdminSeguro() {
     panel.classList.remove("hidden");
     panel.style.display = "block";
     renderCajaAdmin();
-    if (typeof renderDashboardCaja === "function") renderDashboardCaja();
     return true;
   } catch (error) {
     console.error("Caja privada: error al renderizar", error);
@@ -9999,41 +9933,53 @@ function renderIndicadoresCaja() {
   ].join("");
 }
 
+function claseVentaDiaCaja(total) {
+  const monto = montoCaja(total);
+  if (monto >= 300000) return "high";
+  if (monto <= 200000) return "low";
+  return "medium";
+}
+
 function renderLibroDiarioCaja() {
   const contenedor = $("libroDiarioCaja");
   if (!contenedor) return;
 
-  const mesSeleccionado = $("mesLibroCaja")?.value;
-  let dias = agruparCierresPorDiaCaja();
+  const mesSeleccionado = $("mesLibroCaja")?.value || hoyISOCaja().slice(0, 7);
+  const dias = agruparCierresPorDiaCaja()
+    .filter(dia => dia.fecha.startsWith(mesSeleccionado))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
 
-  if (mesSeleccionado) {
-    dias = dias.filter(d => d.fecha.startsWith(mesSeleccionado));
+  const totalMes = dias.reduce((suma, dia) => suma + montoCaja(dia.venta), 0);
+  if ($("totalVentasMesCaja")) {
+    $("totalVentasMesCaja").textContent = formatoDineroCaja(totalMes);
   }
 
   if (!dias.length) {
-    contenedor.innerHTML = '<div class="cajaBookEmpty">No hay cierres cargados para este período.</div>';
+    contenedor.innerHTML = '<div class="cajaIngresosVacio">No hay cierres cargados para este mes.</div>';
     return;
   }
 
   contenedor.innerHTML = dias.map(dia => `
-    <article class="cajaDayRow">
-      <div class="cajaDayDate">
-        <strong>${formatoFechaCaja(dia.fecha)}</strong>
-        <span>${dia.cierres.length} turno${dia.cierres.length === 1 ? "" : "s"} cargado${dia.cierres.length === 1 ? "" : "s"}</span>
+    <details class="cajaIngresoDia ${claseVentaDiaCaja(dia.venta)}">
+      <summary>
+        <span class="cajaIngresoFecha">${formatoFechaCaja(dia.fecha)}</span>
+        <strong>${formatoDineroCaja(dia.venta)}</strong>
+      </summary>
+      <div class="cajaIngresoDetalle">
+        <article>
+          <span>💵 Efectivo</span>
+          <strong>${formatoDineroCaja(dia.efectivo)}</strong>
+        </article>
+        <article>
+          <span>🏦 Transferencias</span>
+          <strong>${formatoDineroCaja(dia.transferencias)}</strong>
+        </article>
       </div>
-
-      <div class="cajaDayNumbers">
-        <span><small>Venta total</small><b>${formatoDineroCaja(dia.venta)}</b></span>
-        <span><small>Gastos</small><b>${formatoDineroCaja(dia.gastos)}</b></span>
-      </div>
-
-      <button type="button" class="btnDetalleDiaCaja" data-fecha-caja="${dia.fecha}">Ver detalle</button>
-    </article>
+    </details>
   `).join("");
 }
 
 function renderDashboardCaja() {
-  renderIndicadoresCaja();
   renderLibroDiarioCaja();
 }
 

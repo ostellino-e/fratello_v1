@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=511" />
+  <link rel="stylesheet" href="styles.css?v=512" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "5.1.1";
-    document.documentElement.dataset.fratelloVersion = "5.1.1";
+    window.FRATELLO_VERSION = "5.1.2";
+    document.documentElement.dataset.fratelloVersion = "5.1.2";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v5.1.1</small>
+      <small id="versionFratello" class="syncVersionBadge">v5.1.2</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -456,7 +456,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v5.1.1 · Interfaz compacta móvil</span>
+        <span class="adminFinanceVersion">v5.1.2 · Interfaz compacta móvil</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -671,64 +671,21 @@
         </section>
 
         <section id="panelCajaAdmin" class="cajaPanel adminFinanceTab" data-admin-panel="caja">
-                <div class="cajaAdminTop">
-                  <div>
-                    <h3>🏦 Caja privada de Administración</h3>
-                    <p>Este módulo fue trasladado completamente desde la pantalla de Caja.</p>
-                  </div>
-                  <button id="btnVolverResumenAdministracion" type="button">← Volver al resumen</button>
-                </div>
-        
-                <div class="cajaAdminFilters">
-                  <label>Fecha
-                    <input id="cajaAdminFecha" type="date">
-                  </label>
-                  <button id="btnActualizarCajaAdmin" type="button">🔄 Actualizar</button>
-                </div>
-        
-                <div id="resumenCajaAdmin" class="cajaSummaryGrid"></div>
-        
-                <div class="cajaAdminSection">
-                  <h3>Cierres del día</h3>
-                  <div id="cierresCajaAdmin" class="cajaAdminClosures"></div>
-                </div>
-        
-                <section class="cajaAdminSection cajaDashboardSection">
-                  <div class="cajaDashboardHeader">
-                    <div>
-                      <h3>📊 Resumen de ventas</h3>
-                      <p>Consultá cuánto se vendió cada día y compará períodos.</p>
-                    </div>
-                    <select id="filtroPeriodoCaja">
-                      <option value="hoy">Hoy</option>
-                      <option value="semana">Esta semana</option>
-                      <option value="mes" selected>Este mes</option>
-                      <option value="todo">Todo</option>
-                    </select>
-                  </div>
-        
-                  <div id="indicadoresCajaDashboard" class="cajaIndicatorsGrid"></div>
-        
-                  <div class="cajaBookHeader">
-                    <h3>📖 Libro diario de caja</h3>
-                    <label>
-                      Mes
-                      <input id="mesLibroCaja" type="month">
-                    </label>
-                  </div>
-        
-                  <div id="libroDiarioCaja" class="cajaDailyBook"></div>
-                </section>
-        
-                <details class="cajaAdminSection cajaPeopleAdmin">
-                  <summary>👥 Administrar personas habilitadas</summary>
-                  <div class="cajaPersonAdd">
-                    <input id="nuevaPersonaCaja" type="text" placeholder="Nombre">
-                    <button id="btnAgregarPersonaCaja" type="button">Agregar</button>
-                  </div>
-                  <div id="listaPersonasCaja"></div>
-                </details>
-              </section>
+          <section class="cajaIngresosVista">
+            <header class="cajaIngresosHero">
+              <div>
+                <span>Total ventas del mes</span>
+                <strong id="totalVentasMesCaja">$ 0</strong>
+              </div>
+              <label class="cajaIngresosMes">
+                Mes
+                <input id="mesLibroCaja" type="month">
+              </label>
+            </header>
+
+            <div id="libroDiarioCaja" class="cajaIngresosDias"></div>
+          </section>
+        </section>
 
         <section class="adminFinanceTab securityPanel" data-admin-panel="usuarios">
           <article class="securityHero">
