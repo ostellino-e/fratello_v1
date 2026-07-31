@@ -3881,3 +3881,73 @@ body.modal-open{
     width:103px!important;
   }
 }
+
+
+/* Fratello v5.0.9 — Resumen operativo también en PC */
+#resumenMovilAdministracion.adminMobileSummary{
+  display:block!important;
+  max-width:1180px;
+  margin:0 auto;
+}
+
+#resumenMovilAdministracion .adminMobileClients{
+  margin-bottom:12px;
+}
+
+#resumenMovilAdministracion .adminMobileClientList{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px 16px;
+}
+
+#resumenMovilAdministracion .adminMobileKpis{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(145px,1fr));
+  gap:10px;
+}
+
+#resumenMovilAdministracion .adminMobileRealEditor{
+  display:block!important;
+  max-width:780px;
+  margin:12px auto 0;
+  padding:14px;
+  border:1px solid #d5c6b5;
+  border-radius:14px;
+  background:#fff;
+}
+
+#resumenMovilAdministracion .realEditorGrid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+/* En Resumen, tanto PC como celular usan la vista operativa principal. */
+[data-admin-panel="resumen"] > .adminCajaAccessCard,
+[data-admin-panel="resumen"] > .adminFinanceSummary,
+[data-admin-panel="resumen"] > .adminFinanceGridTwo,
+[data-admin-panel="resumen"] > .adminFinanceBox{
+  display:none!important;
+}
+
+@media(max-width:900px){
+  #resumenMovilAdministracion .adminMobileKpis{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:650px){
+  #resumenMovilAdministracion .adminMobileClientList{
+    grid-template-columns:1fr;
+  }
+  #resumenMovilAdministracion .adminMobileKpis{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:390px){
+  #resumenMovilAdministracion .adminMobileKpis,
+  #resumenMovilAdministracion .realEditorGrid{
+    grid-template-columns:1fr;
+  }
+}

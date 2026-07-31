@@ -8327,7 +8327,24 @@ function iniciarAccesoAdministrador() {
             actualizarPanelSesionAdministrador();
             segAplicarPermisosUI();
             if (autorizado) {
-              abrirAdministracionPrivada();
+              // v5.0.9: no reiniciar la navegación si el usuario ya está dentro
+              // de una subpantalla de Administración (Resumen, Gastos, etc.).
+              const seccionAdministracionActiva =
+                document.getElementById("seccionAdministracion")?.classList.contains("active");
+              const subvistaActiva =
+                document.getElementById("panelAdministracionPrivado")?.classList.contains("adminSubvistaActiva");
+
+              if (!seccionAdministracionActiva) {
+                abrirAdministracionPrivada();
+              } else if (!subvistaActiva) {
+                mostrarMenuAdministracion();
+              } else {
+                administracionPrivadaActiva = true;
+                $("panelAdministracionLogin")?.classList.add("hidden");
+                $("panelAdministracionPrivado")?.classList.remove("hidden");
+                renderAdministracionFinanciera();
+              }
+
               renderSeguridadCompleta();
               segAuditar("sesion", "Inicio de sesión", usuarioVerificado.email || "").catch(() => {});
             }
@@ -8905,7 +8922,16 @@ function abrirAdministracionPrivada() {
   $("panelAdministracionLogin")?.classList.add("hidden");
   $("panelAdministracionPrivado")?.classList.remove("hidden");
   $("panelAdministracionPrivado")?.removeAttribute("style");
-  mostrarMenuAdministracion();
+
+  const yaEstaEnAdministracion =
+    document.getElementById("seccionAdministracion")?.classList.contains("active");
+  const yaHaySubvista =
+    $("panelAdministracionPrivado")?.classList.contains("adminSubvistaActiva");
+
+  if (!(yaEstaEnAdministracion && yaHaySubvista)) {
+    mostrarMenuAdministracion();
+  }
+
   renderAdministracionFinanciera();
   renderSeguridadCompleta();
   registrarActividadAdministracion();
