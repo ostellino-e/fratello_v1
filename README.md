@@ -1,14 +1,13 @@
-# Fratello v5.1.2 — Ingresos de Caja
+# Fratello v5.1.3 — Libro de Caja recuperado
 
 ## Cambios
-- Total ventas del mes visible al entrar.
-- Días en pestañas cerradas.
-- Verde desde $300.000.
-- Amarillo entre $200.001 y $299.999.
-- Rojo hasta $200.000.
-- Al abrir un día solo se muestran Efectivo y Transferencias.
-- Se eliminaron bloques innecesarios de esta pantalla.
-- No se modificaron datos ni cierres existentes.
+- Recupera el Libro de Caja y mantiene los cierres existentes.
+- Total mensual arriba.
+- Días en pestañas cerradas con colores por monto.
+- Al abrir un día muestra Efectivo total, Efectivo a rendir y Transferencias.
+- Agrega un detalle interno por turno con gastos.
+- Permite editar o cargar cada turno desde el detalle.
+- Conserva administración de personas habilitadas.
 
 ## Versión esperada
-v5.1.2
+v5.1.3

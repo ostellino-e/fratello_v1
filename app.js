@@ -9724,6 +9724,7 @@ function tarjetaResumenCaja(titulo, valor, clase = "") {
 function renderCajaAdmin() {
   if (!cajaAdminActivo) return;
   renderLibroDiarioCaja();
+  renderPersonasCaja();
 }
 
 function renderCajaAdminSeguro() {
@@ -9940,6 +9941,40 @@ function claseVentaDiaCaja(total) {
   return "medium";
 }
 
+function htmlGastosTurnoCaja(cierre) {
+  const gastos = Array.isArray(cierre?.gastos) ? cierre.gastos : [];
+  if (!gastos.length) return '<p class="cajaSinGastos">Sin gastos.</p>';
+  return `<ul class="cajaListaGastos">${gastos.map(gasto => `
+    <li><span>${escaparCaja(gasto.motivo || "Gasto")}</span><b>${formatoDineroCaja(gasto.monto)}</b></li>
+  `).join("")}</ul>`;
+}
+
+function htmlDetalleTurnoCaja(fecha, turno, cierre) {
+  if (!cierre) {
+    return `<article class="cajaTurnoDetalle missing">
+      <div class="cajaTurnoCabecera"><strong>${turnoTextoCaja(turno)}</strong><span>Sin cierre cargado</span></div>
+      <button type="button" onclick="editarCierreDesdeAdminCaja('${fecha}','${turno}')">Cargar turno</button>
+    </article>`;
+  }
+
+  const t = totalesCierreCaja(cierre);
+  return `<article class="cajaTurnoDetalle">
+    <div class="cajaTurnoCabecera">
+      <div><strong>${turnoTextoCaja(turno)}</strong><span>${escaparCaja(cierre.persona || "")}</span></div>
+      <button type="button" onclick="editarCierreDesdeAdminCaja('${fecha}','${turno}')">✏️ Editar</button>
+    </div>
+    <div class="cajaTurnoNumeros">
+      <span>Efectivo <b>${formatoDineroCaja(t.efectivo)}</b></span>
+      <span>Transferencias <b>${formatoDineroCaja(t.transferencias)}</b></span>
+      <span>Gastos <b>${formatoDineroCaja(t.gastos)}</b></span>
+    </div>
+    <div class="cajaTurnoGastos">
+      <strong>Gastos del turno</strong>
+      ${htmlGastosTurnoCaja(cierre)}
+    </div>
+  </article>`;
+}
+
 function renderLibroDiarioCaja() {
   const contenedor = $("libroDiarioCaja");
   if (!contenedor) return;
@@ -9950,33 +9985,43 @@ function renderLibroDiarioCaja() {
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
 
   const totalMes = dias.reduce((suma, dia) => suma + montoCaja(dia.venta), 0);
-  if ($("totalVentasMesCaja")) {
-    $("totalVentasMesCaja").textContent = formatoDineroCaja(totalMes);
-  }
+  if ($("totalVentasMesCaja")) $("totalVentasMesCaja").textContent = formatoDineroCaja(totalMes);
 
   if (!dias.length) {
     contenedor.innerHTML = '<div class="cajaIngresosVacio">No hay cierres cargados para este mes.</div>';
     return;
   }
 
-  contenedor.innerHTML = dias.map(dia => `
-    <details class="cajaIngresoDia ${claseVentaDiaCaja(dia.venta)}">
+  contenedor.innerHTML = dias.map(dia => {
+    const manana = dia.cierres.find(cierre => cierre.turno === "manana");
+    const tarde = dia.cierres.find(cierre => cierre.turno === "tarde");
+    return `<details class="cajaIngresoDia ${claseVentaDiaCaja(dia.venta)}">
       <summary>
         <span class="cajaIngresoFecha">${formatoFechaCaja(dia.fecha)}</span>
         <strong>${formatoDineroCaja(dia.venta)}</strong>
       </summary>
+
       <div class="cajaIngresoDetalle">
-        <article>
-          <span>💵 Efectivo</span>
+        <article class="cajaEfectivoPrincipal">
+          <span>💵 Efectivo total</span>
           <strong>${formatoDineroCaja(dia.efectivo)}</strong>
+          <small>Efectivo a rendir: <b>${formatoDineroCaja(dia.efectivoRendir)}</b></small>
         </article>
         <article>
           <span>🏦 Transferencias</span>
           <strong>${formatoDineroCaja(dia.transferencias)}</strong>
         </article>
       </div>
-    </details>
-  `).join("");
+
+      <details class="cajaDetalleInterno">
+        <summary>Ver detalle por turno y gastos</summary>
+        <div class="cajaTurnosDetalle">
+          ${htmlDetalleTurnoCaja(dia.fecha, "manana", manana)}
+          ${htmlDetalleTurnoCaja(dia.fecha, "tarde", tarde)}
+        </div>
+      </details>
+    </details>`;
+  }).join("");
 }
 
 function renderDashboardCaja() {
