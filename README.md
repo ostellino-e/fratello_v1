@@ -1,31 +1,14 @@
-# Fratello v5.1.7 — Clientes eliminados y desglose por medio de pago
+# Fratello v5.1.8 — Eliminación persistente de cierres de Caja
 
-## Clientes externos
-- Un cliente eliminado ya no vuelve a crearse desde sus pagos históricos.
-- Sus pagos históricos se conservan.
-- Si se vuelve a agregar manualmente el mismo nombre, se reactiva correctamente.
+## Bug corregido
+Un cierre eliminado volvía a aparecer porque la copia de Firebase se fusionaba otra vez con el dispositivo.
 
-## Desglose por medio de pago
-Se agregó discriminación por:
-- Efectivo
-- Transferencia
-- Mercado Pago
-- Cheque
-- Otro
-
-## Pantallas actualizadas
-- Resumen principal:
-  - Total ingresos
-  - Total gastos
-  - Ganancia
-  - Plata Real
-- Gastos:
-  - Total mensual
-  - Totales por categoría
-  - Totales semanales
-- Ingresos externos:
-  - Total mensual
-  - Total por cliente
+## Solución
+- Cada eliminación genera una marca persistente.
+- La marca se guarda localmente y en Firebase.
+- La sincronización ya no restaura cierres eliminados.
+- Se puede cargar de nuevo el mismo día y turno.
+- Al crear el nuevo cierre real, la marca anterior se limpia.
 
 ## Versión esperada
-v5.1.7
+v5.1.8

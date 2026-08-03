@@ -2458,6 +2458,7 @@ function datosActuales() {
     jornadasCerradas,
     exclusionesPedidosFijos,
     cierresCaja,
+    cierresCajaEliminados,
     personasCaja,
     configuracionCaja,
     administracionFinanciera,
@@ -2477,13 +2478,49 @@ function fechaCambioCierreCaja(cierre) {
   return Number.isFinite(tiempo) ? tiempo : 0;
 }
 
-function fusionarCierresCaja(remotos = [], locales = []) {
+function claveCierreCajaEliminado(item) {
+  if (!item) return "";
+  return typeof item === "string" ? item : String(item.id || "");
+}
+
+function fechaEliminacionCierreCaja(item) {
+  if (!item || typeof item === "string") return 0;
+  const tiempo = Date.parse(item.eliminadoEn || "");
+  return Number.isFinite(tiempo) ? tiempo : 0;
+}
+
+function fusionarCierresCajaEliminados(remotos = [], locales = []) {
+  const mapa = new Map();
+  [...(Array.isArray(remotos) ? remotos : []), ...(Array.isArray(locales) ? locales : [])]
+    .forEach(item => {
+      const clave = claveCierreCajaEliminado(item);
+      if (!clave) return;
+      const anterior = mapa.get(clave);
+      if (!anterior || fechaEliminacionCierreCaja(item) >= fechaEliminacionCierreCaja(anterior)) {
+        mapa.set(clave, typeof item === "string"
+          ? { id: clave, eliminadoEn: new Date(0).toISOString() }
+          : item
+        );
+      }
+    });
+  return [...mapa.values()];
+}
+
+function cierreCajaEstaEliminado(cierre, eliminados = cierresCajaEliminados) {
+  const clave = claveCierreCajaSync(cierre);
+  const marca = (Array.isArray(eliminados) ? eliminados : [])
+    .find(item => claveCierreCajaEliminado(item) === clave);
+  if (!marca) return false;
+  return fechaEliminacionCierreCaja(marca) >= fechaCambioCierreCaja(cierre);
+}
+
+function fusionarCierresCaja(remotos = [], locales = [], eliminados = cierresCajaEliminados) {
   const mapa = new Map();
 
   [...(Array.isArray(remotos) ? remotos : []), ...(Array.isArray(locales) ? locales : [])]
     .forEach(cierre => {
       const clave = claveCierreCajaSync(cierre);
-      if (!clave) return;
+      if (!clave || cierreCajaEstaEliminado(cierre, eliminados)) return;
 
       const anterior = mapa.get(clave);
       if (!anterior || fechaCambioCierreCaja(cierre) >= fechaCambioCierreCaja(anterior)) {
@@ -2512,8 +2549,16 @@ function firmaCierresCaja(lista = cierresCaja) {
 
 let ultimaFirmaCajaRenderizada = "";
 
-function aplicarCierresCajaDesdeNube(listaRemota) {
-  const fusionados = fusionarCierresCaja(listaRemota, cierresCaja);
+function aplicarCierresCajaDesdeNube(listaRemota, eliminadosRemotos = []) {
+  cierresCajaEliminados = fusionarCierresCajaEliminados(
+    eliminadosRemotos,
+    cierresCajaEliminados
+  );
+  const fusionados = fusionarCierresCaja(
+    listaRemota,
+    cierresCaja,
+    cierresCajaEliminados
+  );
   const nuevaFirma = firmaCierresCaja(fusionados);
 
   if (nuevaFirma === ultimaFirmaCajaRenderizada) return false;
@@ -2556,13 +2601,23 @@ function guardarEnNube() {
         await db.runTransaction(async transaccion => {
           const snapshot = await transaccion.get(referencia);
           const remoto = snapshot.exists ? snapshot.data() : {};
-          cierresFusionados = fusionarCierresCaja(remoto.cierresCaja, cierresCaja);
+
+          cierresCajaEliminados = fusionarCierresCajaEliminados(
+            remoto.cierresCajaEliminados,
+            cierresCajaEliminados
+          );
+          cierresFusionados = fusionarCierresCaja(
+            remoto.cierresCaja,
+            cierresCaja,
+            cierresCajaEliminados
+          );
 
           transaccion.set(
             referencia,
             {
               ...datosActuales(),
               cierresCaja: cierresFusionados,
+              cierresCajaEliminados,
               actualizado: new Date().toISOString()
             },
             { merge: true }
@@ -2620,7 +2675,15 @@ async function cargarDesdeNube() {
         ? data.exclusionesPedidosFijos
         : exclusionesPedidosFijos;
 
-      cierresCaja = fusionarCierresCaja(data.cierresCaja, cierresCaja);
+      cierresCajaEliminados = fusionarCierresCajaEliminados(
+        data.cierresCajaEliminados,
+        cierresCajaEliminados
+      );
+      cierresCaja = fusionarCierresCaja(
+        data.cierresCaja,
+        cierresCaja,
+        cierresCajaEliminados
+      );
       ultimaFirmaCajaRenderizada = firmaCierresCaja(cierresCaja);
       personasCaja = Array.isArray(data.personasCaja) && data.personasCaja.length
         ? data.personasCaja
@@ -3085,7 +3148,7 @@ function escucharCambiosNube() {
       jornadasCerradas = Array.isArray(data.jornadasCerradas) ? data.jornadasCerradas : jornadasCerradas;
 
       if (Array.isArray(data.cierresCaja)) {
-        aplicarCierresCajaDesdeNube(data.cierresCaja);
+        aplicarCierresCajaDesdeNube(data.cierresCaja, data.cierresCajaEliminados);
       }
       if (Array.isArray(data.personasCaja) && data.personasCaja.length) {
         personasCaja = data.personasCaja;
@@ -9826,6 +9889,7 @@ window.eliminarPresupuestoAdministracion = eliminarPresupuestoAdministracion;
 
 const CAJA_STORAGE_KEY = "fratello_caja_v390";
 let cierresCaja = [];
+let cierresCajaEliminados = [];
 let personasCaja = ["Sofía", "María"];
 let configuracionCaja = { pinAdmin: "2580" };
 let gastosCajaEdicion = [];
@@ -9866,6 +9930,9 @@ function cargarCajaLocal() {
   try {
     const guardado = JSON.parse(localStorage.getItem(CAJA_STORAGE_KEY) || "{}");
     cierresCaja = Array.isArray(guardado.cierresCaja) ? guardado.cierresCaja : [];
+    cierresCajaEliminados = Array.isArray(guardado.cierresCajaEliminados)
+      ? guardado.cierresCajaEliminados
+      : [];
     personasCaja = Array.isArray(guardado.personasCaja) && guardado.personasCaja.length
       ? guardado.personasCaja
       : ["Sofía", "María"];
@@ -9880,6 +9947,7 @@ function cargarCajaLocal() {
 function guardarCajaLocal() {
   localStorage.setItem(CAJA_STORAGE_KEY, JSON.stringify({
     cierresCaja,
+    cierresCajaEliminados,
     personasCaja,
     configuracionCaja
   }));
@@ -10042,6 +10110,9 @@ function guardarCierreCaja() {
   const fecha = $("cajaFecha").value;
   const turno = $("cajaTurno").value;
   const id = idCierreCaja(fecha, turno);
+  cierresCajaEliminados = cierresCajaEliminados.filter(
+    item => claveCierreCajaEliminado(item) !== id
+  );
   const anterior = obtenerCierreCaja(fecha, turno);
   const ahora = new Date().toISOString();
 
@@ -10758,10 +10829,17 @@ async function eliminarCierreCajaAdmin(fecha, turno) {
     "Se eliminarán los importes y gastos de ese turno. Esta acción no se puede deshacer."
   )) return;
 
+  const cierreId = idCierreCaja(fecha, turno);
+  cierresCajaEliminados = fusionarCierresCajaEliminados(
+    cierresCajaEliminados,
+    [{ id: cierreId, eliminadoEn: new Date().toISOString() }]
+  );
+
   cierresCaja = cierresCaja.filter(item =>
     !(item.fecha === fecha && item.turno === turno)
   );
 
+  ultimaFirmaCajaRenderizada = firmaCierresCaja(cierresCaja);
   guardarCajaLocal();
   renderCajaAdmin();
   renderDashboardCaja();
