@@ -4549,3 +4549,86 @@ body.modal-open{
     align-items:flex-start;
   }
 }
+
+
+/* Fratello v5.1.7 — desglose por medios de pago */
+.moneyMethodBreakdown{
+  display:grid;
+  gap:5px;
+  margin-top:8px;
+}
+.moneyMethodBreakdown > div{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding-top:5px;
+  border-top:1px solid rgba(80,65,52,.12);
+}
+.moneyMethodBreakdown span{
+  color:inherit!important;
+  font-size:10px!important;
+  font-weight:700!important;
+  text-transform:none!important;
+  letter-spacing:0!important;
+}
+.moneyMethodBreakdown strong{
+  font-size:11px!important;
+  line-height:1.15!important;
+  white-space:nowrap;
+}
+.moneyMethodBreakdown.compact{
+  min-width:150px;
+}
+.moneyMethodBreakdown.compact > div{
+  padding-top:3px;
+}
+.heroMethodBreakdown{
+  min-width:235px;
+}
+.heroMethodBreakdown .moneyMethodBreakdown{
+  margin:0;
+}
+.heroMethodBreakdown .moneyMethodBreakdown > div{
+  border-top-color:rgba(255,255,255,.2);
+}
+.heroMethodBreakdown .moneyMethodBreakdown span,
+.heroMethodBreakdown .moneyMethodBreakdown strong{
+  color:#fff!important;
+}
+.ingresoClienteCard summary > span{
+  min-width:0;
+  flex:1;
+}
+.ingresoClienteCard summary .moneyMethodBreakdown{
+  max-width:320px;
+}
+.gastosCategoriasCards .moneyMethodBreakdown{
+  margin-top:auto;
+}
+.gastosSemanaTotal > span{
+  display:grid;
+  gap:5px;
+  flex:1;
+}
+.gastosSemanaTotal .moneyMethodBreakdown{
+  max-width:360px;
+}
+@media(max-width:650px){
+  .ingresosResumenHero,
+  .gastosResumenHero{
+    align-items:flex-start;
+  }
+  .heroMethodBreakdown{
+    min-width:145px;
+  }
+  .moneyMethodBreakdown.compact{
+    min-width:0;
+  }
+  .moneyMethodBreakdown span{
+    font-size:8.5px!important;
+  }
+  .moneyMethodBreakdown strong{
+    font-size:9.5px!important;
+  }
+}

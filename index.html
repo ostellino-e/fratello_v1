@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=516" />
+  <link rel="stylesheet" href="styles.css?v=517" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "5.1.6";
-    document.documentElement.dataset.fratelloVersion = "5.1.6";
+    window.FRATELLO_VERSION = "5.1.7";
+    document.documentElement.dataset.fratelloVersion = "5.1.7";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v5.1.6</small>
+      <small id="versionFratello" class="syncVersionBadge">v5.1.7</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -456,7 +456,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v5.1.6 · Interfaz compacta móvil</span>
+        <span class="adminFinanceVersion">v5.1.7 · Interfaz compacta móvil</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -537,8 +537,11 @@
 
           <section id="vistaResumenIngresos" class="ingresosResumenVista">
             <header class="ingresosResumenHero">
-              <span>Total cobrado de clientes externos</span>
-              <strong id="totalIngresosExternosResumen">$ 0</strong>
+              <div>
+                <span>Total cobrado de clientes externos</span>
+                <strong id="totalIngresosExternosResumen">$ 0</strong>
+              </div>
+              <div id="desgloseIngresosExternosResumen" class="heroMethodBreakdown"></div>
             </header>
 
             <div class="ingresosResumenToolbar">
@@ -606,8 +609,11 @@
 
           <section id="vistaResumenGastos" class="gastosResumenVista">
             <header class="gastosResumenHero">
-              <span>Total gastos del mes</span>
-              <strong id="totalGastosMesResumen">$ 0</strong>
+              <div>
+                <span>Total gastos del mes</span>
+                <strong id="totalGastosMesResumen">$ 0</strong>
+              </div>
+              <div id="desgloseGastosMesResumen" class="heroMethodBreakdown"></div>
             </header>
 
             <div id="tarjetasCategoriasGastos" class="gastosCategoriasCards"></div>

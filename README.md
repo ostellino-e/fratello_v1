@@ -1,18 +1,31 @@
-# Fratello v5.1.6 — Ingresos externos por cliente
+# Fratello v5.1.7 — Clientes eliminados y desglose por medio de pago
 
-## Cambios
-- La pantalla Ingresos ahora tiene dos vistas:
-  - Resumen por cliente
-  - Cargar y editar pagos
-- Al entrar se muestra el total cobrado de clientes externos del mes.
-- Cada cliente aparece como una pestaña con su total mensual.
-- Al abrir un cliente se ve el historial de pagos del mes.
-- Se agregó Agregar cliente.
-- Los clientes son dinámicos y pueden editarse o eliminarse.
-- Los pagos anteriores crean automáticamente su cliente si todavía no existía.
-- Solo se suman como ingreso los pagos marcados como cobrados.
-- La pantalla Resumen general sigue discriminando Panadería Fratello y cada cliente externo.
-- Caja, Gastos, Pedidos y Tickets no fueron modificados.
+## Clientes externos
+- Un cliente eliminado ya no vuelve a crearse desde sus pagos históricos.
+- Sus pagos históricos se conservan.
+- Si se vuelve a agregar manualmente el mismo nombre, se reactiva correctamente.
+
+## Desglose por medio de pago
+Se agregó discriminación por:
+- Efectivo
+- Transferencia
+- Mercado Pago
+- Cheque
+- Otro
+
+## Pantallas actualizadas
+- Resumen principal:
+  - Total ingresos
+  - Total gastos
+  - Ganancia
+  - Plata Real
+- Gastos:
+  - Total mensual
+  - Totales por categoría
+  - Totales semanales
+- Ingresos externos:
+  - Total mensual
+  - Total por cliente
 
 ## Versión esperada
-v5.1.6
+v5.1.7

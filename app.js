@@ -3105,6 +3105,9 @@ function escucharCambiosNube() {
           clientesExternos: Array.isArray(data.administracionFinanciera.clientesExternos)
             ? data.administracionFinanciera.clientesExternos
             : (administracionFinanciera.clientesExternos || []),
+          clientesExternosEliminados: Array.isArray(data.administracionFinanciera.clientesExternosEliminados)
+            ? data.administracionFinanciera.clientesExternosEliminados
+            : (administracionFinanciera.clientesExternosEliminados || []),
           gastosManuales: Array.isArray(data.administracionFinanciera.gastosManuales)
             ? data.administracionFinanciera.gastosManuales
             : administracionFinanciera.gastosManuales,
@@ -8379,6 +8382,7 @@ const ADMIN_FIN_STORAGE_KEY = "fratello_administracion_v394c1";
 let administracionFinanciera = {
   ingresosExternos: [],
   clientesExternos: [],
+  clientesExternosEliminados: [],
   gastosManuales: [],
   presupuestos: [],
   plataRealManual: {}
@@ -8429,6 +8433,9 @@ function cargarAdministracionLocal() {
     administracionFinanciera = {
       ingresosExternos: Array.isArray(guardado.ingresosExternos) ? guardado.ingresosExternos : [],
       clientesExternos: Array.isArray(guardado.clientesExternos) ? guardado.clientesExternos : [],
+      clientesExternosEliminados: Array.isArray(guardado.clientesExternosEliminados)
+        ? guardado.clientesExternosEliminados
+        : [],
       gastosManuales: Array.isArray(guardado.gastosManuales) ? guardado.gastosManuales : [],
       presupuestos: Array.isArray(guardado.presupuestos) ? guardado.presupuestos : [],
       plataRealManual: guardado.plataRealManual && typeof guardado.plataRealManual === "object"
@@ -8665,9 +8672,37 @@ function datosResumenMovilAdministracion() {
   const manual = plataRealManualMes();
   const plataReal = manual.efectivo + manual.transferencias + manual.cheques;
   const diferencia = plataReal - r.resultado;
+  const ingresosCaja = ingresosCajaDelMesAdministracion();
+  const ingresosExternos = ingresosExternosDelMesAdministracion().filter(item => item.cobrado !== false);
+  const gastosCaja = gastosCajaDelMesAdministracion().map(item => ({ ...item, medio: "Efectivo" }));
+  const gastosManuales = gastosManualesDelMesAdministracion()
+    .filter(item => item.pagado !== false);
+
+  const ingresosPorMedio = totalesPorMedioAdministracion([
+    ...ingresosCaja.flatMap(item => [
+      { monto: item.efectivo, medio: "Efectivo" },
+      { monto: item.transferencias, medio: "Transferencia" }
+    ]),
+    ...ingresosExternos
+  ]);
+
+  const gastosPorMedio = totalesPorMedioAdministracion([
+    ...gastosCaja,
+    ...gastosManuales
+  ]);
+
+  const gananciaPorMedio = {};
+  ["Efectivo", "Transferencia", "Mercado Pago", "Cheque", "Otro"].forEach(medio => {
+    gananciaPorMedio[medio] =
+      adminFinMonto(ingresosPorMedio[medio]) - adminFinMonto(gastosPorMedio[medio]);
+  });
+
   return {
     ...r,
     clientes: [...porCliente.entries()].sort((a, b) => b[1] - a[1]),
+    ingresosPorMedio,
+    gastosPorMedio,
+    gananciaPorMedio,
     efectivoCalculado: efectivo,
     transferenciasCalculadas: transferencias,
     chequesCalculados: cheques,
@@ -8695,12 +8730,31 @@ function renderResumenMovilAdministracion() {
       <div class="adminMobileClientTotal"><span>Total de ingresos</span><strong>${adminFinDinero(d.ingresos)}</strong></div>
     </article>
     <div class="adminMobileKpis">
-      <article><span>Total ingresos</span><strong>${adminFinDinero(d.ingresos)}</strong></article>
-      <article class="expense"><span>Total gastos</span><strong>${adminFinDinero(d.gastos)}</strong></article>
-      <article class="profit"><span>Ganancia</span><strong>${adminFinDinero(d.resultado)}</strong></article>
+      <article>
+        <span>Total ingresos</span>
+        <strong>${adminFinDinero(d.ingresos)}</strong>
+        ${htmlDesgloseMediosAdministracion(d.ingresosPorMedio, true)}
+      </article>
+      <article class="expense">
+        <span>Total gastos</span>
+        <strong>${adminFinDinero(d.gastos)}</strong>
+        ${htmlDesgloseMediosAdministracion(d.gastosPorMedio, true)}
+      </article>
+      <article class="profit">
+        <span>Ganancia</span>
+        <strong>${adminFinDinero(d.resultado)}</strong>
+        ${htmlDesgloseMediosAdministracion(d.gananciaPorMedio, true)}
+      </article>
       <article class="realMoneyEditable">
         <span>Plata real</span>
         <strong id="plataRealTotalManual">${adminFinDinero(d.plataReal)}</strong>
+        ${htmlDesgloseMediosAdministracion({
+          "Efectivo": d.efectivo,
+          "Transferencia": d.transferencias,
+          "Cheque": d.cheques,
+          "Mercado Pago": 0,
+          "Otro": 0
+        }, true)}
         <small>Ingresada manualmente</small>
       </article>
       <article class="difference ${diferenciaClase}">
@@ -8767,16 +8821,24 @@ function renderResumenAdministracion() {
 
 function asegurarClientesExternosDesdeIngresos() {
   administracionFinanciera.clientesExternos ||= [];
+  administracionFinanciera.clientesExternosEliminados ||= [];
+
   const existentes = new Set(
     administracionFinanciera.clientesExternos.map(item =>
       String(item.nombre || "").trim().toLowerCase()
+    )
+  );
+  const eliminados = new Set(
+    administracionFinanciera.clientesExternosEliminados.map(nombre =>
+      String(nombre || "").trim().toLowerCase()
     )
   );
 
   administracionFinanciera.ingresosExternos.forEach(item => {
     const nombre = String(item.cliente || "").trim();
     const clave = nombre.toLowerCase();
-    if (!nombre || existentes.has(clave)) return;
+    if (!nombre || existentes.has(clave) || eliminados.has(clave)) return;
+
     administracionFinanciera.clientesExternos.push({
       id: adminFinId("cli"),
       nombre,
@@ -8844,6 +8906,12 @@ function guardarClienteExterno() {
     return;
   }
 
+  administracionFinanciera.clientesExternosEliminados ||= [];
+  administracionFinanciera.clientesExternosEliminados =
+    administracionFinanciera.clientesExternosEliminados.filter(
+      eliminado => String(eliminado || "").trim().toLowerCase() !== nombre.toLowerCase()
+    );
+
   const item = { id, nombre, observacion, activo, actualizadoEn: new Date().toISOString() };
   const indice = administracionFinanciera.clientesExternos.findIndex(x => x.id === id);
   if (indice >= 0) administracionFinanciera.clientesExternos[indice] = item;
@@ -8864,10 +8932,55 @@ function eliminarClienteExterno(id) {
   if (!item) return;
   if (!confirm(`¿Eliminar el cliente ${item.nombre}? Los pagos ya registrados se conservarán.`)) return;
 
+  administracionFinanciera.clientesExternosEliminados ||= [];
+  const clave = String(item.nombre || "").trim().toLowerCase();
+  if (!administracionFinanciera.clientesExternosEliminados.some(
+    nombre => String(nombre || "").trim().toLowerCase() === clave
+  )) {
+    administracionFinanciera.clientesExternosEliminados.push(item.nombre);
+  }
+
   administracionFinanciera.clientesExternos =
     administracionFinanciera.clientesExternos.filter(x => x.id !== id);
 
   guardarAdministracion();
+}
+
+function normalizarMedioPagoAdministracion(valor) {
+  const texto = String(valor || "").trim().toLowerCase();
+  if (texto.includes("efect")) return "Efectivo";
+  if (texto.includes("transfer")) return "Transferencia";
+  if (texto.includes("mercado")) return "Mercado Pago";
+  if (texto.includes("cheque")) return "Cheque";
+  return "Otro";
+}
+
+function totalesPorMedioAdministracion(items, campoMonto = "monto", campoMedio = "medio") {
+  const totales = {
+    "Efectivo": 0,
+    "Transferencia": 0,
+    "Mercado Pago": 0,
+    "Cheque": 0,
+    "Otro": 0
+  };
+
+  (items || []).forEach(item => {
+    const medio = normalizarMedioPagoAdministracion(item?.[campoMedio]);
+    totales[medio] += adminFinMonto(item?.[campoMonto]);
+  });
+
+  return totales;
+}
+
+function htmlDesgloseMediosAdministracion(totales, compacto = false) {
+  const orden = ["Efectivo", "Transferencia", "Mercado Pago", "Cheque", "Otro"];
+  return `<div class="moneyMethodBreakdown ${compacto ? "compact" : ""}">
+    ${orden.map(medio => {
+      const monto = adminFinMonto(totales?.[medio]);
+      if (!monto && medio !== "Efectivo" && medio !== "Transferencia") return "";
+      return `<div><span>${medio}</span><strong>${adminFinDinero(monto)}</strong></div>`;
+    }).join("")}
+  </div>`;
 }
 
 function renderResumenClientesExternos() {
@@ -8878,6 +8991,10 @@ function renderResumenClientesExternos() {
   const total = ingresos.reduce((s, item) => s + adminFinMonto(item.monto), 0);
   if ($("totalIngresosExternosResumen")) {
     $("totalIngresosExternosResumen").textContent = adminFinDinero(total);
+  }
+  if ($("desgloseIngresosExternosResumen")) {
+    $("desgloseIngresosExternosResumen").innerHTML =
+      htmlDesgloseMediosAdministracion(totalesPorMedioAdministracion(ingresos), true);
   }
 
   const host = $("tarjetasClientesExternos");
@@ -8898,12 +9015,14 @@ function renderResumenClientesExternos() {
       .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 
     const totalCliente = pagos.reduce((s, item) => s + adminFinMonto(item.monto), 0);
+    const mediosCliente = totalesPorMedioAdministracion(pagos);
 
     return `<details class="ingresoClienteCard">
       <summary>
         <span>
           <strong>${adminFinEscapar(cliente.nombre)}</strong>
           ${cliente.observacion ? `<small>${adminFinEscapar(cliente.observacion)}</small>` : ""}
+          ${htmlDesgloseMediosAdministracion(mediosCliente, true)}
         </span>
         <b>${adminFinDinero(totalCliente)}</b>
       </summary>
@@ -8994,6 +9113,7 @@ function todosGastosResumenMes() {
     motivo: item.motivo,
     monto: adminFinMonto(item.monto),
     categoriaResumen: categoriaResumenGasto(item.categoria, item.origen),
+    medio: item.medio || "Otro",
     origen: "Manual"
   }));
 
@@ -9003,6 +9123,7 @@ function todosGastosResumenMes() {
     motivo: item.motivo,
     monto: adminFinMonto(item.monto),
     categoriaResumen: "Atención",
+    medio: "Efectivo",
     origen: "Caja"
   }));
 
@@ -9041,6 +9162,10 @@ function renderResumenSemanalGastos() {
   if ($("totalGastosMesResumen")) {
     $("totalGastosMesResumen").textContent = adminFinDinero(totalMes);
   }
+  if ($("desgloseGastosMesResumen")) {
+    $("desgloseGastosMesResumen").innerHTML =
+      htmlDesgloseMediosAdministracion(totalesPorMedioAdministracion(gastos), true);
+  }
 
   if ($("tarjetasCategoriasGastos")) {
     $("tarjetasCategoriasGastos").innerHTML = categorias.map(categoria => {
@@ -9055,9 +9180,13 @@ function renderResumenSemanalGastos() {
         Generales: "🧾"
       };
 
+      const itemsCategoria = gastos.filter(item => item.categoriaResumen === categoria);
+      const mediosCategoria = totalesPorMedioAdministracion(itemsCategoria);
+
       return `<article>
         <span>${iconos[categoria]} ${categoria}</span>
         <strong>${adminFinDinero(total)}</strong>
+        ${htmlDesgloseMediosAdministracion(mediosCategoria, true)}
       </article>`;
     }).join("");
   }
@@ -9098,7 +9227,10 @@ function renderResumenSemanalGastos() {
           : `<div class="gastosSemanaVacia">Sin gastos en esta semana.</div>`
         }
         <div class="gastosSemanaTotal">
-          <span>Total semana ${numeroSemana}</span>
+          <span>
+            <strong>Total semana ${numeroSemana}</strong>
+            ${htmlDesgloseMediosAdministracion(totalesPorMedioAdministracion(items), true)}
+          </span>
           <strong>${adminFinDinero(total)}</strong>
         </div>
       </div>
