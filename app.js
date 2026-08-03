@@ -1115,6 +1115,9 @@ function renderPanelPedidosSemana() {
   const panel = $("panelPedidosSemana");
   if (!panel) return;
 
+  // Limpieza defensiva: ninguna copia eliminada puede volver a mostrarse.
+  pedidos = pedidos.filter(pedido => !pedidoEstaEliminadoSync(pedido));
+
   const estadoAnterior = capturarEstadoPanelPedidosSemana(panel);
   const fechas = fechasDesdeHoyHastaDomingo();
   const fechaOperativa = fechaOperativaActual();
@@ -2448,9 +2451,29 @@ function fechaCambioPedidoSync(pedido) {
   return Number.isFinite(tiempo) ? tiempo : 0;
 }
 
+function claveSemanticaPedidoSync(pedido) {
+  if (!pedido || typeof pedido !== "object") return "";
+  const fecha = fechaEntregaPedido(pedido) || pedido.fecha || "";
+  const cliente = normalizarClienteReparacion(pedido.cliente || "");
+  const origen = String(pedido.origen || "manual").toLowerCase();
+  const fijo = pedido.pedidoFijoId ? `fijo:${pedido.pedidoFijoId}` : "";
+  const programa = normalizarClienteReparacion(
+    pedido.programacionNombre || pedido.nombreProgramacion || ""
+  );
+  const texto = normalizarClienteReparacion(
+    pedido.textoOriginal || pedido.textoFijoOriginal || ""
+  ).slice(0, 180);
+  return [fecha, cliente, origen, fijo, programa, texto].join("|");
+}
+
 function clavePedidoEliminado(item) {
   if (!item) return "";
   return typeof item === "string" ? item : String(item.id || "");
+}
+
+function claveSemanticaEliminado(item) {
+  if (!item || typeof item === "string") return "";
+  return String(item.claveSemantica || "");
 }
 
 function fechaPedidoEliminado(item) {
@@ -2461,41 +2484,89 @@ function fechaPedidoEliminado(item) {
 
 function fusionarPedidosEliminados(remotos = [], locales = []) {
   const mapa = new Map();
+
   [...(Array.isArray(remotos) ? remotos : []), ...(Array.isArray(locales) ? locales : [])]
     .forEach(item => {
-      const clave = clavePedidoEliminado(item);
-      if (!clave) return;
-      const anterior = mapa.get(clave);
+      const id = clavePedidoEliminado(item);
+      const semantica = claveSemanticaEliminado(item);
+      const claveMapa = semantica ? `s:${semantica}` : `i:${id}`;
+      if (!id && !semantica) return;
+
+      const anterior = mapa.get(claveMapa);
       if (!anterior || fechaPedidoEliminado(item) >= fechaPedidoEliminado(anterior)) {
-        mapa.set(clave, typeof item === "string"
-          ? { id: clave, eliminadoEn: new Date(0).toISOString() }
+        mapa.set(claveMapa, typeof item === "string"
+          ? { id, eliminadoEn: new Date(0).toISOString() }
           : item
         );
       }
     });
+
   return [...mapa.values()];
 }
 
 function pedidoEstaEliminadoSync(pedido, eliminados = pedidosEliminados) {
-  const clave = clavePedidoSync(pedido);
-  const marca = (Array.isArray(eliminados) ? eliminados : [])
-    .find(item => clavePedidoEliminado(item) === clave);
+  const id = clavePedidoSync(pedido);
+  const semantica = claveSemanticaPedidoSync(pedido);
+
+  const marca = (Array.isArray(eliminados) ? eliminados : []).find(item => {
+    const coincideId = id && clavePedidoEliminado(item) === id;
+    const coincideSemantica =
+      semantica &&
+      claveSemanticaEliminado(item) &&
+      claveSemanticaEliminado(item) === semantica;
+    return coincideId || coincideSemantica;
+  });
+
   if (!marca) return false;
   return fechaPedidoEliminado(marca) >= fechaCambioPedidoSync(pedido);
 }
 
 function fusionarPedidosSync(remotos = [], locales = [], eliminados = pedidosEliminados) {
   const mapa = new Map();
+
   [...(Array.isArray(remotos) ? remotos : []), ...(Array.isArray(locales) ? locales : [])]
     .forEach(pedido => {
-      const clave = clavePedidoSync(pedido);
-      if (!clave || pedidoEstaEliminadoSync(pedido, eliminados)) return;
-      const anterior = mapa.get(clave);
+      const id = clavePedidoSync(pedido);
+      if (!id || pedidoEstaEliminadoSync(pedido, eliminados)) return;
+
+      const anterior = mapa.get(id);
       if (!anterior || fechaCambioPedidoSync(pedido) >= fechaCambioPedidoSync(anterior)) {
-        mapa.set(clave, pedido);
+        mapa.set(id, pedido);
       }
     });
+
   return [...mapa.values()];
+}
+
+function registrarPedidoEliminado(pedido) {
+  const id = clavePedidoSync(pedido);
+  const claveSemantica = claveSemanticaPedidoSync(pedido);
+  if (!id && !claveSemantica) return;
+
+  pedidosEliminados = fusionarPedidosEliminados(
+    pedidosEliminados,
+    [{
+      id,
+      claveSemantica,
+      fecha: fechaEntregaPedido(pedido),
+      cliente: pedido.cliente || "",
+      eliminadoEn: new Date().toISOString()
+    }]
+  );
+}
+
+function limpiarMarcaPedidoEliminado(pedido) {
+  const id = clavePedidoSync(pedido);
+  const semantica = claveSemanticaPedidoSync(pedido);
+
+  pedidosEliminados = pedidosEliminados.filter(item => {
+    const mismoId = id && clavePedidoEliminado(item) === id;
+    const mismaSemantica =
+      semantica &&
+      claveSemanticaEliminado(item) &&
+      claveSemanticaEliminado(item) === semantica;
+    return !mismoId && !mismaSemantica;
+  });
 }
 
 function fusionarPedidosFijosSync(remotos = [], locales = []) {
@@ -2519,14 +2590,6 @@ function fusionarExclusionesPedidosFijos(remotas = [], locales = []) {
   ].filter(Boolean))];
 }
 
-function registrarPedidoEliminado(pedido) {
-  const id = clavePedidoSync(pedido);
-  if (!id) return;
-  pedidosEliminados = fusionarPedidosEliminados(
-    pedidosEliminados,
-    [{ id, eliminadoEn: new Date().toISOString() }]
-  );
-}
 
 function datosActuales() {
   return {
@@ -2780,12 +2843,6 @@ async function cargarDesdeNube() {
       pedidos = fusionarPedidosSync(data.pedidos, pedidos, pedidosEliminados);
       pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
       pedidosFijos = fusionarPedidosFijosSync(data.pedidosFijos, pedidosFijos);
-    historialPedidos = Array.isArray(data.historialPedidos) ? data.historialPedidos : historialPedidos;
-      pedidosFijos = Array.isArray(data.pedidosFijos) ? data.pedidosFijos : pedidosFijos;
-      historialPedidos = Array.isArray(data.historialPedidos) ? data.historialPedidos : historialPedidos;
-      pedidosFijos = Array.isArray(data.pedidosFijos)
-        ? data.pedidosFijos
-        : pedidosFijos;
       historialPedidos = Array.isArray(data.historialPedidos)
         ? data.historialPedidos
         : historialPedidos;
@@ -4958,9 +5015,10 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
       items: itemsCorrectos
     };
 
-    pedidosEliminados = pedidosEliminados.filter(
-      item => clavePedidoEliminado(item) !== String(pedido.id)
-    );
+    // Si fue borrado para esta fecha, no volver a generarlo aunque cambie el ID.
+    if (pedidoEstaEliminadoSync(pedido)) return;
+
+    limpiarMarcaPedidoEliminado(pedido);
     pedidos.push(pedido);
     registrarPedidoEnHistorial(pedido);
     agregados += 1;
@@ -5583,6 +5641,7 @@ function procesarPedidoActual() {
   const procesado = procesarTextoPedido(texto, cliente, fecha);
   const nuevoPedido = { id: Date.now(), fecha, fechaEntrega: fecha, cliente, textoOriginal: texto, origen: "manual", confirmado: false, items: procesado };
   reabrirJornadaParaNuevoPedido(fecha);
+  limpiarMarcaPedidoEliminado(nuevoPedido);
   pedidos.push(nuevoPedido);
   registrarPedidoEnHistorial(nuevoPedido);
   emitirNotificacionPedidoSiCorresponde(nuevoPedido);
@@ -5704,6 +5763,7 @@ function borrarPedido(id) {
 
   excluirPedidoFijoEnFecha(pedido);
   registrarPedidoEliminado(pedido);
+  localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
   pedidos = pedidos.filter(p => Number(p.id) !== Number(id));
   pedidosConfirmados = false;
   guardarTodo();
@@ -5735,6 +5795,7 @@ function borrarPedidosSeleccionados() {
       excluirPedidoFijoEnFecha(pedido);
       registrarPedidoEliminado(pedido);
     });
+  localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
 
   pedidos = pedidos.filter(p => !seleccionados.includes(Number(p.id)));
   pedidosConfirmados = false;
