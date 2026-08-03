@@ -2464,17 +2464,19 @@ function fechaCambioPedidoSync(pedido) {
 
 function claveSemanticaPedidoSync(pedido) {
   if (!pedido || typeof pedido !== "object") return "";
+
+  // La firma semántica se usa únicamente para pedidos fijos regenerables.
+  // Los pedidos manuales se identifican solo por ID para que una carga nueva
+  // nunca sea ocultada por una prueba anterior borrada con el mismo contenido.
+  if (!esPedidoFijoRobusto(pedido) && pedido.origen !== "pedido_fijo") return "";
+
   const fecha = fechaEntregaPedido(pedido) || pedido.fecha || "";
   const cliente = normalizarClienteReparacion(pedido.cliente || "");
-  const origen = String(pedido.origen || "manual").toLowerCase();
   const fijo = pedido.pedidoFijoId ? `fijo:${pedido.pedidoFijoId}` : "";
   const programa = normalizarClienteReparacion(
     pedido.programacionNombre || pedido.nombreProgramacion || ""
   );
-  const texto = normalizarClienteReparacion(
-    pedido.textoOriginal || pedido.textoFijoOriginal || ""
-  ).slice(0, 180);
-  return [fecha, cliente, origen, fijo, programa, texto].join("|");
+  return [fecha, cliente, "pedido_fijo", fijo, programa].join("|");
 }
 
 function clavePedidoEliminado(item) {
@@ -2518,10 +2520,12 @@ function fusionarPedidosEliminados(remotos = [], locales = []) {
 function pedidoEstaEliminadoSync(pedido, eliminados = pedidosEliminados) {
   const id = clavePedidoSync(pedido);
   const semantica = claveSemanticaPedidoSync(pedido);
+  const esFijo = esPedidoFijoRobusto(pedido) || pedido.origen === "pedido_fijo";
 
   const marca = (Array.isArray(eliminados) ? eliminados : []).find(item => {
     const coincideId = id && clavePedidoEliminado(item) === id;
     const coincideSemantica =
+      esFijo &&
       semantica &&
       claveSemanticaEliminado(item) &&
       claveSemanticaEliminado(item) === semantica;
@@ -2907,6 +2911,7 @@ async function cargarDesdeNube() {
       // Nunca vaciar el catálogo si Firebase no trae uno válido.
       if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
         productos.splice(0, productos.length, ...data.catalogoProductos);
+        asegurarProductoCriollosCatalogo();
       }
 
       productosExtra.forEach(productoExtra => {
@@ -3025,6 +3030,7 @@ async function actualizarDatosManual(evento = null) {
 
     if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
       productos.splice(0, productos.length, ...data.catalogoProductos);
+      asegurarProductoCriollosCatalogo();
     }
 
     validarClientes();
@@ -3468,6 +3474,14 @@ function guardarTodo() {
 let produccion = JSON.parse(localStorage.getItem("fratello_produccion") || "{}");
 let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
 let pedidosEliminados = JSON.parse(localStorage.getItem("fratello_pedidos_eliminados") || "[]");
+// Migración v5.2.2: descartar firmas semánticas antiguas de pedidos manuales.
+pedidosEliminados = pedidosEliminados.filter(item => {
+  const clave = String(item?.claveSemantica || "");
+  if (!clave) return true;
+  return clave.includes("|pedido_fijo|") || clave.includes("|fijo:");
+});
+localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+
 let pedidosFijos = JSON.parse(localStorage.getItem("fratello_pedidos_fijos") || "[]");
 let historialPedidos = JSON.parse(localStorage.getItem("fratello_historial_pedidos") || "[]");
 let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas") || "null") || crearPredeterminadasIniciales();
@@ -3521,6 +3535,12 @@ function asegurarProductoCriollosCatalogo() {
     chicharron.sinonimos = chicharron.sinonimos.filter(sinonimo =>
       !["criollo", "criollos"].includes(normalizarPedidoInteligente(sinonimo))
     );
+  }
+
+  try {
+    localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
+  } catch (error) {
+    console.warn("No se pudo actualizar el catálogo local de Criollos:", error);
   }
 }
 
@@ -4488,7 +4508,17 @@ function procesarLineaPedidoRobusta(original, cliente, fecha) {
   const lectura = extraerDatosLineaPedido(original);
   if (!lectura.tieneCantidad || lectura.cantidad <= 0) return null;
 
-  let producto = buscarProductoExactoPedido(lectura.productoTexto);
+  const nombreProductoNormalizado = normalizarNombreProductoPedido(lectura.productoTexto);
+  let producto = ["criollo", "criollos"].includes(nombreProductoNormalizado)
+    ? productoPorId("CRIOLLOS")
+    : buscarProductoExactoPedido(lectura.productoTexto);
+
+  // Defensa ante catálogos antiguos recibidos desde Firebase.
+  if (["criollo", "criollos"].includes(nombreProductoNormalizado) && !producto) {
+    asegurarProductoCriollosCatalogo();
+    producto = productoPorId("CRIOLLOS");
+  }
+
   let reconocimiento = {
     producto,
     confianza: producto ? 1 : 0,
@@ -5700,9 +5730,25 @@ function procesarPedidoActual() {
   }
 
   const procesado = procesarTextoPedido(texto, cliente, fecha);
-  const nuevoPedido = { id: Date.now(), fecha, fechaEntrega: fecha, cliente, textoOriginal: texto, origen: "manual", confirmado: false, items: procesado };
+  const ahoraPedido = new Date().toISOString();
+  const nuevoPedido = {
+    id: Date.now(),
+    fecha,
+    fechaEntrega: fecha,
+    cliente,
+    textoOriginal: texto,
+    origen: "manual",
+    confirmado: false,
+    creado: ahoraPedido,
+    actualizado: ahoraPedido,
+    items: procesado
+  };
   reabrirJornadaParaNuevoPedido(fecha);
-  limpiarMarcaPedidoEliminado(nuevoPedido);
+
+  // Una carga manual nueva nunca hereda la eliminación semántica de una prueba anterior.
+  pedidosEliminados = pedidosEliminados.filter(
+    item => clavePedidoEliminado(item) !== String(nuevoPedido.id)
+  );
   pedidos.push(nuevoPedido);
   registrarPedidoEnHistorial(nuevoPedido);
   emitirNotificacionPedidoSiCorresponde(nuevoPedido);
