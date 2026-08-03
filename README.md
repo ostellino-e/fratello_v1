@@ -1,29 +1,26 @@
-# Fratello v5.2.0 — Borrado definitivo de pedidos
+# Fratello v5.2.1 — Criollos como producto independiente
 
-## Causa encontrada
-Los pedidos fijos podían volver con un ID nuevo. La versión anterior recordaba principalmente el ID eliminado, por lo que una regeneración automática podía crear visualmente el mismo pedido con otro ID.
+## Bug corregido
+La palabra “Criollos” podía interpretarse como Chicharrón. Al corregirla manualmente, el cambio visible no quedaba protegido y una nueva carga o regeneración volvía a mostrar Chicharrón.
 
-## Corrección
-- El borrado ahora guarda:
-  - ID del pedido;
-  - fecha;
-  - cliente;
-  - origen;
-  - pedido fijo relacionado;
-  - nombre de programación;
-  - firma del contenido.
-- La app reconoce el mismo pedido aunque Firebase o el generador le asignen otro ID.
-- Los pedidos eliminados se filtran antes de mostrar la semana.
-- Los pedidos fijos eliminados para una fecha no se regeneran en esa fecha.
-- Se eliminaron asignaciones duplicadas que podían reemplazar la lista fusionada de pedidos fijos.
-- El estado de borrado se guarda inmediatamente antes de sincronizar.
+## Correcciones
+- Se agregó Criollos como producto independiente del catálogo.
+- Se agregaron los alias exactos:
+  - criollo
+  - criollos
+- La coincidencia exacta se evalúa antes de la búsqueda aproximada.
+- Se eliminan posibles alias criollo/criollos del producto Chicharrón.
+- La corrección manual guarda productoId, nombre y marca de corrección.
+- El pedido recibe fecha de actualización para que Firebase conserve la versión corregida.
+- Los pedidos fijos con corrección manual ya no se reinterpretan automáticamente.
+- La migración agrega Criollos aunque el dispositivo tenga un catálogo anterior guardado.
 
 ## Prueba
-1. Borrar uno de los pedidos de prueba de hoy.
-2. Esperar Guardado online.
-3. Permanecer en la pantalla 15 segundos.
-4. Salir y volver a entrar.
-5. Confirmar que no reaparezca.
+1. Cargar: Criollos 10 unidades.
+2. Confirmar que aparezca Criollos.
+3. Salir y volver a Pedidos.
+4. Esperar la sincronización.
+5. Confirmar que continúe figurando Criollos.
 
 ## Versión esperada
-v5.2.0
+v5.2.1

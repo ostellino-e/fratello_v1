@@ -2050,6 +2050,16 @@ async function instalarFratello() {
 }
 
 const productos = [
+  {
+    id: "CRIOLLOS",
+    nombre: "Criollos",
+    unidad: "unidad",
+    formaVenta: "solo_unidad",
+    sinonimos: ["criollo"],
+    visible: true,
+    activo: true,
+    nuevo: false
+  },
   { id: "CHIC", nombre: "Chicharrón", unidad: "unidad", visible: true, activo: true, nuevo: false },
   { id: "TREN", nombre: "Trenzas", unidad: "unidad", visible: true, activo: true, nuevo: false },
   { id: "RASP", nombre: "Raspaditas", unidad: "unidad", visible: true, activo: true, nuevo: false },
@@ -2107,7 +2117,8 @@ const diccionario = [
   ["pan casero", "PAN_CAS"], ["pan hamburguesa", "PAN_HAMB"],
   ["pan de hamburguesa", "PAN_HAMB"], ["pan de chips", "PAN_CHIPS"],
   ["pan chips", "PAN_CHIPS"], ["pan de pancho", "PAN_PANCHO"],
-  ["pan pancho", "PAN_PANCHO"], ["chicharrón", "CHIC"], ["chicharron", "CHIC"],
+  ["pan pancho", "PAN_PANCHO"], ["criollos", "CRIOLLOS"], ["criollo", "CRIOLLOS"],
+  ["chicharrón", "CHIC"], ["chicharron", "CHIC"],
   ["trenzas", "TREN"], ["raspaditas", "RASP"], ["medialunas", "MED"],
   ["caserito", "CAS"], ["palmeritas", "PALM"], ["prepizzas", "PREP"], ["prepizza", "PREP"],
   ["budín", "BUD"], ["budin", "BUD"], ["tapitas maicena", "TAP_MAI"],
@@ -3482,6 +3493,37 @@ productos.forEach(producto => {
   });
 });
 
+function asegurarProductoCriollosCatalogo() {
+  let criollos = productos.find(producto => producto.id === "CRIOLLOS");
+
+  if (!criollos) {
+    criollos = {
+      id: "CRIOLLOS",
+      nombre: "Criollos",
+      unidad: "unidad",
+      formaVenta: "solo_unidad",
+      sinonimos: ["criollo"],
+      precios: { unidad: 0, docena: 0, kg: 0, paquete: 0, bolsa: 0, bandeja: 0 },
+      visible: true,
+      activo: true,
+      nuevo: false
+    };
+    productos.unshift(criollos);
+  } else {
+    criollos.nombre = "Criollos";
+    criollos.sinonimos = [...new Set([...(criollos.sinonimos || []), "criollo"])];
+    criollos.visible = true;
+    criollos.activo = true;
+  }
+
+  const chicharron = productos.find(producto => producto.id === "CHIC");
+  if (chicharron && Array.isArray(chicharron.sinonimos)) {
+    chicharron.sinonimos = chicharron.sinonimos.filter(sinonimo =>
+      !["criollo", "criollos"].includes(normalizarPedidoInteligente(sinonimo))
+    );
+  }
+}
+
 const catalogoProductosGuardado = JSON.parse(localStorage.getItem("fratello_catalogo_productos") || "null");
 if (Array.isArray(catalogoProductosGuardado) && catalogoProductosGuardado.length) {
   productos.splice(0, productos.length, ...catalogoProductosGuardado.map((p, indice) => ({
@@ -3520,6 +3562,9 @@ let pedidoHoyEditandoId = null;
 let produccionDesbloqueada = false;
 
 const $ = (id) => document.getElementById(id);
+
+
+asegurarProductoCriollosCatalogo();
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
@@ -4140,6 +4185,18 @@ function buscarCoincidenciasProducto(textoLinea) {
 }
 
 function resolverProductoInteligente(textoLinea) {
+  const textoProducto = extraerCantidadYUnidadInteligente(textoLinea).textoLimpio;
+  const exacto = buscarProductoExactoPedido(textoProducto);
+
+  if (exacto) {
+    return {
+      producto: exacto,
+      confianza: 1,
+      revisar: false,
+      sugerencias: [{ producto: exacto, id: exacto.id, nombre: exacto.nombre, puntaje: 1 }]
+    };
+  }
+
   const coincidencias = buscarCoincidenciasProducto(textoLinea);
   const mejor = coincidencias[0];
   const segundo = coincidencias[1];
@@ -4535,6 +4592,8 @@ function resolverProductoPedido(pedidoId, itemId, productoId) {
 
   item.productoId = producto.id;
   item.producto = producto.nombre;
+  item.productoNombreManual = producto.nombre;
+  item.productoCorregidoManualmente = true;
   item.productoAmbiguo = false;
   item.confianzaProducto = 1;
   item.sugerenciasProducto = [];
@@ -4553,6 +4612,8 @@ function resolverProductoPedido(pedidoId, itemId, productoId) {
     guardarCatalogoProductos();
   }
 
+  pedido.actualizado = new Date().toISOString();
+  pedido.tieneCorreccionManualProducto = true;
   pedidosConfirmados = false;
   guardarTodo();
   renderPedidosCargados();
@@ -4970,7 +5031,7 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
     if (pedido) {
       // Reinterpreta automáticamente pedidos fijos creados por versiones anteriores.
       // No toca entregas que el usuario modificó manualmente.
-      if (!pedido.modificadoDesdeFijo) {
+      if (!pedido.modificadoDesdeFijo && !pedido.tieneCorreccionManualProducto) {
         const firmaAnterior = JSON.stringify(
           (pedido.items || []).map(item => [
             item.productoId,
