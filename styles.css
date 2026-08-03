@@ -4188,3 +4188,37 @@ body.modal-open{
 .cajaIngresosVacio{padding:24px;border:1px dashed #d8c8b9;border-radius:13px;text-align:center;color:#71665d;background:#fff}
 @media(max-width:650px){.cajaIngresosHero{padding:13px 14px;margin-bottom:10px;border-radius:12px}.cajaIngresosHero strong{font-size:24px}.cajaIngresosMes input{min-width:118px;width:118px;height:33px;font-size:11px}.cajaIngresoDia>summary{min-height:52px;padding:9px 11px}.cajaIngresoFecha{font-size:12px}.cajaIngresoDia>summary strong{font-size:13px;padding:6px 8px}.cajaIngresoDetalle{grid-template-columns:1fr 1fr;gap:7px;padding:0 9px 9px}.cajaIngresoDetalle article{min-height:82px;padding:10px}.cajaIngresoDetalle strong{font-size:16px}.cajaTurnosDetalle{grid-template-columns:1fr;padding:0 9px 9px}.cajaDetalleInterno{margin:0 9px 9px}}
 @media(max-width:380px){.cajaIngresosHero{align-items:flex-end}.cajaIngresosHero strong{font-size:21px}.cajaIngresosMes input{width:110px;min-width:110px}.cajaIngresoDetalle{grid-template-columns:1fr}}
+
+
+/* Fratello v5.1.4 — edición y eliminación de cierres */
+.cajaTurnoAcciones{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.cajaTurnoAcciones button{
+  min-height:34px;
+  padding:6px 10px;
+}
+.cajaTurnoAcciones button.danger{
+  border-color:#e7b5b5;
+  background:#fff1f1;
+  color:#9a2626;
+}
+.cajaTurnoAcciones button.danger:hover{
+  background:#ffe1e1;
+}
+@media(max-width:650px){
+  .cajaTurnoCabecera{
+    align-items:flex-start;
+  }
+  .cajaTurnoAcciones{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .cajaTurnoAcciones button{
+    min-height:31px;
+    padding:5px 8px;
+    font-size:10px;
+  }
+}

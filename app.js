@@ -952,12 +952,13 @@ function fechaOperativaActual() {
 }
 
 function fechasDesdeHoyHastaDomingo() {
+  // v5.1.4: mostrar siempre siete días corridos desde la fecha operativa.
+  // Evita que el domingo quede un solo día y que el lunes siguiente no aparezca
+  // hasta actualizar o reiniciar la aplicación.
   const inicio = new Date(fechaOperativaActual() + "T12:00:00");
-  const diaSemana = inicio.getDay(); // 0 domingo
-  const diasHastaDomingo = diaSemana === 0 ? 0 : 7 - diaSemana;
   const fechas = [];
 
-  for (let i = 0; i <= diasHastaDomingo; i += 1) {
+  for (let i = 0; i < 7; i += 1) {
     const fecha = new Date(inicio);
     fecha.setDate(inicio.getDate() + i);
     fechas.push([
@@ -9747,11 +9748,8 @@ function renderCajaAdminSeguro() {
 
 
 function editarCierreDesdeAdminCaja(fecha, turno) {
-  if ($("cajaFecha")) $("cajaFecha").value = fecha;
-  if ($("cajaTurno")) $("cajaTurno").value = turno;
-  $("panelCajaEmpleado")?.classList.remove("hidden");
-  cargarCierreSeleccionadoCaja();
-  $("cajaEfectivo")?.focus();
+  // Compatibilidad con botones de versiones anteriores.
+  abrirEditorTurnoCaja(fecha, turno);
 }
 
 function agregarPersonaCaja(inputId = "nuevaPersonaCaja") {
@@ -9961,7 +9959,10 @@ function htmlDetalleTurnoCaja(fecha, turno, cierre) {
   return `<article class="cajaTurnoDetalle">
     <div class="cajaTurnoCabecera">
       <div><strong>${turnoTextoCaja(turno)}</strong><span>${escaparCaja(cierre.persona || "")}</span></div>
-      <button type="button" onclick="editarCierreDesdeAdminCaja('${fecha}','${turno}')">✏️ Editar</button>
+      <div class="cajaTurnoAcciones">
+        <button type="button" onclick="event.preventDefault();event.stopPropagation();window.abrirEditorTurnoCaja('${fecha}','${turno}')">✏️ Editar</button>
+        <button type="button" class="danger" onclick="event.preventDefault();event.stopPropagation();window.eliminarCierreCajaAdmin('${fecha}','${turno}')">🗑 Eliminar</button>
+      </div>
     </div>
     <div class="cajaTurnoNumeros">
       <span>Efectivo <b>${formatoDineroCaja(t.efectivo)}</b></span>
@@ -9972,6 +9973,7 @@ function htmlDetalleTurnoCaja(fecha, turno, cierre) {
       <strong>Gastos del turno</strong>
       ${htmlGastosTurnoCaja(cierre)}
     </div>
+    <div class="cajaInlineEditHost" id="editorCaja-${fecha}-${turno}"></div>
   </article>`;
 }
 
@@ -10246,6 +10248,38 @@ async function guardarEdicionTurnoCaja(fecha, turno, boton) {
   }
 }
 
+async function eliminarCierreCajaAdmin(fecha, turno) {
+  const cierre = obtenerCierreCaja(fecha, turno);
+  if (!cierre) {
+    alert("Ese cierre ya no existe.");
+    return;
+  }
+
+  const etiqueta = `${turnoTextoCaja(turno).toLowerCase()} del ${formatoFechaCaja(fecha)}`;
+  if (!confirm(
+    `¿Eliminar el cierre del turno ${etiqueta}?\n\n` +
+    "Se eliminarán los importes y gastos de ese turno. Esta acción no se puede deshacer."
+  )) return;
+
+  cierresCaja = cierresCaja.filter(item =>
+    !(item.fecha === fecha && item.turno === turno)
+  );
+
+  guardarCajaLocal();
+  renderCajaAdmin();
+  renderDashboardCaja();
+
+  try {
+    await Promise.resolve(guardarEnNube());
+    renderCajaAdmin();
+    renderDashboardCaja();
+    alert("Cierre eliminado correctamente.");
+  } catch (error) {
+    console.error("Error eliminando cierre de Caja:", error);
+    alert("El cierre se eliminó en este dispositivo, pero no se pudo sincronizar todavía.");
+  }
+}
+
 function cerrarDetalleDiaCaja() {
   const modal = $("modalDetalleDiaCaja");
   if (modal) {
@@ -10381,6 +10415,7 @@ window.agregarGastoCaja = agregarGastoCaja;
 window.actualizarGastoCaja = actualizarGastoCaja;
 window.eliminarGastoCaja = eliminarGastoCaja;
 window.editarCierreDesdeAdminCaja = editarCierreDesdeAdminCaja;
+window.eliminarCierreCajaAdmin = eliminarCierreCajaAdmin;
 window.eliminarPersonaCaja = eliminarPersonaCaja;
 window.abrirDetalleDiaCaja = abrirDetalleDiaCaja;
 window.cerrarDetalleDiaCaja = cerrarDetalleDiaCaja;
