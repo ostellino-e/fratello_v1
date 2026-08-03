@@ -1,26 +1,18 @@
-# Fratello v5.1.5 — Resumen semanal de Gastos
+# Fratello v5.1.6 — Ingresos externos por cliente
 
 ## Cambios
-- La carga y edición de gastos se mantiene como estaba.
-- Se agregó una nueva vista Resumen semanal.
-- Al entrar en Gastos se abre primero el resumen.
-- Se muestran cuatro categorías principales:
-  - Empleados
-  - Insumos
-  - Atención
-  - Generales
-- Los gastos cargados desde Caja se contabilizan dentro de Atención.
-- Los gastos manuales se agrupan según su categoría.
-- Se muestra el total mensual general y el total mensual por categoría.
-- Cada semana del mes aparece cerrada.
-- Al abrir una semana se ve el detalle y el total semanal.
-- Se puede filtrar por categoría o ver Todos.
-
-## Semanas
-- Semana 1: día 1 al 7
-- Semana 2: día 8 al 14
-- Semana 3: día 15 al 21
-- Semana 4: día 22 al último día del mes
+- La pantalla Ingresos ahora tiene dos vistas:
+  - Resumen por cliente
+  - Cargar y editar pagos
+- Al entrar se muestra el total cobrado de clientes externos del mes.
+- Cada cliente aparece como una pestaña con su total mensual.
+- Al abrir un cliente se ve el historial de pagos del mes.
+- Se agregó Agregar cliente.
+- Los clientes son dinámicos y pueden editarse o eliminarse.
+- Los pagos anteriores crean automáticamente su cliente si todavía no existía.
+- Solo se suman como ingreso los pagos marcados como cobrados.
+- La pantalla Resumen general sigue discriminando Panadería Fratello y cada cliente externo.
+- Caja, Gastos, Pedidos y Tickets no fueron modificados.
 
 ## Versión esperada
-v5.1.5
+v5.1.6

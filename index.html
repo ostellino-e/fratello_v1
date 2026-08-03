@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=515" />
+  <link rel="stylesheet" href="styles.css?v=516" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "5.1.5";
-    document.documentElement.dataset.fratelloVersion = "5.1.5";
+    window.FRATELLO_VERSION = "5.1.6";
+    document.documentElement.dataset.fratelloVersion = "5.1.6";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v5.1.5</small>
+      <small id="versionFratello" class="syncVersionBadge">v5.1.6</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -456,7 +456,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v5.1.5 · Interfaz compacta móvil</span>
+        <span class="adminFinanceVersion">v5.1.6 · Interfaz compacta móvil</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -530,50 +530,72 @@
         </section>
 
         <section class="adminFinanceTab hidden" data-admin-panel="ingresos">
-          <article class="adminFinanceBox">
-            <div class="adminFinanceBoxHeader">
-              <div>
-                <h3>Ingresos automáticos de Caja</h3>
-                <small>Se toman de los cierres y no se vuelven a cargar.</small>
-              </div>
-              <span class="originBadge auto">AUTOMÁTICO</span>
-            </div>
-            <div id="ingresosCajaAdministracion"></div>
-          </article>
+          <div class="ingresosVistaTabs" role="tablist">
+            <button id="btnVistaResumenIngresos" class="active" type="button">📊 Resumen por cliente</button>
+            <button id="btnVistaCargaIngresos" type="button">＋ Cargar y editar pagos</button>
+          </div>
 
-          <article class="adminFinanceBox">
-            <div class="adminFinanceBoxHeader">
-              <div>
-                <h3>Clientes e ingresos por fuera de Caja</h3>
-                <small>Giuli, Luis, Sindicato, Líbano u otros clientes.</small>
-              </div>
-              <button id="btnNuevoIngresoAdministracion" class="primary" type="button">＋ Nuevo ingreso</button>
+          <section id="vistaResumenIngresos" class="ingresosResumenVista">
+            <header class="ingresosResumenHero">
+              <span>Total cobrado de clientes externos</span>
+              <strong id="totalIngresosExternosResumen">$ 0</strong>
+            </header>
+
+            <div class="ingresosResumenToolbar">
+              <button id="btnAgregarClienteExterno" class="primary" type="button">＋ Agregar cliente</button>
             </div>
 
-            <div id="formIngresoAdministracion" class="adminFinanceForm hidden">
-              <input id="ingresoAdminId" type="hidden">
-              <label>Fecha<input id="ingresoAdminFecha" type="date"></label>
-              <label>Cliente<input id="ingresoAdminCliente" type="text" placeholder="Ej.: Giuli"></label>
-              <label>Monto<input id="ingresoAdminMonto" type="number" min="0" step="1" placeholder="0"></label>
-              <label>Modo de pago
-                <select id="ingresoAdminMedio">
-                  <option>Efectivo</option>
-                  <option>Transferencia</option>
-                  <option>Mercado Pago</option>
-                  <option>Cheque</option>
-                  <option>Otro</option>
-                </select>
-              </label>
-              <label class="adminCheckLabel"><input id="ingresoAdminCobrado" type="checkbox" checked> Cobrado</label>
-              <label class="adminFinanceFormWide">Descripción<input id="ingresoAdminDescripcion" type="text" placeholder="Detalle opcional"></label>
+            <div id="formClienteExterno" class="adminFinanceForm compact hidden">
+              <input id="clienteExternoId" type="hidden">
+              <label>Nombre<input id="clienteExternoNombre" type="text" placeholder="Ej.: Giuliano"></label>
+              <label class="adminFinanceFormWide">Observación<input id="clienteExternoObservacion" type="text" placeholder="Opcional"></label>
+              <label class="adminCheckLabel"><input id="clienteExternoActivo" type="checkbox" checked> Activo</label>
               <div class="adminFinanceFormActions">
-                <button id="btnCancelarIngresoAdministracion" type="button">Cancelar</button>
-                <button id="btnGuardarIngresoAdministracion" class="primary" type="button">Guardar ingreso</button>
+                <button id="btnCancelarClienteExterno" type="button">Cancelar</button>
+                <button id="btnGuardarClienteExterno" class="primary" type="button">Guardar cliente</button>
               </div>
             </div>
 
-            <div id="listaIngresosExternosAdministracion"></div>
-          </article>
+            <div id="tarjetasClientesExternos" class="ingresosClientesCards"></div>
+          </section>
+
+          <section id="vistaCargaIngresos" class="ingresosCargaVista hidden">
+            <article class="adminFinanceBox">
+              <div class="adminFinanceBoxHeader">
+                <div>
+                  <h3>Pagos de clientes externos</h3>
+                  <small>Registrá pagos atrasados, parciales o cobrados por fuera de Caja.</small>
+                </div>
+                <button id="btnNuevoIngresoAdministracion" class="primary" type="button">＋ Nuevo pago</button>
+              </div>
+
+              <div id="formIngresoAdministracion" class="adminFinanceForm hidden">
+                <input id="ingresoAdminId" type="hidden">
+                <label>Fecha<input id="ingresoAdminFecha" type="date"></label>
+                <label>Cliente
+                  <select id="ingresoAdminCliente"></select>
+                </label>
+                <label>Monto<input id="ingresoAdminMonto" type="number" min="0" step="1" placeholder="0"></label>
+                <label>Modo de pago
+                  <select id="ingresoAdminMedio">
+                    <option>Efectivo</option>
+                    <option>Transferencia</option>
+                    <option>Mercado Pago</option>
+                    <option>Cheque</option>
+                    <option>Otro</option>
+                  </select>
+                </label>
+                <label class="adminCheckLabel"><input id="ingresoAdminCobrado" type="checkbox" checked> Cobrado</label>
+                <label class="adminFinanceFormWide">Descripción<input id="ingresoAdminDescripcion" type="text" placeholder="Ej.: Pago de pedidos atrasados"></label>
+                <div class="adminFinanceFormActions">
+                  <button id="btnCancelarIngresoAdministracion" type="button">Cancelar</button>
+                  <button id="btnGuardarIngresoAdministracion" class="primary" type="button">Guardar pago</button>
+                </div>
+              </div>
+
+              <div id="listaIngresosExternosAdministracion"></div>
+            </article>
+          </section>
         </section>
 
         <section class="adminFinanceTab hidden" data-admin-panel="gastos">

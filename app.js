@@ -3102,6 +3102,9 @@ function escucharCambiosNube() {
           ingresosExternos: Array.isArray(data.administracionFinanciera.ingresosExternos)
             ? data.administracionFinanciera.ingresosExternos
             : administracionFinanciera.ingresosExternos,
+          clientesExternos: Array.isArray(data.administracionFinanciera.clientesExternos)
+            ? data.administracionFinanciera.clientesExternos
+            : (administracionFinanciera.clientesExternos || []),
           gastosManuales: Array.isArray(data.administracionFinanciera.gastosManuales)
             ? data.administracionFinanciera.gastosManuales
             : administracionFinanciera.gastosManuales,
@@ -8375,6 +8378,7 @@ function iniciarAccesoAdministrador() {
 const ADMIN_FIN_STORAGE_KEY = "fratello_administracion_v394c1";
 let administracionFinanciera = {
   ingresosExternos: [],
+  clientesExternos: [],
   gastosManuales: [],
   presupuestos: [],
   plataRealManual: {}
@@ -8424,6 +8428,7 @@ function cargarAdministracionLocal() {
     const guardado = leerJsonLocalSeguro(ADMIN_FIN_STORAGE_KEY, {});
     administracionFinanciera = {
       ingresosExternos: Array.isArray(guardado.ingresosExternos) ? guardado.ingresosExternos : [],
+      clientesExternos: Array.isArray(guardado.clientesExternos) ? guardado.clientesExternos : [],
       gastosManuales: Array.isArray(guardado.gastosManuales) ? guardado.gastosManuales : [],
       presupuestos: Array.isArray(guardado.presupuestos) ? guardado.presupuestos : [],
       plataRealManual: guardado.plataRealManual && typeof guardado.plataRealManual === "object"
@@ -8760,32 +8765,193 @@ function renderResumenAdministracion() {
   renderResumenPresupuestoAdministracion();
 }
 
-function renderIngresosAdministracion() {
-  const caja = ingresosCajaDelMesAdministracion();
-  const externos = ingresosExternosDelMesAdministracion();
+function asegurarClientesExternosDesdeIngresos() {
+  administracionFinanciera.clientesExternos ||= [];
+  const existentes = new Set(
+    administracionFinanciera.clientesExternos.map(item =>
+      String(item.nombre || "").trim().toLowerCase()
+    )
+  );
 
-  if ($("ingresosCajaAdministracion")) {
-    $("ingresosCajaAdministracion").innerHTML = caja.length
-      ? adminFinTabla(
-          ["Fecha", "Origen", "Efectivo", "Transferencia", "Total"],
-          caja.map(item => `<tr>
-            <td>${adminFinEscapar(item.fecha)}</td>
-            <td>${adminFinEscapar(item.descripcion)}</td>
-            <td>${adminFinDinero(item.efectivo)}</td>
-            <td>${adminFinDinero(item.transferencias)}</td>
-            <td><strong>${adminFinDinero(item.monto)}</strong></td>
-          </tr>`)
-        )
-      : adminFinVacio("Todavía no hay cierres de Caja para este mes.");
+  administracionFinanciera.ingresosExternos.forEach(item => {
+    const nombre = String(item.cliente || "").trim();
+    const clave = nombre.toLowerCase();
+    if (!nombre || existentes.has(clave)) return;
+    administracionFinanciera.clientesExternos.push({
+      id: adminFinId("cli"),
+      nombre,
+      observacion: "",
+      activo: true,
+      actualizadoEn: new Date().toISOString()
+    });
+    existentes.add(clave);
+  });
+}
+
+function clientesExternosActivos() {
+  asegurarClientesExternosDesdeIngresos();
+  return [...administracionFinanciera.clientesExternos]
+    .filter(item => item.activo !== false)
+    .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), "es"));
+}
+
+function llenarSelectClientesExternos(clienteSeleccionado = "") {
+  const select = $("ingresoAdminCliente");
+  if (!select) return;
+
+  const clientes = clientesExternosActivos();
+  select.innerHTML = clientes.length
+    ? clientes.map(item => `<option value="${adminFinEscapar(item.nombre)}">${adminFinEscapar(item.nombre)}</option>`).join("")
+    : '<option value="">Primero agregá un cliente</option>';
+
+  if (clienteSeleccionado) select.value = clienteSeleccionado;
+}
+
+function mostrarFormularioClienteExterno(datos = null) {
+  $("formClienteExterno")?.classList.remove("hidden");
+  if ($("clienteExternoId")) $("clienteExternoId").value = datos?.id || "";
+  if ($("clienteExternoNombre")) $("clienteExternoNombre").value = datos?.nombre || "";
+  if ($("clienteExternoObservacion")) $("clienteExternoObservacion").value = datos?.observacion || "";
+  if ($("clienteExternoActivo")) $("clienteExternoActivo").checked = datos?.activo !== false;
+  $("clienteExternoNombre")?.focus();
+}
+
+function ocultarFormularioClienteExterno() {
+  $("formClienteExterno")?.classList.add("hidden");
+  if ($("clienteExternoId")) $("clienteExternoId").value = "";
+  if ($("clienteExternoNombre")) $("clienteExternoNombre").value = "";
+  if ($("clienteExternoObservacion")) $("clienteExternoObservacion").value = "";
+  if ($("clienteExternoActivo")) $("clienteExternoActivo").checked = true;
+}
+
+function guardarClienteExterno() {
+  const id = $("clienteExternoId")?.value || adminFinId("cli");
+  const nombre = String($("clienteExternoNombre")?.value || "").trim();
+  const observacion = String($("clienteExternoObservacion")?.value || "").trim();
+  const activo = Boolean($("clienteExternoActivo")?.checked);
+
+  if (!nombre) {
+    alert("Ingresá el nombre del cliente.");
+    return;
   }
 
+  const duplicado = administracionFinanciera.clientesExternos.find(item =>
+    item.id !== id &&
+    String(item.nombre || "").trim().toLowerCase() === nombre.toLowerCase()
+  );
+  if (duplicado) {
+    alert("Ya existe un cliente con ese nombre.");
+    return;
+  }
+
+  const item = { id, nombre, observacion, activo, actualizadoEn: new Date().toISOString() };
+  const indice = administracionFinanciera.clientesExternos.findIndex(x => x.id === id);
+  if (indice >= 0) administracionFinanciera.clientesExternos[indice] = item;
+  else administracionFinanciera.clientesExternos.push(item);
+
+  ocultarFormularioClienteExterno();
+  guardarAdministracion();
+}
+
+function editarClienteExterno(id) {
+  const item = administracionFinanciera.clientesExternos.find(x => x.id === id);
+  if (!item) return;
+  mostrarFormularioClienteExterno(item);
+}
+
+function eliminarClienteExterno(id) {
+  const item = administracionFinanciera.clientesExternos.find(x => x.id === id);
+  if (!item) return;
+  if (!confirm(`¿Eliminar el cliente ${item.nombre}? Los pagos ya registrados se conservarán.`)) return;
+
+  administracionFinanciera.clientesExternos =
+    administracionFinanciera.clientesExternos.filter(x => x.id !== id);
+
+  guardarAdministracion();
+}
+
+function renderResumenClientesExternos() {
+  asegurarClientesExternosDesdeIngresos();
+  const ingresos = ingresosExternosDelMesAdministracion()
+    .filter(item => item.cobrado !== false);
+
+  const total = ingresos.reduce((s, item) => s + adminFinMonto(item.monto), 0);
+  if ($("totalIngresosExternosResumen")) {
+    $("totalIngresosExternosResumen").textContent = adminFinDinero(total);
+  }
+
+  const host = $("tarjetasClientesExternos");
+  if (!host) return;
+
+  const clientes = [...administracionFinanciera.clientesExternos]
+    .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), "es"));
+
+  if (!clientes.length) {
+    host.innerHTML = adminFinVacio("Todavía no agregaste clientes externos.");
+    return;
+  }
+
+  host.innerHTML = clientes.map(cliente => {
+    const pagos = ingresos
+      .filter(item => String(item.cliente || "").trim().toLowerCase() ===
+        String(cliente.nombre || "").trim().toLowerCase())
+      .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+
+    const totalCliente = pagos.reduce((s, item) => s + adminFinMonto(item.monto), 0);
+
+    return `<details class="ingresoClienteCard">
+      <summary>
+        <span>
+          <strong>${adminFinEscapar(cliente.nombre)}</strong>
+          ${cliente.observacion ? `<small>${adminFinEscapar(cliente.observacion)}</small>` : ""}
+        </span>
+        <b>${adminFinDinero(totalCliente)}</b>
+      </summary>
+      <div class="ingresoClienteDetalle">
+        ${pagos.length
+          ? pagos.map(pago => `<div class="ingresoClientePago">
+              <span>
+                <strong>${adminFinEscapar(pago.fecha)}</strong>
+                <small>${adminFinEscapar(pago.descripcion || pago.medio || "Pago")}</small>
+              </span>
+              <b>${adminFinDinero(pago.monto)}</b>
+            </div>`).join("")
+          : `<div class="ingresoClienteVacio">Sin pagos cobrados en este mes.</div>`
+        }
+        <div class="ingresoClienteAcciones">
+          <button type="button" onclick="editarClienteExterno('${cliente.id}')">Editar cliente</button>
+          <button type="button" onclick="eliminarClienteExterno('${cliente.id}')">Eliminar cliente</button>
+        </div>
+      </div>
+    </details>`;
+  }).join("");
+}
+
+function mostrarVistaIngresos(tipo = "resumen") {
+  const resumen = tipo === "resumen";
+  $("vistaResumenIngresos")?.classList.toggle("hidden", !resumen);
+  $("vistaCargaIngresos")?.classList.toggle("hidden", resumen);
+  $("btnVistaResumenIngresos")?.classList.toggle("active", resumen);
+  $("btnVistaCargaIngresos")?.classList.toggle("active", !resumen);
+
+  if (resumen) renderResumenClientesExternos();
+  else llenarSelectClientesExternos();
+}
+
+function renderIngresosAdministracion() {
+  asegurarClientesExternosDesdeIngresos();
+  renderResumenClientesExternos();
+  llenarSelectClientesExternos();
+
+  const externos = ingresosExternosDelMesAdministracion();
   if ($("listaIngresosExternosAdministracion")) {
     $("listaIngresosExternosAdministracion").innerHTML = externos.length
       ? adminFinTabla(
-          ["Fecha", "Cliente", "Medio", "Estado", "Monto", ""],
+          ["Fecha", "Cliente", "Descripción", "Medio", "Estado", "Monto", ""],
           externos.map(item => `<tr>
             <td>${adminFinEscapar(item.fecha)}</td>
-            <td><strong>${adminFinEscapar(item.cliente)}</strong><small>${adminFinEscapar(item.descripcion || "")}</small></td>
+            <td><strong>${adminFinEscapar(item.cliente)}</strong></td>
+            <td>${adminFinEscapar(item.descripcion || "")}</td>
             <td>${adminFinEscapar(item.medio || "")}</td>
             <td><span class="statusPill ${item.cobrado !== false ? "paid" : "pending"}">${item.cobrado !== false ? "Cobrado" : "Pendiente"}</span></td>
             <td><strong>${adminFinDinero(item.monto)}</strong></td>
@@ -8795,7 +8961,7 @@ function renderIngresosAdministracion() {
             </td>
           </tr>`)
         )
-      : adminFinVacio("No cargaste ingresos externos en este mes.");
+      : adminFinVacio("No cargaste pagos de clientes externos en este mes.");
   }
 }
 
@@ -9136,7 +9302,8 @@ function mostrarFormularioAdministracion(tipo, datos = null) {
   if (tipo === "ingreso") {
     $("ingresoAdminId").value = datos?.id || "";
     $("ingresoAdminFecha").value = datos?.fecha || adminFinHoy();
-    $("ingresoAdminCliente").value = datos?.cliente || "";
+    llenarSelectClientesExternos(datos?.cliente || "");
+    if ($("ingresoAdminCliente")) $("ingresoAdminCliente").value = datos?.cliente || "";
     $("ingresoAdminMonto").value = datos?.monto || "";
     $("ingresoAdminMedio").value = datos?.medio || "Transferencia";
     $("ingresoAdminCobrado").checked = datos?.cobrado !== false;
@@ -9182,6 +9349,20 @@ function guardarIngresoAdministracion() {
     return;
   }
 
+  asegurarClientesExternosDesdeIngresos();
+  const clienteExiste = administracionFinanciera.clientesExternos.some(cliente =>
+    String(cliente.nombre || "").trim().toLowerCase() === item.cliente.toLowerCase()
+  );
+  if (!clienteExiste) {
+    administracionFinanciera.clientesExternos.push({
+      id: adminFinId("cli"),
+      nombre: item.cliente,
+      observacion: "",
+      activo: true,
+      actualizadoEn: new Date().toISOString()
+    });
+  }
+
   const indice = administracionFinanciera.ingresosExternos.findIndex(x => x.id === id);
   if (indice >= 0) administracionFinanciera.ingresosExternos[indice] = item;
   else administracionFinanciera.ingresosExternos.push(item);
@@ -9193,7 +9374,9 @@ function guardarIngresoAdministracion() {
 function editarIngresoAdministracion(id) {
   const item = administracionFinanciera.ingresosExternos.find(x => x.id === id);
   if (!item) return;
-  cambiarTabAdministracion("ingresos");
+  activarTabAdministracion("ingresos");
+  mostrarVistaIngresos("carga");
+  llenarSelectClientesExternos(item.cliente);
   mostrarFormularioAdministracion("ingreso", item);
 }
 
@@ -9362,8 +9545,12 @@ function activarTabAdministracion(nombre = "resumen", opciones = {}) {
     return false;
   }
   switch (nombre) {
-    case "resumen": case "ingresos": case "presupuesto":
+    case "resumen": case "presupuesto":
       renderAdministracionFinanciera(); break;
+    case "ingresos":
+      renderAdministracionFinanciera();
+      mostrarVistaIngresos("resumen");
+      break;
     case "gastos":
       renderAdministracionFinanciera();
       mostrarVistaGastos("resumen");
@@ -9452,6 +9639,12 @@ function iniciarModuloAdministracion() {
     document.getElementById("panelCajaAdmin")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
+  $("btnVistaResumenIngresos")?.addEventListener("click", () => mostrarVistaIngresos("resumen"));
+  $("btnVistaCargaIngresos")?.addEventListener("click", () => mostrarVistaIngresos("carga"));
+  $("btnAgregarClienteExterno")?.addEventListener("click", () => mostrarFormularioClienteExterno());
+  $("btnCancelarClienteExterno")?.addEventListener("click", ocultarFormularioClienteExterno);
+  $("btnGuardarClienteExterno")?.addEventListener("click", guardarClienteExterno);
+
   $("btnNuevoIngresoAdministracion")?.addEventListener("click", () => mostrarFormularioAdministracion("ingreso"));
   $("btnCancelarIngresoAdministracion")?.addEventListener("click", () => ocultarFormularioAdministracion("ingreso"));
   $("btnGuardarIngresoAdministracion")?.addEventListener("click", guardarIngresoAdministracion);
@@ -9486,6 +9679,8 @@ function iniciarModuloAdministracion() {
 }
 
 window.editarIngresoAdministracion = editarIngresoAdministracion;
+window.editarClienteExterno = editarClienteExterno;
+window.eliminarClienteExterno = eliminarClienteExterno;
 window.eliminarIngresoAdministracion = eliminarIngresoAdministracion;
 window.editarGastoAdministracion = editarGastoAdministracion;
 window.eliminarGastoAdministracion = eliminarGastoAdministracion;
