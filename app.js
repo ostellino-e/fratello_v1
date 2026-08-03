@@ -2437,10 +2437,102 @@ function setEstadoSync(texto) {
   if (el) el.textContent = texto;
 }
 
+function clavePedidoSync(pedido) {
+  if (!pedido || typeof pedido !== "object") return "";
+  return String(pedido.id || "");
+}
+
+function fechaCambioPedidoSync(pedido) {
+  const valor = pedido?.actualizadoEn || pedido?.actualizado || pedido?.creado || pedido?.fechaCreacion || "";
+  const tiempo = Date.parse(valor);
+  return Number.isFinite(tiempo) ? tiempo : 0;
+}
+
+function clavePedidoEliminado(item) {
+  if (!item) return "";
+  return typeof item === "string" ? item : String(item.id || "");
+}
+
+function fechaPedidoEliminado(item) {
+  if (!item || typeof item === "string") return 0;
+  const tiempo = Date.parse(item.eliminadoEn || "");
+  return Number.isFinite(tiempo) ? tiempo : 0;
+}
+
+function fusionarPedidosEliminados(remotos = [], locales = []) {
+  const mapa = new Map();
+  [...(Array.isArray(remotos) ? remotos : []), ...(Array.isArray(locales) ? locales : [])]
+    .forEach(item => {
+      const clave = clavePedidoEliminado(item);
+      if (!clave) return;
+      const anterior = mapa.get(clave);
+      if (!anterior || fechaPedidoEliminado(item) >= fechaPedidoEliminado(anterior)) {
+        mapa.set(clave, typeof item === "string"
+          ? { id: clave, eliminadoEn: new Date(0).toISOString() }
+          : item
+        );
+      }
+    });
+  return [...mapa.values()];
+}
+
+function pedidoEstaEliminadoSync(pedido, eliminados = pedidosEliminados) {
+  const clave = clavePedidoSync(pedido);
+  const marca = (Array.isArray(eliminados) ? eliminados : [])
+    .find(item => clavePedidoEliminado(item) === clave);
+  if (!marca) return false;
+  return fechaPedidoEliminado(marca) >= fechaCambioPedidoSync(pedido);
+}
+
+function fusionarPedidosSync(remotos = [], locales = [], eliminados = pedidosEliminados) {
+  const mapa = new Map();
+  [...(Array.isArray(remotos) ? remotos : []), ...(Array.isArray(locales) ? locales : [])]
+    .forEach(pedido => {
+      const clave = clavePedidoSync(pedido);
+      if (!clave || pedidoEstaEliminadoSync(pedido, eliminados)) return;
+      const anterior = mapa.get(clave);
+      if (!anterior || fechaCambioPedidoSync(pedido) >= fechaCambioPedidoSync(anterior)) {
+        mapa.set(clave, pedido);
+      }
+    });
+  return [...mapa.values()];
+}
+
+function fusionarPedidosFijosSync(remotos = [], locales = []) {
+  const mapa = new Map();
+  [...(Array.isArray(remotos) ? remotos : []), ...(Array.isArray(locales) ? locales : [])]
+    .forEach(fijo => {
+      if (!fijo) return;
+      const clave = String(fijo.id || `${fijo.cliente || ""}|${fijo.nombre || ""}`);
+      const anterior = mapa.get(clave);
+      const fechaActual = Date.parse(fijo.actualizado || fijo.creado || "") || 0;
+      const fechaAnterior = Date.parse(anterior?.actualizado || anterior?.creado || "") || 0;
+      if (!anterior || fechaActual >= fechaAnterior) mapa.set(clave, fijo);
+    });
+  return [...mapa.values()];
+}
+
+function fusionarExclusionesPedidosFijos(remotas = [], locales = []) {
+  return [...new Set([
+    ...(Array.isArray(remotas) ? remotas : []),
+    ...(Array.isArray(locales) ? locales : [])
+  ].filter(Boolean))];
+}
+
+function registrarPedidoEliminado(pedido) {
+  const id = clavePedidoSync(pedido);
+  if (!id) return;
+  pedidosEliminados = fusionarPedidosEliminados(
+    pedidosEliminados,
+    [{ id, eliminadoEn: new Date().toISOString() }]
+  );
+}
+
 function datosActuales() {
   return {
     produccion,
     pedidos,
+    pedidosEliminados,
     pedidosFijos,
     historialPedidos,
     predeterminadas,
@@ -2602,6 +2694,24 @@ function guardarEnNube() {
           const snapshot = await transaccion.get(referencia);
           const remoto = snapshot.exists ? snapshot.data() : {};
 
+          pedidosEliminados = fusionarPedidosEliminados(
+            remoto.pedidosEliminados,
+            pedidosEliminados
+          );
+          pedidos = fusionarPedidosSync(
+            remoto.pedidos,
+            pedidos,
+            pedidosEliminados
+          );
+          pedidosFijos = fusionarPedidosFijosSync(
+            remoto.pedidosFijos,
+            pedidosFijos
+          );
+          exclusionesPedidosFijos = fusionarExclusionesPedidosFijos(
+            remoto.exclusionesPedidosFijos,
+            exclusionesPedidosFijos
+          );
+
           cierresCajaEliminados = fusionarCierresCajaEliminados(
             remoto.cierresCajaEliminados,
             cierresCajaEliminados
@@ -2616,6 +2726,10 @@ function guardarEnNube() {
             referencia,
             {
               ...datosActuales(),
+              pedidos,
+              pedidosEliminados,
+              pedidosFijos,
+              exclusionesPedidosFijos,
               cierresCaja: cierresFusionados,
               cierresCajaEliminados,
               actualizado: new Date().toISOString()
@@ -2659,9 +2773,13 @@ async function cargarDesdeNube() {
       const data = doc.data();
 
       produccion = data.produccion || produccion;
-      pedidos = Array.isArray(data.pedidos) ? data.pedidos : pedidos;
-    pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
-    pedidosFijos = Array.isArray(data.pedidosFijos) ? data.pedidosFijos : pedidosFijos;
+      pedidosEliminados = fusionarPedidosEliminados(
+        data.pedidosEliminados,
+        pedidosEliminados
+      );
+      pedidos = fusionarPedidosSync(data.pedidos, pedidos, pedidosEliminados);
+      pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
+      pedidosFijos = fusionarPedidosFijosSync(data.pedidosFijos, pedidosFijos);
     historialPedidos = Array.isArray(data.historialPedidos) ? data.historialPedidos : historialPedidos;
       pedidosFijos = Array.isArray(data.pedidosFijos) ? data.pedidosFijos : pedidosFijos;
       historialPedidos = Array.isArray(data.historialPedidos) ? data.historialPedidos : historialPedidos;
@@ -2671,9 +2789,10 @@ async function cargarDesdeNube() {
       historialPedidos = Array.isArray(data.historialPedidos)
         ? data.historialPedidos
         : historialPedidos;
-      exclusionesPedidosFijos = Array.isArray(data.exclusionesPedidosFijos)
-        ? data.exclusionesPedidosFijos
-        : exclusionesPedidosFijos;
+      exclusionesPedidosFijos = fusionarExclusionesPedidosFijos(
+        data.exclusionesPedidosFijos,
+        exclusionesPedidosFijos
+      );
 
       cierresCajaEliminados = fusionarCierresCajaEliminados(
         data.cierresCajaEliminados,
@@ -2732,14 +2851,17 @@ async function cargarDesdeNube() {
       correspondePedido = data.correspondePedido || correspondePedido;
       memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
       jornadasCerradas = Array.isArray(data.jornadasCerradas) ? data.jornadasCerradas : jornadasCerradas;
-      exclusionesPedidosFijos = Array.isArray(data.exclusionesPedidosFijos)
-        ? data.exclusionesPedidosFijos
-        : exclusionesPedidosFijos;
+      exclusionesPedidosFijos = fusionarExclusionesPedidosFijos(
+        data.exclusionesPedidosFijos,
+        exclusionesPedidosFijos
+      );
 
       validarClientes();
 
       localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
       localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
       localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
       localStorage.setItem("fratello_historial_pedidos", JSON.stringify(historialPedidos));
       localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
@@ -2802,12 +2924,18 @@ async function actualizarDatosManual(evento = null) {
     jornadasCerradas = Array.isArray(data.jornadasCerradas)
       ? data.jornadasCerradas
       : jornadasCerradas;
-    exclusionesPedidosFijos = Array.isArray(data.exclusionesPedidosFijos)
-      ? data.exclusionesPedidosFijos
-      : exclusionesPedidosFijos;
+    exclusionesPedidosFijos = fusionarExclusionesPedidosFijos(
+      data.exclusionesPedidosFijos,
+      exclusionesPedidosFijos
+    );
 
-    pedidos = Array.isArray(data.pedidos) ? data.pedidos : pedidos;
-    pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
+    pedidosEliminados = fusionarPedidosEliminados(
+      data.pedidosEliminados,
+      pedidosEliminados
+    );
+    pedidos = fusionarPedidosSync(data.pedidos, pedidos, pedidosEliminados)
+      .filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
+    pedidosFijos = fusionarPedidosFijosSync(data.pedidosFijos, pedidosFijos);
 
     predeterminadas = data.predeterminadas || predeterminadas;
     clientes = Array.isArray(data.clientes) && data.clientes.length ? data.clientes : clientes;
@@ -2838,6 +2966,7 @@ async function actualizarDatosManual(evento = null) {
 
     localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
     localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
     localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
     localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
     localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
@@ -3114,11 +3243,25 @@ function escucharCambiosNube() {
 
       produccion = data.produccion || produccion;
 
-      const resultadoInterpretacion = interpretarPedidosFormularioPendientes(
-        Array.isArray(data.pedidos) ? data.pedidos : pedidos
+      pedidosEliminados = fusionarPedidosEliminados(
+        data.pedidosEliminados,
+        pedidosEliminados
       );
-      pedidos = resultadoInterpretacion.pedidos;
-      pedidos = pedidos.filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
+      const pedidosFusionados = fusionarPedidosSync(
+        data.pedidos,
+        pedidos,
+        pedidosEliminados
+      );
+      const resultadoInterpretacion = interpretarPedidosFormularioPendientes(pedidosFusionados);
+      pedidos = resultadoInterpretacion.pedidos
+        .filter(pedido => !pedidoEstaEliminadoSync(pedido))
+        .filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
+
+      pedidosFijos = fusionarPedidosFijosSync(data.pedidosFijos, pedidosFijos);
+      exclusionesPedidosFijos = fusionarExclusionesPedidosFijos(
+        data.exclusionesPedidosFijos,
+        exclusionesPedidosFijos
+      );
 
       // En la primera sincronización de cada carga de página se registra
       // el estado existente, pero no se muestra ninguna notificación.
@@ -3194,6 +3337,7 @@ function escucharCambiosNube() {
 
       localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
       localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
       localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
       localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
       localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
@@ -3238,6 +3382,7 @@ function escucharCambiosNube() {
 function guardarTodo() {
   localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
   localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
   localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
   localStorage.setItem("fratello_historial_pedidos", JSON.stringify(historialPedidos));
   localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
@@ -3254,6 +3399,7 @@ function guardarTodo() {
 
 let produccion = JSON.parse(localStorage.getItem("fratello_produccion") || "{}");
 let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
+let pedidosEliminados = JSON.parse(localStorage.getItem("fratello_pedidos_eliminados") || "[]");
 let pedidosFijos = JSON.parse(localStorage.getItem("fratello_pedidos_fijos") || "[]");
 let historialPedidos = JSON.parse(localStorage.getItem("fratello_historial_pedidos") || "[]");
 let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas") || "null") || crearPredeterminadasIniciales();
@@ -4812,6 +4958,9 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
       items: itemsCorrectos
     };
 
+    pedidosEliminados = pedidosEliminados.filter(
+      item => clavePedidoEliminado(item) !== String(pedido.id)
+    );
     pedidos.push(pedido);
     registrarPedidoEnHistorial(pedido);
     agregados += 1;
@@ -5554,6 +5703,7 @@ function borrarPedido(id) {
   if (!confirm("¿Seguro que querés borrar este pedido?")) return;
 
   excluirPedidoFijoEnFecha(pedido);
+  registrarPedidoEliminado(pedido);
   pedidos = pedidos.filter(p => Number(p.id) !== Number(id));
   pedidosConfirmados = false;
   guardarTodo();
@@ -5578,6 +5728,13 @@ function borrarPedidosSeleccionados() {
   }
 
   if (!confirm(`¿Seguro que querés borrar ${seleccionados.length} pedido(s)?`)) return;
+
+  pedidos
+    .filter(p => seleccionados.includes(Number(p.id)))
+    .forEach(pedido => {
+      excluirPedidoFijoEnFecha(pedido);
+      registrarPedidoEliminado(pedido);
+    });
 
   pedidos = pedidos.filter(p => !seleccionados.includes(Number(p.id)));
   pedidosConfirmados = false;
@@ -7579,6 +7736,7 @@ function resetDatos() {
 
   pedidos = [];
   localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
   guardarEnNube();
 
   renderPedidosCargados();
@@ -7954,6 +8112,7 @@ function limpiarJornadaDespuesDeEnviar() {
   pedidosConfirmados = false;
 
   localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
   localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(false));
 
   const selectorProduccion = $("diaProduccion");
