@@ -8799,7 +8799,159 @@ function renderIngresosAdministracion() {
   }
 }
 
+let filtroCategoriaGastosActual = "Todos";
+
+function categoriaResumenGasto(categoria, origen = "") {
+  const texto = String(categoria || "").toLowerCase();
+
+  if (String(origen || "").toLowerCase().includes("caja")) return "Atención";
+  if (texto.includes("empleado") || texto.includes("sueldo") || texto.includes("jornal")) return "Empleados";
+  if (
+    texto.includes("proveedor") ||
+    texto.includes("insumo") ||
+    texto.includes("materia prima")
+  ) return "Insumos";
+  if (
+    texto.includes("atención") ||
+    texto.includes("atencion") ||
+    texto.includes("panadería") ||
+    texto.includes("panaderia")
+  ) return "Atención";
+
+  return "Generales";
+}
+
+function todosGastosResumenMes() {
+  const manuales = gastosManualesDelMesAdministracion().map(item => ({
+    id: item.id,
+    fecha: item.fecha,
+    motivo: item.motivo,
+    monto: adminFinMonto(item.monto),
+    categoriaResumen: categoriaResumenGasto(item.categoria, item.origen),
+    origen: "Manual"
+  }));
+
+  const caja = gastosCajaDelMesAdministracion().map((item, indice) => ({
+    id: `caja-${item.fecha}-${indice}`,
+    fecha: item.fecha,
+    motivo: item.motivo,
+    monto: adminFinMonto(item.monto),
+    categoriaResumen: "Atención",
+    origen: "Caja"
+  }));
+
+  return [...manuales, ...caja].sort((a, b) =>
+    String(a.fecha).localeCompare(String(b.fecha))
+  );
+}
+
+function semanaMesGasto(fechaISO) {
+  const dia = Number(String(fechaISO || "").slice(8, 10)) || 1;
+  if (dia <= 7) return 1;
+  if (dia <= 14) return 2;
+  if (dia <= 21) return 3;
+  return 4;
+}
+
+function rangoSemanaGastos(numero, mes) {
+  const [anio, numeroMes] = String(mes).split("-").map(Number);
+  const ultimoDia = new Date(anio, numeroMes, 0).getDate();
+  const rangos = {
+    1: [1, Math.min(7, ultimoDia)],
+    2: [8, Math.min(14, ultimoDia)],
+    3: [15, Math.min(21, ultimoDia)],
+    4: [22, ultimoDia]
+  };
+  const [desde, hasta] = rangos[numero];
+  return `${String(desde).padStart(2, "0")} al ${String(hasta).padStart(2, "0")}`;
+}
+
+function renderResumenSemanalGastos() {
+  const gastos = todosGastosResumenMes();
+  const mes = mesSeleccionadoAdministracion();
+  const categorias = ["Empleados", "Insumos", "Atención", "Generales"];
+
+  const totalMes = gastos.reduce((s, item) => s + item.monto, 0);
+  if ($("totalGastosMesResumen")) {
+    $("totalGastosMesResumen").textContent = adminFinDinero(totalMes);
+  }
+
+  if ($("tarjetasCategoriasGastos")) {
+    $("tarjetasCategoriasGastos").innerHTML = categorias.map(categoria => {
+      const total = gastos
+        .filter(item => item.categoriaResumen === categoria)
+        .reduce((s, item) => s + item.monto, 0);
+
+      const iconos = {
+        Empleados: "👥",
+        Insumos: "📦",
+        Atención: "🏪",
+        Generales: "🧾"
+      };
+
+      return `<article>
+        <span>${iconos[categoria]} ${categoria}</span>
+        <strong>${adminFinDinero(total)}</strong>
+      </article>`;
+    }).join("");
+  }
+
+  const filtrados = filtroCategoriaGastosActual === "Todos"
+    ? gastos
+    : gastos.filter(item => item.categoriaResumen === filtroCategoriaGastosActual);
+
+  const host = $("resumenSemanalGastos");
+  if (!host) return;
+
+  if (!filtrados.length) {
+    host.innerHTML = adminFinVacio("No hay gastos para esta categoría en el mes seleccionado.");
+    return;
+  }
+
+  host.innerHTML = [1, 2, 3, 4].map(numeroSemana => {
+    const items = filtrados.filter(item => semanaMesGasto(item.fecha) === numeroSemana);
+    const total = items.reduce((s, item) => s + item.monto, 0);
+
+    return `<details class="gastosSemanaPanel">
+      <summary>
+        <span>
+          <strong>Semana ${numeroSemana}</strong>
+          <small>${rangoSemanaGastos(numeroSemana, mes)}</small>
+        </span>
+        <b>${adminFinDinero(total)}</b>
+      </summary>
+      <div class="gastosSemanaDetalle">
+        ${items.length
+          ? items.map(item => `<div class="gastoSemanaFila">
+              <span>
+                <strong>${adminFinEscapar(item.motivo)}</strong>
+                <small>${adminFinEscapar(item.fecha)} · ${adminFinEscapar(item.categoriaResumen)}${item.origen === "Caja" ? " · Caja" : ""}</small>
+              </span>
+              <b>${adminFinDinero(item.monto)}</b>
+            </div>`).join("")
+          : `<div class="gastosSemanaVacia">Sin gastos en esta semana.</div>`
+        }
+        <div class="gastosSemanaTotal">
+          <span>Total semana ${numeroSemana}</span>
+          <strong>${adminFinDinero(total)}</strong>
+        </div>
+      </div>
+    </details>`;
+  }).join("");
+}
+
+function mostrarVistaGastos(tipo = "resumen") {
+  const resumen = tipo === "resumen";
+  $("vistaResumenGastos")?.classList.toggle("hidden", !resumen);
+  $("vistaCargaGastos")?.classList.toggle("hidden", resumen);
+  $("btnVistaResumenGastos")?.classList.toggle("active", resumen);
+  $("btnVistaCargaGastos")?.classList.toggle("active", !resumen);
+
+  if (resumen) renderResumenSemanalGastos();
+}
+
 function renderGastosAdministracion() {
+  renderResumenSemanalGastos();
   const caja = gastosCajaDelMesAdministracion();
   const manuales = gastosManualesDelMesAdministracion();
 
@@ -9210,8 +9362,12 @@ function activarTabAdministracion(nombre = "resumen", opciones = {}) {
     return false;
   }
   switch (nombre) {
-    case "resumen": case "ingresos": case "gastos": case "presupuesto":
+    case "resumen": case "ingresos": case "presupuesto":
       renderAdministracionFinanciera(); break;
+    case "gastos":
+      renderAdministracionFinanciera();
+      mostrarVistaGastos("resumen");
+      break;
     case "caja":
       cajaAdminActivo = true; renderCajaAdminSeguro(); break;
     case "usuarios": case "dispositivos": case "auditoria": case "backup":
@@ -9299,6 +9455,20 @@ function iniciarModuloAdministracion() {
   $("btnNuevoIngresoAdministracion")?.addEventListener("click", () => mostrarFormularioAdministracion("ingreso"));
   $("btnCancelarIngresoAdministracion")?.addEventListener("click", () => ocultarFormularioAdministracion("ingreso"));
   $("btnGuardarIngresoAdministracion")?.addEventListener("click", guardarIngresoAdministracion);
+
+  $("btnVistaResumenGastos")?.addEventListener("click", () => mostrarVistaGastos("resumen"));
+  $("btnVistaCargaGastos")?.addEventListener("click", () => mostrarVistaGastos("carga"));
+
+  $("filtrosCategoriasGastos")?.addEventListener("click", evento => {
+    const boton = evento.target.closest("[data-gasto-categoria]");
+    if (!boton) return;
+
+    filtroCategoriaGastosActual = boton.dataset.gastoCategoria || "Todos";
+    $("filtrosCategoriasGastos")?.querySelectorAll("button").forEach(item => {
+      item.classList.toggle("active", item === boton);
+    });
+    renderResumenSemanalGastos();
+  });
 
   $("btnNuevoGastoAdministracion")?.addEventListener("click", () => mostrarFormularioAdministracion("gasto"));
   $("btnCancelarGastoAdministracion")?.addEventListener("click", () => ocultarFormularioAdministracion("gasto"));
