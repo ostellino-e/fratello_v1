@@ -9566,7 +9566,7 @@ function renderResumenClientesExternos() {
     "Otro": 0
   };
 
-  const tarjetaPanaderia = `<details class="ingresoClienteCard ingresoClientePanaderia" open>
+  const tarjetaPanaderia = `<details class="ingresoClienteCard ingresoClientePanaderia">
     <summary>
       <span>
         <strong>🥖 Panadería Fratello</strong>
