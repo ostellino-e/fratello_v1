@@ -9547,15 +9547,49 @@ function renderResumenClientesExternos() {
   const host = $("tarjetasClientesExternos");
   if (!host) return;
 
+  const esClientePanaderiaFratello = nombre => {
+    const normalizado = normalizarPedidoInteligente(String(nombre || ""));
+    return normalizado === "panaderia fratello";
+  };
+
   const clientes = [...administracionFinanciera.clientesExternos]
+    .filter(cliente => !esClientePanaderiaFratello(cliente.nombre))
     .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), "es"));
 
-  if (!clientes.length) {
-    host.innerHTML = adminFinVacio("Todavía no agregaste clientes externos.");
-    return;
-  }
+  const efectivoCaja = caja.reduce((s, item) => s + adminFinMonto(item.efectivo), 0);
+  const transferenciasCaja = caja.reduce((s, item) => s + adminFinMonto(item.transferencias), 0);
+  const mediosCaja = {
+    "Efectivo": efectivoCaja,
+    "Transferencia": transferenciasCaja,
+    "Mercado Pago": 0,
+    "Cheque": 0,
+    "Otro": 0
+  };
 
-  host.innerHTML = clientes.map(cliente => {
+  const tarjetaPanaderia = `<details class="ingresoClienteCard ingresoClientePanaderia" open>
+    <summary>
+      <span>
+        <strong>🥖 Panadería Fratello</strong>
+        <small>Ingresos automáticos de Caja</small>
+        ${htmlDesgloseMediosAdministracion(mediosCaja, true)}
+      </span>
+      <b>${adminFinDinero(totalCaja)}</b>
+    </summary>
+    <div class="ingresoClienteDetalle">
+      ${caja.length
+        ? caja.map(cierre => `<div class="ingresoClientePago">
+            <span>
+              <strong>${adminFinEscapar(cierre.fecha)}</strong>
+              <small>${adminFinEscapar(cierre.descripcion || "Cierre de Caja")}</small>
+            </span>
+            <b>${adminFinDinero(cierre.monto)}</b>
+          </div>`).join("")
+        : `<div class="ingresoClienteVacio">No hay cierres de Caja cargados en este mes.</div>`
+      }
+    </div>
+  </details>`;
+
+  const tarjetasClientes = clientes.map(cliente => {
     const pagos = ingresos
       .filter(item => String(item.cliente || "").trim().toLowerCase() ===
         String(cliente.nombre || "").trim().toLowerCase())
@@ -9591,6 +9625,8 @@ function renderResumenClientesExternos() {
       </div>
     </details>`;
   }).join("");
+
+  host.innerHTML = tarjetaPanaderia + tarjetasClientes;
 }
 
 function mostrarVistaIngresos(tipo = "resumen") {

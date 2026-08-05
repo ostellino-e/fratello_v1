@@ -1,23 +1,15 @@
-# Fratello v5.2.3 — Ingresos completos y Transferencia de dinero
+# Fratello v5.2.4 — Tarjeta automática de Panadería Fratello
 
-## Bug corregido en Ingresos
-- El total mensual ahora incluye:
-  - cierres de Caja de Panadería Fratello;
-  - pagos cobrados de clientes externos.
-- Se muestran por separado Caja y clientes externos.
-- El total general conserva el desglose por medio de pago.
-
-## Transferencia de dinero
-- Se agregó únicamente en Administración > Resumen.
-- Permite mover dinero entre:
-  - Efectivo
-  - Transferencia
-  - Cheque
-  - Mercado Pago
-- No modifica ventas, ingresos totales, gastos ni ganancia.
-- Solamente cambia la composición por medio de pago.
-- Guarda fecha, observación e historial.
-- Se puede eliminar un movimiento si fue cargado por error.
+## Corrección
+- La tarjeta Panadería Fratello dentro del listado inferior de Ingresos ahora toma los datos reales de Caja.
+- Muestra:
+  - efectivo de Caja;
+  - transferencias de Caja;
+  - total mensual de Caja;
+  - detalle de cierres por fecha y turno.
+- La tarjeta aparece primera.
+- Se evita mostrar una tarjeta manual duplicada llamada “Panadería Fratello” con valores en cero.
+- Los demás clientes externos continúan funcionando igual.
 
 ## Módulos no modificados
 - Pedidos
@@ -25,6 +17,7 @@
 - Caja
 - Gastos
 - Presupuesto
+- Transferencia de dinero
 
 ## Versión esperada
-v5.2.3
+v5.2.4

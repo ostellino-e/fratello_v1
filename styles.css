@@ -4724,3 +4724,14 @@ body.modal-open{
   .moneyTransferRow{grid-template-columns:1fr auto}
   .moneyTransferRow button{grid-column:1/-1}
 }
+
+
+/* Fratello v5.2.4 — tarjeta automática de Panadería Fratello */
+.ingresoClientePanaderia{
+  border-color:#b9d8ca;
+  background:#fbfffd;
+}
+.ingresoClientePanaderia summary b{
+  background:#dff1e8;
+  color:#195b43;
+}
