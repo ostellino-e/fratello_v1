@@ -4632,3 +4632,95 @@ body.modal-open{
     font-size:9.5px!important;
   }
 }
+
+
+/* Fratello v5.2.3 — Ingresos completos y Transferencia de dinero */
+.ingresosOrigenCards{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+  margin-bottom:12px;
+}
+.ingresosOrigenCards article{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:14px;
+  border:1px solid #dfd2c5;
+  border-radius:12px;
+  background:#fff;
+}
+.ingresosOrigenCards span{font-weight:800;color:#62574e}
+.ingresosOrigenCards strong{font-size:18px;white-space:nowrap}
+
+.adminMoneyTransfer{
+  max-width:1120px;
+  margin:14px auto 0;
+  padding:16px 18px;
+  border:1px solid #dfd1c4;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(61,42,26,.08);
+}
+.moneyTransferForm{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid #eadfd5;
+}
+.moneyTransferGrid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+.moneyTransferGrid label{
+  display:grid;
+  gap:6px;
+  font-weight:800;
+  color:#51473f;
+}
+.moneyTransferGrid label.wide{grid-column:1/-1}
+.moneyTransferGrid input,
+.moneyTransferGrid select{
+  width:100%;
+  min-height:42px;
+  margin:0;
+  padding:7px 9px;
+  border:1px solid #d8cabb;
+  border-radius:9px;
+  background:#fff;
+}
+.moneyTransferActions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:11px;
+}
+.moneyTransferHistory{
+  display:grid;
+  gap:7px;
+  margin-top:12px;
+}
+.moneyTransferHistory h4{margin:0 0 2px}
+.moneyTransferRow{
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  align-items:center;
+  gap:12px;
+  padding:10px 11px;
+  border:1px solid #ece2d9;
+  border-radius:10px;
+  background:#fcfaf8;
+}
+.moneyTransferRow span{display:grid;gap:3px}
+.moneyTransferRow small{color:#786d63}
+.moneyTransferRow b{white-space:nowrap}
+.moneyTransferRow button{min-height:31px;padding:5px 8px;font-size:10px}
+
+@media(max-width:650px){
+  .ingresosOrigenCards{grid-template-columns:1fr}
+  .moneyTransferGrid{grid-template-columns:1fr 1fr}
+  .moneyTransferGrid label.wide{grid-column:1/-1}
+  .moneyTransferRow{grid-template-columns:1fr auto}
+  .moneyTransferRow button{grid-column:1/-1}
+}

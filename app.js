@@ -3397,7 +3397,10 @@ function escucharCambiosNube() {
           plataRealManual: data.administracionFinanciera.plataRealManual &&
             typeof data.administracionFinanciera.plataRealManual === "object"
             ? data.administracionFinanciera.plataRealManual
-            : (administracionFinanciera.plataRealManual || {})
+            : (administracionFinanciera.plataRealManual || {}),
+          transferenciasDinero: Array.isArray(data.administracionFinanciera.transferenciasDinero)
+            ? data.administracionFinanciera.transferenciasDinero
+            : (administracionFinanciera.transferenciasDinero || [])
         };
         guardarAdministracionLocal();
         renderAdministracionFinanciera();
@@ -8775,7 +8778,8 @@ let administracionFinanciera = {
   clientesExternosEliminados: [],
   gastosManuales: [],
   presupuestos: [],
-  plataRealManual: {}
+  plataRealManual: {},
+  transferenciasDinero: []
 };
 let administracionPrivadaActiva = false;
 let temporizadorAdministracion = null;
@@ -8830,7 +8834,10 @@ function cargarAdministracionLocal() {
       presupuestos: Array.isArray(guardado.presupuestos) ? guardado.presupuestos : [],
       plataRealManual: guardado.plataRealManual && typeof guardado.plataRealManual === "object"
         ? guardado.plataRealManual
-        : {}
+        : {},
+      transferenciasDinero: Array.isArray(guardado.transferenciasDinero)
+        ? guardado.transferenciasDinero
+        : []
     };
   } catch (error) {
     console.error("No se pudo cargar Administración:", error);
@@ -9033,6 +9040,96 @@ function adminFinTabla(encabezados, filas) {
     </div>`;
 }
 
+function transferenciasDineroDelMes(mes = mesSeleccionadoAdministracion()) {
+  return (administracionFinanciera.transferenciasDinero || [])
+    .filter(item => String(item.fecha || "").slice(0, 7) === mes)
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+}
+
+function aplicarTransferenciasEntreMedios(totales, movimientos = transferenciasDineroDelMes()) {
+  const resultado = {
+    "Efectivo": adminFinMonto(totales?.["Efectivo"]),
+    "Transferencia": adminFinMonto(totales?.["Transferencia"]),
+    "Mercado Pago": adminFinMonto(totales?.["Mercado Pago"]),
+    "Cheque": adminFinMonto(totales?.["Cheque"]),
+    "Otro": adminFinMonto(totales?.["Otro"])
+  };
+
+  (movimientos || []).forEach(item => {
+    const desde = normalizarMedioPagoAdministracion(item.desde);
+    const hacia = normalizarMedioPagoAdministracion(item.hacia);
+    const monto = adminFinMonto(item.monto);
+    resultado[desde] = adminFinMonto(resultado[desde]) - monto;
+    resultado[hacia] = adminFinMonto(resultado[hacia]) + monto;
+  });
+
+  return resultado;
+}
+
+function guardarTransferenciaDinero() {
+  const desde = $("transferenciaDineroDesde")?.value || "Efectivo";
+  const hacia = $("transferenciaDineroHacia")?.value || "Transferencia";
+  const monto = adminFinMonto($("transferenciaDineroMonto")?.value);
+  const fecha = $("transferenciaDineroFecha")?.value || adminFinHoy();
+  const observacion = String($("transferenciaDineroObservacion")?.value || "").trim();
+
+  if (desde === hacia) {
+    alert("Elegí dos medios de dinero diferentes.");
+    return;
+  }
+  if (!monto) {
+    alert("Ingresá un monto válido.");
+    return;
+  }
+
+  const base = datosResumenMovilAdministracion();
+  const disponible = adminFinMonto(base.ingresosPorMedio?.[normalizarMedioPagoAdministracion(desde)]);
+  if (monto > disponible) {
+    alert(`No podés transferir más de ${adminFinDinero(disponible)} desde ${desde}.`);
+    return;
+  }
+
+  administracionFinanciera.transferenciasDinero ||= [];
+  administracionFinanciera.transferenciasDinero.push({
+    id: adminFinId("transf"),
+    fecha,
+    desde,
+    hacia,
+    monto,
+    observacion,
+    creadoEn: new Date().toISOString()
+  });
+
+  guardarAdministracion();
+  renderResumenMovilAdministracion();
+}
+
+function eliminarTransferenciaDinero(id) {
+  if (!confirm("¿Eliminar esta transferencia de dinero?")) return;
+  administracionFinanciera.transferenciasDinero =
+    (administracionFinanciera.transferenciasDinero || []).filter(item => item.id !== id);
+  guardarAdministracion();
+  renderResumenMovilAdministracion();
+}
+
+function renderHistorialTransferenciasDinero() {
+  const host = $("historialTransferenciasDinero");
+  if (!host) return;
+  const movimientos = transferenciasDineroDelMes();
+
+  host.innerHTML = movimientos.length
+    ? `<h4>Historial de transferencias</h4>${movimientos.map(item => `
+        <div class="moneyTransferRow">
+          <span>
+            <strong>${adminFinEscapar(item.desde)} → ${adminFinEscapar(item.hacia)}</strong>
+            <small>${adminFinEscapar(item.fecha)}${item.observacion ? ` · ${adminFinEscapar(item.observacion)}` : ""}</small>
+          </span>
+          <b>${adminFinDinero(item.monto)}</b>
+          <button type="button" onclick="eliminarTransferenciaDinero('${item.id}')">Eliminar</button>
+        </div>`).join("")}`
+    : "";
+}
+
 function datosResumenMovilAdministracion() {
   const r = resumenNumericoAdministracion();
   const caja = ingresosCajaDelMesAdministracion();
@@ -9068,13 +9165,14 @@ function datosResumenMovilAdministracion() {
   const gastosManuales = gastosManualesDelMesAdministracion()
     .filter(item => item.pagado !== false);
 
-  const ingresosPorMedio = totalesPorMedioAdministracion([
+  const ingresosPorMedioBase = totalesPorMedioAdministracion([
     ...ingresosCaja.flatMap(item => [
       { monto: item.efectivo, medio: "Efectivo" },
       { monto: item.transferencias, medio: "Transferencia" }
     ]),
     ...ingresosExternos
   ]);
+  const ingresosPorMedio = aplicarTransferenciasEntreMedios(ingresosPorMedioBase);
 
   const gastosPorMedio = totalesPorMedioAdministracion([
     ...gastosCaja,
@@ -9170,7 +9268,47 @@ function renderResumenMovilAdministracion() {
         </label>
       </div>
       <button id="btnGuardarPlataRealManual" class="primary" type="button">Guardar plata real</button>
+    </section>
+
+    <section class="adminMoneyTransfer">
+      <button id="btnAbrirTransferenciaDinero" class="primary" type="button">🔄 Transferencia de dinero</button>
+      <div id="formTransferenciaDinero" class="moneyTransferForm hidden">
+        <div class="moneyTransferGrid">
+          <label>Desde
+            <select id="transferenciaDineroDesde">
+              <option>Efectivo</option>
+              <option>Transferencia</option>
+              <option>Cheque</option>
+              <option>Mercado Pago</option>
+            </select>
+          </label>
+          <label>Hacia
+            <select id="transferenciaDineroHacia">
+              <option>Transferencia</option>
+              <option>Efectivo</option>
+              <option>Cheque</option>
+              <option>Mercado Pago</option>
+            </select>
+          </label>
+          <label>Monto
+            <input id="transferenciaDineroMonto" type="number" min="1" step="1" inputmode="decimal" placeholder="0">
+          </label>
+          <label>Fecha
+            <input id="transferenciaDineroFecha" type="date" value="${adminFinHoy()}">
+          </label>
+          <label class="wide">Observación
+            <input id="transferenciaDineroObservacion" type="text" placeholder="Ej.: Cambio con cuenta del gimnasio">
+          </label>
+        </div>
+        <div class="moneyTransferActions">
+          <button id="btnCancelarTransferenciaDinero" type="button">Cancelar</button>
+          <button id="btnGuardarTransferenciaDinero" class="primary" type="button">Confirmar transferencia</button>
+        </div>
+      </div>
+      <div id="historialTransferenciasDinero" class="moneyTransferHistory"></div>
     </section>`;
+
+  renderHistorialTransferenciasDinero();
 }
 
 function renderResumenAdministracion() {
@@ -9377,14 +9515,33 @@ function renderResumenClientesExternos() {
   asegurarClientesExternosDesdeIngresos();
   const ingresos = ingresosExternosDelMesAdministracion()
     .filter(item => item.cobrado !== false);
+  const caja = ingresosCajaDelMesAdministracion();
 
-  const total = ingresos.reduce((s, item) => s + adminFinMonto(item.monto), 0);
-  if ($("totalIngresosExternosResumen")) {
-    $("totalIngresosExternosResumen").textContent = adminFinDinero(total);
+  const totalCaja = caja.reduce((s, item) => s + adminFinMonto(item.monto), 0);
+  const totalExternos = ingresos.reduce((s, item) => s + adminFinMonto(item.monto), 0);
+  const total = totalCaja + totalExternos;
+
+  const mediosBase = totalesPorMedioAdministracion([
+    ...caja.flatMap(item => [
+      { monto: item.efectivo, medio: "Efectivo" },
+      { monto: item.transferencias, medio: "Transferencia" }
+    ]),
+    ...ingresos
+  ]);
+  const medios = aplicarTransferenciasEntreMedios(mediosBase);
+
+  if ($("totalIngresosMesResumen")) {
+    $("totalIngresosMesResumen").textContent = adminFinDinero(total);
   }
-  if ($("desgloseIngresosExternosResumen")) {
-    $("desgloseIngresosExternosResumen").innerHTML =
-      htmlDesgloseMediosAdministracion(totalesPorMedioAdministracion(ingresos), true);
+  if ($("desgloseIngresosMesResumen")) {
+    $("desgloseIngresosMesResumen").innerHTML =
+      htmlDesgloseMediosAdministracion(medios, true);
+  }
+  if ($("resumenOrigenIngresos")) {
+    $("resumenOrigenIngresos").innerHTML = `
+      <article><span>🥖 Panadería Fratello · Caja</span><strong>${adminFinDinero(totalCaja)}</strong></article>
+      <article><span>👥 Clientes externos</span><strong>${adminFinDinero(totalExternos)}</strong></article>
+    `;
   }
 
   const host = $("tarjetasClientesExternos");
@@ -10152,6 +10309,18 @@ function iniciarModuloAdministracion() {
   $("resumenMovilAdministracion")?.addEventListener("click", evento => {
     if (evento.target.closest("#btnGuardarPlataRealManual")) {
       guardarPlataRealManualDesdeResumen();
+      return;
+    }
+    if (evento.target.closest("#btnAbrirTransferenciaDinero")) {
+      $("formTransferenciaDinero")?.classList.toggle("hidden");
+      return;
+    }
+    if (evento.target.closest("#btnCancelarTransferenciaDinero")) {
+      $("formTransferenciaDinero")?.classList.add("hidden");
+      return;
+    }
+    if (evento.target.closest("#btnGuardarTransferenciaDinero")) {
+      guardarTransferenciaDinero();
     }
   });
   $("btnVolverMenuAdministracion")?.addEventListener("click", mostrarMenuAdministracion);
@@ -10201,6 +10370,7 @@ function iniciarModuloAdministracion() {
 }
 
 window.editarIngresoAdministracion = editarIngresoAdministracion;
+window.eliminarTransferenciaDinero = eliminarTransferenciaDinero;
 window.editarClienteExterno = editarClienteExterno;
 window.eliminarClienteExterno = eliminarClienteExterno;
 window.eliminarIngresoAdministracion = eliminarIngresoAdministracion;
