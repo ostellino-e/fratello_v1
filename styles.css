@@ -4735,3 +4735,79 @@ body.modal-open{
   background:#dff1e8;
   color:#195b43;
 }
+
+
+/* Fratello v5.2.6 — Auditoría de cierres de Caja */
+.cajaAuditoriaInfo{position:relative}
+.cajaAuditoriaInfo > summary{
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  padding:0;
+  border:1px solid #b9cfc5;
+  border-radius:50%;
+  background:#edf7f2;
+  color:#1f5b47;
+  font-family:Georgia,serif;
+  font-size:18px;
+  font-weight:900;
+  cursor:pointer;
+  list-style:none;
+}
+.cajaAuditoriaInfo > summary::-webkit-details-marker{display:none}
+.cajaAuditoriaPanel{
+  position:absolute;
+  z-index:30;
+  top:40px;
+  right:0;
+  width:min(430px,82vw);
+  max-height:430px;
+  overflow:auto;
+  padding:13px;
+  border:1px solid #d6c8ba;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 14px 34px rgba(45,35,27,.2);
+}
+.cajaAuditoriaPanel > div{
+  display:grid;
+  gap:3px;
+  padding:8px 0;
+  border-bottom:1px solid #eee5dc;
+}
+.cajaAuditoriaPanel span{
+  color:#75695f;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+.cajaAuditoriaPanel strong{font-size:12px}
+.cajaAuditoriaEventos p{
+  display:grid;
+  gap:2px;
+  margin:6px 0 0;
+  padding:8px;
+  border-radius:8px;
+  background:#faf7f4;
+  font-size:11px;
+}
+.cajaAuditoriaEventos small{color:#766b62}
+.cajaAuditoriaAnterior{
+  margin:8px 0 0;
+  padding:9px;
+  border-radius:8px;
+  background:#fff8dd;
+  color:#705b14;
+  font-size:11px;
+}
+@media(max-width:650px){
+  .cajaAuditoriaPanel{
+    position:fixed;
+    top:18%;
+    right:5%;
+    left:5%;
+    width:auto;
+    max-height:62vh;
+  }
+}

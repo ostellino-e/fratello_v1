@@ -2629,6 +2629,7 @@ function datosActuales() {
     exclusionesPedidosFijos,
     cierresCaja,
     cierresCajaEliminados,
+    auditoriaCaja,
     personasCaja,
     configuracionCaja,
     administracionFinanciera,
@@ -2719,11 +2720,12 @@ function firmaCierresCaja(lista = cierresCaja) {
 
 let ultimaFirmaCajaRenderizada = "";
 
-function aplicarCierresCajaDesdeNube(listaRemota, eliminadosRemotos = []) {
+function aplicarCierresCajaDesdeNube(listaRemota, eliminadosRemotos = [], auditoriaRemota = []) {
   cierresCajaEliminados = fusionarCierresCajaEliminados(
     eliminadosRemotos,
     cierresCajaEliminados
   );
+  auditoriaCaja = fusionarAuditoriaCaja(auditoriaRemota, auditoriaCaja);
   const fusionados = fusionarCierresCaja(
     listaRemota,
     cierresCaja,
@@ -2870,6 +2872,8 @@ async function cargarDesdeNube() {
         data.cierresCajaEliminados,
         cierresCajaEliminados
       );
+      auditoriaCaja = fusionarAuditoriaCaja(data.auditoriaCaja, auditoriaCaja);
+      auditoriaCaja = fusionarAuditoriaCaja(data.auditoriaCaja, auditoriaCaja);
       cierresCaja = fusionarCierresCaja(
         data.cierresCaja,
         cierresCaja,
@@ -3365,7 +3369,7 @@ function escucharCambiosNube() {
       jornadasCerradas = Array.isArray(data.jornadasCerradas) ? data.jornadasCerradas : jornadasCerradas;
 
       if (Array.isArray(data.cierresCaja)) {
-        aplicarCierresCajaDesdeNube(data.cierresCaja, data.cierresCajaEliminados);
+        aplicarCierresCajaDesdeNube(data.cierresCaja, data.cierresCajaEliminados, data.auditoriaCaja);
       }
       if (Array.isArray(data.personasCaja) && data.personasCaja.length) {
         personasCaja = data.personasCaja;
@@ -10423,6 +10427,7 @@ window.eliminarPresupuestoAdministracion = eliminarPresupuestoAdministracion;
 const CAJA_STORAGE_KEY = "fratello_caja_v390";
 let cierresCaja = [];
 let cierresCajaEliminados = [];
+let auditoriaCaja = [];
 let personasCaja = ["Sofía", "María"];
 let configuracionCaja = { pinAdmin: "2580" };
 let gastosCajaEdicion = [];
@@ -10466,6 +10471,9 @@ function cargarCajaLocal() {
     cierresCajaEliminados = Array.isArray(guardado.cierresCajaEliminados)
       ? guardado.cierresCajaEliminados
       : [];
+    auditoriaCaja = Array.isArray(guardado.auditoriaCaja)
+      ? guardado.auditoriaCaja
+      : [];
     personasCaja = Array.isArray(guardado.personasCaja) && guardado.personasCaja.length
       ? guardado.personasCaja
       : ["Sofía", "María"];
@@ -10481,6 +10489,7 @@ function guardarCajaLocal() {
   localStorage.setItem(CAJA_STORAGE_KEY, JSON.stringify({
     cierresCaja,
     cierresCajaEliminados,
+    auditoriaCaja,
     personasCaja,
     configuracionCaja
   }));
@@ -10628,20 +10637,159 @@ function validarCierreCaja() {
   return "";
 }
 
-function guardarCierreCaja() {
-  const estado = $("estadoCierreCaja");
-  const error = validarCierreCaja();
+function idDispositivoCaja() {
+  const clave = "fratello_dispositivo_caja_id";
+  let id = localStorage.getItem(clave);
+  if (!id) {
+    id = `DISP-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+    localStorage.setItem(clave, id);
+  }
+  return id;
+}
 
+function descripcionDispositivoCaja() {
+  const ua = navigator.userAgent || "";
+  const sistema = /Android/i.test(ua) ? "Android"
+    : /iPhone|iPad|iPod/i.test(ua) ? "iPhone/iPad"
+    : /Windows/i.test(ua) ? "Windows"
+    : /Macintosh/i.test(ua) ? "Mac"
+    : "Dispositivo";
+  const navegador = /Edg/i.test(ua) ? "Edge"
+    : /Chrome/i.test(ua) ? "Chrome"
+    : /Safari/i.test(ua) ? "Safari"
+    : /Firefox/i.test(ua) ? "Firefox"
+    : "Navegador";
+  return `${idDispositivoCaja()} · ${sistema} · ${navegador}`;
+}
+
+function fusionarAuditoriaCaja(remota = [], local = []) {
+  const mapa = new Map();
+  [...(Array.isArray(remota) ? remota : []), ...(Array.isArray(local) ? local : [])]
+    .forEach(item => {
+      if (!item) return;
+      const id = String(item.id || `${item.fecha || ""}_${item.turno || ""}_${item.timestamp || ""}_${item.resultado || ""}`);
+      if (!id) return;
+      mapa.set(id, { ...item, id });
+    });
+  return [...mapa.values()].sort((a, b) =>
+    String(a.timestamp || "").localeCompare(String(b.timestamp || ""))
+  );
+}
+
+function registrarEventoAuditoriaCaja({ fecha, turno, persona = "", resultado, detalle = "", cierreId = "" }) {
+  const evento = {
+    id: `AUD-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    cierreId: cierreId || idCierreCaja(fecha, turno),
+    fecha,
+    turno,
+    persona,
+    resultado,
+    detalle,
+    timestamp: new Date().toISOString(),
+    dispositivo: descripcionDispositivoCaja(),
+    online: navigator.onLine
+  };
+  auditoriaCaja = fusionarAuditoriaCaja(auditoriaCaja, [evento]);
+  guardarCajaLocal();
+  return evento;
+}
+
+function eventosAuditoriaCierreCaja(fecha, turno) {
+  const id = idCierreCaja(fecha, turno);
+  return auditoriaCaja
+    .filter(item => item.cierreId === id || (item.fecha === fecha && item.turno === turno))
+    .sort((a, b) => String(a.timestamp || "").localeCompare(String(b.timestamp || "")));
+}
+
+function formatoFechaHoraAuditoriaCaja(valor) {
+  if (!valor) return "Sin registro";
+  const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return "Sin registro";
+  return fecha.toLocaleString("es-AR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
+  });
+}
+
+function etiquetaResultadoAuditoriaCaja(resultado) {
+  const mapa = {
+    intento: "Intento iniciado",
+    validacion_error: "No se pudo guardar",
+    guardado_local: "Guardado en el dispositivo",
+    sincronizado: "Sincronizado online",
+    sincronizacion_error: "Error de sincronización",
+    editado: "Cierre editado"
+  };
+  return mapa[resultado] || resultado || "Evento";
+}
+
+function htmlAuditoriaCierreCaja(fecha, turno, cierre) {
+  const eventos = eventosAuditoriaCierreCaja(fecha, turno);
+  const intentos = eventos.filter(item => item.resultado === "intento").length;
+  const primerIntento = eventos.find(item => item.resultado === "intento");
+  const primerGuardado = eventos.find(item =>
+    item.resultado === "guardado_local" || item.resultado === "sincronizado"
+  );
+  const ultimoEvento = eventos[eventos.length - 1];
+
+  const creado = cierre?.creado || primerGuardado?.timestamp || "";
+  const actualizado = cierre?.actualizado || ultimoEvento?.timestamp || "";
+  const dispositivo = primerGuardado?.dispositivo || primerIntento?.dispositivo ||
+    "No registrado: cierre anterior a v5.2.6";
+
+  return `<details class="cajaAuditoriaInfo">
+    <summary title="Información y auditoría del cierre">ⓘ</summary>
+    <div class="cajaAuditoriaPanel">
+      <div><span>Fecha y hora de carga</span><strong>${formatoFechaHoraAuditoriaCaja(creado)}</strong></div>
+      <div><span>Última modificación</span><strong>${formatoFechaHoraAuditoriaCaja(actualizado)}</strong></div>
+      <div><span>Dispositivo</span><strong>${escaparCaja(dispositivo)}</strong></div>
+      <div><span>Intentos registrados</span><strong>${intentos || (cierre?.creado ? "No disponibles para carga anterior" : "0")}</strong></div>
+      ${eventos.length ? `<div class="cajaAuditoriaEventos">
+        <span>Historial</span>
+        ${eventos.map(evento => `<p>
+          <b>${formatoFechaHoraAuditoriaCaja(evento.timestamp)}</b>
+          · ${escaparCaja(etiquetaResultadoAuditoriaCaja(evento.resultado))}
+          ${evento.detalle ? `· ${escaparCaja(evento.detalle)}` : ""}
+          <small>${escaparCaja(evento.dispositivo || "")}</small>
+        </p>`).join("")}
+      </div>` : `<p class="cajaAuditoriaAnterior">
+        Este cierre ya existía antes de incorporar la auditoría. La fecha de creación y actualización proviene del registro original, pero no hay historial de intentos ni dispositivo.
+      </p>`}
+    </div>
+  </details>`;
+}
+
+async function guardarCierreCaja() {
+  const estado = $("estadoCierreCaja");
+  const fecha = $("cajaFecha")?.value || "";
+  const turno = $("cajaTurno")?.value || "";
+  const persona = $("cajaPersona")?.value || "";
+
+  registrarEventoAuditoriaCaja({
+    fecha,
+    turno,
+    persona,
+    resultado: "intento",
+    detalle: "Se presionó Guardar cierre"
+  });
+
+  const error = validarCierreCaja();
   if (error) {
+    registrarEventoAuditoriaCaja({
+      fecha,
+      turno,
+      persona,
+      resultado: "validacion_error",
+      detalle: error
+    });
     if (estado) {
       estado.textContent = `⚠️ ${error}`;
       estado.className = "cajaSaveStatus error";
     }
+    guardarEnNube().catch(() => {});
     return;
   }
 
-  const fecha = $("cajaFecha").value;
-  const turno = $("cajaTurno").value;
   const id = idCierreCaja(fecha, turno);
   cierresCajaEliminados = cierresCajaEliminados.filter(
     item => claveCierreCajaEliminado(item) !== id
@@ -10653,7 +10801,7 @@ function guardarCierreCaja() {
     id,
     fecha,
     turno,
-    persona: $("cajaPersona").value,
+    persona,
     efectivo: montoCaja($("cajaEfectivo").value),
     transferencias: montoCaja($("cajaTransferencias").value),
     gastos: gastosCajaEdicion.map(gasto => ({
@@ -10662,22 +10810,54 @@ function guardarCierreCaja() {
     })),
     observacion: String($("cajaObservacion")?.value || "").trim(),
     creado: anterior?.creado || ahora,
-    actualizado: ahora
+    actualizado: ahora,
+    dispositivoCarga: anterior?.dispositivoCarga || descripcionDispositivoCaja(),
+    dispositivoUltimaEdicion: descripcionDispositivoCaja()
   };
 
   const indice = cierresCaja.findIndex(item => item.id === id);
   if (indice >= 0) cierresCaja[indice] = cierre;
   else cierresCaja.push(cierre);
 
+  registrarEventoAuditoriaCaja({
+    fecha,
+    turno,
+    persona,
+    resultado: anterior ? "editado" : "guardado_local",
+    detalle: anterior ? "Se modificó un cierre existente" : "Cierre guardado localmente",
+    cierreId: id
+  });
+
   guardarCajaLocal();
   renderCajaAdmin();
   renderDashboardCaja();
-  Promise.resolve(guardarEnNube())
-    .then(() => {
-      renderCajaAdmin();
-      renderDashboardCaja();
-    })
-    .catch(error => console.error("Error sincronizando cierre de Caja:", error));
+
+  try {
+    await Promise.resolve(guardarEnNube());
+    registrarEventoAuditoriaCaja({
+      fecha,
+      turno,
+      persona,
+      resultado: "sincronizado",
+      detalle: "Cierre confirmado en Firebase",
+      cierreId: id
+    });
+    guardarCajaLocal();
+    guardarEnNube().catch(() => {});
+    renderCajaAdmin();
+    renderDashboardCaja();
+  } catch (errorSync) {
+    registrarEventoAuditoriaCaja({
+      fecha,
+      turno,
+      persona,
+      resultado: "sincronizacion_error",
+      detalle: String(errorSync?.message || "No se pudo sincronizar"),
+      cierreId: id
+    });
+    guardarCajaLocal();
+    console.error("Error sincronizando cierre de Caja:", errorSync);
+  }
 
   if (estado) {
     estado.textContent = anterior
@@ -10686,23 +10866,13 @@ function guardarCierreCaja() {
     estado.className = "cajaSaveStatus success";
   }
 
-  // Dejar el formulario preparado para una carga nueva sin exponer los importes guardados.
   limpiarFormularioCaja({ conservarFechaTurno: true });
   const avisoGuardado = $("avisoCierreExistente");
   if (avisoGuardado) {
     avisoGuardado.textContent = `✅ El cierre del turno ${turnoTextoCaja(turno).toLowerCase()} de esta fecha ya fue cargado.`;
     avisoGuardado.classList.remove("hidden");
   }
-
-  // Restaurar el mensaje después de limpiar el formulario.
-  if (estado) {
-    estado.textContent = anterior
-      ? `✅ Cierre del turno ${turnoTextoCaja(turno).toLowerCase()} actualizado correctamente.`
-      : `✅ Cierre del turno ${turnoTextoCaja(turno).toLowerCase()} guardado correctamente.`;
-    estado.className = "cajaSaveStatus success";
-  }
 }
-
 
 function iniciarTemporizadorCajaAdmin() {
   detenerTemporizadorCajaAdmin();
@@ -11061,6 +11231,7 @@ function htmlDetalleTurnoCaja(fecha, turno, cierre) {
     <div class="cajaTurnoCabecera">
       <div><strong>${turnoTextoCaja(turno)}</strong><span>${escaparCaja(cierre.persona || "")}</span></div>
       <div class="cajaTurnoAcciones">
+        ${htmlAuditoriaCierreCaja(fecha, turno, cierre)}
         <button type="button" onclick="event.preventDefault();event.stopPropagation();window.abrirEditorTurnoCaja('${fecha}','${turno}')">✏️ Editar</button>
         <button type="button" class="danger" onclick="event.preventDefault();event.stopPropagation();window.eliminarCierreCajaAdmin('${fecha}','${turno}')">🗑 Eliminar</button>
       </div>
@@ -11363,6 +11534,14 @@ async function eliminarCierreCajaAdmin(fecha, turno) {
   )) return;
 
   const cierreId = idCierreCaja(fecha, turno);
+  registrarEventoAuditoriaCaja({
+    fecha,
+    turno,
+    persona: cierre.persona || "",
+    resultado: "eliminado",
+    detalle: "Cierre eliminado desde Administración",
+    cierreId
+  });
   cierresCajaEliminados = fusionarCierresCajaEliminados(
     cierresCajaEliminados,
     [{ id: cierreId, eliminadoEn: new Date().toISOString() }]
