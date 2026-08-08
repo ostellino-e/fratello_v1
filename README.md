@@ -1,23 +1,33 @@
-# Fratello v5.2.9 — Indicador de sincronización estable
+# Fratello v5.3.0 — Sincronización sin bucles
 
-## Corrección
-La sincronización multidispositivo de v5.2.8 se mantiene sin cambios.
+## Causa encontrada
+El motor antiguo de Firebase tenía un reintento automático sin límite.
+Si el documento general `fratello/estado` fallaba una vez de forma persistente,
+la app volvía a intentar cada 1,2 segundos indefinidamente.
 
-Se corrigió únicamente el indicador visual:
-- las sincronizaciones internas muy breves ya no muestran “Sincronizando...”;
-- “Sincronizando...” solo aparece si una operación tarda más de 1,8 segundos;
-- después de guardar correctamente vuelve automáticamente a “Online actualizado”;
-- si una sincronización realmente queda demorada, después de 12 segundos lo informa.
+Eso explicaba:
+- “Sincronizando...” de forma constante;
+- lentitud;
+- mensajes intermitentes de “Error al guardar online”.
+
+## Correcciones
+- El guardado general ahora tiene máximo 3 intentos.
+- Los reintentos usan espera progresiva en vez de repetirse cada 1,2 segundos.
+- Los errores permanentes de Firebase no se reintentan en bucle.
+- Caja y Administración continúan usando sus documentos separados.
+- Al abrir la app, Caja y Administración primero leen y fusionan Firebase.
+- Solo escriben al iniciar si realmente hay diferencias.
+- La carga inicial de Caja y Administración se hace en paralelo.
+- Se eliminó un segundo guardado completo de Caja que ocurría después de cada cierre.
+- Acciones de configuración de Caja que aún usaban el documento general ahora usan `caja_estado`.
+- La edición inline de Caja también usa la sincronización dedicada.
 
 ## No modificado
-- lógica de Caja
-- sincronización de Caja
-- Gastos
-- Ingresos
-- Administración
-- Pedidos
-- Tickets
-- Producción
+- lógica de Pedidos;
+- contenido de Pedidos;
+- Tickets;
+- Producción;
+- cálculos financieros.
 
 ## Versión esperada
-v5.2.9
+v5.3.0

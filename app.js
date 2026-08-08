@@ -2471,7 +2471,10 @@ function esEstadoSyncEstable(texto) {
     "Error recibiendo Caja",
     "Error recibiendo Administración",
     "Error de sincronización de Caja",
-    "Error de sincronización de Administración"
+    "Error de sincronización de Administración",
+    "Error online — requiere revisión",
+    "Online · guardado pendiente",
+    "Sin conexión — cambios guardados localmente"
   ].includes(texto);
 }
 
@@ -2845,10 +2848,27 @@ function aplicarCierresCajaDesdeNube(listaRemota, eliminadosRemotos = [], audito
 let temporizadorGuardadoNube = null;
 let guardadoNubeEnCurso = false;
 let guardadoNubePendiente = false;
+let intentosGuardadoNube = 0;
+const MAX_REINTENTOS_GUARDADO_NUBE = 3;
 
-function guardarEnNube() {
+function errorFirebaseReintentable(error) {
+  const codigo = String(error?.code || "").toLowerCase();
+  if (!codigo) return true;
+
+  const permanentes = [
+    "permission-denied",
+    "invalid-argument",
+    "failed-precondition",
+    "resource-exhausted",
+    "unauthenticated"
+  ];
+  return !permanentes.some(valor => codigo.includes(valor));
+}
+
+function guardarEnNube(esReintento = false) {
   if (!db || cargandoDesdeNube) return Promise.resolve(false);
 
+  if (!esReintento) intentosGuardadoNube = 0;
   guardadoNubePendiente = true;
   clearTimeout(temporizadorGuardadoNube);
 
@@ -2865,7 +2885,6 @@ function guardarEnNube() {
 
       try {
         const referencia = db.collection("fratello").doc("estado");
-        let cierresFusionados = cierresCaja;
 
         await db.runTransaction(async transaccion => {
           const snapshot = await transaccion.get(referencia);
@@ -2903,22 +2922,41 @@ function guardarEnNube() {
           );
         });
 
+        intentosGuardadoNube = 0;
         setEstadoSync("Guardado online");
         setTimeout(() => setEstadoSync("Online actualizado"), 900);
         resolve(true);
       } catch (error) {
         console.error("Error guardando en Firebase:", error);
-        setEstadoSync(navigator.onLine ? "Error al guardar online" : "Sin conexión — cambio pendiente");
-        guardadoNubePendiente = true;
+
+        intentosGuardadoNube += 1;
+        const reintentable = errorFirebaseReintentable(error);
+        const puedeReintentar =
+          navigator.onLine &&
+          reintentable &&
+          intentosGuardadoNube < MAX_REINTENTOS_GUARDADO_NUBE;
+
+        if (puedeReintentar) {
+          guardadoNubePendiente = true;
+          const demora = [2500, 7000, 15000][Math.max(0, intentosGuardadoNube - 1)] || 15000;
+          setEstadoSync(`Error temporal · reintento ${intentosGuardadoNube}/${MAX_REINTENTOS_GUARDADO_NUBE}`);
+          setTimeout(() => guardarEnNube(true), demora);
+        } else {
+          guardadoNubePendiente = false;
+          if (!navigator.onLine) {
+            setEstadoSync("Sin conexión — cambios guardados localmente");
+          } else if (!reintentable) {
+            setEstadoSync("Error online — requiere revisión");
+          } else {
+            setEstadoSync("Online · guardado pendiente");
+          }
+        }
+
         resolve(false);
       } finally {
         guardadoNubeEnCurso = false;
-
-        if (guardadoNubePendiente && navigator.onLine) {
-          setTimeout(() => guardarEnNube(), 1200);
-        }
       }
-    }, 300);
+    }, 350);
   });
 }
 async function cargarDesdeNube() {
@@ -10895,7 +10933,6 @@ async function guardarCierreCaja() {
       cierreId: id
     });
     guardarCajaLocal();
-    guardarCajaModuloEnNube().catch(() => {});
     renderCajaAdmin();
     renderDashboardCaja();
   } catch (errorSync) {
@@ -11088,7 +11125,7 @@ function agregarPersonaCaja(inputId = "nuevaPersonaCaja") {
   personasCaja.push(nombre);
   personasCaja.sort((a, b) => a.localeCompare(b, "es"));
   guardarCajaLocal();
-  guardarEnNube();
+  guardarCajaModuloEnNube();
   if (input) input.value = "";
   renderPersonasCaja();
 }
@@ -11099,7 +11136,7 @@ function eliminarPersonaCaja(indice) {
   if (!confirm(`¿Eliminar a ${nombre} de la lista?`)) return;
   personasCaja.splice(indice, 1);
   guardarCajaLocal();
-  guardarEnNube();
+  guardarCajaModuloEnNube();
   renderPersonasCaja();
 }
 
@@ -11133,7 +11170,7 @@ function cambiarPinCaja() {
 
   configuracionCaja.pinAdmin = nuevoPin;
   guardarCajaLocal();
-  guardarEnNube();
+  guardarCajaModuloEnNube();
 
   if (input) {
     input.value = "";
@@ -11562,7 +11599,7 @@ async function guardarEdicionTurnoCaja(fecha, turno, boton) {
   renderDashboardCaja();
 
   try {
-    await Promise.resolve(guardarEnNube());
+    await Promise.resolve(guardarCajaModuloEnNube());
     if (estado) estado.textContent = "✅ Cambios guardados.";
     abrirDetalleDiaCaja(fecha);
   } catch (error) {
@@ -11791,16 +11828,105 @@ function escucharModuloAdminNube() {
     });
 }
 
+function firmaModuloSync(valor) {
+  try {
+    return JSON.stringify(valor ?? null);
+  } catch {
+    return "";
+  }
+}
+
+async function cargarYFusionarCajaModulo() {
+  const ref = db.collection("fratello").doc("caja_estado");
+  const snap = await ref.get();
+  const remoto = snap.exists ? snap.data() : {};
+
+  cierresCajaEliminados = fusionarCierresCajaEliminados(
+    remoto.cierresCajaEliminados,
+    cierresCajaEliminados
+  );
+  auditoriaCaja = fusionarAuditoriaCaja(remoto.auditoriaCaja, auditoriaCaja);
+  cierresCaja = fusionarCierresCaja(
+    remoto.cierresCaja,
+    cierresCaja,
+    cierresCajaEliminados
+  );
+
+  if (Array.isArray(remoto.personasCaja) && remoto.personasCaja.length) {
+    personasCaja = [...new Set([...remoto.personasCaja, ...personasCaja])].sort((a,b) => a.localeCompare(b, "es"));
+  }
+  if (remoto.configuracionCaja && typeof remoto.configuracionCaja === "object") {
+    configuracionCaja = { ...remoto.configuracionCaja, ...configuracionCaja };
+  }
+
+  const fusionado = {
+    cierresCaja,
+    cierresCajaEliminados,
+    auditoriaCaja,
+    personasCaja,
+    configuracionCaja
+  };
+  const remotoComparable = {
+    cierresCaja: remoto.cierresCaja || [],
+    cierresCajaEliminados: remoto.cierresCajaEliminados || [],
+    auditoriaCaja: remoto.auditoriaCaja || [],
+    personasCaja: remoto.personasCaja || [],
+    configuracionCaja: remoto.configuracionCaja || {}
+  };
+
+  guardarCajaLocal();
+
+  if (!snap.exists || firmaModuloSync(fusionado) !== firmaModuloSync(remotoComparable)) {
+    await ref.set({ ...fusionado, actualizado: new Date().toISOString() }, { merge: true });
+  }
+}
+
+async function cargarYFusionarAdminModulo() {
+  const ref = db.collection("fratello").doc("administracion_estado");
+  const snap = await ref.get();
+  const remoto = snap.exists ? snap.data() : {};
+
+  administracionFinanciera = fusionarAdministracionFinancieraSync(
+    remoto.administracionFinanciera,
+    administracionFinanciera
+  );
+  guardarAdministracionLocal();
+
+  const fusionado = { administracionFinanciera };
+  const remotoComparable = {
+    administracionFinanciera: remoto.administracionFinanciera || {}
+  };
+
+  if (!snap.exists || firmaModuloSync(fusionado) !== firmaModuloSync(remotoComparable)) {
+    await ref.set(
+      { administracionFinanciera, actualizado: new Date().toISOString() },
+      { merge: true }
+    );
+  }
+}
+
 async function iniciarSincronizacionModulosFinancieros() {
   if (!db) return;
 
-  // Primero se publican/mezclan los datos locales existentes. Esto permite
-  // recuperar la información que quedó solamente en el celular de la panadería.
-  await guardarCajaModuloEnNube();
-  await guardarAdminModuloEnNube();
+  try {
+    setEstadoSync("Cargando online...");
+    await Promise.all([
+      cargarYFusionarCajaModulo(),
+      cargarYFusionarAdminModulo()
+    ]);
 
-  escucharModuloCajaNube();
-  escucharModuloAdminNube();
+    renderPersonasCaja();
+    renderCajaAdmin();
+    renderDashboardCaja();
+    renderAdministracionFinanciera();
+
+    escucharModuloCajaNube();
+    escucharModuloAdminNube();
+    setEstadoSync("Online actualizado");
+  } catch (error) {
+    console.error("Error iniciando sincronización financiera:", error);
+    setEstadoSync(navigator.onLine ? "Error online — requiere revisión" : "Sin conexión — modo local");
+  }
 }
 
 function sincronizarCajaTiempoReal() {
@@ -11812,7 +11938,9 @@ function sincronizarCajaTiempoReal() {
 window.addEventListener("online", () => {
   setEstadoSync("Conexión recuperada — sincronizando...");
   clearTimeout(temporizadorGuardadoNube);
-  if (guardadoNubePendiente) guardarEnNube();
+  intentosGuardadoNube = 0;
+  if (guardadoNubePendiente) guardarEnNube(false);
+  else setTimeout(() => setEstadoSync("Online actualizado"), 700);
 });
 
 window.addEventListener("offline", () => {

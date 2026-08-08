@@ -7,7 +7,7 @@
   <title>Actualizar Fratello</title>
   <style>
     body{font-family:Arial,sans-serif;background:#fff7ea;margin:0;display:grid;place-items:center;min-height:100vh;color:#2c1c12}
-    .box{max-width:529px;margin:20px;padding:28px;border:1px solid #dfc29f;border-radius:18px;background:white;text-align:center;box-shadow:0 10px 30px #0001}
+    .box{max-width:530px;margin:20px;padding:28px;border:1px solid #dfc29f;border-radius:18px;background:white;text-align:center;box-shadow:0 10px 30px #0001}
     h1{margin-top:0}.estado{padding:14px;border-radius:12px;background:#eef7ee;font-weight:700}
   </style>
 </head>
@@ -31,10 +31,10 @@
         }
 
         localStorage.setItem("fratello_actualizacion_forzada", new Date().toISOString());
-        estado.textContent = "Actualización completada. Abriendo Fratello v5.2.9…";
+        estado.textContent = "Actualización completada. Abriendo Fratello v5.3.0…";
 
         setTimeout(() => {
-          location.replace("./index.html?v=529&actualizado=" + Date.now());
+          location.replace("./index.html?v=530&actualizado=" + Date.now());
         }, 700);
       } catch (error) {
         console.error(error);
