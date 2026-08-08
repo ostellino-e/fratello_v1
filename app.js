@@ -2446,9 +2446,22 @@ async function probarNotificacionFratello() {
   }
 }
 
+let temporizadorEstadoSync = null;
 function setEstadoSync(texto) {
   const el = $("estadoSync");
   if (el) el.textContent = texto;
+
+  clearTimeout(temporizadorEstadoSync);
+  if (texto === "Sincronizando..." || texto === "Cargando online...") {
+    temporizadorEstadoSync = setTimeout(() => {
+      const actual = $("estadoSync")?.textContent || "";
+      if (actual === texto) {
+        setEstadoSync(navigator.onLine
+          ? "Sincronización demorada — reintentando"
+          : "Sin conexión — modo local");
+      }
+    }, 12000);
+  }
 }
 
 function clavePedidoSync(pedido) {
@@ -2605,6 +2618,50 @@ function fusionarExclusionesPedidosFijos(remotas = [], locales = []) {
   ].filter(Boolean))];
 }
 
+
+
+function fechaCambioAdminSync(item) {
+  const valor = item?.actualizadoEn || item?.actualizado || item?.creadoEn || item?.creado || "";
+  const tiempo = Date.parse(valor);
+  return Number.isFinite(tiempo) ? tiempo : 0;
+}
+
+function fusionarListaAdminSync(remota = [], local = []) {
+  const mapa = new Map();
+  [...(Array.isArray(remota) ? remota : []), ...(Array.isArray(local) ? local : [])]
+    .forEach(item => {
+      if (!item) return;
+      const clave = String(item.id || "");
+      if (!clave) return;
+      const anterior = mapa.get(clave);
+      if (!anterior || fechaCambioAdminSync(item) >= fechaCambioAdminSync(anterior)) {
+        mapa.set(clave, item);
+      }
+    });
+  return [...mapa.values()];
+}
+
+function fusionarAdministracionFinancieraSync(remota = {}, local = {}) {
+  const clientesEliminados = [...new Set([
+    ...(Array.isArray(remota.clientesExternosEliminados) ? remota.clientesExternosEliminados : []),
+    ...(Array.isArray(local.clientesExternosEliminados) ? local.clientesExternosEliminados : [])
+  ].map(x => String(x || "").trim()).filter(Boolean))];
+
+  const clientes = fusionarListaAdminSync(remota.clientesExternos, local.clientesExternos)
+    .filter(cliente => !clientesEliminados.some(nombre =>
+      normalizarPedidoInteligente(nombre) === normalizarPedidoInteligente(cliente.nombre)
+    ));
+
+  return {
+    ingresosExternos: fusionarListaAdminSync(remota.ingresosExternos, local.ingresosExternos),
+    clientesExternos: clientes,
+    clientesExternosEliminados: clientesEliminados,
+    gastosManuales: fusionarListaAdminSync(remota.gastosManuales, local.gastosManuales),
+    presupuestos: fusionarListaAdminSync(remota.presupuestos, local.presupuestos),
+    plataRealManual: { ...(remota.plataRealManual || {}), ...(local.plataRealManual || {}) },
+    transferenciasDinero: fusionarListaAdminSync(remota.transferenciasDinero, local.transferenciasDinero)
+  };
+}
 
 function datosActuales() {
   return {
@@ -2801,6 +2858,11 @@ function guardarEnNube() {
             cierresCaja,
             cierresCajaEliminados
           );
+          auditoriaCaja = fusionarAuditoriaCaja(remoto.auditoriaCaja, auditoriaCaja);
+          administracionFinanciera = fusionarAdministracionFinancieraSync(
+            remoto.administracionFinanciera,
+            administracionFinanciera
+          );
 
           transaccion.set(
             referencia,
@@ -2812,6 +2874,8 @@ function guardarEnNube() {
               exclusionesPedidosFijos,
               cierresCaja: cierresFusionados,
               cierresCajaEliminados,
+              auditoriaCaja,
+              administracionFinanciera,
               actualizado: new Date().toISOString()
             },
             { merge: true }
@@ -2821,6 +2885,8 @@ function guardarEnNube() {
         cierresCaja = cierresFusionados;
         ultimaFirmaCajaRenderizada = firmaCierresCaja(cierresCaja);
         guardarCajaLocal();
+        guardarAdministracionLocal();
+        renderAdministracionFinanciera();
         setEstadoSync("Guardado online");
         resolve(true);
       } catch (error) {
@@ -2873,7 +2939,6 @@ async function cargarDesdeNube() {
         cierresCajaEliminados
       );
       auditoriaCaja = fusionarAuditoriaCaja(data.auditoriaCaja, auditoriaCaja);
-      auditoriaCaja = fusionarAuditoriaCaja(data.auditoriaCaja, auditoriaCaja);
       cierresCaja = fusionarCierresCaja(
         data.cierresCaja,
         cierresCaja,
@@ -2887,6 +2952,15 @@ async function cargarDesdeNube() {
         ? { ...configuracionCaja, ...data.configuracionCaja }
         : configuracionCaja;
       guardarCajaLocal();
+
+      if (data.administracionFinanciera && typeof data.administracionFinanciera === "object") {
+        administracionFinanciera = fusionarAdministracionFinancieraSync(
+          data.administracionFinanciera,
+          administracionFinanciera
+        );
+        guardarAdministracionLocal();
+        renderAdministracionFinanciera();
+      }
 
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = Array.isArray(data.clientes) && data.clientes.length
@@ -3382,30 +3456,10 @@ function escucharCambiosNube() {
       }
 
       if (data.administracionFinanciera && typeof data.administracionFinanciera === "object") {
-        administracionFinanciera = {
-          ingresosExternos: Array.isArray(data.administracionFinanciera.ingresosExternos)
-            ? data.administracionFinanciera.ingresosExternos
-            : administracionFinanciera.ingresosExternos,
-          clientesExternos: Array.isArray(data.administracionFinanciera.clientesExternos)
-            ? data.administracionFinanciera.clientesExternos
-            : (administracionFinanciera.clientesExternos || []),
-          clientesExternosEliminados: Array.isArray(data.administracionFinanciera.clientesExternosEliminados)
-            ? data.administracionFinanciera.clientesExternosEliminados
-            : (administracionFinanciera.clientesExternosEliminados || []),
-          gastosManuales: Array.isArray(data.administracionFinanciera.gastosManuales)
-            ? data.administracionFinanciera.gastosManuales
-            : administracionFinanciera.gastosManuales,
-          presupuestos: Array.isArray(data.administracionFinanciera.presupuestos)
-            ? data.administracionFinanciera.presupuestos
-            : administracionFinanciera.presupuestos,
-          plataRealManual: data.administracionFinanciera.plataRealManual &&
-            typeof data.administracionFinanciera.plataRealManual === "object"
-            ? data.administracionFinanciera.plataRealManual
-            : (administracionFinanciera.plataRealManual || {}),
-          transferenciasDinero: Array.isArray(data.administracionFinanciera.transferenciasDinero)
-            ? data.administracionFinanciera.transferenciasDinero
-            : (administracionFinanciera.transferenciasDinero || [])
-        };
+        administracionFinanciera = fusionarAdministracionFinancieraSync(
+          data.administracionFinanciera,
+          administracionFinanciera
+        );
         guardarAdministracionLocal();
         renderAdministracionFinanciera();
       }

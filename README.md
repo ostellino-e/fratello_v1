@@ -1,31 +1,24 @@
-# Fratello v5.2.6 — Auditoría de cierres de Caja
+# Fratello v5.2.7 — Sincronización multidispositivo
 
-## Nueva función
-Cada cierre de Caja muestra un botón ⓘ con:
-- fecha y hora de la primera carga;
-- fecha y hora de última modificación;
-- persona;
-- identificador y tipo de dispositivo;
-- cantidad de intentos registrados;
-- historial de intentos;
-- errores de validación;
-- guardado local;
-- sincronización online;
-- errores de sincronización;
-- ediciones y eliminaciones.
+## Problema corregido
+La v5.2.6 podía escribir en Firebase el estado local completo de Administración.
+Si un celular tenía una copia vieja, podía pisar Caja/Gastos/Ingresos cargados desde
+otro dispositivo. Además el indicador podía quedar visualmente en “Sincronizando...”.
 
-## Cierres anteriores
-Los cierres ya existentes conservan los campos `creado` y `actualizado`, por lo que se muestra esa fecha y hora cuando estaba disponible.
+## Cambios
+- Caja sigue fusionándose por cierre y fecha de actualización.
+- Auditoría de Caja ahora se fusiona antes de guardar.
+- Gastos, ingresos externos, clientes, presupuestos y transferencias de dinero
+  se fusionan por ID entre Firebase y el dispositivo.
+- El listener en tiempo real fusiona datos en lugar de reemplazar ciegamente.
+- La carga inicial también recupera y fusiona Administración.
+- El estado “Sincronizando...” tiene control de demora y ya no queda indefinidamente.
+- Se eliminó una fusión duplicada de auditoría presente en v5.2.6.
 
-No es posible reconstruir de manera retroactiva:
-- el dispositivo usado;
-- intentos fallidos anteriores;
-- acciones que la versión previa nunca registró.
-
-En esos casos la app lo indica como “No registrado: cierre anterior a v5.2.6”.
-
-## Alcance
-Solo se modificó el módulo de Caja y su auditoría.
+## Importante
+Esta versión no inventa datos que nunca llegaron a Firebase. Si los importes siguen
+visibles en el celular de la panadería, conviene actualizar primero ese celular y
+abrir la app con conexión para que pueda sincronizarlos.
 
 ## Versión esperada
-v5.2.6
+v5.2.7
