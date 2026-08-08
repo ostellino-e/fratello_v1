@@ -2684,12 +2684,6 @@ function datosActuales() {
     memoriaUltimoEnvio,
     jornadasCerradas,
     exclusionesPedidosFijos,
-    cierresCaja,
-    cierresCajaEliminados,
-    auditoriaCaja,
-    personasCaja,
-    configuracionCaja,
-    administracionFinanciera,
     actualizado: new Date().toISOString()
   };
 }
@@ -2849,21 +2843,6 @@ function guardarEnNube() {
             exclusionesPedidosFijos
           );
 
-          cierresCajaEliminados = fusionarCierresCajaEliminados(
-            remoto.cierresCajaEliminados,
-            cierresCajaEliminados
-          );
-          cierresFusionados = fusionarCierresCaja(
-            remoto.cierresCaja,
-            cierresCaja,
-            cierresCajaEliminados
-          );
-          auditoriaCaja = fusionarAuditoriaCaja(remoto.auditoriaCaja, auditoriaCaja);
-          administracionFinanciera = fusionarAdministracionFinancieraSync(
-            remoto.administracionFinanciera,
-            administracionFinanciera
-          );
-
           transaccion.set(
             referencia,
             {
@@ -2872,21 +2851,12 @@ function guardarEnNube() {
               pedidosEliminados,
               pedidosFijos,
               exclusionesPedidosFijos,
-              cierresCaja: cierresFusionados,
-              cierresCajaEliminados,
-              auditoriaCaja,
-              administracionFinanciera,
               actualizado: new Date().toISOString()
             },
             { merge: true }
           );
         });
 
-        cierresCaja = cierresFusionados;
-        ultimaFirmaCajaRenderizada = firmaCierresCaja(cierresCaja);
-        guardarCajaLocal();
-        guardarAdministracionLocal();
-        renderAdministracionFinanciera();
         setEstadoSync("Guardado online");
         resolve(true);
       } catch (error) {
@@ -3442,27 +3412,8 @@ function escucharCambiosNube() {
       memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
       jornadasCerradas = Array.isArray(data.jornadasCerradas) ? data.jornadasCerradas : jornadasCerradas;
 
-      if (Array.isArray(data.cierresCaja)) {
-        aplicarCierresCajaDesdeNube(data.cierresCaja, data.cierresCajaEliminados, data.auditoriaCaja);
-      }
-      if (Array.isArray(data.personasCaja) && data.personasCaja.length) {
-        personasCaja = data.personasCaja;
-        guardarCajaLocal();
-        renderPersonasCaja();
-      }
-      if (data.configuracionCaja && typeof data.configuracionCaja === "object") {
-        configuracionCaja = { ...configuracionCaja, ...data.configuracionCaja };
-        guardarCajaLocal();
-      }
-
-      if (data.administracionFinanciera && typeof data.administracionFinanciera === "object") {
-        administracionFinanciera = fusionarAdministracionFinancieraSync(
-          data.administracionFinanciera,
-          administracionFinanciera
-        );
-        guardarAdministracionLocal();
-        renderAdministracionFinanciera();
-      }
+      // Caja y Administración se sincronizan en documentos dedicados
+      // desde v5.2.8. El documento legacy "estado" queda solo para módulos históricos.
 
       validarClientes();
 
@@ -8909,7 +8860,7 @@ function guardarAdministracionLocal() {
 function guardarAdministracion() {
   guardarAdministracionLocal();
   renderAdministracionFinanciera();
-  guardarEnNube();
+  guardarAdminModuloEnNube();
 }
 
 function mesSeleccionadoAdministracion() {
@@ -8948,7 +8899,7 @@ function guardarPlataRealManualDesdeResumen() {
     actualizadoEn: new Date().toISOString()
   };
   guardarAdministracionLocal();
-  guardarEnNube();
+  guardarAdminModuloEnNube();
   renderResumenMovilAdministracion();
 
   const boton = $("btnGuardarPlataRealManual");
@@ -10840,7 +10791,7 @@ async function guardarCierreCaja() {
       estado.textContent = `⚠️ ${error}`;
       estado.className = "cajaSaveStatus error";
     }
-    guardarEnNube().catch(() => {});
+    guardarCajaModuloEnNube().catch(() => {});
     return;
   }
 
@@ -10887,7 +10838,7 @@ async function guardarCierreCaja() {
   renderDashboardCaja();
 
   try {
-    await Promise.resolve(guardarEnNube());
+    await Promise.resolve(guardarCajaModuloEnNube());
     registrarEventoAuditoriaCaja({
       fecha,
       turno,
@@ -10897,7 +10848,7 @@ async function guardarCierreCaja() {
       cierreId: id
     });
     guardarCajaLocal();
-    guardarEnNube().catch(() => {});
+    guardarCajaModuloEnNube().catch(() => {});
     renderCajaAdmin();
     renderDashboardCaja();
   } catch (errorSync) {
@@ -11611,7 +11562,7 @@ async function eliminarCierreCajaAdmin(fecha, turno) {
   renderDashboardCaja();
 
   try {
-    await Promise.resolve(guardarEnNube());
+    await Promise.resolve(guardarCajaModuloEnNube());
     renderCajaAdmin();
     renderDashboardCaja();
     alert("Cierre eliminado correctamente.");
@@ -11628,6 +11579,179 @@ function cerrarDetalleDiaCaja() {
     modal.setAttribute("aria-hidden", "true");
   }
   document.body.classList.remove("modal-open");
+}
+
+
+let unsubscribeCajaModulo = null;
+let unsubscribeAdminModulo = null;
+let guardandoCajaModulo = false;
+let guardandoAdminModulo = false;
+
+async function guardarCajaModuloEnNube() {
+  guardarCajaLocal();
+  if (!db) {
+    setEstadoSync("Modo local — Firebase no inició");
+    return false;
+  }
+  if (guardandoCajaModulo) return false;
+
+  guardandoCajaModulo = true;
+  setEstadoSync("Sincronizando Caja...");
+
+  try {
+    const ref = db.collection("fratello").doc("caja_estado");
+    await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const remoto = snap.exists ? snap.data() : {};
+
+      cierresCajaEliminados = fusionarCierresCajaEliminados(
+        remoto.cierresCajaEliminados,
+        cierresCajaEliminados
+      );
+      auditoriaCaja = fusionarAuditoriaCaja(remoto.auditoriaCaja, auditoriaCaja);
+      cierresCaja = fusionarCierresCaja(
+        remoto.cierresCaja,
+        cierresCaja,
+        cierresCajaEliminados
+      );
+
+      tx.set(ref, {
+        cierresCaja,
+        cierresCajaEliminados,
+        auditoriaCaja,
+        personasCaja,
+        configuracionCaja,
+        actualizado: new Date().toISOString()
+      }, { merge: true });
+    });
+
+    guardarCajaLocal();
+    renderCajaAdmin();
+    renderDashboardCaja();
+    renderAdministracionFinanciera();
+    setEstadoSync("Guardado online");
+    return true;
+  } catch (error) {
+    console.error("Error sincronizando módulo Caja:", error);
+    setEstadoSync(navigator.onLine ? "Error de sincronización de Caja" : "Sin conexión — modo local");
+    return false;
+  } finally {
+    guardandoCajaModulo = false;
+  }
+}
+
+async function guardarAdminModuloEnNube() {
+  guardarAdministracionLocal();
+  if (!db) {
+    setEstadoSync("Modo local — Firebase no inició");
+    return false;
+  }
+  if (guardandoAdminModulo) return false;
+
+  guardandoAdminModulo = true;
+  setEstadoSync("Sincronizando Administración...");
+
+  try {
+    const ref = db.collection("fratello").doc("administracion_estado");
+    await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const remoto = snap.exists ? snap.data() : {};
+
+      administracionFinanciera = fusionarAdministracionFinancieraSync(
+        remoto.administracionFinanciera,
+        administracionFinanciera
+      );
+
+      tx.set(ref, {
+        administracionFinanciera,
+        actualizado: new Date().toISOString()
+      }, { merge: true });
+    });
+
+    guardarAdministracionLocal();
+    renderAdministracionFinanciera();
+    setEstadoSync("Guardado online");
+    return true;
+  } catch (error) {
+    console.error("Error sincronizando módulo Administración:", error);
+    setEstadoSync(navigator.onLine ? "Error de sincronización de Administración" : "Sin conexión — modo local");
+    return false;
+  } finally {
+    guardandoAdminModulo = false;
+  }
+}
+
+function escucharModuloCajaNube() {
+  if (!db || unsubscribeCajaModulo) return;
+
+  unsubscribeCajaModulo = db.collection("fratello").doc("caja_estado")
+    .onSnapshot(doc => {
+      if (!doc.exists) return;
+      const data = doc.data() || {};
+
+      cierresCajaEliminados = fusionarCierresCajaEliminados(
+        data.cierresCajaEliminados,
+        cierresCajaEliminados
+      );
+      auditoriaCaja = fusionarAuditoriaCaja(data.auditoriaCaja, auditoriaCaja);
+      cierresCaja = fusionarCierresCaja(
+        data.cierresCaja,
+        cierresCaja,
+        cierresCajaEliminados
+      );
+
+      if (Array.isArray(data.personasCaja) && data.personasCaja.length) {
+        personasCaja = data.personasCaja;
+      }
+      if (data.configuracionCaja && typeof data.configuracionCaja === "object") {
+        configuracionCaja = { ...configuracionCaja, ...data.configuracionCaja };
+      }
+
+      ultimaFirmaCajaRenderizada = firmaCierresCaja(cierresCaja);
+      guardarCajaLocal();
+      renderPersonasCaja();
+      renderCajaAdmin();
+      renderDashboardCaja();
+      renderAdministracionFinanciera();
+      setEstadoSync("Online actualizado");
+    }, error => {
+      console.error("Listener módulo Caja:", error);
+      setEstadoSync("Error recibiendo Caja");
+    });
+}
+
+function escucharModuloAdminNube() {
+  if (!db || unsubscribeAdminModulo) return;
+
+  unsubscribeAdminModulo = db.collection("fratello").doc("administracion_estado")
+    .onSnapshot(doc => {
+      if (!doc.exists) return;
+      const data = doc.data() || {};
+      if (!data.administracionFinanciera) return;
+
+      administracionFinanciera = fusionarAdministracionFinancieraSync(
+        data.administracionFinanciera,
+        administracionFinanciera
+      );
+      guardarAdministracionLocal();
+      renderAdministracionFinanciera();
+      setEstadoSync("Online actualizado");
+    }, error => {
+      console.error("Listener módulo Administración:", error);
+      setEstadoSync("Error recibiendo Administración");
+    });
+}
+
+async function iniciarSincronizacionModulosFinancieros() {
+  if (!db) return;
+
+  // Primero se publican/mezclan los datos locales existentes. Esto permite
+  // recuperar la información que quedó solamente en el celular de la panadería.
+  await guardarCajaModuloEnNube();
+  await guardarAdminModuloEnNube();
+
+  escucharModuloCajaNube();
+  escucharModuloAdminNube();
 }
 
 function sincronizarCajaTiempoReal() {
@@ -11888,6 +12012,7 @@ async function init() {
 
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   await cargarDesdeNube();
+  await iniciarSincronizacionModulosFinancieros();
   renderPersonasCaja();
   cargarCierreSeleccionadoCaja();
   renderCajaAdmin();
