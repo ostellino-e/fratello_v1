@@ -2447,21 +2447,67 @@ async function probarNotificacionFratello() {
 }
 
 let temporizadorEstadoSync = null;
+let temporizadorMostrarSincronizando = null;
+let ultimoEstadoSyncEstable = "Online";
+
+function esEstadoSincronizando(texto) {
+  return [
+    "Sincronizando...",
+    "Cargando online...",
+    "Sincronizando Caja...",
+    "Sincronizando Administración...",
+    "Conexión recuperada — sincronizando..."
+  ].includes(texto);
+}
+
+function esEstadoSyncEstable(texto) {
+  return [
+    "Online",
+    "Online actualizado",
+    "Guardado online",
+    "Sin conexión — modo local",
+    "Modo local — Firebase no inició",
+    "Error de sincronización",
+    "Error recibiendo Caja",
+    "Error recibiendo Administración",
+    "Error de sincronización de Caja",
+    "Error de sincronización de Administración"
+  ].includes(texto);
+}
+
 function setEstadoSync(texto) {
   const el = $("estadoSync");
-  if (el) el.textContent = texto;
+  if (!el) return;
 
   clearTimeout(temporizadorEstadoSync);
-  if (texto === "Sincronizando..." || texto === "Cargando online...") {
-    temporizadorEstadoSync = setTimeout(() => {
-      const actual = $("estadoSync")?.textContent || "";
-      if (actual === texto) {
-        setEstadoSync(navigator.onLine
-          ? "Sincronización demorada — reintentando"
-          : "Sin conexión — modo local");
+
+  if (esEstadoSincronizando(texto)) {
+    // No mostrar sincronizaciones muy breves. Antes cada escritura interna
+    // hacía que la cabecera pareciera estar sincronizando permanentemente.
+    clearTimeout(temporizadorMostrarSincronizando);
+    temporizadorMostrarSincronizando = setTimeout(() => {
+      if (el.textContent === ultimoEstadoSyncEstable || esEstadoSyncEstable(el.textContent)) {
+        el.textContent = texto;
       }
-    }, 12000);
+
+      temporizadorEstadoSync = setTimeout(() => {
+        if (esEstadoSincronizando(el.textContent)) {
+          el.textContent = navigator.onLine
+            ? "Sincronización demorada — reintentando"
+            : "Sin conexión — modo local";
+        }
+      }, 12000);
+    }, 1800);
+    return;
   }
+
+  clearTimeout(temporizadorMostrarSincronizando);
+
+  if (esEstadoSyncEstable(texto)) {
+    ultimoEstadoSyncEstable = texto;
+  }
+
+  el.textContent = texto;
 }
 
 function clavePedidoSync(pedido) {
@@ -2858,6 +2904,7 @@ function guardarEnNube() {
         });
 
         setEstadoSync("Guardado online");
+        setTimeout(() => setEstadoSync("Online actualizado"), 900);
         resolve(true);
       } catch (error) {
         console.error("Error guardando en Firebase:", error);
@@ -11630,6 +11677,7 @@ async function guardarCajaModuloEnNube() {
     renderDashboardCaja();
     renderAdministracionFinanciera();
     setEstadoSync("Guardado online");
+    setTimeout(() => setEstadoSync("Online actualizado"), 900);
     return true;
   } catch (error) {
     console.error("Error sincronizando módulo Caja:", error);
@@ -11671,6 +11719,7 @@ async function guardarAdminModuloEnNube() {
     guardarAdministracionLocal();
     renderAdministracionFinanciera();
     setEstadoSync("Guardado online");
+    setTimeout(() => setEstadoSync("Online actualizado"), 900);
     return true;
   } catch (error) {
     console.error("Error sincronizando módulo Administración:", error);
