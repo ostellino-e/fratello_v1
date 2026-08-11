@@ -7157,7 +7157,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
               <button type="button" class="primary" onclick="abrirEntregaTicket('${pedido.claveMemoria}')">📦 Entrega / cobro</button>
               <button type="button" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">👁 Ver comercial</button>
               <button type="button" class="ticketCommercialButton" onclick="imprimirTicketComercial('${tipo}', '${pedido.claveMemoria}')">🧾 Comercial / cliente ×2</button>
-              <button type="button" class="ticketProductionButton" onclick="imprimirTicketProduccion('${tipo}', '${pedido.claveMemoria}')">🥖 Producción · compacto</button>
+              <button type="button" class="ticketProductionButton" onclick="imprimirTicketProduccion('${tipo}', '${pedido.claveMemoria}')">🥖 IMPRIMIR PEDIDO PARA PANADEROS</button>
               <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG comercial</button>
             </div>
           </article>`;
@@ -7165,7 +7165,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
         <div class="ticketDayFooter">
           <button type="button" class="ticketRepairButtonV422" onclick="repararPedidosYTicketsDelDia('${fecha}')">🧹 Reparar pedidos y tickets</button>
           <button type="button" class="primary ticketCommercialButton" onclick="imprimirTicketsComercialesDelDia('${fecha}')">🧾 Imprimir todos · Comercial ×2</button>
-          <button type="button" class="ticketProductionButton" onclick="imprimirTicketsProduccionDelDia('${fecha}')">🥖 Imprimir todos · Producción compacto</button>
+          <button type="button" class="ticketProductionButton" onclick="imprimirTicketsProduccionDelDia('${fecha}')">🥖 IMPRIMIR PEDIDOS PARA PANADEROS</button>
           <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG comercial</button>
           <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF comercial</button>
         </div>
@@ -7616,7 +7616,11 @@ function dibujarTicketProduccionCompacto(ctx, t, x, y, a, h) {
   ctx.textAlign = "left";
   ajustarFuenteTicket(ctx, String(t.cliente || "CLIENTE").toUpperCase(), 52, 34, a - p * 2, "bold");
   ctx.fillText(String(t.cliente || "CLIENTE").toUpperCase(), l, yy);
-  yy += 38;
+  yy += 35;
+  ctx.font = "bold 27px Arial";
+  ctx.textAlign = "left";
+  ctx.fillText(`FECHA: ${formatoFechaTicket(t.fecha)}`, l, yy);
+  yy += 30;
 
   // Separador mínimo.
   ctx.lineWidth = 2;
