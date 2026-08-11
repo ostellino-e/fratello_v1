@@ -1,5 +1,6 @@
-Fratello v5.4.3
-- Ticket comercial ahora imprime 1 sola copia.
-- Botón individual: TICKET CLIENTE.
-- Botón del día: IMPRIMIR TICKETS CLIENTE.
-- Ticket para panaderos y demás funciones sin cambios.
+Fratello v5.4.4
+- Se elimina el botón individual duplicado de impresión comercial.
+- El anterior botón 'Ver comercial' pasa a llamarse 'TICKET CLIENTE'.
+- Se corrige el botón final 'IMPRIMIR PEDIDOS PARA PANADEROS' con evento directo/delegado por fecha.
+- Si no hay pedidos para esa fecha, ahora informa el motivo.
+- Resto sin cambios.

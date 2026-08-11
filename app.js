@@ -7155,8 +7155,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
             </div>
             <div class="ticketClientActions">
               <button type="button" class="primary" onclick="abrirEntregaTicket('${pedido.claveMemoria}')">📦 Entrega / cobro</button>
-              <button type="button" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">👁 Ver comercial</button>
-              <button type="button" class="ticketCommercialButton" onclick="imprimirTicketComercial('${tipo}', '${pedido.claveMemoria}')">🧾 TICKET CLIENTE</button>
+              <button type="button" class="ticketCommercialButton" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">🧾 TICKET CLIENTE</button>
               <button type="button" class="ticketProductionButton" onclick="imprimirTicketProduccion('${tipo}', '${pedido.claveMemoria}')">🥖 IMPRIMIR PEDIDO PARA PANADEROS</button>
               <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG comercial</button>
             </div>
@@ -7165,7 +7164,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
         <div class="ticketDayFooter">
           <button type="button" class="ticketRepairButtonV422" onclick="repararPedidosYTicketsDelDia('${fecha}')">🧹 Reparar pedidos y tickets</button>
           <button type="button" class="primary ticketCommercialButton" onclick="imprimirTicketsComercialesDelDia('${fecha}')">🧾 IMPRIMIR TICKETS CLIENTE</button>
-          <button type="button" class="ticketProductionButton" onclick="imprimirTicketsProduccionDelDia('${fecha}')">🥖 IMPRIMIR PEDIDOS PARA PANADEROS</button>
+          <button type="button" class="ticketProductionButton btnPrintProductionDay" data-ticket-fecha="${fecha}">🥖 IMPRIMIR PEDIDOS PARA PANADEROS</button>
           <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG comercial</button>
           <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF comercial</button>
         </div>
@@ -7192,6 +7191,19 @@ function renderTicketsPorDia() {
   if (panelPendientes) panelPendientes.innerHTML = htmlPanelTicketsFechas(fechasPendientes.reverse(), fechaTicketAbierta);
 
   [panelSemana, panelPendientes].filter(Boolean).forEach(panel => {
+    if (panel.dataset.ticketPrintProductionInstalado !== "1") {
+      panel.dataset.ticketPrintProductionInstalado = "1";
+      panel.addEventListener("click", evento => {
+        const boton = evento.target.closest?.(".btnPrintProductionDay");
+        if (!boton || !panel.contains(boton)) return;
+        evento.preventDefault();
+        evento.stopPropagation();
+        const fecha = boton.dataset.ticketFecha || "";
+        if (!fecha) return alert("No se pudo identificar la fecha de los pedidos.");
+        imprimirTicketsProduccionDelDia(fecha);
+      });
+    }
+
     if (panel.dataset.ticketToggleInstalado === "1") return;
     panel.dataset.ticketToggleInstalado = "1";
     panel.addEventListener("toggle", evento => {
@@ -7416,6 +7428,10 @@ function imprimirTicketsComercialesDelDia(fecha) {
 
 function imprimirTicketsProduccionDelDia(fecha) {
   const lista = pedidosTicketParaFecha(fecha);
+  if (!lista.length) {
+    alert("No hay pedidos para producción en esa fecha.");
+    return;
+  }
   imprimirListaTickets(lista, { modo: "produccion", copias: 1 });
 }
 
