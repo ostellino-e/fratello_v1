@@ -7313,29 +7313,30 @@ function imprimirListaTickets(lista) {
             background: #fff;
           }
           .sheet {
-            width: 47mm;
+            width: 54mm;
             display: block;
             margin: 0 auto;
             padding: 0;
           }
           .ticket {
             display: block;
-            width: 47mm;
-            max-width: 47mm;
+            width: 54mm;
+            max-width: 54mm;
             height: auto;
-            margin: 0 auto 2mm auto;
+            margin: 0 auto 3mm auto;
             object-fit: contain;
             break-inside: avoid;
             page-break-inside: avoid;
+            page-break-after: always;
           }
           @media screen {
             html, body { width: 58mm; }
-            .sheet { width: 47mm; margin: 0 auto; }
+            .sheet { width: 54mm; margin: 0 auto; }
           }
           @media print {
             html, body { width: 58mm !important; }
-            .sheet { width: 47mm !important; margin: 0 auto !important; }
-            .ticket { width: 47mm !important; max-width: 47mm !important; margin-left: auto !important; margin-right: auto !important; }
+            .sheet { width: 54mm !important; margin: 0 auto !important; }
+            .ticket { width: 54mm !important; max-width: 54mm !important; margin-left: auto !important; margin-right: auto !important; }
           }
         </style>
       </head>
@@ -7509,7 +7510,7 @@ function calcularAltoTicket(t, a = 640) {
 }
 
 function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
-  const p = 26;
+  const p = 12;
   const l = x + p;
   const r = x + a - p;
   let yy = y + 38;
@@ -7523,160 +7524,195 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.fillStyle = "#111";
 
   ctx.textAlign = "center";
-  ctx.font = "bold 50px Arial";
+  ctx.font = "bold 62px Arial";
   ctx.fillText("PANADERÍA FRATELLO", x + a / 2, yy);
-  yy += 51;
-  ctx.font = "29px Arial";
+  yy += 58;
+  ctx.font = "34px Arial";
   ctx.fillText(t.entregaConfirmada ? "COMPROBANTE DE ENTREGA" : "PEDIDO / TICKET DE ENTREGA", x + a / 2, yy);
-  yy += 44;
+  yy += 48;
 
   ctx.setLineDash([8, 5]);
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
   ctx.setLineDash([]);
-  yy += 40;
+  yy += 44;
 
   ctx.textAlign = "left";
-  ctx.font = "bold 40px Arial";
+  ctx.font = "bold 48px Arial";
   ctx.fillText(`Cliente: ${t.cliente}`, l, yy);
-  yy += 38;
-  ctx.font = "29px Arial";
+  yy += 42;
+  ctx.font = "34px Arial";
   ctx.fillText(
     `Fecha: ${new Date(t.fecha + "T12:00:00").toLocaleDateString("es-AR")}${t.horaEntrega ? ` · Entrega ${t.horaEntrega}` : ""}`,
     l, yy
   );
   ctx.textAlign = "right";
   ctx.fillText(`Pedido Nº ${n}`, r, yy);
-  yy += 34;
+  yy += 38;
 
   ctx.textAlign = "left";
-  ctx.font = "bold 23px Arial";
+  ctx.font = "bold 29px Arial";
   ctx.fillText(`Lista de precios: ${t.listaPrecioNombre || "Cliente"}`, l, yy);
-  yy += 26;
+  yy += 30;
 
   ctx.setLineDash([8, 5]);
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
   ctx.setLineDash([]);
-  yy += 28;
+  yy += 36;
 
-  ctx.font = "bold 24px Arial";
+  ctx.font = "bold 36px Arial";
   ctx.textAlign = "left";
   ctx.fillText("DESCRIPCIÓN", l, yy);
-  yy += 26;
-  ctx.font = "bold 23px Arial";
+  yy += 30;
+  ctx.font = "bold 29px Arial";
   ctx.fillText("CANT.", l, yy);
   ctx.textAlign = "right";
-  ctx.fillText("P. UNIT.", x + a * .70, yy);
+  ctx.fillText("P. UNIT.", x + a * .68, yy);
   ctx.fillText("TOTAL", r, yy);
-  yy += 16;
+  yy += 20;
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
-  yy += 28;
+  yy += 36;
 
   for (const i of t.items || []) {
     ctx.textAlign = "left";
-    ctx.font = "bold 39px Arial";
+    ctx.font = "bold 47px Arial";
     const lineas = cortarTextoCanvas(ctx, i.descripcion, a - p * 2).slice(0, 2);
-    lineas.forEach((linea, j) => ctx.fillText(linea, l, yy + j * 32));
-    yy += lineas.length * 32 + 12;
+    lineas.forEach((linea, j) => ctx.fillText(linea, l, yy + j * 39));
+    yy += lineas.length * 39 + 13;
 
-    ctx.font = "29px Arial";
+    ctx.font = "34px Arial";
     ctx.fillText(`${fmt(i.cantidad)} ${i.unidad}`, l, yy);
     ctx.textAlign = "right";
-    ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.precioUnitario) : "Sin precio", x + a * .70, yy);
+    ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.precioUnitario) : "Sin precio", x + a * .68, yy);
     ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.total) : "—", r, yy);
-    yy += 32;
+    yy += 36;
 
     ctx.strokeStyle = "#bbb";
     ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
     ctx.setLineDash([]);
     ctx.strokeStyle = "#111";
-    yy += 29;
+    yy += 33;
   }
 
   ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
-  yy += 40;
-  ctx.font = "bold 39px Arial";
+  yy += 44;
+  ctx.font = "bold 47px Arial";
   ctx.textAlign = "left";
   ctx.fillText("COMPRA DE HOY", l, yy);
   ctx.textAlign = "right";
   ctx.fillText(formatoDineroTicket(t.total), r, yy);
-  yy += 38;
+  yy += 42;
 
   ctx.lineWidth = 1;
-  ctx.font = "29px Arial";
+  ctx.font = "34px Arial";
   ctx.textAlign = "left";
   ctx.fillText("Saldo anterior", l, yy);
   ctx.textAlign = "right";
   ctx.fillText(formatoDineroTicket(t.saldoAnterior), r, yy);
-  yy += 29;
+  yy += 33;
 
   if (Number(t.pagoHoy || 0) > 0) {
     ctx.textAlign = "left";
     ctx.fillText("Pago recibido", l, yy);
     ctx.textAlign = "right";
     ctx.fillText(`- ${formatoDineroTicket(t.pagoHoy)}`, r, yy);
-    yy += 29;
+    yy += 33;
   }
 
   ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
-  yy += 40;
-  ctx.font = "bold 40px Arial";
+  yy += 44;
+  ctx.font = "bold 48px Arial";
   ctx.textAlign = "left";
   ctx.fillText("TOTAL PENDIENTE", l, yy);
   ctx.textAlign = "right";
   ctx.fillText(formatoDineroTicket(t.saldoFinal), r, yy);
-  yy += 40;
+  yy += 44;
 
   if (t.observacionEntrega) {
     ctx.setLineDash([8, 5]);
     ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
     ctx.setLineDash([]);
-    yy += 28;
+    yy += 36;
     ctx.textAlign = "left";
-    ctx.font = "bold 24px Arial";
+    ctx.font = "bold 36px Arial";
     ctx.fillText("OBSERVACIÓN DE ENTREGA", l, yy);
-    yy += 25;
-    ctx.font = "29px Arial";
+    yy += 29;
+    ctx.font = "34px Arial";
     cortarTextoCanvas(ctx, t.observacionEntrega, a - p * 2).slice(0, 2).forEach(linea => {
       ctx.fillText(linea, l, yy);
-      yy += 23;
+      yy += 27;
     });
   }
 
   ctx.setLineDash([8, 5]);
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
   ctx.setLineDash([]);
-  yy += 28;
+  yy += 36;
 
   ctx.textAlign = "left";
-  ctx.font = "bold 30px Arial";
+  ctx.font = "bold 36px Arial";
   ctx.fillText("DIRECCIÓN DE ENTREGA", l, yy);
-  yy += 28;
-  ctx.font = "29px Arial";
+  yy += 36;
+  ctx.font = "34px Arial";
   if (t.direccion) {
     cortarTextoCanvas(ctx, t.direccion, a - p * 2).forEach(linea => {
       ctx.fillText(linea, l, yy);
-      yy += 24;
+      yy += 28;
     });
   } else {
     ctx.fillText("Sin dirección cargada", l, yy);
-    yy += 24;
+    yy += 28;
   }
   if (t.barrio) {
     ctx.fillText(`Barrio: ${t.barrio}`, l, yy);
-    yy += 26;
+    yy += 30;
   }
 
-  yy += 12;
+  yy += 16;
   ctx.textAlign = "center";
-  ctx.font = "29px Arial";
+  ctx.font = "34px Arial";
   ctx.fillText("Gracias por elegir Panadería Fratello", x + a / 2, yy);
+  yy += 42;
+
   ctx.restore();
+  return yy;
 }
 
-function crearCanvasTicketIndividual(t,a=640){const h=calcularAltoTicket(t,a),c=document.createElement("canvas");c.width=a;c.height=h;dibujarTicketEnCanvas(c.getContext("2d"),t,0,0,a,h,String(t.id).slice(-6));return c;}
+function crearCanvasTicketIndividual(t, a = 640) {
+  const altoTemporal = 4200;
+  const temporal = document.createElement("canvas");
+  temporal.width = a;
+  temporal.height = altoTemporal;
+
+  const usado = dibujarTicketEnCanvas(
+    temporal.getContext("2d"),
+    t,
+    0,
+    0,
+    a,
+    altoTemporal,
+    String(t.id).slice(-6)
+  );
+
+  const altoFinal = Math.min(altoTemporal, Math.max(520, Math.ceil(usado + 18)));
+  const final = document.createElement("canvas");
+  final.width = a;
+  final.height = altoFinal;
+
+  dibujarTicketEnCanvas(
+    final.getContext("2d"),
+    t,
+    0,
+    0,
+    a,
+    altoFinal,
+    String(t.id).slice(-6)
+  );
+
+  return final;
+}
 
 
 const CUENTA_CORRIENTE_KEY_V42 = "fratello_cuenta_corriente_v42";
