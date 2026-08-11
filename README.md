@@ -1,11 +1,17 @@
-# Fratello v5.3.6
+# Fratello v5.3.7
 
 ## Ticket XP-58
-- Ancho del contenido aumentado de 47,5 mm a 54 mm.
-- Se mantiene centrado dentro del papel de 58 mm.
-- Se conserva la tipografía grande de v5.3.5.
-- Se conserva el alto dinámico para evitar cortes al final.
-- No se modificó ninguna otra función de Fratello.
+- Mantiene 54 mm de ancho dentro del rollo de 58 mm: 2 mm por lado.
+- El título PANADERÍA FRATELLO ahora se ajusta automáticamente para nunca cortarse.
+- El subtítulo también se ajusta automáticamente al ancho.
+- Se reduce el margen interno del ticket para aprovechar mejor los 54 mm.
+- Se aumenta ligeramente el tamaño de cliente, productos y encabezados.
+- Se elimina el marco exterior que podía dar sensación de corte en los laterales.
+- Se mantiene centrado.
+- Se conserva el alto dinámico para evitar cortes al final del pedido.
+
+## Sin cambios
+Pedidos, sincronización, Caja, Gastos, Ingresos y Administración no fueron modificados.
 
 ## Versión esperada
-v5.3.6
+v5.3.7
