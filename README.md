@@ -1,6 +1,5 @@
-Fratello v5.4.4
-- Se elimina el botón individual duplicado de impresión comercial.
-- El anterior botón 'Ver comercial' pasa a llamarse 'TICKET CLIENTE'.
-- Se corrige el botón final 'IMPRIMIR PEDIDOS PARA PANADEROS' con evento directo/delegado por fecha.
-- Si no hay pedidos para esa fecha, ahora informa el motivo.
+Fratello v5.4.5
+- Corrige el botón IMPRIMIR PEDIDOS PARA PANADEROS.
+- Error corregido: formatoFechaTicket no existía; se usa formatearFechaTicket.
+- Mantiene la fecha en el ticket de producción.
 - Resto sin cambios.
