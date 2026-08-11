@@ -2615,6 +2615,159 @@ function fusionarPedidosSync(remotos = [], locales = [], eliminados = pedidosEli
   return [...mapa.values()];
 }
 
+
+let guardadoPedidosModuloEnCurso = false;
+let guardadoPedidosModuloPendiente = false;
+let temporizadorPedidosModulo = null;
+let escuchandoPedidosModulo = false;
+
+function datosPedidosModulo() {
+  return {
+    pedidos: Array.isArray(pedidos) ? pedidos : [],
+    pedidosEliminados: Array.isArray(pedidosEliminados) ? pedidosEliminados : [],
+    pedidosFijos: Array.isArray(pedidosFijos) ? pedidosFijos : [],
+    exclusionesPedidosFijos: Array.isArray(exclusionesPedidosFijos) ? exclusionesPedidosFijos : [],
+    pedidosConfirmados: Boolean(pedidosConfirmados)
+  };
+}
+
+function aplicarPedidosModuloRemoto(data = {}) {
+  pedidosEliminados = fusionarPedidosEliminados(
+    data.pedidosEliminados,
+    pedidosEliminados
+  );
+
+  pedidos = fusionarPedidosSync(
+    data.pedidos,
+    pedidos,
+    pedidosEliminados
+  )
+    .filter(pedido => !pedidoEstaEliminadoSync(pedido))
+    .filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
+
+  pedidosFijos = fusionarPedidosFijosSync(
+    data.pedidosFijos,
+    pedidosFijos
+  );
+
+  exclusionesPedidosFijos = fusionarExclusionesPedidosFijos(
+    data.exclusionesPedidosFijos,
+    exclusionesPedidosFijos
+  );
+
+  if (typeof data.pedidosConfirmados === "boolean") {
+    pedidosConfirmados = data.pedidosConfirmados;
+  }
+
+  guardarLocal();
+}
+
+function guardarPedidosModuloEnNube() {
+  if (!db || cargandoDesdeNube) return Promise.resolve(false);
+
+  guardadoPedidosModuloPendiente = true;
+  clearTimeout(temporizadorPedidosModulo);
+
+  return new Promise(resolve => {
+    temporizadorPedidosModulo = setTimeout(async () => {
+      if (guardadoPedidosModuloEnCurso || !guardadoPedidosModuloPendiente || !db) {
+        resolve(false);
+        return;
+      }
+
+      guardadoPedidosModuloEnCurso = true;
+      guardadoPedidosModuloPendiente = false;
+
+      try {
+        const ref = db.collection("fratello").doc("pedidos_estado");
+
+        await db.runTransaction(async tx => {
+          const snap = await tx.get(ref);
+          const remoto = snap.exists ? snap.data() : {};
+
+          pedidosEliminados = fusionarPedidosEliminados(
+            remoto.pedidosEliminados,
+            pedidosEliminados
+          );
+          pedidos = fusionarPedidosSync(
+            remoto.pedidos,
+            pedidos,
+            pedidosEliminados
+          );
+          pedidosFijos = fusionarPedidosFijosSync(
+            remoto.pedidosFijos,
+            pedidosFijos
+          );
+          exclusionesPedidosFijos = fusionarExclusionesPedidosFijos(
+            remoto.exclusionesPedidosFijos,
+            exclusionesPedidosFijos
+          );
+
+          tx.set(ref, {
+            ...datosPedidosModulo(),
+            actualizado: new Date().toISOString()
+          }, { merge: true });
+        });
+
+        guardarLocal();
+        resolve(true);
+      } catch (error) {
+        console.error("Error sincronizando Pedidos dedicado:", error);
+        // El guardado general sigue funcionando como respaldo.
+        resolve(false);
+      } finally {
+        guardadoPedidosModuloEnCurso = false;
+        if (guardadoPedidosModuloPendiente) guardarPedidosModuloEnNube();
+      }
+    }, 220);
+  });
+}
+
+async function iniciarPedidosModuloNube() {
+  if (!db) return;
+
+  try {
+    const ref = db.collection("fratello").doc("pedidos_estado");
+    const snap = await ref.get();
+
+    if (snap.exists) {
+      cargandoDesdeNube = true;
+      try {
+        aplicarPedidosModuloRemoto(snap.data());
+      } finally {
+        cargandoDesdeNube = false;
+      }
+    }
+
+    // Publica la fusión inicial para migrar pedidos que todavía estuvieran
+    // solamente en el documento general o en almacenamiento local.
+    await guardarPedidosModuloEnNube();
+
+    if (!escuchandoPedidosModulo) {
+      escuchandoPedidosModulo = true;
+      ref.onSnapshot(doc => {
+        if (!doc.exists) return;
+
+        cargandoDesdeNube = true;
+        try {
+          aplicarPedidosModuloRemoto(doc.data());
+          renderPedidos();
+          renderResumen();
+          if (typeof renderTickets === "function") renderTickets();
+        } catch (error) {
+          console.error("Error recibiendo Pedidos dedicado:", error);
+        } finally {
+          cargandoDesdeNube = false;
+        }
+      }, error => {
+        console.error("Listener Pedidos dedicado:", error);
+      });
+    }
+  } catch (error) {
+    console.error("Error iniciando Pedidos dedicado:", error);
+  }
+}
+
 function registrarPedidoEliminado(pedido) {
   const id = clavePedidoSync(pedido);
   const claveSemantica = claveSemanticaPedidoSync(pedido);
@@ -2867,6 +3020,10 @@ function errorFirebaseReintentable(error) {
 
 function guardarEnNube(esReintento = false) {
   if (!db || cargandoDesdeNube) return Promise.resolve(false);
+
+  // Pedidos se guarda además en un documento pequeño e independiente.
+  // Así un fallo/lentitud del documento general no impide verlo en otros dispositivos.
+  guardarPedidosModuloEnNube().catch(() => {});
 
   if (!esReintento) intentosGuardadoNube = 0;
   guardadoNubePendiente = true;
@@ -7126,29 +7283,37 @@ function imprimirListaTickets(lista) {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-          @page { size: A4 portrait; margin: 7mm; }
+          @page { size: 58mm 210mm; margin: 1.5mm 2mm; }
           * { box-sizing: border-box; }
-          html, body { margin: 0; padding: 0; background: #fff; }
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 54mm;
+            background: #fff;
+          }
           .sheet {
-            width: 196mm;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 3mm;
-            align-items: start;
+            width: 54mm;
+            display: block;
+            margin: 0;
+            padding: 0;
           }
           .ticket {
-            width: 100%;
+            display: block;
+            width: 54mm;
+            max-width: 54mm;
             height: auto;
-            max-height: 91mm;
+            margin: 0 0 2mm 0;
             object-fit: contain;
             break-inside: avoid;
             page-break-inside: avoid;
           }
-          @media screen and (max-width: 700px) {
-            .sheet { width: 100%; grid-template-columns: repeat(2, 1fr); padding: 6px; gap: 6px; }
+          @media screen {
+            html, body { width: 58mm; }
+            .sheet { width: 54mm; margin: 0 auto; }
           }
           @media print {
-            .sheet { width: 196mm; }
+            html, body, .sheet { width: 54mm !important; }
+            .ticket { width: 54mm !important; max-width: 54mm !important; }
           }
         </style>
       </head>
@@ -12189,6 +12354,7 @@ async function init() {
 
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   await cargarDesdeNube();
+  await iniciarPedidosModuloNube();
   await iniciarSincronizacionModulosFinancieros();
   renderPersonasCaja();
   cargarCierreSeleccionadoCaja();

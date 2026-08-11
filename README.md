@@ -1,33 +1,16 @@
-# Fratello v5.3.0 — Sincronización sin bucles
+# Fratello v5.3.1
 
-## Causa encontrada
-El motor antiguo de Firebase tenía un reintento automático sin límite.
-Si el documento general `fratello/estado` fallaba una vez de forma persistente,
-la app volvía a intentar cada 1,2 segundos indefinidamente.
+## Ticket Xprinter 58 mm
+- La impresión de tickets deja de generarse como A4.
+- Formato: 58 mm de papel, 54 mm de contenido y márgenes mínimos.
+- Un ticket por ancho, pensado para Xprinter XP-58.
 
-Eso explicaba:
-- “Sincronizando...” de forma constante;
-- lentitud;
-- mensajes intermitentes de “Error al guardar online”.
+## Pedidos multidispositivo
+- Se agrega `fratello/pedidos_estado`.
+- Pedidos, eliminaciones, pedidos fijos y exclusiones se sincronizan en un documento independiente.
+- El documento general continúa como respaldo.
+- Al iniciar, se fusionan Firebase + datos locales y se migra lo existente.
+- Listener en tiempo real para que los pedidos cargados desde el celular de la panadería aparezcan en los demás dispositivos.
 
-## Correcciones
-- El guardado general ahora tiene máximo 3 intentos.
-- Los reintentos usan espera progresiva en vez de repetirse cada 1,2 segundos.
-- Los errores permanentes de Firebase no se reintentan en bucle.
-- Caja y Administración continúan usando sus documentos separados.
-- Al abrir la app, Caja y Administración primero leen y fusionan Firebase.
-- Solo escriben al iniciar si realmente hay diferencias.
-- La carga inicial de Caja y Administración se hace en paralelo.
-- Se eliminó un segundo guardado completo de Caja que ocurría después de cada cierre.
-- Acciones de configuración de Caja que aún usaban el documento general ahora usan `caja_estado`.
-- La edición inline de Caja también usa la sincronización dedicada.
-
-## No modificado
-- lógica de Pedidos;
-- contenido de Pedidos;
-- Tickets;
-- Producción;
-- cálculos financieros.
-
-## Versión esperada
-v5.3.0
+## Sin cambios
+Caja, Gastos, Ingresos, Administración, cálculos y Producción conservan su lógica.
