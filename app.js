@@ -7505,7 +7505,7 @@ function calcularAltoTicket(t, a = 640) {
   const altoDireccion = t.direccion || t.barrio ? 125 : 55;
   const altoCuenta = 205;
   const altoObservacion = t.observacionEntrega ? 85 : 0;
-  return Math.max(980, 610 + altoItems + altoDireccion + altoCuenta + altoObservacion);
+  return Math.max(1120, 700 + altoItems + altoDireccion + altoCuenta + altoObservacion);
 }
 
 function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
@@ -7523,125 +7523,125 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.fillStyle = "#111";
 
   ctx.textAlign = "center";
-  ctx.font = "bold 43px Arial";
+  ctx.font = "bold 50px Arial";
   ctx.fillText("PANADERÍA FRATELLO", x + a / 2, yy);
-  yy += 43;
-  ctx.font = "25px Arial";
+  yy += 51;
+  ctx.font = "29px Arial";
   ctx.fillText(t.entregaConfirmada ? "COMPROBANTE DE ENTREGA" : "PEDIDO / TICKET DE ENTREGA", x + a / 2, yy);
-  yy += 38;
+  yy += 44;
 
   ctx.setLineDash([8, 5]);
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
   ctx.setLineDash([]);
-  yy += 34;
+  yy += 40;
 
   ctx.textAlign = "left";
-  ctx.font = "bold 35px Arial";
+  ctx.font = "bold 40px Arial";
   ctx.fillText(`Cliente: ${t.cliente}`, l, yy);
-  yy += 32;
-  ctx.font = "25px Arial";
+  yy += 38;
+  ctx.font = "29px Arial";
   ctx.fillText(
     `Fecha: ${new Date(t.fecha + "T12:00:00").toLocaleDateString("es-AR")}${t.horaEntrega ? ` · Entrega ${t.horaEntrega}` : ""}`,
     l, yy
   );
   ctx.textAlign = "right";
   ctx.fillText(`Pedido Nº ${n}`, r, yy);
-  yy += 30;
+  yy += 34;
 
   ctx.textAlign = "left";
-  ctx.font = "bold 20px Arial";
+  ctx.font = "bold 23px Arial";
   ctx.fillText(`Lista de precios: ${t.listaPrecioNombre || "Cliente"}`, l, yy);
-  yy += 22;
+  yy += 26;
 
   ctx.setLineDash([8, 5]);
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
   ctx.setLineDash([]);
-  yy += 24;
+  yy += 28;
 
-  ctx.font = "bold 21px Arial";
+  ctx.font = "bold 24px Arial";
   ctx.textAlign = "left";
   ctx.fillText("DESCRIPCIÓN", l, yy);
-  yy += 22;
-  ctx.font = "bold 20px Arial";
+  yy += 26;
+  ctx.font = "bold 23px Arial";
   ctx.fillText("CANT.", l, yy);
   ctx.textAlign = "right";
   ctx.fillText("P. UNIT.", x + a * .70, yy);
   ctx.fillText("TOTAL", r, yy);
   yy += 16;
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
-  yy += 24;
+  yy += 28;
 
   for (const i of t.items || []) {
     ctx.textAlign = "left";
-    ctx.font = "bold 34px Arial";
+    ctx.font = "bold 39px Arial";
     const lineas = cortarTextoCanvas(ctx, i.descripcion, a - p * 2).slice(0, 2);
-    lineas.forEach((linea, j) => ctx.fillText(linea, l, yy + j * 27));
-    yy += lineas.length * 27 + 10;
+    lineas.forEach((linea, j) => ctx.fillText(linea, l, yy + j * 32));
+    yy += lineas.length * 32 + 12;
 
-    ctx.font = "25px Arial";
+    ctx.font = "29px Arial";
     ctx.fillText(`${fmt(i.cantidad)} ${i.unidad}`, l, yy);
     ctx.textAlign = "right";
     ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.precioUnitario) : "Sin precio", x + a * .70, yy);
     ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.total) : "—", r, yy);
-    yy += 27;
+    yy += 32;
 
     ctx.strokeStyle = "#bbb";
     ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
     ctx.setLineDash([]);
     ctx.strokeStyle = "#111";
-    yy += 25;
+    yy += 29;
   }
 
   ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
-  yy += 34;
-  ctx.font = "bold 34px Arial";
+  yy += 40;
+  ctx.font = "bold 39px Arial";
   ctx.textAlign = "left";
   ctx.fillText("COMPRA DE HOY", l, yy);
   ctx.textAlign = "right";
   ctx.fillText(formatoDineroTicket(t.total), r, yy);
-  yy += 32;
+  yy += 38;
 
   ctx.lineWidth = 1;
-  ctx.font = "25px Arial";
+  ctx.font = "29px Arial";
   ctx.textAlign = "left";
   ctx.fillText("Saldo anterior", l, yy);
   ctx.textAlign = "right";
   ctx.fillText(formatoDineroTicket(t.saldoAnterior), r, yy);
-  yy += 25;
+  yy += 29;
 
   if (Number(t.pagoHoy || 0) > 0) {
     ctx.textAlign = "left";
     ctx.fillText("Pago recibido", l, yy);
     ctx.textAlign = "right";
     ctx.fillText(`- ${formatoDineroTicket(t.pagoHoy)}`, r, yy);
-    yy += 25;
+    yy += 29;
   }
 
   ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
-  yy += 34;
-  ctx.font = "bold 35px Arial";
+  yy += 40;
+  ctx.font = "bold 40px Arial";
   ctx.textAlign = "left";
   ctx.fillText("TOTAL PENDIENTE", l, yy);
   ctx.textAlign = "right";
   ctx.fillText(formatoDineroTicket(t.saldoFinal), r, yy);
-  yy += 34;
+  yy += 40;
 
   if (t.observacionEntrega) {
     ctx.setLineDash([8, 5]);
     ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
     ctx.setLineDash([]);
-    yy += 24;
+    yy += 28;
     ctx.textAlign = "left";
-    ctx.font = "bold 21px Arial";
+    ctx.font = "bold 24px Arial";
     ctx.fillText("OBSERVACIÓN DE ENTREGA", l, yy);
-    yy += 21;
-    ctx.font = "25px Arial";
+    yy += 25;
+    ctx.font = "29px Arial";
     cortarTextoCanvas(ctx, t.observacionEntrega, a - p * 2).slice(0, 2).forEach(linea => {
       ctx.fillText(linea, l, yy);
-      yy += 19;
+      yy += 23;
     });
   }
 
@@ -7651,27 +7651,27 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   yy += 28;
 
   ctx.textAlign = "left";
-  ctx.font = "bold 26px Arial";
+  ctx.font = "bold 30px Arial";
   ctx.fillText("DIRECCIÓN DE ENTREGA", l, yy);
-  yy += 24;
-  ctx.font = "25px Arial";
+  yy += 28;
+  ctx.font = "29px Arial";
   if (t.direccion) {
     cortarTextoCanvas(ctx, t.direccion, a - p * 2).forEach(linea => {
       ctx.fillText(linea, l, yy);
-      yy += 20;
+      yy += 24;
     });
   } else {
     ctx.fillText("Sin dirección cargada", l, yy);
-    yy += 20;
+    yy += 24;
   }
   if (t.barrio) {
     ctx.fillText(`Barrio: ${t.barrio}`, l, yy);
-    yy += 22;
+    yy += 26;
   }
 
   yy += 12;
   ctx.textAlign = "center";
-  ctx.font = "25px Arial";
+  ctx.font = "29px Arial";
   ctx.fillText("Gracias por elegir Panadería Fratello", x + a / 2, yy);
   ctx.restore();
 }
