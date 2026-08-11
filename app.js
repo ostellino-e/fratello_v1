@@ -7635,7 +7635,12 @@ function dibujarTicketProduccionCompacto(ctx, t, x, y, a, h) {
   yy += 35;
   ctx.font = "bold 27px Arial";
   ctx.textAlign = "left";
-  ctx.fillText(`FECHA: ${formatearFechaTicket(t.fecha)}`, l, yy);
+  {
+    const fechaProduccion = t.fecha
+      ? new Date(`${t.fecha}T12:00:00`).toLocaleDateString("es-AR")
+      : "";
+    ctx.fillText(`FECHA: ${fechaProduccion}`, l, yy);
+  }
   yy += 30;
 
   // Separador mínimo.
