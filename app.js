@@ -2631,6 +2631,14 @@ function datosPedidosModulo() {
   };
 }
 
+function guardarPedidosLocal() {
+  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
+  localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+}
+
 function aplicarPedidosModuloRemoto(data = {}) {
   pedidosEliminados = fusionarPedidosEliminados(
     data.pedidosEliminados,
@@ -2642,8 +2650,16 @@ function aplicarPedidosModuloRemoto(data = {}) {
     pedidos,
     pedidosEliminados
   )
-    .filter(pedido => !pedidoEstaEliminadoSync(pedido))
-    .filter(pedido => !jornadaEstaCerrada(fechaEntregaPedido(pedido)));
+    .filter(pedido => !pedidoEstaEliminadoSync(pedido));
+
+  // Si llega un pedido nuevo desde otro dispositivo, esa fecha debe quedar abierta.
+  // Evita que una jornada cerrada localmente oculte pedidos cargados por Atención.
+  [...new Set(
+    pedidos
+      .filter(pedido => !esPedidoFijoRobusto(pedido))
+      .map(pedido => fechaEntregaPedido(pedido))
+      .filter(Boolean)
+  )].forEach(fecha => reabrirJornadaParaNuevoPedido(fecha));
 
   pedidosFijos = fusionarPedidosFijosSync(
     data.pedidosFijos,
@@ -2659,7 +2675,7 @@ function aplicarPedidosModuloRemoto(data = {}) {
     pedidosConfirmados = data.pedidosConfirmados;
   }
 
-  guardarLocal();
+  guardarPedidosLocal();
 }
 
 function guardarPedidosModuloEnNube() {
@@ -2709,7 +2725,7 @@ function guardarPedidosModuloEnNube() {
           }, { merge: true });
         });
 
-        guardarLocal();
+        guardarPedidosLocal();
         resolve(true);
       } catch (error) {
         console.error("Error sincronizando Pedidos dedicado:", error);
@@ -2751,9 +2767,12 @@ async function iniciarPedidosModuloNube() {
         cargandoDesdeNube = true;
         try {
           aplicarPedidosModuloRemoto(doc.data());
-          renderPedidos();
-          renderResumen();
-          if (typeof renderTickets === "function") renderTickets();
+          renderPedidosCargados();
+          renderPedidosFuturos();
+          renderHistorialPedidos();
+          calcularDiferencias();
+          actualizarEstadoConfirmacion();
+          renderTicketsPorDia();
         } catch (error) {
           console.error("Error recibiendo Pedidos dedicado:", error);
         } finally {
@@ -7283,23 +7302,23 @@ function imprimirListaTickets(lista) {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-          @page { size: 58mm 210mm; margin: 1.5mm 2mm; }
+          @page { size: 58mm 210mm; margin: 1mm; }
           * { box-sizing: border-box; }
           html, body {
             margin: 0;
             padding: 0;
-            width: 54mm;
+            width: 56mm;
             background: #fff;
           }
           .sheet {
-            width: 54mm;
+            width: 56mm;
             display: block;
             margin: 0;
             padding: 0;
           }
           .ticket {
             display: block;
-            width: 54mm;
+            width: 56mm;
             max-width: 54mm;
             height: auto;
             margin: 0 0 2mm 0;
@@ -7312,8 +7331,8 @@ function imprimirListaTickets(lista) {
             .sheet { width: 54mm; margin: 0 auto; }
           }
           @media print {
-            html, body, .sheet { width: 54mm !important; }
-            .ticket { width: 54mm !important; max-width: 54mm !important; }
+            html, body, .sheet { width: 56mm !important; }
+            .ticket { width: 56mm !important; max-width: 56mm !important; }
           }
         </style>
       </head>
@@ -7477,13 +7496,13 @@ function cortarTextoCanvas(ctx, texto, maxWidth) {
 
 function calcularAltoTicket(t, a = 640) {
   const altoItems = (t.items || []).reduce(
-    (total, item) => total + (String(item.descripcion || "").length > 25 ? 74 : 58),
+    (total, item) => total + (String(item.descripcion || "").length > 25 ? 105 : 82),
     0
   );
-  const altoDireccion = t.direccion || t.barrio ? 90 : 35;
-  const altoCuenta = 150;
-  const altoObservacion = t.observacionEntrega ? 55 : 0;
-  return Math.max(760, 470 + altoItems + altoDireccion + altoCuenta + altoObservacion);
+  const altoDireccion = t.direccion || t.barrio ? 125 : 55;
+  const altoCuenta = 205;
+  const altoObservacion = t.observacionEntrega ? 85 : 0;
+  return Math.max(980, 610 + altoItems + altoDireccion + altoCuenta + altoObservacion);
 }
 
 function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
@@ -7501,33 +7520,33 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.fillStyle = "#111";
 
   ctx.textAlign = "center";
-  ctx.font = "bold 29px Arial";
+  ctx.font = "bold 38px Arial";
   ctx.fillText("PANADERÍA FRATELLO", x + a / 2, yy);
-  yy += 30;
-  ctx.font = "14px Arial";
+  yy += 43;
+  ctx.font = "22px Arial";
   ctx.fillText(t.entregaConfirmada ? "COMPROBANTE DE ENTREGA" : "PEDIDO / TICKET DE ENTREGA", x + a / 2, yy);
-  yy += 28;
+  yy += 38;
 
   ctx.setLineDash([8, 5]);
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
   ctx.setLineDash([]);
-  yy += 26;
+  yy += 34;
 
   ctx.textAlign = "left";
-  ctx.font = "bold 17px Arial";
+  ctx.font = "bold 31px Arial";
   ctx.fillText(`Cliente: ${t.cliente}`, l, yy);
-  yy += 24;
-  ctx.font = "15px Arial";
+  yy += 32;
+  ctx.font = "22px Arial";
   ctx.fillText(
     `Fecha: ${new Date(t.fecha + "T12:00:00").toLocaleDateString("es-AR")}${t.horaEntrega ? ` · Entrega ${t.horaEntrega}` : ""}`,
     l, yy
   );
   ctx.textAlign = "right";
   ctx.fillText(`Pedido Nº ${n}`, r, yy);
-  yy += 22;
+  yy += 30;
 
   ctx.textAlign = "left";
-  ctx.font = "bold 13px Arial";
+  ctx.font = "bold 20px Arial";
   ctx.fillText(`Lista de precios: ${t.listaPrecioNombre || "Cliente"}`, l, yy);
   yy += 22;
 
@@ -7536,11 +7555,11 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.setLineDash([]);
   yy += 24;
 
-  ctx.font = "bold 14px Arial";
+  ctx.font = "bold 21px Arial";
   ctx.textAlign = "left";
   ctx.fillText("DESCRIPCIÓN", l, yy);
   yy += 22;
-  ctx.font = "bold 13px Arial";
+  ctx.font = "bold 20px Arial";
   ctx.fillText("CANT.", l, yy);
   ctx.textAlign = "right";
   ctx.fillText("P. UNIT.", x + a * .70, yy);
@@ -7551,30 +7570,30 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
 
   for (const i of t.items || []) {
     ctx.textAlign = "left";
-    ctx.font = "bold 15px Arial";
+    ctx.font = "bold 30px Arial";
     const lineas = cortarTextoCanvas(ctx, i.descripcion, a - p * 2).slice(0, 2);
-    lineas.forEach((linea, j) => ctx.fillText(linea, l, yy + j * 18));
-    yy += lineas.length * 18 + 8;
+    lineas.forEach((linea, j) => ctx.fillText(linea, l, yy + j * 27));
+    yy += lineas.length * 27 + 10;
 
-    ctx.font = "14px Arial";
+    ctx.font = "22px Arial";
     ctx.fillText(`${fmt(i.cantidad)} ${i.unidad}`, l, yy);
     ctx.textAlign = "right";
     ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.precioUnitario) : "Sin precio", x + a * .70, yy);
     ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.total) : "—", r, yy);
-    yy += 18;
+    yy += 27;
 
     ctx.strokeStyle = "#bbb";
     ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
     ctx.setLineDash([]);
     ctx.strokeStyle = "#111";
-    yy += 20;
+    yy += 25;
   }
 
   ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
   yy += 34;
-  ctx.font = "bold 23px Arial";
+  ctx.font = "bold 30px Arial";
   ctx.textAlign = "left";
   ctx.fillText("COMPRA DE HOY", l, yy);
   ctx.textAlign = "right";
@@ -7582,7 +7601,7 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   yy += 32;
 
   ctx.lineWidth = 1;
-  ctx.font = "15px Arial";
+  ctx.font = "22px Arial";
   ctx.textAlign = "left";
   ctx.fillText("Saldo anterior", l, yy);
   ctx.textAlign = "right";
@@ -7600,7 +7619,7 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
   yy += 34;
-  ctx.font = "bold 25px Arial";
+  ctx.font = "bold 31px Arial";
   ctx.textAlign = "left";
   ctx.fillText("TOTAL PENDIENTE", l, yy);
   ctx.textAlign = "right";
@@ -7613,10 +7632,10 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
     ctx.setLineDash([]);
     yy += 24;
     ctx.textAlign = "left";
-    ctx.font = "bold 14px Arial";
+    ctx.font = "bold 21px Arial";
     ctx.fillText("OBSERVACIÓN DE ENTREGA", l, yy);
     yy += 21;
-    ctx.font = "14px Arial";
+    ctx.font = "22px Arial";
     cortarTextoCanvas(ctx, t.observacionEntrega, a - p * 2).slice(0, 2).forEach(linea => {
       ctx.fillText(linea, l, yy);
       yy += 19;
@@ -7629,10 +7648,10 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   yy += 28;
 
   ctx.textAlign = "left";
-  ctx.font = "bold 16px Arial";
+  ctx.font = "bold 23px Arial";
   ctx.fillText("DIRECCIÓN DE ENTREGA", l, yy);
   yy += 24;
-  ctx.font = "15px Arial";
+  ctx.font = "22px Arial";
   if (t.direccion) {
     cortarTextoCanvas(ctx, t.direccion, a - p * 2).forEach(linea => {
       ctx.fillText(linea, l, yy);
@@ -7649,7 +7668,7 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
 
   yy += 12;
   ctx.textAlign = "center";
-  ctx.font = "14px Arial";
+  ctx.font = "22px Arial";
   ctx.fillText("Gracias por elegir Panadería Fratello", x + a / 2, yy);
   ctx.restore();
 }

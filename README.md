@@ -1,16 +1,23 @@
-# Fratello v5.3.1
+# Fratello v5.3.2
 
-## Ticket Xprinter 58 mm
-- La impresión de tickets deja de generarse como A4.
-- Formato: 58 mm de papel, 54 mm de contenido y márgenes mínimos.
-- Un ticket por ancho, pensado para Xprinter XP-58.
+## Tickets Xprinter XP-58
+- Se mantiene el papel de 58 mm.
+- Se aprovechan 56 mm de ancho.
+- Márgenes de 1 mm.
+- Tipografías considerablemente más grandes.
+- Mayor separación vertical para evitar texto encimado.
+- Alto automático adaptado al contenido.
 
-## Pedidos multidispositivo
-- Se agrega `fratello/pedidos_estado`.
-- Pedidos, eliminaciones, pedidos fijos y exclusiones se sincronizan en un documento independiente.
-- El documento general continúa como respaldo.
-- Al iniciar, se fusionan Firebase + datos locales y se migra lo existente.
-- Listener en tiempo real para que los pedidos cargados desde el celular de la panadería aparezcan en los demás dispositivos.
+## Pedidos entre dispositivos
+Se corrigió un error real de v5.3.1:
+- el módulo dedicado llamaba a `guardarLocal()`, función que no existía;
+- eso podía detener la sincronización de pedidos con un error de JavaScript.
 
-## Sin cambios
-Caja, Gastos, Ingresos, Administración, cálculos y Producción conservan su lógica.
+Ahora:
+- usa `guardarPedidosLocal()`;
+- los pedidos remotos no se eliminan por una jornada cerrada en otro dispositivo;
+- si llega un pedido nuevo, la fecha se reabre automáticamente;
+- al recibir datos se actualiza la pantalla semanal, futuros, historial, diferencias y tickets.
+
+## Versión esperada
+v5.3.2
