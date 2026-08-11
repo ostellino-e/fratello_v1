@@ -7139,7 +7139,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
               <button type="button" class="primary" onclick="abrirEntregaTicket('${pedido.claveMemoria}')">📦 Entrega / cobro</button>
               <button type="button" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">👁 Ver comercial</button>
               <button type="button" class="ticketCommercialButton" onclick="imprimirTicketComercial('${tipo}', '${pedido.claveMemoria}')">🧾 Comercial / cliente ×2</button>
-              <button type="button" class="ticketProductionButton" onclick="imprimirTicketProduccion('${tipo}', '${pedido.claveMemoria}')">🥖 Producción · sin precios</button>
+              <button type="button" class="ticketProductionButton" onclick="imprimirTicketProduccion('${tipo}', '${pedido.claveMemoria}')">🥖 Producción · compacto</button>
               <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG comercial</button>
             </div>
           </article>`;
@@ -7147,7 +7147,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
         <div class="ticketDayFooter">
           <button type="button" class="ticketRepairButtonV422" onclick="repararPedidosYTicketsDelDia('${fecha}')">🧹 Reparar pedidos y tickets</button>
           <button type="button" class="primary ticketCommercialButton" onclick="imprimirTicketsComercialesDelDia('${fecha}')">🧾 Imprimir todos · Comercial ×2</button>
-          <button type="button" class="ticketProductionButton" onclick="imprimirTicketsProduccionDelDia('${fecha}')">🥖 Imprimir todos · Producción sin precios</button>
+          <button type="button" class="ticketProductionButton" onclick="imprimirTicketsProduccionDelDia('${fecha}')">🥖 Imprimir todos · Producción compacto</button>
           <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG comercial</button>
           <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF comercial</button>
         </div>
@@ -7583,6 +7583,60 @@ function calcularAltoTicket(t, a = 640) {
   return Math.max(1120, 700 + altoItems + altoDireccion + altoCuenta + altoObservacion);
 }
 
+function dibujarTicketProduccionCompacto(ctx, t, x, y, a, h) {
+  const p = 10;
+  const l = x + p;
+  const r = x + a - p;
+  let yy = y + 42;
+
+  ctx.save();
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(x, y, a, h);
+  ctx.fillStyle = "#111";
+
+  // Solo el nombre del cliente, grande y claro.
+  ctx.textAlign = "left";
+  ajustarFuenteTicket(ctx, String(t.cliente || "CLIENTE").toUpperCase(), 52, 34, a - p * 2, "bold");
+  ctx.fillText(String(t.cliente || "CLIENTE").toUpperCase(), l, yy);
+  yy += 38;
+
+  // Separador mínimo.
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(l, yy);
+  ctx.lineTo(r, yy);
+  ctx.stroke();
+  yy += 34;
+
+  // Producto y cantidad en la misma línea.
+  for (const item of t.items || []) {
+    const producto = String(item.descripcion || "").trim();
+    const cantidad = `${fmt(item.cantidad)} ${item.unidad || ""}`.trim();
+
+    ctx.font = "bold 35px Arial";
+    const anchoCantidad = ctx.measureText(cantidad).width;
+    const anchoProducto = Math.max(120, (r - l) - anchoCantidad - 24);
+
+    ctx.textAlign = "left";
+    let nombre = producto;
+    while (nombre.length > 4 && ctx.measureText(nombre).width > anchoProducto) {
+      nombre = nombre.slice(0, -1);
+    }
+    if (nombre !== producto) nombre = nombre.trimEnd() + "…";
+    ctx.fillText(nombre, l, yy);
+
+    ctx.textAlign = "right";
+    ctx.font = "bold 37px Arial";
+    ctx.fillText(cantidad, r, yy);
+
+    yy += 43;
+  }
+
+  yy += 8;
+  ctx.restore();
+  return yy;
+}
+
 function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   const p = 8;
   const l = x + p;
@@ -7778,35 +7832,30 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
 }
 
 function crearCanvasTicketIndividual(t, a = 640) {
-  const altoTemporal = 4200;
+  const esProduccion = Boolean(t?.modoProduccion);
+  const altoTemporal = esProduccion ? 2400 : 4200;
   const temporal = document.createElement("canvas");
   temporal.width = a;
   temporal.height = altoTemporal;
 
-  const usado = dibujarTicketEnCanvas(
-    temporal.getContext("2d"),
-    t,
-    0,
-    0,
-    a,
-    altoTemporal,
-    String(t.id).slice(-6)
-  );
+  const renderer = esProduccion ? dibujarTicketProduccionCompacto : dibujarTicketEnCanvas;
+  const usado = esProduccion
+    ? renderer(temporal.getContext("2d"), t, 0, 0, a, altoTemporal)
+    : renderer(temporal.getContext("2d"), t, 0, 0, a, altoTemporal, String(t.id).slice(-6));
 
-  const altoFinal = Math.min(altoTemporal, Math.max(520, Math.ceil(usado + 18)));
+  const altoMinimo = esProduccion ? 150 : 520;
+  const margenFinal = esProduccion ? 8 : 18;
+  const altoFinal = Math.min(altoTemporal, Math.max(altoMinimo, Math.ceil(usado + margenFinal)));
+
   const final = document.createElement("canvas");
   final.width = a;
   final.height = altoFinal;
 
-  dibujarTicketEnCanvas(
-    final.getContext("2d"),
-    t,
-    0,
-    0,
-    a,
-    altoFinal,
-    String(t.id).slice(-6)
-  );
+  if (esProduccion) {
+    renderer(final.getContext("2d"), t, 0, 0, a, altoFinal);
+  } else {
+    renderer(final.getContext("2d"), t, 0, 0, a, altoFinal, String(t.id).slice(-6));
+  }
 
   return final;
 }

@@ -1,25 +1,22 @@
-# Fratello v5.3.8 — Tickets Comercial y Producción
+# Fratello v5.3.9 — Ticket de producción compacto
 
-## Ticket comercial / cliente
-- Conserva el formato actual de 54 mm.
-- Incluye precios, compra del día, saldo y total pendiente.
-- Cada botón Comercial imprime 2 copias por cliente.
-- “Imprimir todos · Comercial ×2” genera 2 tickets por cada cliente del día.
+## Producción
+- Se elimina PANADERÍA FRATELLO.
+- Se elimina fecha, número de pedido, dirección, barrio, observaciones y cualquier otro dato.
+- No muestra precios, saldos ni totales.
+- Solo muestra:
+  1. Nombre del cliente.
+  2. Producto y cantidad en la misma línea.
+- Nombre del cliente grande arriba.
+- Formato mucho más corto para ahorrar papel.
+- Mantiene 54 mm y centrado.
 
-## Ticket de producción
-- Nuevo formato para los panaderos.
-- Sin precios.
-- Sin lista de precios.
-- Sin compra del día.
-- Sin saldo anterior.
-- Sin pagos.
-- Sin total pendiente.
-- Muestra cliente, fecha, número de pedido, productos, cantidades, observaciones y dirección.
-- Pie claramente identificado: “COPIA PARA PRODUCCIÓN · SIN PRECIOS”.
-- “Imprimir todos · Producción sin precios” imprime un ticket por cliente.
+## Comercial
+- No fue modificado.
+- Sigue imprimiendo con precios y 2 copias.
 
 ## Sin cambios
-Pedidos, sincronización, Caja, Gastos, Ingresos, Administración y lógica financiera no fueron modificados.
+Pedidos, sincronización, Caja, Gastos, Ingresos y Administración no fueron modificados.
 
 ## Versión esperada
-v5.3.8
+v5.3.9
