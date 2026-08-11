@@ -1,23 +1,8 @@
-# Fratello v5.3.2
+# Fratello v5.3.3
 
-## Tickets Xprinter XP-58
-- Se mantiene el papel de 58 mm.
-- Se aprovechan 56 mm de ancho.
-- Márgenes de 1 mm.
-- Tipografías considerablemente más grandes.
-- Mayor separación vertical para evitar texto encimado.
-- Alto automático adaptado al contenido.
-
-## Pedidos entre dispositivos
-Se corrigió un error real de v5.3.1:
-- el módulo dedicado llamaba a `guardarLocal()`, función que no existía;
-- eso podía detener la sincronización de pedidos con un error de JavaScript.
-
-Ahora:
-- usa `guardarPedidosLocal()`;
-- los pedidos remotos no se eliminan por una jornada cerrada en otro dispositivo;
-- si llega un pedido nuevo, la fecha se reabre automáticamente;
-- al recibir datos se actualiza la pantalla semanal, futuros, historial, diferencias y tickets.
-
-## Versión esperada
-v5.3.2
+- Ticket XP-58 centrado dentro del ancho imprimible real (47 mm sobre papel 58 mm).
+- Tipografía un poco más grande que v5.3.2.
+- Se mantiene la sincronización de pedidos que ya recuperó los pedidos entre dispositivos.
+- Listener de pedidos se activa antes y el debounce baja de 220 ms a 80 ms para mejorar la sensación de actualización.
+- Se evitan solicitudes duplicadas de guardado dedicado de pedidos.
+- Sin cambios funcionales en Caja, Gastos, Ingresos ni Administración.
