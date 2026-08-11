@@ -1,17 +1,25 @@
-# Fratello v5.3.7
+# Fratello v5.3.8 — Tickets Comercial y Producción
 
-## Ticket XP-58
-- Mantiene 54 mm de ancho dentro del rollo de 58 mm: 2 mm por lado.
-- El título PANADERÍA FRATELLO ahora se ajusta automáticamente para nunca cortarse.
-- El subtítulo también se ajusta automáticamente al ancho.
-- Se reduce el margen interno del ticket para aprovechar mejor los 54 mm.
-- Se aumenta ligeramente el tamaño de cliente, productos y encabezados.
-- Se elimina el marco exterior que podía dar sensación de corte en los laterales.
-- Se mantiene centrado.
-- Se conserva el alto dinámico para evitar cortes al final del pedido.
+## Ticket comercial / cliente
+- Conserva el formato actual de 54 mm.
+- Incluye precios, compra del día, saldo y total pendiente.
+- Cada botón Comercial imprime 2 copias por cliente.
+- “Imprimir todos · Comercial ×2” genera 2 tickets por cada cliente del día.
+
+## Ticket de producción
+- Nuevo formato para los panaderos.
+- Sin precios.
+- Sin lista de precios.
+- Sin compra del día.
+- Sin saldo anterior.
+- Sin pagos.
+- Sin total pendiente.
+- Muestra cliente, fecha, número de pedido, productos, cantidades, observaciones y dirección.
+- Pie claramente identificado: “COPIA PARA PRODUCCIÓN · SIN PRECIOS”.
+- “Imprimir todos · Producción sin precios” imprime un ticket por cliente.
 
 ## Sin cambios
-Pedidos, sincronización, Caja, Gastos, Ingresos y Administración no fueron modificados.
+Pedidos, sincronización, Caja, Gastos, Ingresos, Administración y lógica financiera no fueron modificados.
 
 ## Versión esperada
-v5.3.7
+v5.3.8

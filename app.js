@@ -7137,17 +7137,19 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
             </div>
             <div class="ticketClientActions">
               <button type="button" class="primary" onclick="abrirEntregaTicket('${pedido.claveMemoria}')">📦 Entrega / cobro</button>
-              <button type="button" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">👁 Ver</button>
-              <button type="button" onclick="imprimirTicketIndividual('${tipo}', '${pedido.claveMemoria}')">🖨 Imprimir</button>
-              <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG</button>
+              <button type="button" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">👁 Ver comercial</button>
+              <button type="button" class="ticketCommercialButton" onclick="imprimirTicketComercial('${tipo}', '${pedido.claveMemoria}')">🧾 Comercial / cliente ×2</button>
+              <button type="button" class="ticketProductionButton" onclick="imprimirTicketProduccion('${tipo}', '${pedido.claveMemoria}')">🥖 Producción · sin precios</button>
+              <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG comercial</button>
             </div>
           </article>`;
         }).join("")}
         <div class="ticketDayFooter">
           <button type="button" class="ticketRepairButtonV422" onclick="repararPedidosYTicketsDelDia('${fecha}')">🧹 Reparar pedidos y tickets</button>
-          <button type="button" class="primary" onclick="imprimirTicketsDelDia('${fecha}')">🖨 Imprimir todos los tickets de ${etiquetaFechaTickets(fecha)}</button>
-          <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG</button>
-          <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF</button>
+          <button type="button" class="primary ticketCommercialButton" onclick="imprimirTicketsComercialesDelDia('${fecha}')">🧾 Imprimir todos · Comercial ×2</button>
+          <button type="button" class="ticketProductionButton" onclick="imprimirTicketsProduccionDelDia('${fecha}')">🥖 Imprimir todos · Producción sin precios</button>
+          <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG comercial</button>
+          <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF comercial</button>
         </div>
       </div>
     </details>`;
@@ -7283,15 +7285,26 @@ function verTicketIndividual(tipo, id) {
   abrirModalImpresion();
 }
 
-function imprimirListaTickets(lista) {
+function imprimirListaTickets(lista, opciones = {}) {
   if (!lista.length) {
     alert("No hay tickets para imprimir.");
     return;
   }
 
-  const imgs = lista.map(pedido =>
-    crearCanvasTicketIndividual(datosTicketPedido(pedido)).toDataURL("image/jpeg", 0.92)
-  );
+  const modo = opciones.modo === "produccion" ? "produccion" : "comercial";
+  const copias = Math.max(1, Number(opciones.copias || 1));
+
+  const imagenesBase = lista.map(pedido => {
+    const datos = modo === "produccion"
+      ? datosTicketProduccion(pedido)
+      : datosTicketPedido(pedido);
+    return crearCanvasTicketIndividual(datos).toDataURL("image/jpeg", 0.94);
+  });
+
+  const imgs = [];
+  imagenesBase.forEach(src => {
+    for (let copia = 0; copia < copias; copia += 1) imgs.push(src);
+  });
 
   const ventana = window.open("", "_blank");
   if (!ventana) {
@@ -7303,6 +7316,7 @@ function imprimirListaTickets(lista) {
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>${modo === "produccion" ? "Tickets de producción" : "Tickets comerciales"}</title>
         <style>
           @page { size: 58mm 210mm; margin: 0; }
           * { box-sizing: border-box; }
@@ -7337,7 +7351,12 @@ function imprimirListaTickets(lista) {
           @media print {
             html, body { width: 58mm !important; }
             .sheet { width: 54mm !important; margin: 0 auto !important; }
-            .ticket { width: 54mm !important; max-width: 54mm !important; margin-left: auto !important; margin-right: auto !important; }
+            .ticket {
+              width: 54mm !important;
+              max-width: 54mm !important;
+              margin-left: auto !important;
+              margin-right: auto !important;
+            }
           }
         </style>
       </head>
@@ -7353,12 +7372,33 @@ function imprimirListaTickets(lista) {
 function imprimirTicketIndividual(tipo, id) {
   const pedido = buscarPedidoTicket(tipo, id);
   if (!pedido) return alert("No se encontró el pedido.");
-  imprimirListaTickets([pedido]);
+  imprimirListaTickets([pedido], { modo: "comercial", copias: 1 });
+}
+
+function imprimirTicketComercial(tipo, id) {
+  const pedido = buscarPedidoTicket(tipo, id);
+  if (!pedido) return alert("No se encontró el pedido.");
+  imprimirListaTickets([pedido], { modo: "comercial", copias: 2 });
+}
+
+function imprimirTicketProduccion(tipo, id) {
+  const pedido = buscarPedidoTicket(tipo, id);
+  if (!pedido) return alert("No se encontró el pedido.");
+  imprimirListaTickets([pedido], { modo: "produccion", copias: 1 });
 }
 
 function imprimirTicketsDelDia(fecha) {
+  imprimirTicketsComercialesDelDia(fecha);
+}
+
+function imprimirTicketsComercialesDelDia(fecha) {
   const lista = pedidosTicketParaFecha(fecha);
-  imprimirListaTickets(lista);
+  imprimirListaTickets(lista, { modo: "comercial", copias: 2 });
+}
+
+function imprimirTicketsProduccionDelDia(fecha) {
+  const lista = pedidosTicketParaFecha(fecha);
+  imprimirListaTickets(lista, { modo: "produccion", copias: 1 });
 }
 
 async function guardarTicketIndividualJpg(tipo, id) {
@@ -7474,6 +7514,28 @@ function datosTicketPedido(pedido) {
   };
 }
 
+function datosTicketProduccion(pedido) {
+  const comercial = datosTicketPedido(pedido);
+
+  return {
+    ...comercial,
+    modoProduccion: true,
+    listaPrecio: "",
+    listaPrecioNombre: "",
+    total: 0,
+    saldoAnterior: 0,
+    pagoHoy: 0,
+    saldoFinal: 0,
+    items: (comercial.items || []).map(item => ({
+      descripcion: item.descripcion,
+      cantidad: item.cantidad,
+      unidad: item.unidad,
+      precioUnitario: 0,
+      total: 0
+    }))
+  };
+}
+
 function formatoDineroTicket(valor) {
   return new Intl.NumberFormat("es-AR", {
     style: "currency", currency: "ARS", maximumFractionDigits: 0
@@ -7540,9 +7602,9 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.fillText(tituloTicket, x + a / 2, yy);
   yy += 58;
 
-  const subtituloTicket = t.entregaConfirmada
-    ? "COMPROBANTE DE ENTREGA"
-    : "PEDIDO / TICKET DE ENTREGA";
+  const subtituloTicket = t.modoProduccion
+    ? "PEDIDO DE PRODUCCIÓN"
+    : (t.entregaConfirmada ? "COMPROBANTE DE ENTREGA" : "PEDIDO / TICKET DE ENTREGA");
   ajustarFuenteTicket(ctx, subtituloTicket, 36, 28, a - 28, "bold");
   ctx.fillText(subtituloTicket, x + a / 2, yy);
   yy += 48;
@@ -7565,10 +7627,14 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.fillText(`Pedido Nº ${n}`, r, yy);
   yy += 38;
 
-  ctx.textAlign = "left";
-  ctx.font = "bold 31px Arial";
-  ctx.fillText(`Lista de precios: ${t.listaPrecioNombre || "Cliente"}`, l, yy);
-  yy += 30;
+  if (!t.modoProduccion) {
+    ctx.textAlign = "left";
+    ctx.font = "bold 31px Arial";
+    ctx.fillText(`Lista de precios: ${t.listaPrecioNombre || "Cliente"}`, l, yy);
+    yy += 30;
+  } else {
+    yy += 8;
+  }
 
   ctx.setLineDash([8, 5]);
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
@@ -7580,10 +7646,12 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.fillText("DESCRIPCIÓN", l, yy);
   yy += 30;
   ctx.font = "bold 31px Arial";
-  ctx.fillText("CANT.", l, yy);
-  ctx.textAlign = "right";
-  ctx.fillText("P. UNIT.", x + a * .68, yy);
-  ctx.fillText("TOTAL", r, yy);
+  ctx.fillText(t.modoProduccion ? "CANTIDAD" : "CANT.", l, yy);
+  if (!t.modoProduccion) {
+    ctx.textAlign = "right";
+    ctx.fillText("P. UNIT.", x + a * .68, yy);
+    ctx.fillText("TOTAL", r, yy);
+  }
   yy += 20;
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
   yy += 36;
@@ -7595,11 +7663,13 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
     lineas.forEach((linea, j) => ctx.fillText(linea, l, yy + j * 41));
     yy += lineas.length * 41 + 14;
 
-    ctx.font = "34px Arial";
+    ctx.font = t.modoProduccion ? "bold 39px Arial" : "34px Arial";
     ctx.fillText(`${fmt(i.cantidad)} ${i.unidad}`, l, yy);
-    ctx.textAlign = "right";
-    ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.precioUnitario) : "Sin precio", x + a * .68, yy);
-    ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.total) : "—", r, yy);
+    if (!t.modoProduccion) {
+      ctx.textAlign = "right";
+      ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.precioUnitario) : "Sin precio", x + a * .68, yy);
+      ctx.fillText(i.precioUnitario > 0 ? formatoDineroTicket(i.total) : "—", r, yy);
+    }
     yy += 36;
 
     ctx.strokeStyle = "#bbb";
@@ -7610,6 +7680,7 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
     yy += 33;
   }
 
+  if (!t.modoProduccion) {
   ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
   yy += 44;
@@ -7645,6 +7716,11 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.textAlign = "right";
   ctx.fillText(formatoDineroTicket(t.saldoFinal), r, yy);
   yy += 44;
+  } else {
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
+    yy += 28;
+  }
 
   if (t.observacionEntrega) {
     ctx.setLineDash([8, 5]);
@@ -7688,8 +7764,13 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
 
   yy += 16;
   ctx.textAlign = "center";
-  ctx.font = "34px Arial";
-  ctx.fillText("Gracias por elegir Panadería Fratello", x + a / 2, yy);
+  if (t.modoProduccion) {
+    ctx.font = "bold 34px Arial";
+    ctx.fillText("COPIA PARA PRODUCCIÓN · SIN PRECIOS", x + a / 2, yy);
+  } else {
+    ctx.font = "34px Arial";
+    ctx.fillText("Gracias por elegir Panadería Fratello", x + a / 2, yy);
+  }
   yy += 42;
 
   ctx.restore();
@@ -10739,6 +10820,10 @@ function iniciarModuloAdministracion() {
 }
 
 window.editarIngresoAdministracion = editarIngresoAdministracion;
+window.imprimirTicketComercial = imprimirTicketComercial;
+window.imprimirTicketProduccion = imprimirTicketProduccion;
+window.imprimirTicketsComercialesDelDia = imprimirTicketsComercialesDelDia;
+window.imprimirTicketsProduccionDelDia = imprimirTicketsProduccionDelDia;
 window.eliminarTransferenciaDinero = eliminarTransferenciaDinero;
 window.editarClienteExterno = editarClienteExterno;
 window.eliminarClienteExterno = eliminarClienteExterno;

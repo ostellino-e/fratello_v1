@@ -4811,3 +4811,22 @@ body.modal-open{
     max-height:62vh;
   }
 }
+
+
+/* Fratello v5.3.8 — Comercial vs Producción */
+.ticketCommercialButton{
+  border-color:#9a6c30 !important;
+  background:#fff7e9 !important;
+  color:#563711 !important;
+  font-weight:800 !important;
+}
+.ticketProductionButton{
+  border-color:#2c7058 !important;
+  background:#edf8f3 !important;
+  color:#174c3a !important;
+  font-weight:800 !important;
+}
+.ticketDayFooter .ticketCommercialButton,
+.ticketDayFooter .ticketProductionButton{
+  min-height:42px;
+}
