@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=540" />
+  <link rel="stylesheet" href="styles.css?v=541" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "5.4.0";
-    document.documentElement.dataset.fratelloVersion = "5.4.0";
+    window.FRATELLO_VERSION = "5.4.1";
+    document.documentElement.dataset.fratelloVersion = "5.4.1";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v5.4.0</small>
+      <small id="versionFratello" class="syncVersionBadge">v5.4.1</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -154,7 +154,7 @@
         </button>
       </div>
       <div class="pedidoSecondaryLinks">
-        <button type="button" data-seccion="seccionPagosPendientes">💰 Pagos pendientes</button>
+        <button type="button" class="pendingMainButton" data-seccion="seccionPagosPendientes"><span>💰</span><strong>Pagos pendientes</strong><small>Controlar deuda, pagos y ajustes por cliente.</small></button>
         <button type="button" data-seccion="seccionHistorialPedidos">🕘 Historial</button>
       </div>
     </section>
@@ -173,7 +173,7 @@
         <small>Solo sirve para saber quién debe y cuánto.</small>
       </div>
 
-      <div id="listaPagosPendientesClientes" class="pendingClientsList"></div>
+      <div class="pendingClientTools"><h3>Clientes de cuenta corriente</h3><div class="pendingClientAdd"><input id="nuevoClientePendiente" type="text" placeholder="Nombre del cliente"><button type="button" class="primary" onclick="agregarClientePendienteManual()">＋ Agregar cliente</button></div><small>Agregar o quitar acá no elimina el cliente de Pedidos.</small></div><div id="listaPagosPendientesClientes" class="pendingClientsList"></div>
     </section>
 
     <section class="card appSection" id="seccionProduccion">
@@ -479,7 +479,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v5.4.0 · Interfaz compacta móvil</span>
+        <span class="adminFinanceVersion">v5.4.1 · Interfaz compacta móvil</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">

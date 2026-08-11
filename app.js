@@ -1930,6 +1930,9 @@ function volverAtrasFratello() {
 
 window.abrirSeccionFratello = abrirSeccionFratello;
 window.cargarPagoPendienteCliente = cargarPagoPendienteCliente;
+window.cargarCargoPendienteCliente = cargarCargoPendienteCliente;
+window.agregarClientePendienteManual = agregarClientePendienteManual;
+window.eliminarClientePendienteManual = eliminarClientePendienteManual;
 window.eliminarPagoPendienteManual = eliminarPagoPendienteManual;
 window.volverAtrasFratello = volverAtrasFratello;
 window.mostrarInicioFratello = mostrarInicioFratello;
@@ -2633,7 +2636,9 @@ function datosPedidosModulo() {
     pedidosEliminados: Array.isArray(pedidosEliminados) ? pedidosEliminados : [],
     pedidosFijos: Array.isArray(pedidosFijos) ? pedidosFijos : [],
     exclusionesPedidosFijos: Array.isArray(exclusionesPedidosFijos) ? exclusionesPedidosFijos : [],
-    pedidosConfirmados: Boolean(pedidosConfirmados)
+    pedidosConfirmados: Boolean(pedidosConfirmados),
+    cuentaCorriente: Array.isArray(cuentaCorrienteV42) ? cuentaCorrienteV42 : [],
+    clientesCuenta: Array.isArray(clientesCuentaV541) ? clientesCuentaV541 : []
   };
 }
 
@@ -2680,8 +2685,13 @@ function aplicarPedidosModuloRemoto(data = {}) {
   if (typeof data.pedidosConfirmados === "boolean") {
     pedidosConfirmados = data.pedidosConfirmados;
   }
+  cuentaCorrienteV42 = fusionarCuentaCorrienteV42(data.cuentaCorriente, cuentaCorrienteV42);
+  clientesCuentaV541 = fusionarClientesCuentaV541(data.clientesCuenta, clientesCuentaV541);
+  localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  guardarClientesCuentaLocalV541();
 
   guardarPedidosLocal();
+  renderPagosPendientes();
 }
 
 function guardarPedidosModuloEnNube() {
@@ -2724,6 +2734,8 @@ function guardarPedidosModuloEnNube() {
             remoto.exclusionesPedidosFijos,
             exclusionesPedidosFijos
           );
+          cuentaCorrienteV42 = fusionarCuentaCorrienteV42(remoto.cuentaCorriente, cuentaCorrienteV42);
+          clientesCuentaV541 = fusionarClientesCuentaV541(remoto.clientesCuenta, clientesCuentaV541);
 
           tx.set(ref, {
             ...datosPedidosModulo(),
@@ -7868,10 +7880,10 @@ function crearCanvasTicketIndividual(t, a = 640) {
 
 
 const CUENTA_CORRIENTE_KEY_V42 = "fratello_cuenta_corriente_v42";
+const CLIENTES_CUENTA_KEY_V541 = "fratello_clientes_cuenta_v541";
 let cuentaCorrienteV42 = JSON.parse(localStorage.getItem(CUENTA_CORRIENTE_KEY_V42) || "[]");
+let clientesCuentaV541 = JSON.parse(localStorage.getItem(CLIENTES_CUENTA_KEY_V541) || "[]");
 
-let unsubscribeCuentaPendientes = null;
-let guardandoCuentaPendientes = false;
 
 function fechaMovimientoCuentaV42(item) {
   const valor = item?.actualizado || item?.creado || "";
@@ -7896,95 +7908,51 @@ function fusionarCuentaCorrienteV42(remota = [], local = []) {
   return [...mapa.values()];
 }
 
+
+function fusionarClientesCuentaV541(remotos=[], locales=[]) {
+  return [...new Set([...(Array.isArray(remotos)?remotos:[]), ...(Array.isArray(locales)?locales:[])].map(x=>String(x||"").trim()).filter(Boolean))];
+}
+function guardarClientesCuentaLocalV541() {
+  localStorage.setItem(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
+}
 function guardarCuentaCorrienteV42() {
   localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
-  guardarCuentaPendientesNube().catch(() => {});
+  localStorage.setItem(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
+  if (typeof guardarPedidosModuloEnNube === "function") guardarPedidosModuloEnNube().catch(() => {});
   renderPagosPendientes();
 }
 
-async function guardarCuentaPendientesNube() {
-  if (!db || guardandoCuentaPendientes) return false;
-
-  guardandoCuentaPendientes = true;
-  try {
-    const ref = db.collection("fratello").doc("cuentas_pendientes_estado");
-
-    await db.runTransaction(async tx => {
-      const snap = await tx.get(ref);
-      const remoto = snap.exists ? snap.data() : {};
-      cuentaCorrienteV42 = fusionarCuentaCorrienteV42(
-        remoto.cuentaCorriente,
-        cuentaCorrienteV42
-      );
-
-      tx.set(ref, {
-        cuentaCorriente: cuentaCorrienteV42,
-        actualizado: new Date().toISOString()
-      }, { merge: true });
-    });
-
-    localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
-    return true;
-  } catch (error) {
-    console.error("Error sincronizando pagos pendientes:", error);
-    return false;
-  } finally {
-    guardandoCuentaPendientes = false;
-  }
-}
-
-async function iniciarCuentaPendientesNube() {
-  if (!db) return;
-
-  try {
-    const ref = db.collection("fratello").doc("cuentas_pendientes_estado");
-    const snap = await ref.get();
-
-    if (snap.exists) {
-      cuentaCorrienteV42 = fusionarCuentaCorrienteV42(
-        snap.data()?.cuentaCorriente,
-        cuentaCorrienteV42
-      );
-      localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
-    }
-
-    await guardarCuentaPendientesNube();
-
-    if (!unsubscribeCuentaPendientes) {
-      unsubscribeCuentaPendientes = ref.onSnapshot(doc => {
-        if (!doc.exists) return;
-        cuentaCorrienteV42 = fusionarCuentaCorrienteV42(
-          doc.data()?.cuentaCorriente,
-          cuentaCorrienteV42
-        );
-        localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
-        renderPagosPendientes();
-        renderTicketsPorDia();
-      }, error => {
-        console.error("Listener pagos pendientes:", error);
-      });
-    }
-  } catch (error) {
-    console.error("Error iniciando pagos pendientes:", error);
-  }
+function iniciarCuentaPendientesNube() {
+  renderPagosPendientes();
+  return Promise.resolve(true);
 }
 
 function clientesCuentaPendientesV42() {
   const nombres = new Set();
-
-  (Array.isArray(clientes) ? clientes : []).forEach(nombre => {
-    if (String(nombre || "").trim()) nombres.add(String(nombre).trim());
-  });
-
-  Object.keys(datosClientesCompletos || {}).forEach(nombre => {
-    if (String(nombre || "").trim()) nombres.add(String(nombre).trim());
-  });
-
-  (Array.isArray(cuentaCorrienteV42) ? cuentaCorrienteV42 : []).forEach(mov => {
-    if (String(mov?.cliente || "").trim()) nombres.add(String(mov.cliente).trim());
-  });
-
+  (Array.isArray(clientesCuentaV541)?clientesCuentaV541:[]).forEach(n=>{ if(String(n||"").trim()) nombres.add(String(n).trim()); });
+  (Array.isArray(cuentaCorrienteV42)?cuentaCorrienteV42:[]).forEach(m=>{ if(String(m?.cliente||"").trim()) nombres.add(String(m.cliente).trim()); });
   return [...nombres];
+}
+
+function agregarClientePendienteManual() {
+  const input=$("nuevoClientePendiente"), nombre=String(input?.value||"").trim();
+  if(!nombre) return alert("Escribí el nombre del cliente.");
+  if(clientesCuentaPendientesV42().some(x=>normalizarClienteReparacion(x)===normalizarClienteReparacion(nombre))) return alert("Ese cliente ya está en Pagos pendientes.");
+  clientesCuentaV541=fusionarClientesCuentaV541(clientesCuentaV541,[nombre]);
+  if(input) input.value="";
+  guardarCuentaCorrienteV42();
+}
+
+function eliminarClientePendienteManual(idSeguro) {
+  const cliente=clienteDesdeIdPagoPendiente(idSeguro);
+  if(!cliente) return;
+  const saldo=saldoPendienteClienteV42(cliente);
+  if(saldo>0) return alert(`No se puede quitar porque todavía tiene ${formatoDineroTicket(saldo)} pendientes.`);
+  if(!confirm(`¿Quitar a ${cliente} de esta pantalla?
+
+No se elimina de Pedidos.`)) return;
+  clientesCuentaV541=clientesCuentaV541.filter(x=>normalizarClienteReparacion(x)!==normalizarClienteReparacion(cliente));
+  guardarCuentaCorrienteV42();
 }
 
 function saldoPendienteClienteV42(cliente) {
@@ -8034,7 +8002,7 @@ function renderPagosPendientes() {
 
       return `<div class="pendingMovementRow">
         <span>
-          <strong>${esPagoManual ? "Pago registrado" : "Pedido / cargo"}</strong>
+          <strong>${esPagoManual ? "Pago registrado" : (mov.tipo === "cargo_manual" ? "Monto pendiente manual" : "Pedido / cargo")}</strong>
           <small>${formatoFechaCuentaV42(mov.fecha)}${mov.medio ? ` · ${adminFinEscapar(mov.medio)}` : ""}${mov.observacion ? ` · ${adminFinEscapar(mov.observacion)}` : ""}</small>
         </span>
         <b class="${pago > 0 ? "isPayment" : "isCharge"}">${pago > 0 ? `- ${formatoDineroTicket(pago)}` : `+ ${formatoDineroTicket(cargo)}`}</b>
@@ -8057,6 +8025,12 @@ function renderPagosPendientes() {
           <span>Saldo pendiente actual</span>
           <strong>${formatoDineroTicket(cliente.saldo)}</strong>
         </div>
+        <button type="button" class="pendingRemoveClient" onclick="eliminarClientePendienteManual('${idSeguro}')">Quitar cliente de esta pantalla</button>
+        <div class="pendingManualCharge"><h4>Sumar monto pendiente</h4><div class="pendingPaymentGrid">
+          <label>Monto a sumar<input id="cargoPendienteMonto_${idSeguro}" type="number" min="1" step="1" inputmode="decimal" placeholder="0"></label>
+          <label>Fecha<input id="cargoPendienteFecha_${idSeguro}" type="date" value="${hoyISO()}"></label>
+          <label class="pendingWideField">Motivo / observación<input id="cargoPendienteObs_${idSeguro}" type="text" placeholder="Ej.: pedido sin ticket"></label>
+        </div><button type="button" onclick="cargarCargoPendienteCliente('${idSeguro}')">＋ Sumar deuda</button></div>
 
         <div class="pendingPaymentForm">
           <h4>Cargar pago</h4>
@@ -8101,6 +8075,19 @@ function clienteDesdeIdPagoPendiente(idSeguro) {
   } catch {
     return "";
   }
+}
+
+function cargarCargoPendienteCliente(idSeguro) {
+  const cliente=clienteDesdeIdPagoPendiente(idSeguro);
+  if(!cliente) return alert("No se pudo identificar el cliente.");
+  const monto=Math.max(0,Number($(`cargoPendienteMonto_${idSeguro}`)?.value||0));
+  const fecha=$(`cargoPendienteFecha_${idSeguro}`)?.value||hoyISO();
+  const observacion=String($(`cargoPendienteObs_${idSeguro}`)?.value||"").trim();
+  if(!monto) return alert("Ingresá el monto que querés sumar.");
+  const ahora=new Date().toISOString(), id=`CARGO-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+  cuentaCorrienteV42.push({id,claveTicket:`cargo_manual-${id}`,tipo:"cargo_manual",cliente,fecha,cargo:monto,pago:0,observacion:observacion||"Monto pendiente manual",soloControlDeuda:true,afectaCaja:false,creado:ahora,actualizado:ahora});
+  guardarCuentaCorrienteV42();
+  alert(`Monto pendiente sumado a ${cliente}.\n\nSe sumaron: ${formatoDineroTicket(monto)}\nNuevo saldo: ${formatoDineroTicket(saldoPendienteClienteV42(cliente))}\n\nEste movimiento NO modifica Caja.`);
 }
 
 function cargarPagoPendienteCliente(idSeguro) {
