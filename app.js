@@ -7156,7 +7156,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
             <div class="ticketClientActions">
               <button type="button" class="primary" onclick="abrirEntregaTicket('${pedido.claveMemoria}')">📦 Entrega / cobro</button>
               <button type="button" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">👁 Ver comercial</button>
-              <button type="button" class="ticketCommercialButton" onclick="imprimirTicketComercial('${tipo}', '${pedido.claveMemoria}')">🧾 Comercial / cliente ×2</button>
+              <button type="button" class="ticketCommercialButton" onclick="imprimirTicketComercial('${tipo}', '${pedido.claveMemoria}')">🧾 TICKET CLIENTE</button>
               <button type="button" class="ticketProductionButton" onclick="imprimirTicketProduccion('${tipo}', '${pedido.claveMemoria}')">🥖 IMPRIMIR PEDIDO PARA PANADEROS</button>
               <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG comercial</button>
             </div>
@@ -7164,7 +7164,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
         }).join("")}
         <div class="ticketDayFooter">
           <button type="button" class="ticketRepairButtonV422" onclick="repararPedidosYTicketsDelDia('${fecha}')">🧹 Reparar pedidos y tickets</button>
-          <button type="button" class="primary ticketCommercialButton" onclick="imprimirTicketsComercialesDelDia('${fecha}')">🧾 Imprimir todos · Comercial ×2</button>
+          <button type="button" class="primary ticketCommercialButton" onclick="imprimirTicketsComercialesDelDia('${fecha}')">🧾 IMPRIMIR TICKETS CLIENTE</button>
           <button type="button" class="ticketProductionButton" onclick="imprimirTicketsProduccionDelDia('${fecha}')">🥖 IMPRIMIR PEDIDOS PARA PANADEROS</button>
           <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG comercial</button>
           <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF comercial</button>
@@ -7396,7 +7396,7 @@ function imprimirTicketIndividual(tipo, id) {
 function imprimirTicketComercial(tipo, id) {
   const pedido = buscarPedidoTicket(tipo, id);
   if (!pedido) return alert("No se encontró el pedido.");
-  imprimirListaTickets([pedido], { modo: "comercial", copias: 2 });
+  imprimirListaTickets([pedido], { modo: "comercial", copias: 1 });
 }
 
 function imprimirTicketProduccion(tipo, id) {
@@ -7411,7 +7411,7 @@ function imprimirTicketsDelDia(fecha) {
 
 function imprimirTicketsComercialesDelDia(fecha) {
   const lista = pedidosTicketParaFecha(fecha);
-  imprimirListaTickets(lista, { modo: "comercial", copias: 2 });
+  imprimirListaTickets(lista, { modo: "comercial", copias: 1 });
 }
 
 function imprimirTicketsProduccionDelDia(fecha) {
