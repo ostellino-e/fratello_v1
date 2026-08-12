@@ -651,17 +651,6 @@
               <button data-gasto-categoria="Generales" type="button">Generales</button>
             </div>
 
-            <div class="gastosAnalisisFiltros">
-              <label>Filtrar tipo de gasto
-                <select id="filtroTipoGastoResumen">
-                  <option value="Todos">Todos los tipos</option>
-                  <option>Empleados</option><option>Proveedores / Insumos</option><option>Atención</option>
-                  <option>Panadería</option><option>Gastos generales</option><option>Impuestos y servicios</option>
-                  <option>Préstamos</option><option>Ahorro / Inversión</option><option>Otros</option>
-                  <option value="Gastos de Caja">Gastos de Caja</option>
-                </select>
-              </label>
-            </div>
             <div id="resumenSemanalGastos"></div>
           </section>
 
@@ -705,27 +694,17 @@
               </label>
               <label>Motivo<input id="gastoAdminMotivo" type="text" placeholder="Ej.: Bowen, sueldo Arnold, luz"></label>
               <label>Monto<input id="gastoAdminMonto" type="number" min="0" step="1" placeholder="0"></label>
-              <label>Modo de pago
-                <select id="gastoAdminMedio">
-                  <option>Efectivo</option>
-                  <option>Transferencia</option>
-                  <option>Mercado Pago</option>
-                  <option>Cheque</option>
-                  <option>Otro</option>
-                  <option>Combinado</option>
-                </select>
-              </label>
-              <div id="gastoAdminMediosCombinados" class="adminFinanceFormWide gastoSplitPayment hidden">
-                <strong>Combinar medios de pago</strong>
-                <small>La suma distribuida debe coincidir con el monto total.</small>
-                <div class="gastoSplitGrid">
+              <div class="adminFinanceFormWide gastoSplitPaymentBox">
+                <strong>Medios de pago</strong>
+                <small>Podés dividir el mismo gasto entre varios medios. La suma debe coincidir con el monto total.</small>
+                <div class="gastoSplitPaymentGrid">
                   <label>Efectivo<input id="gastoAdminEfectivo" type="number" min="0" step="1" placeholder="0"></label>
                   <label>Transferencia<input id="gastoAdminTransferencia" type="number" min="0" step="1" placeholder="0"></label>
                   <label>Cheque<input id="gastoAdminCheque" type="number" min="0" step="1" placeholder="0"></label>
                   <label>Mercado Pago<input id="gastoAdminMercadoPago" type="number" min="0" step="1" placeholder="0"></label>
                   <label>Otro<input id="gastoAdminOtro" type="number" min="0" step="1" placeholder="0"></label>
                 </div>
-                <div id="gastoAdminTotalCombinado" class="gastoSplitTotal">Distribuido: $ 0</div>
+                <div id="gastoAdminControlMedios" class="gastoSplitPaymentStatus">Total distribuido: $ 0</div>
               </div>
               <label class="adminCheckLabel"><input id="gastoAdminPagado" type="checkbox" checked> Pagado</label>
               <div class="adminFinanceFormActions">

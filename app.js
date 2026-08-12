@@ -10251,22 +10251,28 @@ function normalizarMedioPagoAdministracion(valor) {
 }
 
 function totalesPorMedioAdministracion(items, campoMonto = "monto", campoMedio = "medio") {
-  const totales = {"Efectivo":0,"Transferencia":0,"Mercado Pago":0,"Cheque":0,"Otro":0};
+  const totales = {
+    "Efectivo": 0,
+    "Transferencia": 0,
+    "Mercado Pago": 0,
+    "Cheque": 0,
+    "Otro": 0
+  };
+
   (items || []).forEach(item => {
     if (item?.mediosPago && typeof item.mediosPago === "object") {
-      Object.entries(item.mediosPago).forEach(([medio,monto]) => {
-        totales[normalizarMedioPagoAdministracion(medio)] += adminFinMonto(monto);
+      Object.entries(item.mediosPago).forEach(([medioOriginal, monto]) => {
+        const medio = normalizarMedioPagoAdministracion(medioOriginal);
+        totales[medio] += adminFinMonto(monto);
       });
-    } else {
-      totales[normalizarMedioPagoAdministracion(item?.[campoMedio])] += adminFinMonto(item?.[campoMonto]);
+      return;
     }
+
+    const medio = normalizarMedioPagoAdministracion(item?.[campoMedio]);
+    totales[medio] += adminFinMonto(item?.[campoMonto]);
   });
+
   return totales;
-}
-function textoMediosGastoAdministracion(item) {
-  if (!item?.mediosPago || typeof item.mediosPago !== "object") return item?.medio || "";
-  return Object.entries(item.mediosPago).filter(([,m])=>adminFinMonto(m)>0)
-    .map(([medio,m])=>`${medio}: ${adminFinDinero(m)}`).join(" · ");
 }
 
 function htmlDesgloseMediosAdministracion(totales, compacto = false) {
@@ -10423,7 +10429,7 @@ function renderIngresosAdministracion() {
             <td>${adminFinEscapar(item.fecha)}</td>
             <td><strong>${adminFinEscapar(item.cliente)}</strong></td>
             <td>${adminFinEscapar(item.descripcion || "")}</td>
-            <td>${adminFinEscapar(textoMediosGastoAdministracion(item))}</td>
+            <td>${adminFinEscapar(item.medio || "")}</td>
             <td><span class="statusPill ${item.cobrado !== false ? "paid" : "pending"}">${item.cobrado !== false ? "Cobrado" : "Pendiente"}</span></td>
             <td><strong>${adminFinDinero(item.monto)}</strong></td>
             <td class="adminFinanceRowActions">
@@ -10437,7 +10443,6 @@ function renderIngresosAdministracion() {
 }
 
 let filtroCategoriaGastosActual = "Todos";
-let filtroTipoGastoActual = "Todos";
 
 function categoriaResumenGasto(categoria, origen = "") {
   const texto = String(categoria || "").toLowerCase();
@@ -10466,9 +10471,8 @@ function todosGastosResumenMes() {
     motivo: item.motivo,
     monto: adminFinMonto(item.monto),
     categoriaResumen: categoriaResumenGasto(item.categoria, item.origen),
-    categoriaOriginal: item.categoria || "Otros",
     medio: item.medio || "Otro",
-    mediosPago: item.mediosPago || null,
+    mediosPago: mediosPagoGastoAdministracion(item),
     origen: "Manual"
   }));
 
@@ -10478,9 +10482,7 @@ function todosGastosResumenMes() {
     motivo: item.motivo,
     monto: adminFinMonto(item.monto),
     categoriaResumen: "Atención",
-    categoriaOriginal: "Gastos de Caja",
     medio: "Efectivo",
-    mediosPago: null,
     origen: "Caja"
   }));
 
@@ -10526,25 +10528,33 @@ function renderResumenSemanalGastos() {
 
   if ($("tarjetasCategoriasGastos")) {
     $("tarjetasCategoriasGastos").innerHTML = categorias.map(categoria => {
+      const total = gastos
+        .filter(item => item.categoriaResumen === categoria)
+        .reduce((s, item) => s + item.monto, 0);
+
+      const iconos = {
+        Empleados: "👥",
+        Insumos: "📦",
+        Atención: "🏪",
+        Generales: "🧾"
+      };
+
       const itemsCategoria = gastos.filter(item => item.categoriaResumen === categoria);
-      const total = itemsCategoria.reduce((s,item)=>s+item.monto,0);
-      const iconos={Empleados:"👥",Insumos:"📦",Atención:"🏪",Generales:"🧾"};
-      return `<details class="gastoCategoriaCard"><summary>
-        <span>${iconos[categoria]} ${categoria}</span><strong>${adminFinDinero(total)}</strong>
-        ${htmlDesgloseMediosAdministracion(totalesPorMedioAdministracion(itemsCategoria),true)}
-        <small>Tocar para ver los gastos</small></summary>
-        <div class="gastoCategoriaDetalle">${itemsCategoria.length ? itemsCategoria.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(item=>`
-          <div class="gastoCategoriaFila"><span><strong>${adminFinEscapar(item.motivo)}</strong>
-          <small>${adminFinEscapar(item.fecha)} · ${adminFinEscapar(item.categoriaOriginal||item.categoriaResumen)} · ${adminFinEscapar(textoMediosGastoAdministracion(item))}</small></span>
-          <b>${adminFinDinero(item.monto)}</b></div>`).join("") : '<div class="gastosSemanaVacia">Sin gastos en esta categoría.</div>'}</div>
-      </details>`;
+      const mediosCategoria = totalesPorMedioAdministracion(itemsCategoria);
+
+      return `<article class="gastoCategoriaResumenCard ${filtroCategoriaGastosActual === categoria ? "active" : ""}"
+        data-gasto-resumen-categoria="${categoria}" role="button" tabindex="0">
+        <span>${iconos[categoria]} ${categoria}</span>
+        <strong>${adminFinDinero(total)}</strong>
+        ${htmlDesgloseMediosAdministracion(mediosCategoria, true)}
+        <small>Tocar para ver detalle</small>
+      </article>`;
     }).join("");
   }
 
-  let filtrados = filtroCategoriaGastosActual === "Todos" ? gastos : gastos.filter(item => item.categoriaResumen === filtroCategoriaGastosActual);
-  if (filtroTipoGastoActual !== "Todos") {
-    filtrados = filtrados.filter(item => String(item.categoriaOriginal || item.categoriaResumen) === filtroTipoGastoActual);
-  }
+  const filtrados = filtroCategoriaGastosActual === "Todos"
+    ? gastos
+    : gastos.filter(item => item.categoriaResumen === filtroCategoriaGastosActual);
 
   const host = $("resumenSemanalGastos");
   if (!host) return;
@@ -10626,7 +10636,7 @@ function renderGastosAdministracion() {
             <td>${adminFinEscapar(item.fecha)}</td>
             <td>${adminFinEscapar(item.categoria)}</td>
             <td><strong>${adminFinEscapar(item.motivo)}</strong></td>
-            <td>${adminFinEscapar(item.medio || "")}</td>
+            <td>${textoMediosGastoAdministracion(item)}</td>
             <td><span class="statusPill ${item.pagado !== false ? "paid" : "pending"}">${item.pagado !== false ? "Pagado" : "Pendiente"}</span></td>
             <td><strong>${adminFinDinero(item.monto)}</strong></td>
             <td class="adminFinanceRowActions">
@@ -10776,6 +10786,72 @@ function cambiarTabAdministracion(nombre) {
   });
 }
 
+function mediosPagoGastoAdministracion(item = {}) {
+  if (item.mediosPago && typeof item.mediosPago === "object") {
+    return {
+      "Efectivo": adminFinMonto(item.mediosPago["Efectivo"]),
+      "Transferencia": adminFinMonto(item.mediosPago["Transferencia"]),
+      "Cheque": adminFinMonto(item.mediosPago["Cheque"]),
+      "Mercado Pago": adminFinMonto(item.mediosPago["Mercado Pago"]),
+      "Otro": adminFinMonto(item.mediosPago["Otro"])
+    };
+  }
+
+  const base = {"Efectivo":0,"Transferencia":0,"Cheque":0,"Mercado Pago":0,"Otro":0};
+  const medio = normalizarMedioPagoAdministracion(item.medio || "Otro");
+  base[medio] = adminFinMonto(item.monto);
+  return base;
+}
+
+function leerMediosPagoGastoAdministracion() {
+  return {
+    "Efectivo": adminFinMonto($("gastoAdminEfectivo")?.value),
+    "Transferencia": adminFinMonto($("gastoAdminTransferencia")?.value),
+    "Cheque": adminFinMonto($("gastoAdminCheque")?.value),
+    "Mercado Pago": adminFinMonto($("gastoAdminMercadoPago")?.value),
+    "Otro": adminFinMonto($("gastoAdminOtro")?.value)
+  };
+}
+
+function totalMediosPagoGastoAdministracion(medios = leerMediosPagoGastoAdministracion()) {
+  return Object.values(medios).reduce((s, x) => s + adminFinMonto(x), 0);
+}
+
+function nombreMedioGastoAdministracion(medios) {
+  const usados = Object.entries(medios || {}).filter(([,monto]) => adminFinMonto(monto) > 0);
+  if (usados.length === 1) return usados[0][0];
+  if (usados.length > 1) return "Mixto";
+  return "Otro";
+}
+
+function textoMediosGastoAdministracion(item) {
+  const medios = mediosPagoGastoAdministracion(item);
+  const usados = Object.entries(medios).filter(([,monto]) => adminFinMonto(monto) > 0);
+  return usados.length
+    ? usados.map(([medio,monto]) => `${medio}: ${adminFinDinero(monto)}`).join(" · ")
+    : adminFinEscapar(item?.medio || "Otro");
+}
+
+function actualizarControlMediosGastoAdministracion() {
+  const host = $("gastoAdminControlMedios");
+  if (!host) return;
+
+  const monto = adminFinMonto($("gastoAdminMonto")?.value);
+  const distribuido = totalMediosPagoGastoAdministracion();
+  const diferencia = monto - distribuido;
+
+  host.classList.toggle("ok", monto > 0 && Math.abs(diferencia) < 0.01);
+  host.classList.toggle("error", monto > 0 && Math.abs(diferencia) >= 0.01);
+
+  if (!monto && !distribuido) {
+    host.textContent = "Total distribuido: $ 0";
+  } else if (Math.abs(diferencia) < 0.01) {
+    host.textContent = `✓ Distribuido correctamente: ${adminFinDinero(distribuido)}`;
+  } else {
+    host.textContent = `Distribuido: ${adminFinDinero(distribuido)} · Falta / sobra: ${adminFinDinero(diferencia)}`;
+  }
+}
+
 function mostrarFormularioAdministracion(tipo, datos = null) {
   const id = tipo === "ingreso" ? "formIngresoAdministracion"
     : tipo === "gasto" ? "formGastoAdministracion"
@@ -10797,14 +10873,16 @@ function mostrarFormularioAdministracion(tipo, datos = null) {
     $("gastoAdminCategoria").value = datos?.categoria || "Proveedores / Insumos";
     $("gastoAdminMotivo").value = datos?.motivo || "";
     $("gastoAdminMonto").value = datos?.monto || "";
-    $("gastoAdminMedio").value = datos?.mediosPago ? "Combinado" : (datos?.medio || "Transferencia");
-    if ($("gastoAdminEfectivo")) $("gastoAdminEfectivo").value = datos?.mediosPago?.Efectivo || "";
-    if ($("gastoAdminTransferencia")) $("gastoAdminTransferencia").value = datos?.mediosPago?.Transferencia || "";
-    if ($("gastoAdminCheque")) $("gastoAdminCheque").value = datos?.mediosPago?.Cheque || "";
-    if ($("gastoAdminMercadoPago")) $("gastoAdminMercadoPago").value = datos?.mediosPago?.["Mercado Pago"] || "";
-    if ($("gastoAdminOtro")) $("gastoAdminOtro").value = datos?.mediosPago?.Otro || "";
-    actualizarFormularioMediosGasto();
+    const mediosGasto = datos ? mediosPagoGastoAdministracion(datos) : {
+      "Efectivo": 0, "Transferencia": 0, "Cheque": 0, "Mercado Pago": 0, "Otro": 0
+    };
+    if ($("gastoAdminEfectivo")) $("gastoAdminEfectivo").value = mediosGasto["Efectivo"] || "";
+    if ($("gastoAdminTransferencia")) $("gastoAdminTransferencia").value = mediosGasto["Transferencia"] || "";
+    if ($("gastoAdminCheque")) $("gastoAdminCheque").value = mediosGasto["Cheque"] || "";
+    if ($("gastoAdminMercadoPago")) $("gastoAdminMercadoPago").value = mediosGasto["Mercado Pago"] || "";
+    if ($("gastoAdminOtro")) $("gastoAdminOtro").value = mediosGasto["Otro"] || "";
     $("gastoAdminPagado").checked = datos?.pagado !== false;
+    setTimeout(actualizarControlMediosGastoAdministracion, 0);
   } else {
     $("presupuestoAdminId").value = datos?.id || "";
     $("presupuestoAdminConcepto").value = datos?.concepto || "";
@@ -10875,28 +10953,17 @@ function eliminarIngresoAdministracion(id) {
   guardarAdministracion();
 }
 
-function mediosCombinadosGastoFormulario() {
-  return {"Efectivo":adminFinMonto($("gastoAdminEfectivo")?.value),"Transferencia":adminFinMonto($("gastoAdminTransferencia")?.value),"Cheque":adminFinMonto($("gastoAdminCheque")?.value),"Mercado Pago":adminFinMonto($("gastoAdminMercadoPago")?.value),"Otro":adminFinMonto($("gastoAdminOtro")?.value)};
-}
-function actualizarFormularioMediosGasto() {
-  const combinado=$("gastoAdminMedio")?.value==="Combinado";
-  $("gastoAdminMediosCombinados")?.classList.toggle("hidden",!combinado);
-  if ($("gastoAdminTotalCombinado")) {
-    const total=Object.values(mediosCombinadosGastoFormulario()).reduce((s,m)=>s+adminFinMonto(m),0);
-    $("gastoAdminTotalCombinado").textContent=`Distribuido: ${adminFinDinero(total)}`;
-  }
-}
-
 function guardarGastoAdministracion() {
   const id = $("gastoAdminId")?.value || adminFinId("gas");
+  const mediosPago = leerMediosPagoGastoAdministracion();
   const item = {
     id,
     fecha: $("gastoAdminFecha")?.value || adminFinHoy(),
     categoria: $("gastoAdminCategoria")?.value || "Otros",
     motivo: String($("gastoAdminMotivo")?.value || "").trim(),
     monto: adminFinMonto($("gastoAdminMonto")?.value),
-    medio: $("gastoAdminMedio")?.value || "Transferencia",
-    mediosPago: $("gastoAdminMedio")?.value === "Combinado" ? mediosCombinadosGastoFormulario() : null,
+    medio: nombreMedioGastoAdministracion(mediosPago),
+    mediosPago,
     pagado: Boolean($("gastoAdminPagado")?.checked),
     origen: "Manual",
     actualizadoEn: new Date().toISOString()
@@ -10906,12 +10973,16 @@ function guardarGastoAdministracion() {
     alert("Completá motivo y monto.");
     return;
   }
-  if (item.medio === "Combinado") {
-    const distribuido=Object.values(item.mediosPago).reduce((s,m)=>s+adminFinMonto(m),0);
-    if (Math.abs(distribuido-item.monto)>0.5) {
-      alert(`La suma de los medios (${adminFinDinero(distribuido)}) debe coincidir con el monto total (${adminFinDinero(item.monto)}).`);
-      return;
-    }
+
+  const totalDistribuido = totalMediosPagoGastoAdministracion(mediosPago);
+  if (Math.abs(totalDistribuido - item.monto) >= 0.01) {
+    alert(
+      `La suma de los medios de pago debe coincidir con el gasto.\n\n` +
+      `Monto del gasto: ${adminFinDinero(item.monto)}\n` +
+      `Distribuido: ${adminFinDinero(totalDistribuido)}`
+    );
+    actualizarControlMediosGastoAdministracion();
+    return;
   }
 
   const indice = administracionFinanciera.gastosManuales.findIndex(x => x.id === id);
@@ -11171,9 +11242,6 @@ function iniciarModuloAdministracion() {
   $("btnGuardarIngresoAdministracion")?.addEventListener("click", guardarIngresoAdministracion);
 
   $("btnVistaResumenGastos")?.addEventListener("click", () => mostrarVistaGastos("resumen"));
-  $("gastoAdminMedio")?.addEventListener("change", actualizarFormularioMediosGasto);
-  ["gastoAdminEfectivo","gastoAdminTransferencia","gastoAdminCheque","gastoAdminMercadoPago","gastoAdminOtro"].forEach(id=>$(id)?.addEventListener("input",actualizarFormularioMediosGasto));
-  $("filtroTipoGastoResumen")?.addEventListener("change", e=>{filtroTipoGastoActual=e.target.value||"Todos";renderResumenSemanalGastos();});
   $("btnVistaCargaGastos")?.addEventListener("click", () => mostrarVistaGastos("carga"));
 
   $("filtrosCategoriasGastos")?.addEventListener("click", evento => {
@@ -11186,6 +11254,22 @@ function iniciarModuloAdministracion() {
     });
     renderResumenSemanalGastos();
   });
+
+  $("tarjetasCategoriasGastos")?.addEventListener("click", evento => {
+    const tarjeta = evento.target.closest("[data-gasto-resumen-categoria]");
+    if (!tarjeta) return;
+
+    const categoria = tarjeta.dataset.gastoResumenCategoria || "Todos";
+    filtroCategoriaGastosActual = categoria;
+    $("filtrosCategoriasGastos")?.querySelectorAll("button").forEach(item => {
+      item.classList.toggle("active", item.dataset.gastoCategoria === categoria);
+    });
+    renderResumenSemanalGastos();
+    $("resumenSemanalGastos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  ["gastoAdminMonto","gastoAdminEfectivo","gastoAdminTransferencia","gastoAdminCheque","gastoAdminMercadoPago","gastoAdminOtro"]
+    .forEach(id => $(id)?.addEventListener("input", actualizarControlMediosGastoAdministracion));
 
   $("btnNuevoGastoAdministracion")?.addEventListener("click", () => mostrarFormularioAdministracion("gasto"));
   $("btnCancelarGastoAdministracion")?.addEventListener("click", () => ocultarFormularioAdministracion("gasto"));
