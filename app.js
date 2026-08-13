@@ -7353,8 +7353,7 @@ async function refrescarPreciosParaTicket() {
   }
 }
 
-async function verTicketIndividual(tipo, id) {
-  await refrescarPreciosParaTicket();
+function verTicketIndividual(tipo, id) {
   const pedido = buscarPedidoTicket(tipo, id);
   if (!pedido) {
     alert("No se encontró el pedido.");
@@ -7369,6 +7368,16 @@ async function verTicketIndividual(tipo, id) {
   }
 
   abrirModalImpresion();
+
+  // La lista ya se mantiene sincronizada en tiempo real. Esta consulta
+  // complementaria ocurre detrás, sin demorar la apertura del ticket.
+  refrescarPreciosParaTicket().then(actualizado => {
+    if (!actualizado) return;
+    const pedidoActual = buscarPedidoTicket(tipo, id);
+    if (!pedidoActual) return;
+    ticketsSeleccionadosActuales = [pedidoActual];
+    cargarCanvasTickets(ticketsSeleccionadosActuales);
+  }).catch(() => {});
 }
 
 async function imprimirListaTickets(lista, opciones = {}) {
