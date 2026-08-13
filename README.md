@@ -1,4 +1,4 @@
-# Fratello v5.4.8
+# Fratello v5.4.9
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -23,4 +23,11 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Sincronización reforzada para Caja, Administración, plata real y precios.
 - Los tickets toman los precios actuales y reconocen correctamente Criollos.
 
-Versión esperada: v5.4.8
+## Correcciones v5.4.9
+- La gestión de nombres vuelve a estar únicamente dentro de Administración.
+- Las pestañas abiertas permanecen abiertas cuando la pantalla actualiza datos.
+- Los gastos se muestran desde los más recientes hacia los más antiguos.
+- Las tarjetas de categorías abren todos sus gastos.
+- Los botones de filtro de gastos vuelven a responder.
+
+Versión esperada: v5.4.9

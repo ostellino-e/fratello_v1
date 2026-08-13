@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "5.4.8";
-    document.documentElement.dataset.fratelloVersion = "5.4.8";
+    window.FRATELLO_VERSION = "5.4.9";
+    document.documentElement.dataset.fratelloVersion = "5.4.9";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v5.4.8</small>
+      <small id="versionFratello" class="syncVersionBadge">v5.4.9</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -479,7 +479,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v5.4.8 · Sincronización mejorada</span>
+        <span class="adminFinanceVersion">v5.4.9 · Pestañas y filtros corregidos</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -644,11 +644,11 @@
             <div id="tarjetasCategoriasGastos" class="gastosCategoriasCards"></div>
 
             <div class="gastosFiltroCategorias" id="filtrosCategoriasGastos">
-              <button class="active" data-gasto-categoria="Todos" type="button">Todos</button>
-              <button data-gasto-categoria="Empleados" type="button">Empleados</button>
-              <button data-gasto-categoria="Insumos" type="button">Insumos</button>
-              <button data-gasto-categoria="Atención" type="button">Atención</button>
-              <button data-gasto-categoria="Generales" type="button">Generales</button>
+              <button class="active" data-gasto-categoria="Todos" type="button" onclick="event.stopPropagation();seleccionarFiltroGastos('Todos')">Todos</button>
+              <button data-gasto-categoria="Empleados" type="button" onclick="event.stopPropagation();seleccionarFiltroGastos('Empleados')">Empleados</button>
+              <button data-gasto-categoria="Insumos" type="button" onclick="event.stopPropagation();seleccionarFiltroGastos('Insumos')">Insumos</button>
+              <button data-gasto-categoria="Atención" type="button" onclick="event.stopPropagation();seleccionarFiltroGastos('Atención')">Atención</button>
+              <button data-gasto-categoria="Generales" type="button" onclick="event.stopPropagation();seleccionarFiltroGastos('Generales')">Generales</button>
             </div>
 
             <div id="resumenSemanalGastos"></div>
@@ -891,13 +891,6 @@
             <label>Persona que realiza el cierre
               <select id="cajaPersona"></select>
             </label>
-            <button id="btnAdministrarPersonasCajaRapido" class="cajaManagePeopleQuick hidden" type="button">
-              ⚙️ Editar nombres
-            </button>
-            <div class="cajaPersonAdd cajaPersonAddClosure">
-              <input id="nuevaPersonaCajaCierre" type="text" placeholder="Nuevo nombre">
-              <button id="btnAgregarPersonaCajaCierre" type="button">＋ Agregar nombre</button>
-            </div>
           </div>
         </div>
 

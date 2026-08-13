@@ -10366,7 +10366,7 @@ function renderResumenClientesExternos() {
     "Otro": 0
   };
 
-  const tarjetaPanaderia = `<details class="ingresoClienteCard ingresoClientePanaderia">
+  const tarjetaPanaderia = `<details class="ingresoClienteCard ingresoClientePanaderia" data-detalle-clave="ingresos-panaderia">
     <summary>
       <span>
         <strong>🥖 Panadería Fratello</strong>
@@ -10405,7 +10405,7 @@ function renderResumenClientesExternos() {
     const totalCliente = pagos.reduce((s, item) => s + adminFinMonto(item.monto), 0);
     const mediosCliente = totalesPorMedioAdministracion(pagos);
 
-    return `<details class="ingresoClienteCard">
+    return `<details class="ingresoClienteCard" data-detalle-clave="ingresos-cliente-${adminFinEscapar(cliente.id)}">
       <summary>
         <span>
           <strong>${adminFinEscapar(cliente.nombre)}</strong>
@@ -10519,7 +10519,8 @@ function todosGastosResumenMes() {
   }));
 
   return [...manuales, ...caja].sort((a, b) =>
-    String(a.fecha).localeCompare(String(b.fecha))
+    String(b.fecha).localeCompare(String(a.fecha)) ||
+    String(b.id || "").localeCompare(String(a.id || ""))
   );
 }
 
@@ -10575,7 +10576,9 @@ function renderResumenSemanalGastos() {
       const mediosCategoria = totalesPorMedioAdministracion(itemsCategoria);
 
       return `<article class="gastoCategoriaResumenCard ${filtroCategoriaGastosActual === categoria ? "active" : ""}"
-        data-gasto-resumen-categoria="${categoria}" role="button" tabindex="0">
+        data-gasto-resumen-categoria="${categoria}" role="button" tabindex="0"
+        onclick="event.stopPropagation();seleccionarFiltroGastos('${categoria}', true)"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();seleccionarFiltroGastos('${categoria}', true);}">
         <span>${iconos[categoria]} ${categoria}</span>
         <strong>${adminFinDinero(total)}</strong>
         ${htmlDesgloseMediosAdministracion(mediosCategoria, true)}
@@ -10596,11 +10599,16 @@ function renderResumenSemanalGastos() {
     return;
   }
 
-  host.innerHTML = [1, 2, 3, 4].map(numeroSemana => {
-    const items = filtrados.filter(item => semanaMesGasto(item.fecha) === numeroSemana);
+  host.innerHTML = [4, 3, 2, 1].map(numeroSemana => {
+    const items = filtrados
+      .filter(item => semanaMesGasto(item.fecha) === numeroSemana)
+      .sort((a, b) =>
+        String(b.fecha).localeCompare(String(a.fecha)) ||
+        String(b.id || "").localeCompare(String(a.id || ""))
+      );
     const total = items.reduce((s, item) => s + item.monto, 0);
 
-    return `<details class="gastosSemanaPanel" ${filtroCategoriaGastosActual !== "Todos" ? "open" : ""}>
+    return `<details class="gastosSemanaPanel" data-detalle-clave="gastos-${mes}-${filtroCategoriaGastosActual}-semana-${numeroSemana}" ${filtroCategoriaGastosActual !== "Todos" ? "open" : ""}>
       <summary>
         <span>
           <strong>Semana ${numeroSemana}</strong>
@@ -10632,6 +10640,26 @@ function renderResumenSemanalGastos() {
       </div>
     </details>`;
   }).join("");
+}
+
+function seleccionarFiltroGastos(categoria = "Todos", abrirDetalles = false) {
+  filtroCategoriaGastosActual = categoria || "Todos";
+
+  $("filtrosCategoriasGastos")?.querySelectorAll("[data-gasto-categoria]").forEach(boton => {
+    boton.classList.toggle("active", boton.dataset.gastoCategoria === filtroCategoriaGastosActual);
+  });
+
+  renderResumenSemanalGastos();
+
+  if (abrirDetalles || filtroCategoriaGastosActual !== "Todos") {
+    $("resumenSemanalGastos")?.querySelectorAll(".gastosSemanaPanel").forEach(detalle => {
+      detalle.open = true;
+    });
+  }
+
+  if (abrirDetalles) {
+    $("resumenSemanalGastos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 function mostrarVistaGastos(tipo = "resumen") {
@@ -11282,12 +11310,7 @@ function iniciarModuloAdministracion() {
   $("filtrosCategoriasGastos")?.addEventListener("click", evento => {
     const boton = evento.target.closest("[data-gasto-categoria]");
     if (!boton) return;
-
-    filtroCategoriaGastosActual = boton.dataset.gastoCategoria || "Todos";
-    $("filtrosCategoriasGastos")?.querySelectorAll("button").forEach(item => {
-      item.classList.toggle("active", item === boton);
-    });
-    renderResumenSemanalGastos();
+    seleccionarFiltroGastos(boton.dataset.gastoCategoria || "Todos");
   });
 
   $("tarjetasCategoriasGastos")?.addEventListener("click", evento => {
@@ -11295,11 +11318,7 @@ function iniciarModuloAdministracion() {
     if (!tarjeta) return;
 
     const categoria = tarjeta.dataset.gastoResumenCategoria || "Todos";
-    filtroCategoriaGastosActual = categoria;
-    $("filtrosCategoriasGastos")?.querySelectorAll("button").forEach(item => {
-      item.classList.toggle("active", item.dataset.gastoCategoria === categoria);
-    });
-    renderResumenSemanalGastos();
+    seleccionarFiltroGastos(categoria, true);
     $("resumenSemanalGastos")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
@@ -11334,6 +11353,7 @@ window.editarGastoAdministracion = editarGastoAdministracion;
 window.eliminarGastoAdministracion = eliminarGastoAdministracion;
 window.editarPresupuestoAdministracion = editarPresupuestoAdministracion;
 window.eliminarPresupuestoAdministracion = eliminarPresupuestoAdministracion;
+window.seleccionarFiltroGastos = seleccionarFiltroGastos;
 
 
 /* =========================================================
@@ -12185,7 +12205,7 @@ function renderLibroDiarioCaja() {
   contenedor.innerHTML = dias.map(dia => {
     const manana = dia.cierres.find(cierre => cierre.turno === "manana");
     const tarde = dia.cierres.find(cierre => cierre.turno === "tarde");
-    return `<details class="cajaIngresoDia ${claseVentaDiaCaja(dia.venta)}">
+    return `<details class="cajaIngresoDia ${claseVentaDiaCaja(dia.venta)}" data-detalle-clave="caja-dia-${dia.fecha}">
       <summary>
         <span class="cajaIngresoFecha">${formatoFechaCaja(dia.fecha)}</span>
         <strong>${formatoDineroCaja(dia.venta)}</strong>
@@ -12203,7 +12223,7 @@ function renderLibroDiarioCaja() {
         </article>
       </div>
 
-      <details class="cajaDetalleInterno">
+      <details class="cajaDetalleInterno" data-detalle-clave="caja-turnos-${dia.fecha}">
         <summary>Ver detalle por turno y gastos</summary>
         <div class="cajaTurnosDetalle">
           ${htmlDetalleTurnoCaja(dia.fecha, "manana", manana)}
@@ -12259,7 +12279,7 @@ function abrirDetalleDiaCaja(fecha) {
         <span>Gastos <b>${formatoDineroCaja(t.gastos)}</b></span>
         <span>Efectivo a rendir <b>${formatoDineroCaja(t.efectivoRendir)}</b></span>
       </div>
-      <details>
+      <details data-detalle-clave="caja-gastos-${fecha}-${turno}">
         <summary>Ver gastos</summary>
         ${gastos}
       </details>
@@ -12964,11 +12984,10 @@ function iniciarModuloCaja() {
     }
   });
   $("btnAgregarPersonaCaja")?.addEventListener("click", () => agregarPersonaCaja("nuevaPersonaCaja"));
-  $("btnAgregarPersonaCajaCierre")?.addEventListener("click", () => agregarPersonaCaja("nuevaPersonaCajaCierre"));
   $("btnAdministrarPersonasCajaRapido")?.addEventListener("click", abrirModalPersonasCaja);
   $("btnCerrarModalPersonasCaja")?.addEventListener("click", cerrarModalPersonasCaja);
   $("btnAgregarPersonaCajaRapida")?.addEventListener("click", () => agregarPersonaCaja("nuevaPersonaCajaRapida"));
-  ["nuevaPersonaCaja", "nuevaPersonaCajaCierre", "nuevaPersonaCajaRapida"].forEach(id => {
+  ["nuevaPersonaCaja", "nuevaPersonaCajaRapida"].forEach(id => {
     $(id)?.addEventListener("keydown", evento => {
       if (evento.key === "Enter") {
         evento.preventDefault();
@@ -13003,7 +13022,66 @@ window.agregarGastoCajaInline = agregarGastoCajaInline;
 window.quitarGastoCajaInline = quitarGastoCajaInline;
 window.cancelarEdicionCajaInline = cancelarEdicionCajaInline;
 
+const detallesAbiertosPersistentes = new Set();
+let persistenciaDetallesIniciada = false;
+
+function claveDetallePersistente(detalle) {
+  if (!(detalle instanceof HTMLDetailsElement)) return "";
+  if (detalle.dataset.detalleClave) return detalle.dataset.detalleClave;
+
+  const atributos = [
+    "pedidoDetalle", "grupo", "fecha", "catalogId", "ticketFecha", "cliente"
+  ];
+  for (const atributo of atributos) {
+    if (detalle.dataset[atributo]) {
+      return `${atributo}:${detalle.dataset[atributo]}`;
+    }
+  }
+
+  const seccion = detalle.closest("[id]")?.id || "general";
+  const clase = [...detalle.classList].sort().join(".") || "details";
+  const resumen = detalle.querySelector(":scope > summary")?.textContent
+    ?.replace(/\$\s*[\d.,]+/g, "")
+    ?.replace(/\s+/g, " ")
+    ?.trim() || "";
+  return `${seccion}|${clase}|${resumen}`;
+}
+
+function restaurarDetallesPersistentes() {
+  document.querySelectorAll("details").forEach(detalle => {
+    const clave = claveDetallePersistente(detalle);
+    if (clave && detallesAbiertosPersistentes.has(clave) && !detalle.open) {
+      detalle.open = true;
+    }
+  });
+}
+
+function iniciarPersistenciaDetalles() {
+  if (persistenciaDetallesIniciada) return;
+  persistenciaDetallesIniciada = true;
+
+  document.querySelectorAll("details[open]").forEach(detalle => {
+    const clave = claveDetallePersistente(detalle);
+    if (clave) detallesAbiertosPersistentes.add(clave);
+  });
+
+  document.addEventListener("toggle", evento => {
+    const detalle = evento.target;
+    if (!(detalle instanceof HTMLDetailsElement)) return;
+    const clave = claveDetallePersistente(detalle);
+    if (!clave) return;
+    if (detalle.open) detallesAbiertosPersistentes.add(clave);
+    else detallesAbiertosPersistentes.delete(clave);
+  }, true);
+
+  const observador = new MutationObserver(() => {
+    requestAnimationFrame(restaurarDetallesPersistentes);
+  });
+  observador.observe(document.body, { childList: true, subtree: true });
+}
+
 async function init() {
+  iniciarPersistenciaDetalles();
   iniciarModuloCaja();
   iniciarAccesoAdministrador();
   iniciarModuloAdministracion();

@@ -4939,12 +4939,7 @@ body.modal-open{
 .ticketDayFooter .ticketProductionButton{width:100%;min-height:56px!important;font-size:14px!important}
 
 
-/* Fratello v5.4.8 — Sincronización, precios y detalles */
-
-.cajaPersonAddClosure {
-  width: 100%;
-  margin-top: 8px;
-}
+/* Fratello v5.4.9 — Pestañas persistentes y filtros de gastos */
 
 .gastoSemanaMontoMedio {
   display: flex;
@@ -4959,14 +4954,6 @@ body.modal-open{
 }
 
 @media (max-width: 700px) {
-  .cajaPersonAddClosure {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .cajaPersonAddClosure button {
-    width: 100%;
-  }
 }
 .gastoSplitPaymentBox{
   padding:13px;

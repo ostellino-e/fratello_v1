@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v548-sincronizacion-precios";
+const CACHE_NAME = "fratello-v549-pestanas-filtros-gastos";
 const ARCHIVOS = [
   "./",
   "./index.html",
