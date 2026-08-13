@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "5.4.7";
-    document.documentElement.dataset.fratelloVersion = "5.4.7";
+    window.FRATELLO_VERSION = "5.4.8";
+    document.documentElement.dataset.fratelloVersion = "5.4.8";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v5.4.7</small>
+      <small id="versionFratello" class="syncVersionBadge">v5.4.8</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -479,7 +479,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v5.4.7 · Interfaz compacta móvil</span>
+        <span class="adminFinanceVersion">v5.4.8 · Sincronización mejorada</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -894,6 +894,10 @@
             <button id="btnAdministrarPersonasCajaRapido" class="cajaManagePeopleQuick hidden" type="button">
               ⚙️ Editar nombres
             </button>
+            <div class="cajaPersonAdd cajaPersonAddClosure">
+              <input id="nuevaPersonaCajaCierre" type="text" placeholder="Nuevo nombre">
+              <button id="btnAgregarPersonaCajaCierre" type="button">＋ Agregar nombre</button>
+            </div>
           </div>
         </div>
 

@@ -2891,13 +2891,26 @@ function fusionarAdministracionFinancieraSync(remota = {}, local = {}) {
       normalizarPedidoInteligente(nombre) === normalizarPedidoInteligente(cliente.nombre)
     ));
 
+  const plataRealManual = {};
+  const mesesPlataReal = new Set([
+    ...Object.keys(remota.plataRealManual || {}),
+    ...Object.keys(local.plataRealManual || {})
+  ]);
+  mesesPlataReal.forEach(mes => {
+    const remotoMes = remota.plataRealManual?.[mes] || {};
+    const localMes = local.plataRealManual?.[mes] || {};
+    plataRealManual[mes] = fechaCambioAdminSync(remotoMes) >= fechaCambioAdminSync(localMes)
+      ? remotoMes
+      : localMes;
+  });
+
   return {
     ingresosExternos: fusionarListaAdminSync(remota.ingresosExternos, local.ingresosExternos),
     clientesExternos: clientes,
     clientesExternosEliminados: clientesEliminados,
     gastosManuales: fusionarListaAdminSync(remota.gastosManuales, local.gastosManuales),
     presupuestos: fusionarListaAdminSync(remota.presupuestos, local.presupuestos),
-    plataRealManual: { ...(remota.plataRealManual || {}), ...(local.plataRealManual || {}) },
+    plataRealManual,
     transferenciasDinero: fusionarListaAdminSync(remota.transferenciasDinero, local.transferenciasDinero)
   };
 }
@@ -3891,6 +3904,16 @@ function productoPorId(id) {
   return productos.find(p => p.id === id);
 }
 
+function productoTicketDesdeItem(item) {
+  const nombre = normalizarNombreProductoPedido(item?.producto || item?.descripcion || "");
+  if (["criollo", "criollos"].includes(nombre)) {
+    asegurarProductoCriollosCatalogo();
+    return productoPorId("CRIOLLOS");
+  }
+  return productoPorId(item?.productoId) ||
+    buscarProductoExactoPedido(item?.producto || item?.descripcion || "");
+}
+
 function buscarProducto(lineaNormalizada) {
   for (const [palabra, id] of diccionario) {
     if (lineaNormalizada.includes(normalizar(palabra))) return id;
@@ -4137,6 +4160,7 @@ function guardarCatalogoProductos() {
   localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
   localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
   guardarEnNube();
+  guardarPreciosModuloEnNube();
 }
 function productoEstaEnProduccionPredeterminada(productoId) {
   return dias.some(dia => Number(predeterminadas?.[dia]?.[productoId] || 0) > 0);
@@ -6731,6 +6755,7 @@ function guardarListasPrecios(){
 
   localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
   guardarEnNube();
+  guardarPreciosModuloEnNube();
 
   const mensaje = $("mensajeListasPrecios");
   if (mensaje) {
@@ -7518,7 +7543,7 @@ function datosTicketPedido(pedido) {
   const items = itemsOrigen
     .filter(i => i.estado !== "NO PEDIDO")
     .map(item => {
-      const p = productoPorId(item.productoId);
+      const p = productoTicketDesdeItem(item);
       const precioUnitario = precioUnitarioItem(p, item.unidad, pedido.cliente);
       return {
         descripcion: p?.nombre || item.producto || "Producto",
@@ -8216,7 +8241,7 @@ function datosTicketTotalOriginalV42(pedido) {
   return items
     .filter(item => item.estado !== "NO PEDIDO")
     .reduce((total, item) => {
-      const producto = productoPorId(item.productoId);
+      const producto = productoTicketDesdeItem(item);
       return total + Number(item.cantidad || 0) *
         Number(precioUnitarioItem(producto, item.unidad, pedido.cliente) || 0);
     }, 0);
@@ -8227,7 +8252,7 @@ function totalEntregaPedidoV42(pedido) {
   return items
     .filter(item => item.estado !== "NO PEDIDO" && Number(item.cantidad || 0) > 0)
     .reduce((total, item) => {
-      const producto = productoPorId(item.productoId);
+      const producto = productoTicketDesdeItem(item);
       return total + Number(item.cantidad || 0) *
         Number(precioUnitarioItem(producto, item.unidad, pedido.cliente) || 0);
     }, 0);
@@ -8443,7 +8468,7 @@ function avisarPreciosFaltantes(lista=pedidos) {
   const faltantes=new Set();
   lista.forEach(p=>(p.items||[]).forEach(i=>{
     if(i.estado==="NO PEDIDO")return;
-    const prod=productoPorId(i.productoId);
+    const prod=productoTicketDesdeItem(i);
     if(precioUnitarioItem(prod,i.unidad,p.cliente)<=0)faltantes.add(prod?.nombre||i.producto);
   }));
   if(faltantes.size)alert("El ticket se generará, pero faltan precios para:\n\n"+[...faltantes].slice(0,12).join("\n")+"\n\nCargalos desde Administrar productos predeterminados.");
@@ -10352,10 +10377,17 @@ function renderResumenClientesExternos() {
     </summary>
     <div class="ingresoClienteDetalle">
       ${caja.length
-        ? caja.map(cierre => `<div class="ingresoClientePago">
+        ? caja.map(cierre => `<div class="ingresoClientePago ingresoClientePagoDesglosado">
             <span>
               <strong>${adminFinEscapar(cierre.fecha)}</strong>
               <small>${adminFinEscapar(cierre.descripcion || "Cierre de Caja")}</small>
+              ${htmlDesgloseMediosAdministracion({
+                Efectivo: adminFinMonto(cierre.efectivo),
+                Transferencia: adminFinMonto(cierre.transferencias),
+                "Mercado Pago": 0,
+                Cheque: 0,
+                Otro: 0
+              }, true)}
             </span>
             <b>${adminFinDinero(cierre.monto)}</b>
           </div>`).join("")
@@ -10568,7 +10600,7 @@ function renderResumenSemanalGastos() {
     const items = filtrados.filter(item => semanaMesGasto(item.fecha) === numeroSemana);
     const total = items.reduce((s, item) => s + item.monto, 0);
 
-    return `<details class="gastosSemanaPanel">
+    return `<details class="gastosSemanaPanel" ${filtroCategoriaGastosActual !== "Todos" ? "open" : ""}>
       <summary>
         <span>
           <strong>Semana ${numeroSemana}</strong>
@@ -10583,7 +10615,10 @@ function renderResumenSemanalGastos() {
                 <strong>${adminFinEscapar(item.motivo)}</strong>
                 <small>${adminFinEscapar(item.fecha)} · ${adminFinEscapar(item.categoriaResumen)}${item.origen === "Caja" ? " · Caja" : ""}</small>
               </span>
-              <b>${adminFinDinero(item.monto)}</b>
+              <span class="gastoSemanaMontoMedio">
+                <b>${adminFinDinero(item.monto)}</b>
+                ${htmlDesgloseMediosAdministracion(totalesPorMedioAdministracion([item]), true)}
+              </span>
             </div>`).join("")
           : `<div class="gastosSemanaVacia">Sin gastos en esta semana.</div>`
         }
@@ -11919,6 +11954,7 @@ function agregarPersonaCaja(inputId = "nuevaPersonaCaja") {
   guardarCajaModuloEnNube();
   if (input) input.value = "";
   renderPersonasCaja();
+  if ($("cajaPersona")) $("cajaPersona").value = nombre;
 }
 
 function eliminarPersonaCaja(indice) {
@@ -12459,8 +12495,13 @@ function cerrarDetalleDiaCaja() {
 
 let unsubscribeCajaModulo = null;
 let unsubscribeAdminModulo = null;
+let unsubscribePreciosModulo = null;
 let guardandoCajaModulo = false;
 let guardandoAdminModulo = false;
+let guardandoPreciosModulo = false;
+let cajaModuloPendiente = false;
+let adminModuloPendiente = false;
+let preciosModuloPendiente = false;
 
 async function guardarCajaModuloEnNube() {
   guardarCajaLocal();
@@ -12468,7 +12509,10 @@ async function guardarCajaModuloEnNube() {
     setEstadoSync("Modo local — Firebase no inició");
     return false;
   }
-  if (guardandoCajaModulo) return false;
+  if (guardandoCajaModulo) {
+    cajaModuloPendiente = true;
+    return false;
+  }
 
   guardandoCajaModulo = true;
   setEstadoSync("Sincronizando Caja...");
@@ -12513,6 +12557,10 @@ async function guardarCajaModuloEnNube() {
     return false;
   } finally {
     guardandoCajaModulo = false;
+    if (cajaModuloPendiente) {
+      cajaModuloPendiente = false;
+      queueMicrotask(() => guardarCajaModuloEnNube());
+    }
   }
 }
 
@@ -12522,7 +12570,10 @@ async function guardarAdminModuloEnNube() {
     setEstadoSync("Modo local — Firebase no inició");
     return false;
   }
-  if (guardandoAdminModulo) return false;
+  if (guardandoAdminModulo) {
+    adminModuloPendiente = true;
+    return false;
+  }
 
   guardandoAdminModulo = true;
   setEstadoSync("Sincronizando Administración...");
@@ -12555,7 +12606,91 @@ async function guardarAdminModuloEnNube() {
     return false;
   } finally {
     guardandoAdminModulo = false;
+    if (adminModuloPendiente) {
+      adminModuloPendiente = false;
+      queueMicrotask(() => guardarAdminModuloEnNube());
+    }
   }
+}
+
+async function guardarPreciosModuloEnNube() {
+  localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
+  localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
+  if (!db) return false;
+  if (guardandoPreciosModulo) {
+    preciosModuloPendiente = true;
+    return false;
+  }
+
+  guardandoPreciosModulo = true;
+  try {
+    await db.collection("fratello").doc("precios_estado").set({
+      listasPrecios,
+      listasPrecioPersonalizadas,
+      catalogoProductos: productos,
+      actualizado: new Date().toISOString()
+    }, { merge: true });
+    setEstadoSync("Online actualizado");
+    return true;
+  } catch (error) {
+    console.error("Error sincronizando precios:", error);
+    setEstadoSync(navigator.onLine ? "Error sincronizando precios" : "Sin conexión — modo local");
+    return false;
+  } finally {
+    guardandoPreciosModulo = false;
+    if (preciosModuloPendiente) {
+      preciosModuloPendiente = false;
+      queueMicrotask(() => guardarPreciosModuloEnNube());
+    }
+  }
+}
+
+function aplicarPreciosDesdeNube(data = {}) {
+  if (data.listasPrecios && typeof data.listasPrecios === "object") {
+    listasPrecios = data.listasPrecios;
+  }
+  if (Array.isArray(data.listasPrecioPersonalizadas)) {
+    listasPrecioPersonalizadas = data.listasPrecioPersonalizadas;
+  }
+  if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
+    productos.splice(0, productos.length, ...data.catalogoProductos);
+    asegurarProductoCriollosCatalogo();
+  }
+
+  localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
+  localStorage.setItem(
+    "fratello_listas_precio_personalizadas",
+    JSON.stringify(listasPrecioPersonalizadas)
+  );
+  localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
+  renderListasPrecios();
+  renderAdministradorProductos();
+  renderTicketsPorDia();
+}
+
+function escucharModuloPreciosNube() {
+  if (!db || unsubscribePreciosModulo) return;
+  unsubscribePreciosModulo = db.collection("fratello").doc("precios_estado")
+    .onSnapshot(doc => {
+      if (!doc.exists || doc.metadata?.hasPendingWrites) return;
+      aplicarPreciosDesdeNube(doc.data() || {});
+      setEstadoSync("Online actualizado");
+    }, error => {
+      console.error("Listener módulo Precios:", error);
+      setEstadoSync("Error recibiendo precios");
+    });
+}
+
+async function iniciarSincronizacionPrecios() {
+  if (!db) return;
+  const ref = db.collection("fratello").doc("precios_estado");
+  const snap = await ref.get();
+  if (!snap.exists) {
+    await guardarPreciosModuloEnNube();
+  } else {
+    aplicarPreciosDesdeNube(snap.data() || {});
+  }
+  escucharModuloPreciosNube();
 }
 
 function escucharModuloCajaNube() {
@@ -12829,9 +12964,18 @@ function iniciarModuloCaja() {
     }
   });
   $("btnAgregarPersonaCaja")?.addEventListener("click", () => agregarPersonaCaja("nuevaPersonaCaja"));
+  $("btnAgregarPersonaCajaCierre")?.addEventListener("click", () => agregarPersonaCaja("nuevaPersonaCajaCierre"));
   $("btnAdministrarPersonasCajaRapido")?.addEventListener("click", abrirModalPersonasCaja);
   $("btnCerrarModalPersonasCaja")?.addEventListener("click", cerrarModalPersonasCaja);
   $("btnAgregarPersonaCajaRapida")?.addEventListener("click", () => agregarPersonaCaja("nuevaPersonaCajaRapida"));
+  ["nuevaPersonaCaja", "nuevaPersonaCajaCierre", "nuevaPersonaCajaRapida"].forEach(id => {
+    $(id)?.addEventListener("keydown", evento => {
+      if (evento.key === "Enter") {
+        evento.preventDefault();
+        agregarPersonaCaja(id);
+      }
+    });
+  });
   $("modalPersonasCaja")?.addEventListener("click", evento => {
     if (evento.target?.id === "modalPersonasCaja") cerrarModalPersonasCaja();
   });
@@ -12850,6 +12994,7 @@ window.eliminarGastoCaja = eliminarGastoCaja;
 window.editarCierreDesdeAdminCaja = editarCierreDesdeAdminCaja;
 window.eliminarCierreCajaAdmin = eliminarCierreCajaAdmin;
 window.eliminarPersonaCaja = eliminarPersonaCaja;
+window.agregarPersonaCaja = agregarPersonaCaja;
 window.abrirDetalleDiaCaja = abrirDetalleDiaCaja;
 window.cerrarDetalleDiaCaja = cerrarDetalleDiaCaja;
 window.abrirEditorTurnoCaja = abrirEditorTurnoCaja;
@@ -12983,6 +13128,7 @@ async function init() {
   await iniciarPedidosModuloNube();
   await iniciarCuentaPendientesNube();
   await iniciarSincronizacionModulosFinancieros();
+  await iniciarSincronizacionPrecios();
   renderPersonasCaja();
   cargarCierreSeleccionadoCaja();
   renderCajaAdmin();
