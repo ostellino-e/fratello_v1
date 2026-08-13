@@ -9604,6 +9604,13 @@ function adminFinDinero(valor) {
   }).format(Number(valor || 0));
 }
 
+function adminFinFecha(valor) {
+  const texto = String(valor || "").trim();
+  const coincidencia = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!coincidencia) return texto;
+  return `${coincidencia[3]}/${coincidencia[2]}/${coincidencia[1]}`;
+}
+
 function adminFinEscapar(valor) {
   return String(valor ?? "")
     .replaceAll("&", "&amp;")
@@ -9914,7 +9921,7 @@ function renderHistorialTransferenciasDinero() {
         <div class="moneyTransferRow">
           <span>
             <strong>${adminFinEscapar(item.desde)} → ${adminFinEscapar(item.hacia)}</strong>
-            <small>${adminFinEscapar(item.fecha)}${item.observacion ? ` · ${adminFinEscapar(item.observacion)}` : ""}</small>
+            <small>${adminFinEscapar(adminFinFecha(item.fecha))}${item.observacion ? ` · ${adminFinEscapar(item.observacion)}` : ""}</small>
           </span>
           <b>${adminFinDinero(item.monto)}</b>
           <button type="button" onclick="eliminarTransferenciaDinero('${item.id}')">Eliminar</button>
@@ -10379,7 +10386,7 @@ function renderResumenClientesExternos() {
       ${caja.length
         ? caja.map(cierre => `<div class="ingresoClientePago ingresoClientePagoDesglosado">
             <span>
-              <strong>${adminFinEscapar(cierre.fecha)}</strong>
+              <strong>${adminFinEscapar(adminFinFecha(cierre.fecha))}</strong>
               <small>${adminFinEscapar(cierre.descripcion || "Cierre de Caja")}</small>
               ${htmlDesgloseMediosAdministracion({
                 Efectivo: adminFinMonto(cierre.efectivo),
@@ -10418,7 +10425,7 @@ function renderResumenClientesExternos() {
         ${pagos.length
           ? pagos.map(pago => `<div class="ingresoClientePago">
               <span>
-                <strong>${adminFinEscapar(pago.fecha)}</strong>
+                <strong>${adminFinEscapar(adminFinFecha(pago.fecha))}</strong>
                 <small>${adminFinEscapar(pago.descripcion || pago.medio || "Pago")}</small>
               </span>
               <b>${adminFinDinero(pago.monto)}</b>
@@ -10458,7 +10465,7 @@ function renderIngresosAdministracion() {
       ? adminFinTabla(
           ["Fecha", "Cliente", "Descripción", "Medio", "Estado", "Monto", ""],
           externos.map(item => `<tr>
-            <td>${adminFinEscapar(item.fecha)}</td>
+            <td>${adminFinEscapar(adminFinFecha(item.fecha))}</td>
             <td><strong>${adminFinEscapar(item.cliente)}</strong></td>
             <td>${adminFinEscapar(item.descripcion || "")}</td>
             <td>${adminFinEscapar(item.medio || "")}</td>
@@ -10475,6 +10482,7 @@ function renderIngresosAdministracion() {
 }
 
 let filtroCategoriaGastosActual = "Todos";
+let filtroDetalleGastosActual = "Todos";
 
 function categoriaResumenGasto(categoria, origen = "") {
   const texto = String(categoria || "").toLowerCase();
@@ -10503,6 +10511,7 @@ function todosGastosResumenMes() {
     motivo: item.motivo,
     monto: adminFinMonto(item.monto),
     categoriaResumen: categoriaResumenGasto(item.categoria, item.origen),
+    categoriaOriginal: item.categoria || "",
     medio: item.medio || "Otro",
     mediosPago: mediosPagoGastoAdministracion(item),
     origen: "Manual"
@@ -10514,6 +10523,7 @@ function todosGastosResumenMes() {
     motivo: item.motivo,
     monto: adminFinMonto(item.monto),
     categoriaResumen: "Atención",
+    categoriaOriginal: "Gasto de Caja",
     medio: "Efectivo",
     origen: "Caja"
   }));
@@ -10577,19 +10587,36 @@ function renderResumenSemanalGastos() {
 
       return `<article class="gastoCategoriaResumenCard ${filtroCategoriaGastosActual === categoria ? "active" : ""}"
         data-gasto-resumen-categoria="${categoria}" role="button" tabindex="0"
-        onclick="event.stopPropagation();seleccionarFiltroGastos('${categoria}', true)"
-        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();seleccionarFiltroGastos('${categoria}', true);}">
+        onclick="event.stopPropagation();seleccionarFiltroGastos('${categoria}')"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();seleccionarFiltroGastos('${categoria}');}">
         <span>${iconos[categoria]} ${categoria}</span>
         <strong>${adminFinDinero(total)}</strong>
         ${htmlDesgloseMediosAdministracion(mediosCategoria, true)}
-        <small>Tocar para ver detalle</small>
+        <small>Tocar para filtrar</small>
       </article>`;
     }).join("");
   }
 
-  const filtrados = filtroCategoriaGastosActual === "Todos"
+  actualizarControlesFiltrosGastos(gastos);
+
+  const filtradosCategoria = filtroCategoriaGastosActual === "Todos"
     ? gastos
     : gastos.filter(item => item.categoriaResumen === filtroCategoriaGastosActual);
+  const filtrados = filtroDetalleGastosActual === "Todos"
+    ? filtradosCategoria
+    : filtradosCategoria.filter(item => claveDetalleGasto(item) === filtroDetalleGastosActual);
+
+  if ($("resumenFiltroGastos")) {
+    const totalFiltrado = filtrados.reduce((suma, item) => suma + item.monto, 0);
+    const descripcionCategoria = filtroCategoriaGastosActual === "Todos"
+      ? "Todos los gastos"
+      : filtroCategoriaGastosActual;
+    const descripcionDetalle = filtroDetalleGastosActual === "Todos"
+      ? ""
+      : ` · ${etiquetaDetalleGasto(filtroDetalleGastosActual)}`;
+    $("resumenFiltroGastos").innerHTML =
+      `<span>${adminFinEscapar(descripcionCategoria + descripcionDetalle)}</span><strong>${adminFinDinero(totalFiltrado)}</strong>`;
+  }
 
   const host = $("resumenSemanalGastos");
   if (!host) return;
@@ -10608,7 +10635,7 @@ function renderResumenSemanalGastos() {
       );
     const total = items.reduce((s, item) => s + item.monto, 0);
 
-    return `<details class="gastosSemanaPanel" data-detalle-clave="gastos-${mes}-${filtroCategoriaGastosActual}-semana-${numeroSemana}" ${filtroCategoriaGastosActual !== "Todos" ? "open" : ""}>
+    return `<details class="gastosSemanaPanel" data-detalle-clave="gastos-${mes}-${filtroCategoriaGastosActual}-${filtroDetalleGastosActual}-semana-${numeroSemana}">
       <summary>
         <span>
           <strong>Semana ${numeroSemana}</strong>
@@ -10621,7 +10648,7 @@ function renderResumenSemanalGastos() {
           ? items.map(item => `<div class="gastoSemanaFila">
               <span>
                 <strong>${adminFinEscapar(item.motivo)}</strong>
-                <small>${adminFinEscapar(item.fecha)} · ${adminFinEscapar(item.categoriaResumen)}${item.origen === "Caja" ? " · Caja" : ""}</small>
+                <small>${adminFinEscapar(adminFinFecha(item.fecha))} · ${adminFinEscapar(item.categoriaResumen)}${item.origen === "Caja" ? " · Caja" : ""}</small>
               </span>
               <span class="gastoSemanaMontoMedio">
                 <b>${adminFinDinero(item.monto)}</b>
@@ -10642,24 +10669,71 @@ function renderResumenSemanalGastos() {
   }).join("");
 }
 
-function seleccionarFiltroGastos(categoria = "Todos", abrirDetalles = false) {
-  filtroCategoriaGastosActual = categoria || "Todos";
+function claveDetalleGasto(item) {
+  return normalizarPedidoInteligente(String(item?.motivo || "Sin detalle"));
+}
 
-  $("filtrosCategoriasGastos")?.querySelectorAll("[data-gasto-categoria]").forEach(boton => {
-    boton.classList.toggle("active", boton.dataset.gastoCategoria === filtroCategoriaGastosActual);
+function etiquetaDetalleGasto(clave) {
+  const gastos = todosGastosResumenMes();
+  return gastos.find(item => claveDetalleGasto(item) === clave)?.motivo || clave || "Sin detalle";
+}
+
+function etiquetaSubfiltroGastos(categoria) {
+  if (categoria === "Empleados") return "Empleado";
+  if (categoria === "Insumos") return "Proveedor o insumo";
+  if (categoria === "Atención") return "Gasto de Atención o Caja";
+  if (categoria === "Generales") return "Detalle del gasto";
+  return "Persona, proveedor o detalle";
+}
+
+function actualizarControlesFiltrosGastos(gastos = todosGastosResumenMes()) {
+  const selectCategoria = $("filtroCategoriaGastosSelect");
+  const selectDetalle = $("filtroDetalleGastosSelect");
+  const labelDetalle = $("filtroDetalleGastosLabel");
+  if (selectCategoria) selectCategoria.value = filtroCategoriaGastosActual;
+  if (!selectDetalle) return;
+
+  const base = filtroCategoriaGastosActual === "Todos"
+    ? gastos
+    : gastos.filter(item => item.categoriaResumen === filtroCategoriaGastosActual);
+
+  const porDetalle = new Map();
+  base.forEach(item => {
+    const clave = claveDetalleGasto(item);
+    if (!clave) return;
+    const anterior = porDetalle.get(clave) || { nombre: item.motivo || "Sin detalle", total: 0 };
+    anterior.total += item.monto;
+    porDetalle.set(clave, anterior);
   });
 
+  if (filtroDetalleGastosActual !== "Todos" && !porDetalle.has(filtroDetalleGastosActual)) {
+    filtroDetalleGastosActual = "Todos";
+  }
+
+  selectDetalle.innerHTML = [
+    `<option value="Todos">Todos</option>`,
+    ...[...porDetalle.entries()]
+      .sort((a, b) => b[1].total - a[1].total || a[1].nombre.localeCompare(b[1].nombre, "es"))
+      .map(([clave, datos]) =>
+        `<option value="${adminFinEscapar(clave)}">${adminFinEscapar(datos.nombre)} — ${adminFinDinero(datos.total)}</option>`
+      )
+  ].join("");
+  selectDetalle.value = filtroDetalleGastosActual;
+  if (labelDetalle) {
+    labelDetalle.childNodes[0].textContent = etiquetaSubfiltroGastos(filtroCategoriaGastosActual) + " ";
+  }
+}
+
+function seleccionarFiltroGastos(categoria = "Todos") {
+  filtroCategoriaGastosActual = categoria || "Todos";
+  filtroDetalleGastosActual = "Todos";
   renderResumenSemanalGastos();
+  $("filtrosCategoriasGastos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
-  if (abrirDetalles || filtroCategoriaGastosActual !== "Todos") {
-    $("resumenSemanalGastos")?.querySelectorAll(".gastosSemanaPanel").forEach(detalle => {
-      detalle.open = true;
-    });
-  }
-
-  if (abrirDetalles) {
-    $("resumenSemanalGastos")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+function seleccionarSubfiltroGastos(detalle = "Todos") {
+  filtroDetalleGastosActual = detalle || "Todos";
+  renderResumenSemanalGastos();
 }
 
 function mostrarVistaGastos(tipo = "resumen") {
@@ -10682,7 +10756,7 @@ function renderGastosAdministracion() {
       ? adminFinTabla(
           ["Fecha", "Motivo", "Origen", "Monto"],
           caja.map(item => `<tr>
-            <td>${adminFinEscapar(item.fecha)}</td>
+            <td>${adminFinEscapar(adminFinFecha(item.fecha))}</td>
             <td><strong>${adminFinEscapar(item.motivo)}</strong></td>
             <td><span class="originBadge caja">${adminFinEscapar(item.origen)}</span></td>
             <td><strong>${adminFinDinero(item.monto)}</strong></td>
@@ -10696,7 +10770,7 @@ function renderGastosAdministracion() {
       ? adminFinTabla(
           ["Fecha", "Categoría", "Motivo", "Medio", "Estado", "Monto", ""],
           manuales.map(item => `<tr>
-            <td>${adminFinEscapar(item.fecha)}</td>
+            <td>${adminFinEscapar(adminFinFecha(item.fecha))}</td>
             <td>${adminFinEscapar(item.categoria)}</td>
             <td><strong>${adminFinEscapar(item.motivo)}</strong></td>
             <td>${textoMediosGastoAdministracion(item)}</td>
@@ -11306,6 +11380,12 @@ function iniciarModuloAdministracion() {
 
   $("btnVistaResumenGastos")?.addEventListener("click", () => mostrarVistaGastos("resumen"));
   $("btnVistaCargaGastos")?.addEventListener("click", () => mostrarVistaGastos("carga"));
+  $("filtroCategoriaGastosSelect")?.addEventListener("change", evento => {
+    seleccionarFiltroGastos(evento.target.value || "Todos");
+  });
+  $("filtroDetalleGastosSelect")?.addEventListener("change", evento => {
+    seleccionarSubfiltroGastos(evento.target.value || "Todos");
+  });
 
   $("filtrosCategoriasGastos")?.addEventListener("click", evento => {
     const boton = evento.target.closest("[data-gasto-categoria]");
@@ -11354,6 +11434,7 @@ window.eliminarGastoAdministracion = eliminarGastoAdministracion;
 window.editarPresupuestoAdministracion = editarPresupuestoAdministracion;
 window.eliminarPresupuestoAdministracion = eliminarPresupuestoAdministracion;
 window.seleccionarFiltroGastos = seleccionarFiltroGastos;
+window.seleccionarSubfiltroGastos = seleccionarSubfiltroGastos;
 
 
 /* =========================================================
@@ -13082,6 +13163,9 @@ function iniciarPersistenciaDetalles() {
 
 async function init() {
   iniciarPersistenciaDetalles();
+  document.querySelectorAll('input[type="date"]').forEach(input => {
+    input.lang = "es-AR";
+  });
   iniciarModuloCaja();
   iniciarAccesoAdministrador();
   iniciarModuloAdministracion();

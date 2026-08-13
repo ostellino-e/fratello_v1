@@ -1,4 +1,4 @@
-# Fratello v5.4.9
+# Fratello v5.5.0
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -10,8 +10,8 @@
 ## Resumen de gastos
 - Los totales por medio respetan los gastos mixtos.
 - Las tarjetas Empleados / Insumos / Atención / Generales ahora se pueden tocar.
-- Al tocar una tarjeta, filtra el resumen y muestra el detalle semanal de esa categoría.
-- Los filtros existentes siguen disponibles.
+- Al tocar una tarjeta, se selecciona esa categoría sin abrir todas las semanas.
+- Debajo de las tarjetas hay filtro principal y subfiltro por persona, proveedor o motivo.
 
 ## Sin cambios
 Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
@@ -30,4 +30,11 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Las tarjetas de categorías abren todos sus gastos.
 - Los botones de filtro de gastos vuelven a responder.
 
-Versión esperada: v5.4.9
+## Mejoras v5.5.0
+- Nuevo filtro visible debajo de las cuatro tarjetas de gastos.
+- Subfiltro por empleado, proveedor, insumo o motivo cargado.
+- Cada opción del subfiltro muestra su total acumulado.
+- Tocar una tarjeta filtra la categoría sin abrir todas las semanas.
+- Fechas visibles en formato argentino: día/mes/año.
+
+Versión esperada: v5.5.0

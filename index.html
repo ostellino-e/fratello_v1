@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-AR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=547" />
+  <link rel="stylesheet" href="styles.css?v=550" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "5.4.9";
-    document.documentElement.dataset.fratelloVersion = "5.4.9";
+    window.FRATELLO_VERSION = "5.5.0";
+    document.documentElement.dataset.fratelloVersion = "5.5.0";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v5.4.9</small>
+      <small id="versionFratello" class="syncVersionBadge">v5.5.0</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -479,7 +479,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v5.4.9 · Pestañas y filtros corregidos</span>
+        <span class="adminFinanceVersion">v5.5.0 · Filtros detallados de gastos</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -643,13 +643,29 @@
 
             <div id="tarjetasCategoriasGastos" class="gastosCategoriasCards"></div>
 
-            <div class="gastosFiltroCategorias" id="filtrosCategoriasGastos">
-              <button class="active" data-gasto-categoria="Todos" type="button" onclick="event.stopPropagation();seleccionarFiltroGastos('Todos')">Todos</button>
-              <button data-gasto-categoria="Empleados" type="button" onclick="event.stopPropagation();seleccionarFiltroGastos('Empleados')">Empleados</button>
-              <button data-gasto-categoria="Insumos" type="button" onclick="event.stopPropagation();seleccionarFiltroGastos('Insumos')">Insumos</button>
-              <button data-gasto-categoria="Atención" type="button" onclick="event.stopPropagation();seleccionarFiltroGastos('Atención')">Atención</button>
-              <button data-gasto-categoria="Generales" type="button" onclick="event.stopPropagation();seleccionarFiltroGastos('Generales')">Generales</button>
-            </div>
+            <section class="gastosFiltrosAvanzados" id="filtrosCategoriasGastos">
+              <div class="gastosFiltrosTitulo">
+                <strong>🔎 Filtrar gastos</strong>
+                <small>Elegí un tipo y después una persona, proveedor o detalle.</small>
+              </div>
+              <div class="gastosFiltrosGrid">
+                <label>Tipo de gasto
+                  <select id="filtroCategoriaGastosSelect">
+                    <option value="Todos">Todos los gastos</option>
+                    <option value="Empleados">Empleados</option>
+                    <option value="Insumos">Insumos / proveedores</option>
+                    <option value="Atención">Atención / Caja</option>
+                    <option value="Generales">Generales</option>
+                  </select>
+                </label>
+                <label id="filtroDetalleGastosLabel">Persona, proveedor o detalle
+                  <select id="filtroDetalleGastosSelect">
+                    <option value="Todos">Todos</option>
+                  </select>
+                </label>
+              </div>
+              <div id="resumenFiltroGastos" class="gastosFiltroResultado"></div>
+            </section>
 
             <div id="resumenSemanalGastos"></div>
           </section>

@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v549-pestanas-filtros-gastos";
+const CACHE_NAME = "fratello-v550-filtros-detallados-fechas";
 const ARCHIVOS = [
   "./",
   "./index.html",
