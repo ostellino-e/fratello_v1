@@ -7175,6 +7175,15 @@ function mostrarPestanaTickets(pestana) {
 
 let fechaTicketAbierta = "";
 
+function esPedidoInternoFratello(pedido) {
+  const nombre = normalizarPedidoInteligente(pedido?.cliente || "");
+  return nombre === "fratello" || nombre === "panaderia fratello";
+}
+
+function ticketsComercialesParaFecha(fecha) {
+  return pedidosTicketParaFecha(fecha).filter(pedido => !esPedidoInternoFratello(pedido));
+}
+
 function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
   if (!fechas.length) {
     return '<p class="weeklyEmpty">No hay tickets en esta sección.</p>';
@@ -7191,6 +7200,7 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
       <div class="ticketDayBody">
         ${lista.map(pedido => {
           const tipo = "archivo";
+          const esInterno = esPedidoInternoFratello(pedido);
           return `<article class="ticketClientRow ${(pedido.entregado || pedido.entregaConfirmada) ? "isDelivered" : ""}">
             <div>
               <strong>${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</strong>
@@ -7198,9 +7208,12 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
             </div>
             <div class="ticketClientActions">
               <button type="button" class="primary" onclick="abrirEntregaTicket('${pedido.claveMemoria}')">📦 Entrega / cobro</button>
-              <button type="button" class="ticketCommercialButton" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">🧾 TICKET CLIENTE</button>
+              ${esInterno
+                ? '<span class="ticketInternalBadge">🏪 Pedido interno · sin ticket cliente</span>'
+                : `<button type="button" class="ticketCommercialButton" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">🧾 TICKET CLIENTE</button>`
+              }
               <button type="button" class="ticketProductionButton" onclick="imprimirTicketProduccion('${tipo}', '${pedido.claveMemoria}')">🥖 IMPRIMIR PEDIDO PARA PANADEROS</button>
-              <button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG comercial</button>
+              ${esInterno ? "" : `<button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG comercial</button>`}
             </div>
           </article>`;
         }).join("")}
@@ -7359,6 +7372,10 @@ function verTicketIndividual(tipo, id) {
     alert("No se encontró el pedido.");
     return;
   }
+  if (esPedidoInternoFratello(pedido)) {
+    alert("Fratello es un pedido interno. Usá el ticket para panaderos.");
+    return;
+  }
 
   ticketsSeleccionadosActuales = [pedido];
 
@@ -7471,12 +7488,14 @@ async function imprimirListaTickets(lista, opciones = {}) {
 function imprimirTicketIndividual(tipo, id) {
   const pedido = buscarPedidoTicket(tipo, id);
   if (!pedido) return alert("No se encontró el pedido.");
+  if (esPedidoInternoFratello(pedido)) return alert("Fratello no genera ticket comercial.");
   imprimirListaTickets([pedido], { modo: "comercial", copias: 1 });
 }
 
 function imprimirTicketComercial(tipo, id) {
   const pedido = buscarPedidoTicket(tipo, id);
   if (!pedido) return alert("No se encontró el pedido.");
+  if (esPedidoInternoFratello(pedido)) return alert("Fratello no genera ticket comercial.");
   imprimirListaTickets([pedido], { modo: "comercial", copias: 1 });
 }
 
@@ -7491,7 +7510,11 @@ function imprimirTicketsDelDia(fecha) {
 }
 
 function imprimirTicketsComercialesDelDia(fecha) {
-  const lista = pedidosTicketParaFecha(fecha);
+  const lista = ticketsComercialesParaFecha(fecha);
+  if (!lista.length) {
+    alert("No hay tickets comerciales de clientes para esa fecha.");
+    return;
+  }
   imprimirListaTickets(lista, { modo: "comercial", copias: 1 });
 }
 
@@ -7507,6 +7530,7 @@ function imprimirTicketsProduccionDelDia(fecha) {
 async function guardarTicketIndividualJpg(tipo, id) {
   const pedido = buscarPedidoTicket(tipo, id);
   if (!pedido) return alert("No se encontró el pedido.");
+  if (esPedidoInternoFratello(pedido)) return alert("Fratello no genera ticket comercial.");
 
   const ticket = datosTicketPedido(pedido);
   const canvas = crearCanvasTicketIndividual(ticket);
@@ -7521,16 +7545,16 @@ async function guardarTicketIndividualJpg(tipo, id) {
 }
 
 async function guardarTicketsDelDiaJpg(fecha) {
-  const lista = pedidosTicketParaFecha(fecha);
-  if (!lista.length) return alert("No hay tickets para ese día.");
+  const lista = ticketsComercialesParaFecha(fecha);
+  if (!lista.length) return alert("No hay tickets comerciales de clientes para ese día.");
 
   cargarCanvasTickets(lista);
   await guardarImagenPedidos();
 }
 
 function descargarTicketsDelDiaPdf(fecha) {
-  const lista = pedidosTicketParaFecha(fecha);
-  if (!lista.length) return alert("No hay tickets para ese día.");
+  const lista = ticketsComercialesParaFecha(fecha);
+  if (!lista.length) return alert("No hay tickets comerciales de clientes para ese día.");
 
   const J = obtenerJsPDF();
   if (!J) return alert("No se pudo cargar el generador de PDF.");

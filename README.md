@@ -1,4 +1,4 @@
-# Fratello v5.5.2
+# Fratello v5.5.3
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -50,4 +50,11 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Si llega una lista más nueva, el ticket abierto se actualiza automáticamente.
 - La impresión comercial mantiene la verificación previa de precios.
 
-Versión esperada: v5.5.2
+## Mejora v5.5.3
+- Fratello se identifica como pedido interno.
+- No muestra ni genera ticket comercial individual.
+- Fratello queda excluido al imprimir o descargar todos los tickets comerciales.
+- Fratello conserva su ticket individual para panaderos.
+- Fratello continúa incluido al imprimir juntos todos los pedidos para producción.
+
+Versión esperada: v5.5.3
