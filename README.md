@@ -1,4 +1,4 @@
-# Fratello v5.5.0
+# Fratello v5.5.1
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -37,4 +37,11 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Tocar una tarjeta filtra la categoría sin abrir todas las semanas.
 - Fechas visibles en formato argentino: día/mes/año.
 
-Versión esperada: v5.5.0
+## Corrección v5.5.1
+- Se eliminó la copia antigua de precios que podía pisar una actualización.
+- Los tickets consultan la lista vigente antes de abrirse o imprimirse.
+- Editar precios desde Productos actualiza también la lista general.
+- Las listas especiales conservan sus valores propios cuando son diferentes.
+- El mensaje de guardado confirma cuándo los precios quedaron sincronizados.
+
+Versión esperada: v5.5.1

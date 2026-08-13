@@ -2926,6 +2926,7 @@ function datosActuales() {
     clientes,
     datosClientesCompletos,
     listasPrecios,
+    preciosActualizadosEn,
     listasPrecioPersonalizadas,
     ticketsMemoria,
     pedidosHoy,
@@ -3233,28 +3234,20 @@ async function cargarDesdeNube() {
 
       datosClientesCompletos =
         data.datosClientesCompletos || datosClientesCompletos;
-      listasPrecios = data.listasPrecios || listasPrecios;
-    listasPrecioPersonalizadas = Array.isArray(data.listasPrecioPersonalizadas)
-      ? data.listasPrecioPersonalizadas
-      : listasPrecioPersonalizadas;
+      // Los precios se cargan únicamente desde precios_estado.
+      // El documento general conserva una copia histórica, pero no puede
+      // volver a pisar una lista más nueva.
     ticketsMemoria = Array.isArray(data.ticketsMemoria)
       ? data.ticketsMemoria
       : ticketsMemoria;
     pedidosHoy = Array.isArray(data.pedidosHoy)
       ? data.pedidosHoy
       : pedidosHoy;
-      listasPrecioPersonalizadas = Array.isArray(data.listasPrecioPersonalizadas)
-        ? data.listasPrecioPersonalizadas
-        : listasPrecioPersonalizadas;
       productosExtra = Array.isArray(data.productosExtra)
         ? data.productosExtra
         : productosExtra;
 
-      // Nunca vaciar el catálogo si Firebase no trae uno válido.
-      if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
-        productos.splice(0, productos.length, ...data.catalogoProductos);
-        asegurarProductoCriollosCatalogo();
-      }
+      // El catálogo vigente también pertenece al módulo dedicado de precios.
 
       productosExtra.forEach(productoExtra => {
         if (!productos.find(producto => producto.id === productoExtra.id)) {
@@ -3355,10 +3348,7 @@ async function actualizarDatosManual(evento = null) {
     predeterminadas = data.predeterminadas || predeterminadas;
     clientes = Array.isArray(data.clientes) && data.clientes.length ? data.clientes : clientes;
     datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
-    listasPrecios = data.listasPrecios || listasPrecios;
-    listasPrecioPersonalizadas = Array.isArray(data.listasPrecioPersonalizadas)
-      ? data.listasPrecioPersonalizadas
-      : listasPrecioPersonalizadas;
+    // No recuperar precios desde el documento general: puede ser una copia vieja.
     ticketsMemoria = Array.isArray(data.ticketsMemoria)
       ? data.ticketsMemoria
       : ticketsMemoria;
@@ -3370,10 +3360,8 @@ async function actualizarDatosManual(evento = null) {
     correspondePedido = data.correspondePedido || correspondePedido;
     memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
 
-    if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
-      productos.splice(0, productos.length, ...data.catalogoProductos);
-      asegurarProductoCriollosCatalogo();
-    }
+    const preciosDoc = await db.collection("fratello").doc("precios_estado").get();
+    if (preciosDoc.exists) aplicarPreciosDesdeNube(preciosDoc.data() || {}, true);
 
     validarClientes();
     productosExtra.forEach(producto => {
@@ -3699,7 +3687,8 @@ function escucharCambiosNube() {
         ? data.clientes
         : clientes;
       datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
-      listasPrecios = data.listasPrecios || listasPrecios;
+      // v5.5.1: el listener general no modifica precios ni catálogo.
+      // Solo precios_estado puede actualizarlos.
       productosExtra = data.productosExtra || productosExtra;
       pedidosConfirmados = Boolean(data.pedidosConfirmados);
       correspondePedido = data.correspondePedido || correspondePedido;
@@ -3794,6 +3783,7 @@ let predeterminadas = JSON.parse(localStorage.getItem("fratello_predeterminadas"
 let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") || [...clientesIniciales];
 let datosClientesCompletos = JSON.parse(localStorage.getItem("fratello_clientes_completos") || "{}");
 let listasPrecios = JSON.parse(localStorage.getItem("fratello_listas_precios") || "{}");
+let preciosActualizadosEn = localStorage.getItem("fratello_precios_actualizados_en") || "";
 let productosExtra = JSON.parse(localStorage.getItem("fratello_productos_extra") || "[]");
 productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); });
 
@@ -4298,6 +4288,7 @@ function guardarProductoCatalogo(id) {
   const fila = document.querySelector(`[data-catalog-id="${CSS.escape(id)}"]`);
   const producto = productos.find(p => p.id === id);
   if (!fila || !producto) return;
+  const preciosAnteriores = { ...(producto.precios || {}) };
   const nombre = fila.querySelector("[data-catalog-nombre]").value.trim();
   if (!nombre) return alert("El nombre no puede quedar vacío.");
   if (productos.some(p => p.id !== id && normalizar(p.nombre) === normalizar(nombre))) {
@@ -4317,8 +4308,26 @@ function guardarProductoCatalogo(id) {
     kg: Number(fila.querySelector("[data-precio-kg]")?.value || 0),
     paquete: Number(fila.querySelector("[data-precio-paquete]")?.value || 0)
   };
+  Object.entries(producto.precios).forEach(([unidad, precioNuevo]) => {
+    if (!precioNuevo) return;
+    const clave = clavePrecio(producto.id, unidad);
+    listasPrecios[clave] ||= {};
+    const precioAnterior = Number(preciosAnteriores[unidad] || 0);
+
+    Object.keys(listasPrecios[clave]).forEach(lista => {
+      const precioListaAnterior = Number(listasPrecios[clave][lista] || 0);
+      if (!precioListaAnterior || precioListaAnterior === precioAnterior) {
+        listasPrecios[clave][lista] = precioNuevo;
+      }
+    });
+
+    // La lista general siempre acompaña el precio editado desde Productos.
+    listasPrecios[clave].cliente = precioNuevo;
+  });
   producto.visible = fila.querySelector("[data-catalog-visible]").checked;
   producto.activo = fila.querySelector("[data-catalog-activo]").checked;
+  preciosActualizadosEn = new Date().toISOString();
+  localStorage.setItem("fratello_precios_actualizados_en", preciosActualizadosEn);
   const extra = productosExtra.find(p => p.id === id);
   if (extra) Object.assign(extra, producto);
   guardarCatalogoProductos();
@@ -6745,7 +6754,7 @@ function renderListasPrecios(){
   c.innerHTML = h + "</tbody></table>";
 }
 
-function guardarListasPrecios(){
+async function guardarListasPrecios(){
   document.querySelectorAll("[data-price-key][data-price-list]").forEach(input => {
     const clave = input.dataset.priceKey;
     const lista = input.dataset.priceList;
@@ -6753,14 +6762,23 @@ function guardarListasPrecios(){
     listasPrecios[clave][lista] = Number(input.value || 0);
   });
 
-  localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
-  guardarEnNube();
-  guardarPreciosModuloEnNube();
-
   const mensaje = $("mensajeListasPrecios");
   if (mensaje) {
-    mensaje.textContent = "✅ Precios guardados correctamente.";
+    mensaje.textContent = "⏳ Guardando y actualizando tickets…";
     mensaje.style.display = "block";
+  }
+
+  preciosActualizadosEn = new Date().toISOString();
+  localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
+  localStorage.setItem("fratello_precios_actualizados_en", preciosActualizadosEn);
+  guardarEnNube();
+  const guardadoOnline = await guardarPreciosModuloEnNube();
+  renderTicketsPorDia();
+
+  if (mensaje) {
+    mensaje.textContent = guardadoOnline
+      ? "✅ Precios actualizados. Los tickets ya usarán estos valores."
+      : "⚠️ Precios guardados en este dispositivo. Falta sincronizarlos online.";
   }
 }
 
@@ -7323,7 +7341,20 @@ function cargarCanvasTickets(lista) {
   return true;
 }
 
-function verTicketIndividual(tipo, id) {
+async function refrescarPreciosParaTicket() {
+  if (!db || !navigator.onLine) return false;
+  try {
+    const snap = await db.collection("fratello").doc("precios_estado").get();
+    if (!snap.exists) return false;
+    return aplicarPreciosDesdeNube(snap.data() || {});
+  } catch (error) {
+    console.warn("No se pudieron verificar los precios antes del ticket:", error);
+    return false;
+  }
+}
+
+async function verTicketIndividual(tipo, id) {
+  await refrescarPreciosParaTicket();
   const pedido = buscarPedidoTicket(tipo, id);
   if (!pedido) {
     alert("No se encontró el pedido.");
@@ -7340,7 +7371,7 @@ function verTicketIndividual(tipo, id) {
   abrirModalImpresion();
 }
 
-function imprimirListaTickets(lista, opciones = {}) {
+async function imprimirListaTickets(lista, opciones = {}) {
   if (!lista.length) {
     alert("No hay tickets para imprimir.");
     return;
@@ -7348,6 +7379,15 @@ function imprimirListaTickets(lista, opciones = {}) {
 
   const modo = opciones.modo === "produccion" ? "produccion" : "comercial";
   const copias = Math.max(1, Number(opciones.copias || 1));
+
+  const ventana = window.open("", "_blank");
+  if (!ventana) {
+    alert("Permití ventanas emergentes para imprimir.");
+    return;
+  }
+  ventana.document.write("<p style='font-family:Arial;padding:20px'>Actualizando precios del ticket…</p>");
+
+  if (modo === "comercial") await refrescarPreciosParaTicket();
 
   const imagenesBase = lista.map(pedido => {
     const datos = modo === "produccion"
@@ -7361,12 +7401,7 @@ function imprimirListaTickets(lista, opciones = {}) {
     for (let copia = 0; copia < copias; copia += 1) imgs.push(src);
   });
 
-  const ventana = window.open("", "_blank");
-  if (!ventana) {
-    alert("Permití ventanas emergentes para imprimir.");
-    return;
-  }
-
+  ventana.document.open();
   ventana.document.write(`
     <html>
       <head>
@@ -12729,7 +12764,7 @@ async function guardarPreciosModuloEnNube() {
       listasPrecios,
       listasPrecioPersonalizadas,
       catalogoProductos: productos,
-      actualizado: new Date().toISOString()
+      actualizado: preciosActualizadosEn || new Date().toISOString()
     }, { merge: true });
     setEstadoSync("Online actualizado");
     return true;
@@ -12746,7 +12781,11 @@ async function guardarPreciosModuloEnNube() {
   }
 }
 
-function aplicarPreciosDesdeNube(data = {}) {
+function aplicarPreciosDesdeNube(data = {}, forzar = false) {
+  const fechaRemota = Date.parse(data.actualizado || "") || 0;
+  const fechaLocal = Date.parse(preciosActualizadosEn || "") || 0;
+  if (!forzar && fechaLocal > fechaRemota) return false;
+
   if (data.listasPrecios && typeof data.listasPrecios === "object") {
     listasPrecios = data.listasPrecios;
   }
@@ -12764,9 +12803,14 @@ function aplicarPreciosDesdeNube(data = {}) {
     JSON.stringify(listasPrecioPersonalizadas)
   );
   localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
+  preciosActualizadosEn = data.actualizado || preciosActualizadosEn;
+  if (preciosActualizadosEn) {
+    localStorage.setItem("fratello_precios_actualizados_en", preciosActualizadosEn);
+  }
   renderListasPrecios();
   renderAdministradorProductos();
   renderTicketsPorDia();
+  return true;
 }
 
 function escucharModuloPreciosNube() {
@@ -12789,7 +12833,14 @@ async function iniciarSincronizacionPrecios() {
   if (!snap.exists) {
     await guardarPreciosModuloEnNube();
   } else {
-    aplicarPreciosDesdeNube(snap.data() || {});
+    const data = snap.data() || {};
+    const remota = Date.parse(data.actualizado || "") || 0;
+    const local = Date.parse(preciosActualizadosEn || "") || 0;
+    if (local > remota) {
+      await guardarPreciosModuloEnNube();
+    } else {
+      aplicarPreciosDesdeNube(data, true);
+    }
   }
   escucharModuloPreciosNube();
 }
