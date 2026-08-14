@@ -2533,6 +2533,15 @@ function fechaCambioPedidoSync(pedido) {
   return Number.isFinite(tiempo) ? tiempo : 0;
 }
 
+function estaEntregadoParaSync(pedido) {
+  return Boolean(
+    pedido?.entregado ||
+    pedido?.entregaConfirmada ||
+    pedido?.fechaEntregaReal ||
+    (Array.isArray(pedido?.entregaItems) && pedido.entregaItems.length)
+  );
+}
+
 function claveSemanticaPedidoSync(pedido) {
   if (!pedido || typeof pedido !== "object") return "";
 
@@ -2616,7 +2625,13 @@ function fusionarPedidosSync(remotos = [], locales = [], eliminados = pedidosEli
       if (!id || pedidoEstaEliminadoSync(pedido, eliminados)) return;
 
       const anterior = mapa.get(id);
-      if (!anterior || fechaCambioPedidoSync(pedido) >= fechaCambioPedidoSync(anterior)) {
+      const entregaNueva = estaEntregadoParaSync(pedido);
+      const entregaAnterior = estaEntregadoParaSync(anterior);
+      if (
+        !anterior ||
+        (entregaNueva && !entregaAnterior) ||
+        (entregaNueva === entregaAnterior && fechaCambioPedidoSync(pedido) >= fechaCambioPedidoSync(anterior))
+      ) {
         mapa.set(id, pedido);
       }
     });
@@ -2629,6 +2644,7 @@ let guardadoPedidosModuloEnCurso = false;
 let guardadoPedidosModuloPendiente = false;
 let temporizadorPedidosModulo = null;
 let escuchandoPedidosModulo = false;
+let escuchandoEntregasTicketsV555 = false;
 
 function fechaCambioTicketSync(ticket) {
   const valor = ticket?.actualizadoTicket || ticket?.actualizadoEn ||
@@ -2648,11 +2664,94 @@ function fusionarTicketsMemoriaSync(remotos = [], locales = []) {
       );
       if (!clave) return;
       const anterior = mapa.get(clave);
-      if (!anterior || fechaCambioTicketSync(ticket) >= fechaCambioTicketSync(anterior)) {
+      const entregaNueva = estaEntregadoParaSync(ticket);
+      const entregaAnterior = estaEntregadoParaSync(anterior);
+      if (
+        !anterior ||
+        (entregaNueva && !entregaAnterior) ||
+        (entregaNueva === entregaAnterior && fechaCambioTicketSync(ticket) >= fechaCambioTicketSync(anterior))
+      ) {
         mapa.set(clave, ticket);
       }
     });
   return [...mapa.values()];
+}
+
+function idEntregaTicketNubeV555(clave) {
+  return encodeURIComponent(String(clave || "")).replace(/%/g, "_").slice(0, 900);
+}
+
+function referenciaEntregasTicketsV555() {
+  if (!db) return null;
+  return db.collection("fratello").doc("entregas_tickets").collection("registros");
+}
+
+async function guardarEntregaDedicadaNubeV555(ticket, movimiento) {
+  const clave = String(ticket?.claveMemoria || movimiento?.claveTicket || "");
+  const coleccion = referenciaEntregasTicketsV555();
+  if (!coleccion || !clave) return false;
+
+  const actualizado = ticket?.actualizadoTicket || ticket?.actualizadoEn || new Date().toISOString();
+  await coleccion.doc(idEntregaTicketNubeV555(clave)).set({
+    clave,
+    actualizado,
+    ticket: { ...ticket, actualizadoTicket: actualizado, actualizadoEn: actualizado },
+    movimiento: movimiento || null
+  }, { merge: true });
+  return true;
+}
+
+function aplicarEntregaDedicadaRemotaV555(data = {}) {
+  const remoto = data.ticket;
+  const clave = String(data.clave || remoto?.claveMemoria || "");
+  if (!remoto || !clave) return false;
+
+  const indice = ticketsMemoria.findIndex(ticket =>
+    String(ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal")) === clave
+  );
+  const local = indice >= 0 ? ticketsMemoria[indice] : null;
+  if (
+    local &&
+    estaEntregadoParaSync(local) === estaEntregadoParaSync(remoto) &&
+    fechaCambioTicketSync(local) > fechaCambioTicketSync(remoto)
+  ) return false;
+
+  const ticketFusionado = { ...(local || {}), ...remoto, claveMemoria: clave };
+  if (indice >= 0) ticketsMemoria[indice] = ticketFusionado;
+  else ticketsMemoria.push(ticketFusionado);
+
+  if (data.movimiento) {
+    cuentaCorrienteV42 = fusionarCuentaCorrienteV42([data.movimiento], cuentaCorrienteV42);
+  }
+  actualizarPedidoOrigenEntregaV42(ticketFusionado);
+  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  renderPedidosHoy();
+  renderTicketsPorDia();
+  renderPagosPendientes();
+  return true;
+}
+
+function iniciarEntregasTicketsTiempoRealV555() {
+  const coleccion = referenciaEntregasTicketsV555();
+  if (!coleccion || escuchandoEntregasTicketsV555) return;
+  escuchandoEntregasTicketsV555 = true;
+
+  coleccion.onSnapshot(snapshot => {
+    cargandoDesdeNube = true;
+    try {
+      snapshot.docChanges().forEach(cambio => {
+        if (cambio.type !== "removed") aplicarEntregaDedicadaRemotaV555(cambio.doc.data());
+      });
+    } catch (error) {
+      console.error("Error aplicando entregas en tiempo real:", error);
+    } finally {
+      cargandoDesdeNube = false;
+    }
+  }, error => {
+    console.error("Listener de entregas en tiempo real:", error);
+    escuchandoEntregasTicketsV555 = false;
+  });
 }
 
 function datosPedidosModulo() {
@@ -7152,7 +7251,18 @@ function sincronizarMemoriaTickets() {
         pedido.jornada ||
         anterior.fechaTicket ||
         fechaOperativaActual(),
-      actualizadoTicket: new Date().toISOString()
+      // Dibujar la pantalla no es una modificación real. Conservar la fecha
+      // evita que una copia vieja de otro dispositivo pise una entrega nueva.
+      actualizadoTicket:
+        pedido.actualizadoTicket ||
+        pedido.actualizadoEn ||
+        pedido.actualizado ||
+        anterior.actualizadoTicket ||
+        anterior.actualizadoEn ||
+        anterior.actualizado ||
+        anterior.creado ||
+        pedido.creado ||
+        ""
     });
   });
 
@@ -8575,7 +8685,8 @@ function recalcularEntregaV42() {
 }
 
 function actualizarPedidoOrigenEntregaV42(ticketActualizado) {
-  const ahora = new Date().toISOString();
+  const ahora = ticketActualizado.actualizadoTicket || ticketActualizado.actualizadoEn ||
+    ticketActualizado.fechaEntregaReal || new Date().toISOString();
   [pedidos, pedidosHoy].forEach(lista => {
     const pedido = lista.find(p => Number(p.id) === Number(ticketActualizado.id));
     if (!pedido) return;
@@ -8593,7 +8704,7 @@ function actualizarPedidoOrigenEntregaV42(ticketActualizado) {
   if (typeof guardarPedidosHoy === "function") guardarPedidosHoy();
 }
 
-function guardarEntregaTicketV42() {
+async function guardarEntregaTicketV42() {
   const clave = $("entregaClaveV42")?.value || "";
   const pedido = ticketsMemoria.find(t => String(t.claveMemoria) === String(clave));
   if (!pedido) return alert("No se encontró el ticket.");
@@ -8632,6 +8743,13 @@ function guardarEntregaTicketV42() {
   actualizarPedidoOrigenEntregaV42(pedido);
   guardarMemoriaTickets();
   guardarCuentaCorrienteV42();
+  let entregaSincronizada = false;
+  try {
+    entregaSincronizada = await guardarEntregaDedicadaNubeV555(pedido, movimiento);
+  } catch (error) {
+    console.error("No se pudo sincronizar la entrega dedicada:", error);
+    registrarErrorFratello("sincronizacion_entrega", error);
+  }
   renderTicketsPorDia();
   cerrarEntregaTicketV42();
 
@@ -8642,7 +8760,8 @@ function guardarEntregaTicketV42() {
     `Pago recibido: ${formatoDineroTicket(pago)}\n` +
     (favorFinal > 0
       ? `Saldo a favor del cliente: ${formatoDineroTicket(favorFinal)}`
-      : `Saldo pendiente: ${formatoDineroTicket(pendienteFinal)}`)
+      : `Saldo pendiente: ${formatoDineroTicket(pendienteFinal)}`) +
+    `\nSincronización: ${entregaSincronizada ? "guardada para todos los dispositivos" : "pendiente; revisá la conexión"}`
   );
 }
 
@@ -13487,6 +13606,7 @@ async function init() {
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   await cargarDesdeNube();
   await iniciarPedidosModuloNube();
+  iniciarEntregasTicketsTiempoRealV555();
   await iniciarCuentaPendientesNube();
   await iniciarSincronizacionModulosFinancieros();
   await iniciarSincronizacionPrecios();

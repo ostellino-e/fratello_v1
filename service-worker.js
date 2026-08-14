@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v554-saldo-favor-sync-tickets";
+const CACHE_NAME = "fratello-v555-entregas-tiempo-real";
 const ARCHIVOS = [
   "./",
   "./index.html",

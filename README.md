@@ -1,4 +1,4 @@
-# Fratello v5.5.4
+# Fratello v5.5.5
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -64,4 +64,11 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Entregas, cobros y estado de tickets se sincronizan entre celular y computadora.
 - Los botones de cada ticket son más compactos en pantallas de celular.
 
-Versión esperada: v5.5.4
+## Corrección v5.5.5
+- Confirmar una entrega guarda un registro independiente y liviano en Firebase.
+- Celular y computadora escuchan esos registros en tiempo real.
+- Dibujar la pantalla de tickets ya no cambia falsamente la fecha de modificación.
+- Una copia vieja de otro dispositivo ya no puede pisar una entrega nueva.
+- El mensaje de entrega confirma si la sincronización quedó guardada para todos los dispositivos.
+
+Versión esperada: v5.5.5
