@@ -2630,6 +2630,31 @@ let guardadoPedidosModuloPendiente = false;
 let temporizadorPedidosModulo = null;
 let escuchandoPedidosModulo = false;
 
+function fechaCambioTicketSync(ticket) {
+  const valor = ticket?.actualizadoTicket || ticket?.actualizadoEn ||
+    ticket?.actualizado || ticket?.fechaEntregaReal || ticket?.creado || "";
+  const tiempo = Date.parse(valor);
+  return Number.isFinite(tiempo) ? tiempo : 0;
+}
+
+function fusionarTicketsMemoriaSync(remotos = [], locales = []) {
+  const mapa = new Map();
+  [...(Array.isArray(remotos) ? remotos : []), ...(Array.isArray(locales) ? locales : [])]
+    .forEach(ticket => {
+      if (!ticket) return;
+      const clave = String(
+        ticket.claveMemoria ||
+        claveTicketMemoria(ticket, ticket.tipoTicket || "normal")
+      );
+      if (!clave) return;
+      const anterior = mapa.get(clave);
+      if (!anterior || fechaCambioTicketSync(ticket) >= fechaCambioTicketSync(anterior)) {
+        mapa.set(clave, ticket);
+      }
+    });
+  return [...mapa.values()];
+}
+
 function datosPedidosModulo() {
   return {
     pedidos: Array.isArray(pedidos) ? pedidos : [],
@@ -2637,6 +2662,8 @@ function datosPedidosModulo() {
     pedidosFijos: Array.isArray(pedidosFijos) ? pedidosFijos : [],
     exclusionesPedidosFijos: Array.isArray(exclusionesPedidosFijos) ? exclusionesPedidosFijos : [],
     pedidosConfirmados: Boolean(pedidosConfirmados),
+    pedidosHoy: Array.isArray(pedidosHoy) ? pedidosHoy : [],
+    ticketsMemoria: Array.isArray(ticketsMemoria) ? ticketsMemoria : [],
     cuentaCorriente: Array.isArray(cuentaCorrienteV42) ? cuentaCorrienteV42 : [],
     clientesCuenta: Array.isArray(clientesCuentaV541) ? clientesCuentaV541 : []
   };
@@ -2685,9 +2712,13 @@ function aplicarPedidosModuloRemoto(data = {}) {
   if (typeof data.pedidosConfirmados === "boolean") {
     pedidosConfirmados = data.pedidosConfirmados;
   }
+  pedidosHoy = fusionarPedidosSync(data.pedidosHoy, pedidosHoy, []);
+  ticketsMemoria = fusionarTicketsMemoriaSync(data.ticketsMemoria, ticketsMemoria);
   cuentaCorrienteV42 = fusionarCuentaCorrienteV42(data.cuentaCorriente, cuentaCorrienteV42);
   clientesCuentaV541 = fusionarClientesCuentaV541(data.clientesCuenta, clientesCuentaV541);
   localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
   guardarClientesCuentaLocalV541();
 
   guardarPedidosLocal();
@@ -2734,6 +2765,8 @@ function guardarPedidosModuloEnNube() {
             remoto.exclusionesPedidosFijos,
             exclusionesPedidosFijos
           );
+          pedidosHoy = fusionarPedidosSync(remoto.pedidosHoy, pedidosHoy, []);
+          ticketsMemoria = fusionarTicketsMemoriaSync(remoto.ticketsMemoria, ticketsMemoria);
           cuentaCorrienteV42 = fusionarCuentaCorrienteV42(remoto.cuentaCorriente, cuentaCorrienteV42);
           clientesCuentaV541 = fusionarClientesCuentaV541(remoto.clientesCuenta, clientesCuentaV541);
 
@@ -2744,6 +2777,10 @@ function guardarPedidosModuloEnNube() {
         });
 
         guardarPedidosLocal();
+        localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+        localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+        localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+        guardarClientesCuentaLocalV541();
         resolve(true);
       } catch (error) {
         console.error("Error sincronizando Pedidos dedicado:", error);
@@ -2788,9 +2825,11 @@ async function iniciarPedidosModuloNube() {
           renderPedidosCargados();
           renderPedidosFuturos();
           renderHistorialPedidos();
+          renderPedidosHoy();
+          renderTicketsPorDia();
+          renderPagosPendientes();
           calcularDiferencias();
           actualizarEstadoConfirmacion();
-          renderTicketsPorDia();
         } catch (error) {
           console.error("Error recibiendo Pedidos dedicado:", error);
         } finally {
@@ -7636,8 +7675,10 @@ function datosTicketPedido(pedido) {
     entregaConfirmada: Boolean(pedido.entregaConfirmada),
     observacionEntrega: pedido.observacionEntrega || "",
     saldoAnterior: saldoAnteriorTicket(pedido),
+    saldoFavorAnterior: saldoFavorAnteriorTicket(pedido),
     pagoHoy: pagoTicketActual(pedido),
-    saldoFinal: saldoFinalTicket(pedido)
+    saldoFinal: saldoFinalTicket(pedido),
+    saldoFavorFinal: saldoFavorTicket(pedido)
   };
 }
 
@@ -7651,8 +7692,10 @@ function datosTicketProduccion(pedido) {
     listaPrecioNombre: "",
     total: 0,
     saldoAnterior: 0,
+    saldoFavorAnterior: 0,
     pagoHoy: 0,
     saldoFinal: 0,
+    saldoFavorFinal: 0,
     items: (comercial.items || []).map(item => ({
       descripcion: item.descripcion,
       cantidad: item.cantidad,
@@ -7889,6 +7932,14 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.fillText(formatoDineroTicket(t.saldoAnterior), r, yy);
   yy += 33;
 
+  if (Number(t.saldoFavorAnterior || 0) > 0) {
+    ctx.textAlign = "left";
+    ctx.fillText("Saldo a favor anterior", l, yy);
+    ctx.textAlign = "right";
+    ctx.fillText(`- ${formatoDineroTicket(t.saldoFavorAnterior)}`, r, yy);
+    yy += 33;
+  }
+
   if (Number(t.pagoHoy || 0) > 0) {
     ctx.textAlign = "left";
     ctx.fillText("Pago recibido", l, yy);
@@ -7906,6 +7957,15 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   ctx.textAlign = "right";
   ctx.fillText(formatoDineroTicket(t.saldoFinal), r, yy);
   yy += 44;
+
+  if (Number(t.saldoFavorFinal || 0) > 0) {
+    ctx.font = "bold 38px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText("SALDO A FAVOR", l, yy);
+    ctx.textAlign = "right";
+    ctx.fillText(formatoDineroTicket(t.saldoFavorFinal), r, yy);
+    yy += 38;
+  }
   } else {
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
@@ -8064,8 +8124,9 @@ function agregarClientePendienteManual() {
 function eliminarClientePendienteManual(idSeguro) {
   const cliente=clienteDesdeIdPagoPendiente(idSeguro);
   if(!cliente) return;
-  const saldo=saldoPendienteClienteV42(cliente);
-  if(saldo>0) return alert(`No se puede quitar porque todavía tiene ${formatoDineroTicket(saldo)} pendientes.`);
+  const saldoNeto=saldoClienteV42(cliente);
+  if(saldoNeto>0) return alert(`No se puede quitar porque todavía tiene ${formatoDineroTicket(saldoNeto)} pendientes.`);
+  if(saldoNeto<0) return alert(`No se puede quitar porque tiene ${formatoDineroTicket(-saldoNeto)} de saldo a favor.`);
   if(!confirm(`¿Quitar a ${cliente} de esta pantalla?
 
 No se elimina de Pedidos.`)) return;
@@ -8075,6 +8136,10 @@ No se elimina de Pedidos.`)) return;
 
 function saldoPendienteClienteV42(cliente) {
   return Math.max(0, saldoClienteV42(cliente));
+}
+
+function saldoFavorClienteV42(cliente) {
+  return Math.max(0, -saldoClienteV42(cliente));
 }
 
 function formatoFechaCuentaV42(valor) {
@@ -8091,9 +8156,11 @@ function renderPagosPendientes() {
   const clientesCuenta = clientesCuentaPendientesV42()
     .map(nombre => ({
       nombre,
-      saldo: saldoPendienteClienteV42(nombre)
+      saldoNeto: saldoClienteV42(nombre),
+      saldo: saldoPendienteClienteV42(nombre),
+      saldoFavor: saldoFavorClienteV42(nombre)
     }))
-    .sort((a, b) => b.saldo - a.saldo || a.nombre.localeCompare(b.nombre, "es"));
+    .sort((a, b) => b.saldoNeto - a.saldoNeto || a.nombre.localeCompare(b.nombre, "es"));
 
   const total = clientesCuenta.reduce((s, item) => s + item.saldo, 0);
   if ($("totalPagosPendientes")) {
@@ -8133,15 +8200,21 @@ function renderPagosPendientes() {
       .replace(/\+/g, "-")
       .replace(/\//g, "_");
 
+    const tieneDeuda = cliente.saldoNeto > 0;
+    const tieneFavor = cliente.saldoNeto < 0;
+    const importeEstado = tieneFavor ? cliente.saldoFavor : cliente.saldo;
+    const textoEstado = tieneDeuda ? "Saldo pendiente" : (tieneFavor ? "Saldo a favor" : "Sin deuda pendiente");
+    const claseEstado = tieneDeuda ? "hasDebt" : (tieneFavor ? "hasCredit" : "noDebt");
+
     return `<details class="pendingClientCard" data-cliente="${adminFinEscapar(cliente.nombre)}">
       <summary>
-        <span><strong>${adminFinEscapar(cliente.nombre)}</strong><small>${cliente.saldo > 0 ? "Saldo pendiente" : "Sin deuda pendiente"}</small></span>
-        <b class="${cliente.saldo > 0 ? "hasDebt" : "noDebt"}">${formatoDineroTicket(cliente.saldo)}</b>
+        <span><strong>${adminFinEscapar(cliente.nombre)}</strong><small>${textoEstado}</small></span>
+        <b class="${claseEstado}">${formatoDineroTicket(importeEstado)}</b>
       </summary>
       <div class="pendingClientBody">
-        <div class="pendingBalance">
-          <span>Saldo pendiente actual</span>
-          <strong>${formatoDineroTicket(cliente.saldo)}</strong>
+        <div class="pendingBalance ${tieneFavor ? "hasCredit" : ""}">
+          <span>${tieneFavor ? "Saldo a favor actual" : "Saldo pendiente actual"}</span>
+          <strong>${formatoDineroTicket(importeEstado)}</strong>
         </div>
         <button type="button" class="pendingRemoveClient" onclick="eliminarClientePendienteManual('${idSeguro}')">Quitar cliente de esta pantalla</button>
         <div class="pendingManualCharge"><h4>Sumar monto pendiente</h4><div class="pendingPaymentGrid">
@@ -8216,13 +8289,11 @@ function cargarPagoPendienteCliente(idSeguro) {
   const medio = $(`pagoPendienteMedio_${idSeguro}`)?.value || "Otro";
   const fecha = $(`pagoPendienteFecha_${idSeguro}`)?.value || hoyISO();
   const observacion = String($(`pagoPendienteObs_${idSeguro}`)?.value || "").trim();
-  const saldoAntes = saldoPendienteClienteV42(cliente);
+  const saldoNetoAntes = saldoClienteV42(cliente);
+  const saldoAntes = Math.max(0, saldoNetoAntes);
 
   if (!monto) return alert("Ingresá el monto abonado.");
   if (saldoAntes <= 0) return alert("Este cliente no tiene saldo pendiente.");
-  if (monto > saldoAntes) {
-    return alert(`El pago supera el saldo pendiente actual (${formatoDineroTicket(saldoAntes)}).`);
-  }
 
   const ahora = new Date().toISOString();
   const id = `PAGO-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -8245,12 +8316,14 @@ function cargarPagoPendienteCliente(idSeguro) {
 
   guardarCuentaCorrienteV42();
 
-  const saldoDespues = saldoPendienteClienteV42(cliente);
+  const saldoNetoDespues = saldoClienteV42(cliente);
+  const saldoDespues = Math.max(0, saldoNetoDespues);
+  const saldoFavorDespues = Math.max(0, -saldoNetoDespues);
   alert(
     `Pago registrado para ${cliente}.\\n\\n` +
     `Saldo anterior: ${formatoDineroTicket(saldoAntes)}\\n` +
     `Pago: ${formatoDineroTicket(monto)}\\n` +
-    `Saldo pendiente: ${formatoDineroTicket(saldoDespues)}\\n\\n` +
+    `${saldoFavorDespues > 0 ? "Saldo a favor" : "Saldo pendiente"}: ${formatoDineroTicket(saldoFavorDespues > 0 ? saldoFavorDespues : saldoDespues)}\\n\\n` +
     `Este movimiento NO se agregó a Caja.`
   );
 }
@@ -8292,16 +8365,33 @@ function saldoAnteriorTicket(pedido) {
   return Math.max(0, saldoClienteV42(pedido?.cliente, clave));
 }
 
+function saldoNetoAnteriorTicket(pedido) {
+  const clave = pedido?.claveMemoria || claveTicketMemoria(pedido, pedido?.tipoTicket || "normal");
+  return saldoClienteV42(pedido?.cliente, clave);
+}
+
+function saldoFavorAnteriorTicket(pedido) {
+  return Math.max(0, -saldoNetoAnteriorTicket(pedido));
+}
+
 function pagoTicketActual(pedido) {
   return Number(movimientoTicketV42(pedido)?.pago || pedido?.pagoEntrega || 0);
 }
 
 function saldoFinalTicket(pedido) {
-  const anterior = saldoAnteriorTicket(pedido);
+  return Math.max(0, saldoFinalNetoTicket(pedido));
+}
+
+function saldoFinalNetoTicket(pedido) {
+  const anterior = saldoNetoAnteriorTicket(pedido);
   const compra = pedido?.entregaConfirmada
     ? totalEntregaPedidoV42(pedido)
     : datosTicketTotalOriginalV42(pedido);
-  return Math.max(0, anterior + compra - pagoTicketActual(pedido));
+  return anterior + compra - pagoTicketActual(pedido);
+}
+
+function saldoFavorTicket(pedido) {
+  return Math.max(0, -saldoFinalNetoTicket(pedido));
 }
 
 function datosTicketTotalOriginalV42(pedido) {
@@ -8356,6 +8446,7 @@ function abrirEntregaTicket(clave) {
   ).filter(item => item.estado !== "NO PEDIDO");
 
   const saldoAnterior = saldoAnteriorTicket(pedido);
+  const saldoFavorAnterior = saldoFavorAnteriorTicket(pedido);
   const pagoActual = pagoTicketActual(pedido);
 
   $("contenidoEntregaTicketV42").innerHTML = `
@@ -8402,12 +8493,16 @@ function abrirEntregaTicket(clave) {
       </label>
       <div class="deliveryAccountV42">
         <div><span>Saldo anterior</span><strong>${formatoDineroTicket(saldoAnterior)}</strong></div>
+        <div class="deliveryCreditV42 ${saldoFavorAnterior > 0 ? "" : "hidden"}">
+          <span>Saldo a favor anterior</span><strong>${formatoDineroTicket(saldoFavorAnterior)}</strong>
+        </div>
         <div><span>Entrega de hoy</span><strong id="entregaTotalV42">$ 0</strong></div>
         <label>
           Pago recibido hoy
           <input id="entregaPagoV42" type="number" min="0" step="1" value="${pagoActual}">
         </label>
-        <div class="deliveryGrandV42"><span>Saldo final estimado</span><strong id="entregaSaldoFinalV42">$ 0</strong></div>
+        <div class="deliveryGrandV42" id="entregaDeudaFinalFilaV42"><span>Saldo pendiente estimado</span><strong id="entregaSaldoFinalV42">$ 0</strong></div>
+        <div class="deliveryGrandV42 deliveryCreditV42 hidden" id="entregaFavorFinalFilaV42"><span>Saldo a favor del cliente</span><strong id="entregaSaldoFavorV42">$ 0</strong></div>
       </div>
     </div>
 
@@ -8466,15 +8561,21 @@ function recalcularEntregaV42() {
   if (!pedido) return;
 
   const total = totalFormularioEntregaV42();
-  const anterior = saldoAnteriorTicket(pedido);
+  const anterior = saldoNetoAnteriorTicket(pedido);
   const pago = Math.max(0, Number($("entregaPagoV42")?.value || 0));
-  const saldo = Math.max(0, anterior + total - pago);
+  const neto = anterior + total - pago;
+  const saldo = Math.max(0, neto);
+  const favor = Math.max(0, -neto);
 
   if ($("entregaTotalV42")) $("entregaTotalV42").textContent = formatoDineroTicket(total);
   if ($("entregaSaldoFinalV42")) $("entregaSaldoFinalV42").textContent = formatoDineroTicket(saldo);
+  if ($("entregaSaldoFavorV42")) $("entregaSaldoFavorV42").textContent = formatoDineroTicket(favor);
+  $("entregaDeudaFinalFilaV42")?.classList.toggle("hidden", favor > 0);
+  $("entregaFavorFinalFilaV42")?.classList.toggle("hidden", favor <= 0);
 }
 
 function actualizarPedidoOrigenEntregaV42(ticketActualizado) {
+  const ahora = new Date().toISOString();
   [pedidos, pedidosHoy].forEach(lista => {
     const pedido = lista.find(p => Number(p.id) === Number(ticketActualizado.id));
     if (!pedido) return;
@@ -8483,6 +8584,9 @@ function actualizarPedidoOrigenEntregaV42(ticketActualizado) {
     pedido.observacionEntrega = ticketActualizado.observacionEntrega;
     pedido.pagoEntrega = ticketActualizado.pagoEntrega;
     pedido.entregado = true;
+    pedido.fechaEntregaReal = ticketActualizado.fechaEntregaReal || ahora;
+    pedido.actualizado = ahora;
+    pedido.actualizadoEn = ahora;
   });
 
   if (typeof guardarPedidos === "function") guardarPedidos();
@@ -8505,6 +8609,9 @@ function guardarEntregaTicketV42() {
   pedido.pagoEntrega = pago;
   pedido.entregado = true;
   pedido.fechaEntregaReal = new Date().toISOString();
+  pedido.actualizado = pedido.fechaEntregaReal;
+  pedido.actualizadoEn = pedido.fechaEntregaReal;
+  pedido.actualizadoTicket = pedido.fechaEntregaReal;
 
   const existente = cuentaCorrienteV42.findIndex(m => m.claveTicket === clave);
   const movimiento = {
@@ -8528,7 +8635,15 @@ function guardarEntregaTicketV42() {
   renderTicketsPorDia();
   cerrarEntregaTicketV42();
 
-  alert(`Entrega guardada.\n\nCompra de hoy: ${formatoDineroTicket(total)}\nPago recibido: ${formatoDineroTicket(pago)}\nSaldo final: ${formatoDineroTicket(saldoFinalTicket(pedido))}`);
+  const pendienteFinal = saldoFinalTicket(pedido);
+  const favorFinal = saldoFavorTicket(pedido);
+  alert(
+    `Entrega guardada.\n\nCompra de hoy: ${formatoDineroTicket(total)}\n` +
+    `Pago recibido: ${formatoDineroTicket(pago)}\n` +
+    (favorFinal > 0
+      ? `Saldo a favor del cliente: ${formatoDineroTicket(favorFinal)}`
+      : `Saldo pendiente: ${formatoDineroTicket(pendienteFinal)}`)
+  );
 }
 
 

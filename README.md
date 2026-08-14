@@ -1,4 +1,4 @@
-# Fratello v5.5.3
+# Fratello v5.5.4
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -57,4 +57,11 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Fratello conserva su ticket individual para panaderos.
 - Fratello continúa incluido al imprimir juntos todos los pedidos para producción.
 
-Versión esperada: v5.5.3
+## Mejora v5.5.4
+- Los pagos mayores al total generan saldo a favor del cliente.
+- Ese saldo se descuenta automáticamente de deudas y pedidos posteriores del mismo cliente.
+- Pagos pendientes muestra por separado deuda y saldo a favor.
+- Entregas, cobros y estado de tickets se sincronizan entre celular y computadora.
+- Los botones de cada ticket son más compactos en pantallas de celular.
+
+Versión esperada: v5.5.4
