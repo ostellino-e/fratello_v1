@@ -1,4 +1,4 @@
-# Fratello v5.5.5
+# Fratello v5.5.6
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -71,4 +71,11 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Una copia vieja de otro dispositivo ya no puede pisar una entrega nueva.
 - El mensaje de entrega confirma si la sincronización quedó guardada para todos los dispositivos.
 
-Versión esperada: v5.5.5
+## Mejora v5.5.6
+- Se eliminaron las leyendas superiores de la pantalla Tickets.
+- Cada cliente ocupa una fila mucho más baja en el celular.
+- Las cuatro acciones individuales se muestran en una línea compacta con icono y nombre corto.
+- Las acciones generales del día quedan plegadas y se abren solo cuando se necesitan.
+- En computadora se conservan los textos completos de los botones.
+
+Versión esperada: v5.5.6

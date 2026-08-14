@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=555" />
+  <link rel="stylesheet" href="styles.css?v=556" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "5.5.5";
-    document.documentElement.dataset.fratelloVersion = "5.5.5";
+    window.FRATELLO_VERSION = "5.5.6";
+    document.documentElement.dataset.fratelloVersion = "5.5.6";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v5.5.5</small>
+      <small id="versionFratello" class="syncVersionBadge">v5.5.6</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -317,12 +317,6 @@
 <section class="card wide appSection" id="seccionTickets">
       <a class="volverInicio" href="#" data-volver="true">← Volver</a>
       <h2>🎟 Tickets</h2>
-      <p class="hint">La semana actual va de lunes a domingo. Al comenzar un nuevo lunes, los tickets anteriores pasan automáticamente a Pendientes.</p>
-      <div class="statusBox">
-        <strong>🧾 Comercial / cliente:</strong> incluye precios y se imprime por duplicado.
-        <br>
-        <strong>🥖 Producción:</strong> muestra productos y cantidades, sin precios ni información financiera.
-      </div>
 
       <div class="ticketTabs" role="tablist" aria-label="Organización de tickets">
         <button type="button" id="btnTicketsSemanaActual" class="ticketTab active" onclick="mostrarPestanaTickets('semana')">
@@ -479,7 +473,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v5.5.5 · Entregas en tiempo real</span>
+        <span class="adminFinanceVersion">v5.5.6 · Tickets compactos</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -1090,7 +1084,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=555"></script>
+  <script src="app.js?v=556"></script>
 
   
 

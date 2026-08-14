@@ -1940,6 +1940,19 @@ body:has(.appSection:target) #contenidoApp {
   justify-content: flex-end;
 }
 
+.ticketActionShort{display:none}
+.ticketActionIcon{margin-right:3px}
+.ticketDayMoreActions{margin-top:8px;border-top:1px solid #dfd2c2}
+.ticketDayMoreActions>summary{
+  padding:8px 4px;
+  color:#665444;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+  list-style:none;
+}
+.ticketDayMoreActions>summary::-webkit-details-marker{display:none}
+
 .ticketDayFooter {
   display: flex;
   flex-wrap: wrap;
@@ -4941,7 +4954,7 @@ body.modal-open{
 .ticketDayFooter .ticketProductionButton{width:100%;min-height:56px!important;font-size:14px!important}
 
 
-/* Fratello v5.5.5 — entregas y cobros en tiempo real */
+/* Fratello v5.5.6 — tickets compactos para celular */
 
 .ticketInternalBadge {
   display: block;
@@ -5090,25 +5103,66 @@ body.modal-open{
 }
 
 @media(max-width:700px){
-  .ticketClientRow{padding:8px;gap:7px}
+  .ticketDayBody{padding:5px}
+  .ticketClientRow{
+    display:grid;
+    grid-template-columns:minmax(76px,32%) minmax(0,1fr);
+    align-items:center;
+    padding:6px 4px;
+    gap:5px;
+  }
+  .ticketClientInfo{min-width:0}
+  .ticketClientInfo strong{
+    display:block;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:11px;
+  }
+  .ticketClientInfo small{
+    margin-top:1px;
+    font-size:8px;
+    line-height:1.1;
+  }
   .ticketClientActions{
     display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:6px;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:3px;
     width:100%;
   }
   .ticketClientActions button,
   .ticketClientActions .ticketProductionButton{
     width:100%;
-    min-height:36px!important;
-    padding:6px 7px!important;
-    border-radius:8px!important;
-    font-size:10px!important;
-    line-height:1.15!important;
+    min-width:0;
+    min-height:32px!important;
+    padding:3px 1px!important;
+    border-width:1px!important;
+    border-radius:7px!important;
+    font-size:8px!important;
+    line-height:1.05!important;
+    box-shadow:none!important;
   }
+  .ticketActionFull{display:none}
+  .ticketActionShort{display:block;margin-top:1px}
+  .ticketActionIcon{display:block;margin:0;font-size:12px;line-height:1}
   .ticketClientActions .ticketInternalBadge{
-    grid-column:1/-1;
-    padding:5px 7px;
-    font-size:10px;
+    display:none;
+  }
+  .ticketClientRow.isInternal .ticketClientActions{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .ticketDayMoreActions>summary{
+    padding:6px 3px;
+    font-size:9px;
+  }
+  .ticketDayFooter{
+    gap:4px;
+    padding-top:5px;
+  }
+  .ticketDayFooter button,
+  .ticketDayFooter .ticketProductionButton{
+    min-height:34px!important;
+    padding:5px 7px!important;
+    font-size:9px!important;
   }
 }

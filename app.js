@@ -7350,29 +7350,32 @@ function htmlPanelTicketsFechas(fechas, fechaAbierta = "") {
         ${lista.map(pedido => {
           const tipo = "archivo";
           const esInterno = esPedidoInternoFratello(pedido);
-          return `<article class="ticketClientRow ${(pedido.entregado || pedido.entregaConfirmada) ? "isDelivered" : ""}">
-            <div>
+          return `<article class="ticketClientRow ${esInterno ? "isInternal" : ""} ${(pedido.entregado || pedido.entregaConfirmada) ? "isDelivered" : ""}">
+            <div class="ticketClientInfo">
               <strong>${escaparHtmlCatalogo(pedido.cliente || "Cliente")}</strong>
               <small>${pedido.esPedidoHoy ? `Pedido de hoy${pedido.horaEntrega ? ` · ${pedido.horaEntrega}` : ""}` : etiquetaOrigenPedido(pedido)}${(pedido.entregado || pedido.entregaConfirmada) ? " · ✅ Entregado" : " · ⏳ Pendiente"}</small>
             </div>
             <div class="ticketClientActions">
-              <button type="button" class="primary" onclick="abrirEntregaTicket('${pedido.claveMemoria}')">📦 Entrega / cobro</button>
+              <button type="button" class="primary" title="Entrega y cobro" aria-label="Entrega y cobro" onclick="abrirEntregaTicket('${pedido.claveMemoria}')"><span class="ticketActionIcon">📦</span><span class="ticketActionFull">Entrega / cobro</span><span class="ticketActionShort">Cobro</span></button>
               ${esInterno
                 ? '<span class="ticketInternalBadge">🏪 Pedido interno · sin ticket cliente</span>'
-                : `<button type="button" class="ticketCommercialButton" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')">🧾 TICKET CLIENTE</button>`
+                : `<button type="button" class="ticketCommercialButton" title="Ticket cliente" aria-label="Ticket cliente" onclick="verTicketIndividual('${tipo}', '${pedido.claveMemoria}')"><span class="ticketActionIcon">🧾</span><span class="ticketActionFull">TICKET CLIENTE</span><span class="ticketActionShort">Cliente</span></button>`
               }
-              <button type="button" class="ticketProductionButton" onclick="imprimirTicketProduccion('${tipo}', '${pedido.claveMemoria}')">🥖 IMPRIMIR PEDIDO PARA PANADEROS</button>
-              ${esInterno ? "" : `<button type="button" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')">🖼 JPG comercial</button>`}
+              <button type="button" class="ticketProductionButton" title="Pedido para panaderos" aria-label="Pedido para panaderos" onclick="imprimirTicketProduccion('${tipo}', '${pedido.claveMemoria}')"><span class="ticketActionIcon">🥖</span><span class="ticketActionFull">IMPRIMIR PEDIDO PARA PANADEROS</span><span class="ticketActionShort">Panad.</span></button>
+              ${esInterno ? "" : `<button type="button" title="JPG comercial" aria-label="JPG comercial" onclick="guardarTicketIndividualJpg('${tipo}', '${pedido.claveMemoria}')"><span class="ticketActionIcon">🖼</span><span class="ticketActionFull">JPG comercial</span><span class="ticketActionShort">JPG</span></button>`}
             </div>
           </article>`;
         }).join("")}
-        <div class="ticketDayFooter">
-          <button type="button" class="ticketRepairButtonV422" onclick="repararPedidosYTicketsDelDia('${fecha}')">🧹 Reparar pedidos y tickets</button>
-          <button type="button" class="primary ticketCommercialButton" onclick="imprimirTicketsComercialesDelDia('${fecha}')">🧾 IMPRIMIR TICKETS CLIENTE</button>
-          <button type="button" class="ticketProductionButton btnPrintProductionDay" data-ticket-fecha="${fecha}">🥖 IMPRIMIR PEDIDOS PARA PANADEROS</button>
-          <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG comercial</button>
-          <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF comercial</button>
-        </div>
+        <details class="ticketDayMoreActions">
+          <summary>⚙️ Acciones generales del día</summary>
+          <div class="ticketDayFooter">
+            <button type="button" class="ticketRepairButtonV422" onclick="repararPedidosYTicketsDelDia('${fecha}')">🧹 Reparar pedidos y tickets</button>
+            <button type="button" class="primary ticketCommercialButton" onclick="imprimirTicketsComercialesDelDia('${fecha}')">🧾 IMPRIMIR TICKETS CLIENTE</button>
+            <button type="button" class="ticketProductionButton btnPrintProductionDay" data-ticket-fecha="${fecha}">🥖 IMPRIMIR PEDIDOS PARA PANADEROS</button>
+            <button type="button" onclick="guardarTicketsDelDiaJpg('${fecha}')">🖼 Guardar todos en JPG comercial</button>
+            <button type="button" onclick="descargarTicketsDelDiaPdf('${fecha}')">📄 Descargar todos en PDF comercial</button>
+          </div>
+        </details>
       </div>
     </details>`;
   }).join("");
