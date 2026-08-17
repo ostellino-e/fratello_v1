@@ -740,6 +740,7 @@ function guardarPedidoHoyDesdeFormulario() {
     return;
   }
 
+  let pedidoGuardado = null;
   if (pedidoHoyEditandoId !== null) {
     const existente = pedidosHoy.find(p => Number(p.id) === Number(pedidoHoyEditandoId));
     if (existente) {
@@ -749,13 +750,15 @@ function guardarPedidoHoyDesdeFormulario() {
       existente.horaEntrega = horaEntrega;
       existente.items = procesarTextoPedido(texto, cliente, existente.jornada || fechaOperativaActual());
       existente.actualizado = new Date().toISOString();
+      existente.actualizadoEn = existente.actualizado;
+      pedidoGuardado = existente;
     }
   } else {
     const idPedidoHoy = Date.now();
     const jornada = fechaOperativaActual();
     const itemsProcesados = procesarTextoPedido(texto, cliente, jornada);
 
-    pedidosHoy.push({
+    pedidoGuardado = {
       id: idPedidoHoy,
       jornada,
       fecha: jornada,
@@ -768,8 +771,11 @@ function guardarPedidoHoyDesdeFormulario() {
       confirmado: true,
       entregado: false,
       items: itemsProcesados,
-      creado: new Date().toISOString()
-    });
+      creado: new Date().toISOString(),
+      actualizado: new Date().toISOString()
+    };
+    pedidoGuardado.actualizadoEn = pedidoGuardado.actualizado;
+    pedidosHoy.push(pedidoGuardado);
   }
 
   guardarPedidosHoy();
@@ -777,6 +783,7 @@ function guardarPedidoHoyDesdeFormulario() {
   limpiarFormularioPedidoHoy();
   renderPedidosHoy();
   renderTicketsPorDia();
+  if (pedidoGuardado) sincronizarPedidoIndividualV557(pedidoGuardado, "hoy").catch(() => {});
 }
 
 function editarPedidoHoy(id) {
@@ -796,6 +803,7 @@ function editarPedidoHoy(id) {
 function eliminarPedidoHoy(id) {
   if (!confirm("¿Seguro que querés eliminar este pedido para hoy?")) return;
 
+  const pedidoEliminado = pedidosHoy.find(p => Number(p.id) === Number(id));
   pedidosHoy = pedidosHoy.filter(p => Number(p.id) !== Number(id));
 
   if (Number(pedidoHoyEditandoId) === Number(id)) {
@@ -806,6 +814,7 @@ function eliminarPedidoHoy(id) {
   sincronizarMemoriaTickets();
   renderPedidosHoy();
   renderTicketsPorDia();
+  if (pedidoEliminado) sincronizarPedidoIndividualV557(pedidoEliminado, "hoy", true).catch(() => {});
 }
 
 function alternarEntregadoPedidoHoy(id, entregado) {
@@ -814,11 +823,13 @@ function alternarEntregadoPedidoHoy(id, entregado) {
 
   pedido.entregado = Boolean(entregado);
   pedido.actualizado = new Date().toISOString();
+  pedido.actualizadoEn = pedido.actualizado;
   guardarPedidosHoy();
   sincronizarMemoriaTickets();
   guardarEnNube();
   renderPedidosHoy();
   renderTicketsPorDia();
+  sincronizarPedidoIndividualV557(pedido, "hoy").catch(() => {});
 }
 
 function renderPedidosHoy() {
@@ -2201,6 +2212,14 @@ let cargandoDesdeNube = false;
 if (FIREBASE_ACTIVO && typeof firebase !== "undefined") {
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
+  // Mantiene una cola local real en Android y permite que varias pestañas
+  // compartan los cambios pendientes cuando el navegador lo admite.
+  db.enablePersistence({ synchronizeTabs: true }).catch(error => {
+    const codigo = String(error?.code || "");
+    if (!codigo.includes("failed-precondition") && !codigo.includes("unimplemented")) {
+      console.warn("Persistencia offline de Firebase:", error);
+    }
+  });
 }
 
 let authFratello = null;
@@ -2754,15 +2773,223 @@ function iniciarEntregasTicketsTiempoRealV555() {
   });
 }
 
+// v5.5.7: cada pedido se sincroniza como documento independiente.
+// Evita que el crecimiento del documento general bloquee las cargas desde Android.
+const COLA_PEDIDOS_SYNC_KEY_V557 = "fratello_cola_pedidos_sync_v557";
+let escuchandoPedidosIndividualesV557 = false;
+let reintentoPedidosIndividualesV557 = null;
+
+function referenciaPedidosIndividualesV557() {
+  if (!db) return null;
+  return db.collection("fratello").doc("pedidos_individuales").collection("registros");
+}
+
+function idPedidoIndividualV557(tipo, id) {
+  return encodeURIComponent(`${tipo || "normal"}-${String(id || "")}`).replace(/%/g, "_").slice(0, 900);
+}
+
+function leerColaPedidosIndividualesV557() {
+  const cola = leerJsonLocalSeguro(COLA_PEDIDOS_SYNC_KEY_V557, []);
+  return Array.isArray(cola) ? cola : [];
+}
+
+function guardarColaPedidosIndividualesV557(cola) {
+  localStorage.setItem(COLA_PEDIDOS_SYNC_KEY_V557, JSON.stringify(Array.isArray(cola) ? cola : []));
+}
+
+function encolarPedidoIndividualV557(registro) {
+  const cola = leerColaPedidosIndividualesV557();
+  const clave = `${registro.tipo}-${registro.id}`;
+  const indice = cola.findIndex(item => `${item.tipo}-${item.id}` === clave);
+  if (indice >= 0) cola[indice] = registro;
+  else cola.push(registro);
+  guardarColaPedidosIndividualesV557(cola.slice(-300));
+}
+
+function quitarPedidoDeColaV557(tipo, id) {
+  guardarColaPedidosIndividualesV557(
+    leerColaPedidosIndividualesV557().filter(item => `${item.tipo}-${item.id}` !== `${tipo}-${id}`)
+  );
+}
+
+function registroPedidoIndividualV557(pedido, tipo = "normal", eliminado = false) {
+  const ahora = new Date().toISOString();
+  const fechaBase = fechaEntregaPedido(pedido) || pedido?.jornada || pedido?.fecha || "";
+  const actualizado = pedido?.actualizadoEn || pedido?.actualizado || pedido?.editadoEn ||
+    pedido?.creado || (fechaBase ? `${fechaBase}T00:00:00.000Z` : new Date(0).toISOString());
+  const pedidoLimpio = eliminado ? null : JSON.parse(JSON.stringify({
+    ...pedido,
+    actualizado,
+    actualizadoEn: actualizado
+  }));
+  return {
+    id: String(pedido?.id || ""),
+    tipo,
+    eliminado: Boolean(eliminado),
+    actualizado: eliminado ? ahora : actualizado,
+    pedido: pedidoLimpio
+  };
+}
+
+async function enviarRegistroPedidoIndividualV557(registro) {
+  const coleccion = referenciaPedidosIndividualesV557();
+  if (!coleccion || !registro?.id || !navigator.onLine) return false;
+
+  try {
+    const ref = coleccion.doc(idPedidoIndividualV557(registro.tipo, registro.id));
+    const escritura = db.runTransaction(async transaccion => {
+      const snapshot = await transaccion.get(ref);
+      if (snapshot.exists) {
+        const remoto = snapshot.data() || {};
+        const tiempoRemoto = Date.parse(remoto.actualizado || "") || 0;
+        const tiempoLocal = Date.parse(registro.actualizado || "") || 0;
+        const remotoEntregado = estaEntregadoParaSync(remoto.pedido);
+        const localEntregado = estaEntregadoParaSync(registro.pedido);
+        if (
+          (remotoEntregado && !localEntregado && !registro.eliminado) ||
+          (tiempoRemoto > tiempoLocal)
+        ) return;
+      }
+      transaccion.set(ref, registro, { merge: true });
+    });
+    await Promise.race([
+      escritura,
+      new Promise((_, rechazar) => setTimeout(() => {
+        const error = new Error("La confirmación del servidor demoró demasiado");
+        error.code = "fratello/sync-timeout";
+        rechazar(error);
+      }, 7000))
+    ]);
+    quitarPedidoDeColaV557(registro.tipo, registro.id);
+    return true;
+  } catch (error) {
+    console.error("Error sincronizando pedido individual:", error);
+    if (error?.code !== "fratello/sync-timeout") {
+      registrarErrorFratello("sincronizacion_pedido_individual", error);
+    }
+    return false;
+  }
+}
+
+function programarReintentoPedidosIndividualesV557() {
+  clearTimeout(reintentoPedidosIndividualesV557);
+  reintentoPedidosIndividualesV557 = setTimeout(() => {
+    reenviarColaPedidosIndividualesV557().catch(() => {});
+  }, 12000);
+}
+
+async function sincronizarPedidoIndividualV557(pedido, tipo = "normal", eliminado = false) {
+  if (!pedido?.id) return false;
+  const registro = registroPedidoIndividualV557(pedido, tipo, eliminado);
+  encolarPedidoIndividualV557(registro);
+  setEstadoSync(navigator.onLine ? "Sincronizando..." : "Sin conexión — cambios guardados localmente");
+  const guardado = await enviarRegistroPedidoIndividualV557(registro);
+  if (guardado) {
+    setEstadoSync("Guardado online");
+    setTimeout(() => setEstadoSync("Online actualizado"), 700);
+  } else {
+    setEstadoSync(navigator.onLine ? "Online · guardado pendiente" : "Sin conexión — cambios guardados localmente");
+    programarReintentoPedidosIndividualesV557();
+  }
+  return guardado;
+}
+
+async function reenviarColaPedidosIndividualesV557() {
+  if (!db || !navigator.onLine) return false;
+  const cola = leerColaPedidosIndividualesV557();
+  if (!cola.length) return true;
+  let pendientes = 0;
+  for (const registro of cola) {
+    if (!await enviarRegistroPedidoIndividualV557(registro)) pendientes += 1;
+  }
+  if (pendientes) {
+    setEstadoSync(`Online · ${pendientes} pedido(s) pendiente(s)`);
+    programarReintentoPedidosIndividualesV557();
+    return false;
+  }
+  setEstadoSync("Online actualizado");
+  return true;
+}
+
+function aplicarPedidoIndividualRemotoV557(registro = {}) {
+  const tipo = registro.tipo === "hoy" ? "hoy" : "normal";
+  const id = String(registro.id || registro.pedido?.id || "");
+  if (!id) return false;
+
+  if (registro.eliminado) {
+    if (tipo === "hoy") pedidosHoy = pedidosHoy.filter(item => String(item.id) !== id);
+    else pedidos = pedidos.filter(item => String(item.id) !== id);
+  } else if (registro.pedido) {
+    if (tipo === "hoy") pedidosHoy = fusionarPedidosSync([registro.pedido], pedidosHoy, []);
+    else pedidos = fusionarPedidosSync([registro.pedido], pedidos, pedidosEliminados);
+  }
+
+  guardarPedidosLocal();
+  localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  sincronizarMemoriaTickets();
+  renderPedidosCargados();
+  renderPedidosFuturos();
+  renderPedidosHoy();
+  renderTicketsPorDia();
+  renderHistorialPedidos();
+  calcularDiferencias();
+  actualizarEstadoConfirmacion();
+  return true;
+}
+
+function iniciarPedidosIndividualesTiempoRealV557() {
+  const coleccion = referenciaPedidosIndividualesV557();
+  if (!coleccion || escuchandoPedidosIndividualesV557) return;
+  escuchandoPedidosIndividualesV557 = true;
+
+  coleccion.onSnapshot(snapshot => {
+    cargandoDesdeNube = true;
+    try {
+      snapshot.docChanges().forEach(cambio => {
+        if (cambio.type !== "removed") aplicarPedidoIndividualRemotoV557(cambio.doc.data());
+      });
+      setEstadoSync("Online actualizado");
+    } catch (error) {
+      console.error("Error aplicando pedidos individuales:", error);
+      setEstadoSync("Error al actualizar");
+    } finally {
+      cargandoDesdeNube = false;
+    }
+  }, error => {
+    console.error("Listener de pedidos individuales:", error);
+    escuchandoPedidosIndividualesV557 = false;
+    setEstadoSync("Error de sincronización");
+  });
+
+  reenviarColaPedidosIndividualesV557().catch(() => {});
+}
+
+function migrarPedidosLocalesIndividualesV557() {
+  const claveMigracion = "fratello_migracion_pedidos_individuales_v557";
+  if (localStorage.getItem(claveMigracion) === "completa") return;
+
+  const limite = new Date();
+  limite.setDate(limite.getDate() - 60);
+  const fechaLimite = limite.toISOString().slice(0, 10);
+  const recientes = (Array.isArray(pedidos) ? pedidos : []).filter(pedido => {
+    const fecha = fechaEntregaPedido(pedido) || pedido.fecha || "";
+    return !fecha || fecha >= fechaLimite;
+  });
+
+  recientes.forEach(pedido => encolarPedidoIndividualV557(registroPedidoIndividualV557(pedido, "normal")));
+  (Array.isArray(pedidosHoy) ? pedidosHoy : [])
+    .forEach(pedido => encolarPedidoIndividualV557(registroPedidoIndividualV557(pedido, "hoy")));
+  localStorage.setItem(claveMigracion, "completa");
+  reenviarColaPedidosIndividualesV557().catch(() => {});
+}
+
 function datosPedidosModulo() {
   return {
-    pedidos: Array.isArray(pedidos) ? pedidos : [],
-    pedidosEliminados: Array.isArray(pedidosEliminados) ? pedidosEliminados : [],
+    // Los pedidos, pedidos de hoy y tickets ya viajan individualmente.
+    // No volver a inflar este documento con todo el historial.
     pedidosFijos: Array.isArray(pedidosFijos) ? pedidosFijos : [],
     exclusionesPedidosFijos: Array.isArray(exclusionesPedidosFijos) ? exclusionesPedidosFijos : [],
     pedidosConfirmados: Boolean(pedidosConfirmados),
-    pedidosHoy: Array.isArray(pedidosHoy) ? pedidosHoy : [],
-    ticketsMemoria: Array.isArray(ticketsMemoria) ? ticketsMemoria : [],
     cuentaCorriente: Array.isArray(cuentaCorrienteV42) ? cuentaCorrienteV42 : [],
     clientesCuenta: Array.isArray(clientesCuentaV541) ? clientesCuentaV541 : []
   };
@@ -2958,6 +3185,7 @@ function registrarPedidoEliminado(pedido) {
       eliminadoEn: new Date().toISOString()
     }]
   );
+  sincronizarPedidoIndividualV557(pedido, "normal", true).catch(() => {});
 }
 
 function limpiarMarcaPedidoEliminado(pedido) {
@@ -3056,18 +3284,13 @@ function fusionarAdministracionFinancieraSync(remota = {}, local = {}) {
 function datosActuales() {
   return {
     produccion,
-    pedidos,
-    pedidosEliminados,
     pedidosFijos,
-    historialPedidos,
     predeterminadas,
     clientes,
     datosClientesCompletos,
     listasPrecios,
     preciosActualizadosEn,
     listasPrecioPersonalizadas,
-    ticketsMemoria,
-    pedidosHoy,
     productosExtra,
     catalogoProductos: productos,
     pedidosConfirmados,
@@ -3260,8 +3483,6 @@ function guardarEnNube(esReintento = false) {
             referencia,
             {
               ...datosActuales(),
-              pedidos,
-              pedidosEliminados,
               pedidosFijos,
               exclusionesPedidosFijos,
               actualizado: new Date().toISOString()
@@ -5555,6 +5776,7 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
       return;
     }
 
+    const ahoraPedidoFijo = new Date().toISOString();
     pedido = {
       id: Date.now() + agregados,
       cliente: fijo.cliente,
@@ -5567,6 +5789,9 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
       programacionNombre: fijo.nombre || "Pedido fijo",
       modificadoDesdeFijo: false,
       confirmado: false,
+      creado: ahoraPedidoFijo,
+      actualizado: ahoraPedidoFijo,
+      actualizadoEn: ahoraPedidoFijo,
       items: itemsCorrectos
     };
 
@@ -5576,6 +5801,7 @@ function asegurarPedidosFijosParaFecha(fecha, mostrarAviso = false) {
     limpiarMarcaPedidoEliminado(pedido);
     pedidos.push(pedido);
     registrarPedidoEnHistorial(pedido);
+    sincronizarPedidoIndividualV557(pedido, "normal").catch(() => {});
     agregados += 1;
   });
 
@@ -5688,6 +5914,8 @@ function editarPedidoCargado(id) {
     reabrirJornadaParaNuevoPedido(fechaNueva);
     pedido.items = procesarTextoPedido(textoNuevo, pedido.cliente, fechaNueva);
     pedido.editadoEn = new Date().toISOString();
+    pedido.actualizado = pedido.editadoEn;
+    pedido.actualizadoEn = pedido.editadoEn;
 
     if (pedido.origen === "pedido_fijo") {
       if (!pedido.textoFijoOriginal) pedido.textoFijoOriginal = textoAnterior;
@@ -5698,6 +5926,7 @@ function editarPedidoCargado(id) {
     pedidosConfirmados = false;
     registrarPedidoEnHistorial(pedido);
     guardarTodo();
+    sincronizarPedidoIndividualV557(pedido, "normal").catch(() => {});
 
     overlay.remove();
     renderPedidosCargados();
@@ -5716,6 +5945,7 @@ function repetirPedidoHistorial(id) {
   if (!anterior) return;
   const fecha = prompt("Fecha de entrega para repetirlo (AAAA-MM-DD):", fechaISOManana());
   if (!fecha) return;
+  const ahora = new Date().toISOString();
   const nuevo = {
     id: Date.now(),
     cliente: anterior.cliente,
@@ -5723,6 +5953,9 @@ function repetirPedidoHistorial(id) {
     fechaEntrega: fecha,
     textoOriginal: anterior.textoOriginal,
     origen: "pedido_repetido",
+    creado: ahora,
+    actualizado: ahora,
+    actualizadoEn: ahora,
     items: procesarTextoPedido(anterior.textoOriginal || "", anterior.cliente, fecha)
   };
   reabrirJornadaParaNuevoPedido(fecha);
@@ -5730,6 +5963,7 @@ function repetirPedidoHistorial(id) {
   registrarPedidoEnHistorial(nuevo);
   pedidosConfirmados = false;
   guardarTodo();
+  sincronizarPedidoIndividualV557(nuevo, "normal").catch(() => {});
   renderPedidosCargados();
   renderPedidosFuturos();
   renderHistorialPedidos();
@@ -6219,6 +6453,12 @@ function procesarPedidoActual() {
 
   pedidosConfirmados = false;
   guardarTodo();
+  sincronizarPedidoIndividualV557(nuevoPedido, "normal").then(sincronizado => {
+    mostrarMensajePedido(sincronizado
+      ? "Pedido cargado y sincronizado en todos los dispositivos"
+      : "Pedido guardado; sincronización pendiente automática"
+    );
+  }).catch(() => {});
 
   renderUltimoProcesado(procesado);
   renderPedidosCargados();
@@ -6230,7 +6470,6 @@ function procesarPedidoActual() {
   $("pedidoCrudo").value = "";
   if ($("checkPedidoFuturo")) $("checkPedidoFuturo").checked = false;
   actualizarSelectorPedidoFuturo();
-  mostrarMensajePedido("Pedido cargado correctamente");
 }
 
 function renderUltimoProcesado() {
@@ -9802,6 +10041,8 @@ function iniciarAccesoAdministrador() {
       rolUsuarioActual = obtenerRolUsuario(usuarioAdministradorActual);
 
       if (usuarioAdministradorActual) {
+        iniciarPedidosIndividualesTiempoRealV557();
+        reenviarColaPedidosIndividualesV557().catch(() => {});
         segCargarLocal();
         dispositivoFratelloActual = segObtenerDispositivoActual();
         const dispositivoLocal = seguridadFratello.dispositivos.find(
@@ -13285,6 +13526,7 @@ function sincronizarCajaTiempoReal() {
 
 window.addEventListener("online", () => {
   setEstadoSync("Conexión recuperada — sincronizando...");
+  reenviarColaPedidosIndividualesV557().catch(() => {});
   clearTimeout(temporizadorGuardadoNube);
   intentosGuardadoNube = 0;
   if (guardadoNubePendiente) guardarEnNube(false);
@@ -13609,6 +13851,8 @@ async function init() {
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   await cargarDesdeNube();
   await iniciarPedidosModuloNube();
+  iniciarPedidosIndividualesTiempoRealV557();
+  migrarPedidosLocalesIndividualesV557();
   iniciarEntregasTicketsTiempoRealV555();
   await iniciarCuentaPendientesNube();
   await iniciarSincronizacionModulosFinancieros();

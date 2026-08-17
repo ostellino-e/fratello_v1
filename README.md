@@ -1,4 +1,4 @@
-# Fratello v5.5.6
+# Fratello v5.5.7
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -78,4 +78,13 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Las acciones generales del día quedan plegadas y se abren solo cuando se necesitan.
 - En computadora se conservan los textos completos de los botones.
 
-Versión esperada: v5.5.6
+## Corrección v5.5.7
+- Pedido para hoy ahora se envía realmente a Firebase; antes quedaba solo en el dispositivo.
+- Cada pedido nuevo se guarda en un documento independiente y liviano.
+- Se agregó una cola local con reintento automático para cortes de Internet en Android.
+- Al recuperar conexión, los pedidos pendientes se vuelven a enviar automáticamente.
+- La primera apertura recupera pedidos locales recientes que nunca llegaron a otros dispositivos.
+- Los documentos generales ya no intentan subir todo el historial en cada cambio.
+- Una copia vieja no puede pisar un pedido más nuevo o ya entregado.
+
+Versión esperada: v5.5.7
