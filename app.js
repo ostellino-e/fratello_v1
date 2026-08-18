@@ -2217,9 +2217,10 @@ if (FIREBASE_ACTIVO && typeof firebase !== "undefined") {
 let authFratello = null;
 let usuarioAdministradorActual = null;
 let rolUsuarioActual = null;
+let iniciandoSesionOperativaV601 = false;
 
 function obtenerRolUsuario(usuario) {
-  if (!usuario) return null;
+  if (!usuario || usuario.isAnonymous) return null;
   // v3.9.5D.2: la cuenta autenticada recibe rol administrador.
   // Queda preparado para leer roles específicos desde Firestore en D.3.
   return "administrador";
@@ -2235,6 +2236,20 @@ if (FIREBASE_ACTIVO && typeof firebase !== "undefined" && firebase.auth) {
     authFratello.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   } catch (error) {
     console.error("No se pudo iniciar Firebase Authentication:", error);
+  }
+}
+
+async function asegurarSesionOperativaV601() {
+  if (!authFratello || authFratello.currentUser || iniciandoSesionOperativaV601 || !navigator.onLine) return false;
+  iniciandoSesionOperativaV601 = true;
+  try {
+    await authFratello.signInAnonymously();
+    return true;
+  } catch (error) {
+    console.warn("No se pudo iniciar la sesión operativa automática:", error);
+    return false;
+  } finally {
+    iniciandoSesionOperativaV601 = false;
   }
 }
 
@@ -3150,7 +3165,10 @@ function syncV600Registro(tipo, entidadId, payload, eliminado = false, soloCrear
 async function syncV600Enviar(registro) {
   const coleccion = syncV600Coleccion();
   if (!coleccion || !registro?.entidadId || !navigator.onLine) return false;
-  if (authFratello && !authFratello.currentUser) return false;
+  if (authFratello && !authFratello.currentUser) {
+    await asegurarSesionOperativaV601();
+    if (!authFratello.currentUser) return false;
+  }
   const ref = coleccion.doc(syncV600Id(registro.tipo, registro.entidadId));
   const datos = {
     tipo: registro.tipo,
@@ -3315,7 +3333,12 @@ function syncV600Renderizar(cambios) {
 
 function iniciarSyncCentralV600() {
   if (syncV600Iniciado || !db) return;
-  if (authFratello && !authFratello.currentUser) return;
+  if (authFratello && !authFratello.currentUser) {
+    asegurarSesionOperativaV601().then(iniciado => {
+      if (iniciado) iniciarSyncCentralV600();
+    });
+    return;
+  }
   syncV600Iniciado = true;
   const coleccion = syncV600Coleccion();
   syncV600Unsubscribe = coleccion.orderBy("serverUpdatedAt", "desc").limit(300)
@@ -10388,7 +10411,7 @@ function iniciarAccesoAdministrador() {
     // Firebase conserva la sesión LOCAL; cuando currentUser ya está disponible,
     // la interfaz de administrador se pinta antes de iniciar la sincronización remota.
     const usuarioEnMemoria = authFratello.currentUser;
-    if (usuarioEnMemoria) {
+    if (usuarioEnMemoria && !usuarioEnMemoria.isAnonymous) {
       usuarioAdministradorActual = usuarioEnMemoria;
       rolUsuarioActual = obtenerRolUsuario(usuarioEnMemoria);
       segCargarLocal();
@@ -10404,12 +10427,16 @@ function iniciarAccesoAdministrador() {
 
     authFratello.onAuthStateChanged(usuario => {
       // Primera pintura inmediata: no bloquear el botón Administrador por lecturas remotas.
-      usuarioAdministradorActual = usuario || null;
+      const usuarioAdministrativo = usuario && !usuario.isAnonymous ? usuario : null;
+      usuarioAdministradorActual = usuarioAdministrativo;
       rolUsuarioActual = obtenerRolUsuario(usuarioAdministradorActual);
 
-      if (usuarioAdministradorActual) {
+      if (usuario) {
         iniciarSyncCentralV600();
         syncV600ReenviarCola().catch(() => {});
+      }
+
+      if (usuarioAdministradorActual) {
         segCargarLocal();
         dispositivoFratelloActual = segObtenerDispositivoActual();
         const dispositivoLocal = seguridadFratello.dispositivos.find(
@@ -10418,6 +10445,7 @@ function iniciarAccesoAdministrador() {
         dispositivoAutorizadoActual = !dispositivoLocal || dispositivoLocal.estado === "autorizado";
       } else {
         dispositivoAutorizadoActual = false;
+        if (!usuario) asegurarSesionOperativaV601().catch(() => {});
       }
 
       actualizarInterfazAdministrador();

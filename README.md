@@ -1,4 +1,4 @@
-# Fratello v6.0.0
+# Fratello v6.0.1
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -119,4 +119,10 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Firebase asigna la hora central para resolver correctamente cambios realizados desde dispositivos distintos.
 - La información anterior se importa gradualmente y continúa siendo compatible.
 
-Versión esperada: v6.0.0
+## Corrección v6.0.1
+- Los celulares de trabajo inician automáticamente una sesión operativa de Firebase.
+- La sesión operativa permite sincronizar sin habilitar el panel de Administrador.
+- Los cambios pendientes del dispositivo se reenvían apenas queda conectado.
+- PC, celular personal y celular de la panadería usan el mismo canal central.
+
+Versión esperada: v6.0.1

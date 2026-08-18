@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v600-sincronizacion-central";
+const CACHE_NAME = "fratello-v601-todos-los-dispositivos";
 const ARCHIVOS = [
   "./",
   "./index.html",
