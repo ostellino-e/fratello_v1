@@ -12006,8 +12006,8 @@ function mediosPagoGastoAdministracion(item = {}) {
 }
 
 function leerMediosPagoGastoAdministracion() {
-  const total = adminFinMonto($("gastoAdminMonto")?.value);
   const principal = $("gastoAdminMedioPrincipal")?.value || "Efectivo";
+  const montoPrincipal = adminFinMonto($("gastoAdminMonto")?.value);
   const combinado = !$("gastoAdminPagoCombinado")?.classList.contains("hidden");
   const secundario = $("gastoAdminMedioSecundario")?.value || "Transferencia";
   const montoSecundario = combinado
@@ -12015,12 +12015,8 @@ function leerMediosPagoGastoAdministracion() {
     : 0;
   const medios = { "Efectivo": 0, "Transferencia": 0, "Cheque": 0 };
 
-  if (!combinado) {
-    medios[principal] = total;
-    return medios;
-  }
-
-  medios[principal] = Math.max(0, total - montoSecundario);
+  medios[principal] = montoPrincipal;
+  if (!combinado) return medios;
   medios[secundario] = adminFinMonto(medios[secundario]) + montoSecundario;
   return medios;
 }
@@ -12072,20 +12068,21 @@ function actualizarControlMediosGastoAdministracion() {
   const combinado = pagoCombinadoGastoActivo();
   const secundario = $("gastoAdminMedioSecundario")?.value || "Transferencia";
   const montoSecundario = combinado ? adminFinMonto($("gastoAdminMontoSecundario")?.value) : 0;
-  const montoPrincipal = combinado ? monto - montoSecundario : monto;
-  const valido = !combinado || (principal !== secundario && montoSecundario > 0 && montoPrincipal > 0);
+  const montoPrincipal = monto;
+  const total = montoPrincipal + montoSecundario;
+  const valido = montoPrincipal > 0 && (!combinado || (principal !== secundario && montoSecundario > 0));
 
-  host.classList.toggle("ok", monto > 0 && valido);
-  host.classList.toggle("error", monto > 0 && !valido);
+  host.classList.toggle("ok", valido);
+  host.classList.toggle("error", (montoPrincipal > 0 || montoSecundario > 0) && !valido);
 
-  if (!monto) {
-    host.textContent = `El total se pagará con ${principal}.`;
+  if (!montoPrincipal && !montoSecundario) {
+    host.textContent = "Total del gasto: $ 0";
   } else if (!combinado) {
-    host.textContent = `✓ ${principal}: ${adminFinDinero(monto)}`;
+    host.textContent = `✓ Total: ${adminFinDinero(total)} · ${principal}`;
   } else if (valido) {
-    host.textContent = `✓ ${principal}: ${adminFinDinero(montoPrincipal)} · ${secundario}: ${adminFinDinero(montoSecundario)}`;
+    host.textContent = `✓ Total: ${adminFinDinero(total)} · ${principal}: ${adminFinDinero(montoPrincipal)} · ${secundario}: ${adminFinDinero(montoSecundario)}`;
   } else {
-    host.textContent = "El segundo monto debe ser mayor a $0, menor al total y usar otro medio.";
+    host.textContent = "Completá ambos montos y elegí medios de pago diferentes.";
   }
 }
 
@@ -12109,7 +12106,6 @@ function mostrarFormularioAdministracion(tipo, datos = null) {
     $("gastoAdminFecha").value = datos?.fecha || adminFinHoy();
     $("gastoAdminCategoria").value = datos?.categoria || "Proveedores / Insumos";
     $("gastoAdminMotivo").value = datos?.motivo || "";
-    $("gastoAdminMonto").value = datos?.monto || "";
     const mediosGasto = datos ? mediosPagoGastoAdministracion(datos) : {};
     const permitidos = ["Efectivo", "Transferencia", "Cheque"]
       .map(medio => ({ medio, monto: adminFinMonto(mediosGasto[medio]) }))
@@ -12117,6 +12113,10 @@ function mostrarFormularioAdministracion(tipo, datos = null) {
       .sort((a, b) => b.monto - a.monto);
     const principal = permitidos[0]?.medio || "Efectivo";
     const secundario = permitidos[1] || null;
+    const montoPrincipal = datos
+      ? Math.max(0, adminFinMonto(datos.monto) - adminFinMonto(secundario?.monto))
+      : 0;
+    if ($("gastoAdminMonto")) $("gastoAdminMonto").value = montoPrincipal || "";
     if ($("gastoAdminMedioPrincipal")) $("gastoAdminMedioPrincipal").value = principal;
     if ($("gastoAdminMedioSecundario")) $("gastoAdminMedioSecundario").value = secundario?.medio || (principal === "Transferencia" ? "Efectivo" : "Transferencia");
     if ($("gastoAdminMontoSecundario")) $("gastoAdminMontoSecundario").value = secundario?.monto || "";
@@ -12196,12 +12196,13 @@ function eliminarIngresoAdministracion(id) {
 function guardarGastoAdministracion() {
   const id = $("gastoAdminId")?.value || adminFinId("gas");
   const mediosPago = leerMediosPagoGastoAdministracion();
+  const montoTotalGasto = totalMediosPagoGastoAdministracion(mediosPago);
   const item = {
     id,
     fecha: $("gastoAdminFecha")?.value || adminFinHoy(),
     categoria: $("gastoAdminCategoria")?.value || "Otros",
     motivo: String($("gastoAdminMotivo")?.value || "").trim(),
-    monto: adminFinMonto($("gastoAdminMonto")?.value),
+    monto: montoTotalGasto,
     medio: nombreMedioGastoAdministracion(mediosPago),
     mediosPago,
     pagado: Boolean($("gastoAdminPagado")?.checked),
@@ -12218,8 +12219,9 @@ function guardarGastoAdministracion() {
     const principal = $("gastoAdminMedioPrincipal")?.value || "Efectivo";
     const secundario = $("gastoAdminMedioSecundario")?.value || "Transferencia";
     const montoSecundario = adminFinMonto($("gastoAdminMontoSecundario")?.value);
-    if (principal === secundario || montoSecundario <= 0 || montoSecundario >= item.monto) {
-      alert("Para combinar el pago, elegí otro medio y un monto mayor a $0 pero menor al total del gasto.");
+    const montoPrincipal = adminFinMonto($("gastoAdminMonto")?.value);
+    if (principal === secundario || montoPrincipal <= 0 || montoSecundario <= 0) {
+      alert("Para combinar el pago, completá los dos montos y elegí medios de pago diferentes.");
       actualizarControlMediosGastoAdministracion();
       return;
     }

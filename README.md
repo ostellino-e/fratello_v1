@@ -1,4 +1,4 @@
-# Fratello v6.0.6
+# Fratello v6.0.7
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -166,4 +166,12 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Los gastos históricos con Mercado Pago u Otro continúan visibles sin perder información.
 - No se modificaron la sincronización, los pedidos ni los tickets.
 
-Versión esperada: v6.0.6
+## Ajuste v6.0.7
+- La primera forma de pago muestra Monto y Medio de pago en una misma fila.
+- Al tocar Combinar pago aparece otra fila idéntica con Monto y Medio de pago.
+- El total del gasto se obtiene sumando directamente ambos importes.
+- Se muestra un resumen claro del total y de cuánto corresponde a cada medio.
+- Continúan disponibles únicamente Efectivo, Transferencia y Cheque.
+- No se modificaron los gastos ya guardados ni otros módulos de la aplicación.
+
+Versión esperada: v6.0.7

@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v606-gastos-simples";
+const CACHE_NAME = "fratello-v607-pagos-combinados-claros";
 const ARCHIVOS = [
   "./",
   "./index.html",

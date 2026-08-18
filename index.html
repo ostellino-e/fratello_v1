@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=606" />
+  <link rel="stylesheet" href="styles.css?v=607" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.6";
-    document.documentElement.dataset.fratelloVersion = "6.0.6";
+    window.FRATELLO_VERSION = "6.0.7";
+    document.documentElement.dataset.fratelloVersion = "6.0.7";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.6</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.7</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -473,7 +473,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.6 · Gastos más simples</span>
+        <span class="adminFinanceVersion">v6.0.7 · Pagos combinados claros</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -703,9 +703,9 @@
                 </select>
               </label>
               <label>Motivo<input id="gastoAdminMotivo" type="text" placeholder="Ej.: Bowen, sueldo Arnold, luz"></label>
-              <label>Monto<input id="gastoAdminMonto" type="number" min="0" step="1" placeholder="0"></label>
               <div class="adminFinanceFormWide gastoSplitPaymentBox">
-                <div class="gastoPaymentPrimaryRow">
+                <div class="gastoPaymentEntryRow gastoPaymentPrimaryRow">
+                  <label>Monto<input id="gastoAdminMonto" type="number" min="0" step="1" placeholder="0"></label>
                   <label>Medio de pago
                     <select id="gastoAdminMedioPrincipal">
                       <option>Efectivo</option>
@@ -715,18 +715,18 @@
                   </label>
                   <button id="btnCombinarPagoGasto" type="button">＋ Combinar pago</button>
                 </div>
-                <div id="gastoAdminPagoCombinado" class="gastoCombinedPaymentRow hidden">
-                  <label>Segundo medio
+                <div id="gastoAdminPagoCombinado" class="gastoPaymentEntryRow gastoCombinedPaymentRow hidden">
+                  <label>Monto<input id="gastoAdminMontoSecundario" type="number" min="0" step="1" placeholder="0"></label>
+                  <label>Medio de pago
                     <select id="gastoAdminMedioSecundario">
                       <option>Transferencia</option>
                       <option>Efectivo</option>
                       <option>Cheque</option>
                     </select>
                   </label>
-                  <label>Monto con este medio<input id="gastoAdminMontoSecundario" type="number" min="0" step="1" placeholder="0"></label>
-                  <button id="btnQuitarPagoCombinadoGasto" type="button" aria-label="Quitar segundo medio">Quitar</button>
+                  <button id="btnQuitarPagoCombinadoGasto" type="button" aria-label="Quitar forma de pago">Quitar</button>
                 </div>
-                <div id="gastoAdminControlMedios" class="gastoSplitPaymentStatus">El total se pagará con Efectivo.</div>
+                <div id="gastoAdminControlMedios" class="gastoSplitPaymentStatus">Total del gasto: $ 0</div>
               </div>
               <label class="adminCheckLabel"><input id="gastoAdminPagado" type="checkbox" checked> Pagado</label>
               <div class="adminFinanceFormActions">
@@ -1096,7 +1096,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=606"></script>
+  <script src="app.js?v=607"></script>
 
   
 
