@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=605" />
+  <link rel="stylesheet" href="styles.css?v=606" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.5";
-    document.documentElement.dataset.fratelloVersion = "6.0.5";
+    window.FRATELLO_VERSION = "6.0.6";
+    document.documentElement.dataset.fratelloVersion = "6.0.6";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.5</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.6</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -473,7 +473,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.5 · Pedidos conservados</span>
+        <span class="adminFinanceVersion">v6.0.6 · Gastos más simples</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -705,16 +705,28 @@
               <label>Motivo<input id="gastoAdminMotivo" type="text" placeholder="Ej.: Bowen, sueldo Arnold, luz"></label>
               <label>Monto<input id="gastoAdminMonto" type="number" min="0" step="1" placeholder="0"></label>
               <div class="adminFinanceFormWide gastoSplitPaymentBox">
-                <strong>Medios de pago</strong>
-                <small>Podés dividir el mismo gasto entre varios medios. La suma debe coincidir con el monto total.</small>
-                <div class="gastoSplitPaymentGrid">
-                  <label>Efectivo<input id="gastoAdminEfectivo" type="number" min="0" step="1" placeholder="0"></label>
-                  <label>Transferencia<input id="gastoAdminTransferencia" type="number" min="0" step="1" placeholder="0"></label>
-                  <label>Cheque<input id="gastoAdminCheque" type="number" min="0" step="1" placeholder="0"></label>
-                  <label>Mercado Pago<input id="gastoAdminMercadoPago" type="number" min="0" step="1" placeholder="0"></label>
-                  <label>Otro<input id="gastoAdminOtro" type="number" min="0" step="1" placeholder="0"></label>
+                <div class="gastoPaymentPrimaryRow">
+                  <label>Medio de pago
+                    <select id="gastoAdminMedioPrincipal">
+                      <option>Efectivo</option>
+                      <option>Transferencia</option>
+                      <option>Cheque</option>
+                    </select>
+                  </label>
+                  <button id="btnCombinarPagoGasto" type="button">＋ Combinar pago</button>
                 </div>
-                <div id="gastoAdminControlMedios" class="gastoSplitPaymentStatus">Total distribuido: $ 0</div>
+                <div id="gastoAdminPagoCombinado" class="gastoCombinedPaymentRow hidden">
+                  <label>Segundo medio
+                    <select id="gastoAdminMedioSecundario">
+                      <option>Transferencia</option>
+                      <option>Efectivo</option>
+                      <option>Cheque</option>
+                    </select>
+                  </label>
+                  <label>Monto con este medio<input id="gastoAdminMontoSecundario" type="number" min="0" step="1" placeholder="0"></label>
+                  <button id="btnQuitarPagoCombinadoGasto" type="button" aria-label="Quitar segundo medio">Quitar</button>
+                </div>
+                <div id="gastoAdminControlMedios" class="gastoSplitPaymentStatus">El total se pagará con Efectivo.</div>
               </div>
               <label class="adminCheckLabel"><input id="gastoAdminPagado" type="checkbox" checked> Pagado</label>
               <div class="adminFinanceFormActions">
@@ -1084,7 +1096,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=605"></script>
+  <script src="app.js?v=606"></script>
 
   
 
