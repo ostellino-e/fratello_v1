@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=602" />
+  <link rel="stylesheet" href="styles.css?v=603" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.2";
-    document.documentElement.dataset.fratelloVersion = "6.0.2";
+    window.FRATELLO_VERSION = "6.0.3";
+    document.documentElement.dataset.fratelloVersion = "6.0.3";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.2</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.3</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -145,6 +145,7 @@
         </button>
         <button type="button" data-seccion="seccionResumen"><span>3</span><strong>Resumen</strong><small>Comparar faltantes y sobrantes.</small></button>
         <button type="button" data-seccion="seccionTickets"><span>🎟</span><strong>Tickets</strong><small>Elegir día, revisar e imprimir tickets.</small></button>
+        <button type="button" class="pendingWorkflowButton" data-seccion="seccionPagosPendientes"><span>💰</span><strong>Pagos pendientes</strong><small>Controlar deuda, pagos y ajustes por cliente.</small></button>
       </div>
       <div class="futureOrdersMain">
         <button type="button" class="futureOrdersButton" data-seccion="seccionPedidosFuturos">
@@ -154,7 +155,6 @@
         </button>
       </div>
       <div class="pedidoSecondaryLinks">
-        <button type="button" class="pendingMainButton" data-seccion="seccionPagosPendientes"><span>💰</span><strong>Pagos pendientes</strong><small>Controlar deuda, pagos y ajustes por cliente.</small></button>
         <button type="button" data-seccion="seccionHistorialPedidos">🕘 Historial</button>
       </div>
     </section>
@@ -473,7 +473,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.2 · Navegación fluida</span>
+        <span class="adminFinanceVersion">v6.0.3 · Menú compacto</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -1084,7 +1084,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=602"></script>
+  <script src="app.js?v=603"></script>
 
   
 

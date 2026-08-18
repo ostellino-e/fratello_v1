@@ -4956,6 +4956,63 @@ body.modal-open{
 
 /* Fratello v6.0.2 — navegación fluida */
 
+/* Fratello v6.0.3 — menú de Pedidos compacto */
+.workflowSteps .pendingWorkflowButton{
+  border-color:#d5a526;
+  background:#fff0b8;
+  color:#4d3904;
+}
+.workflowSteps .pendingWorkflowButton>span{background:#8a6812}
+.pedidoSecondaryLinks{margin-top:8px}
+
+@media(max-width:700px){
+  #seccionPedidosCentro{padding-top:12px}
+  #seccionPedidosCentro>.volverInicio{margin-bottom:4px}
+  #seccionPedidosCentro>h2{margin:5px 0;font-size:22px}
+  #seccionPedidosCentro>.hint{margin:4px 0 8px;font-size:11px}
+  #seccionPedidosCentro .workflowSteps{
+    grid-template-columns:1fr;
+    gap:6px;
+    margin:8px 0;
+  }
+  #seccionPedidosCentro .workflowSteps button{
+    grid-template-columns:30px minmax(0,1fr);
+    grid-template-rows:1fr;
+    align-items:center;
+    min-height:44px;
+    padding:6px 10px;
+    gap:7px;
+    border-radius:10px;
+  }
+  #seccionPedidosCentro .workflowSteps button>span{
+    grid-row:1;
+    width:27px;
+    height:27px;
+    font-size:10px;
+  }
+  #seccionPedidosCentro .workflowSteps button strong{font-size:13px}
+  #seccionPedidosCentro .workflowSteps button small{display:none}
+  #seccionPedidosCentro .todayPendingBadge{font-size:9px;padding:2px 5px}
+  #seccionPedidosCentro .futureOrdersMain{margin:7px 0}
+  #seccionPedidosCentro .futureOrdersButton{
+    grid-template-columns:30px 1fr auto;
+    min-height:44px;
+    padding:6px 10px;
+    gap:7px;
+    border-radius:10px;
+  }
+  #seccionPedidosCentro .futureOrdersIcon{font-size:20px}
+  #seccionPedidosCentro .futureOrdersButton strong{font-size:13px}
+  #seccionPedidosCentro .futureOrdersButton small{display:none}
+  #seccionPedidosCentro .futureOrdersBadge{min-width:27px;height:27px;font-size:11px}
+  #seccionPedidosCentro .pedidoSecondaryLinks{margin-top:6px}
+  #seccionPedidosCentro .pedidoSecondaryLinks button{
+    min-height:36px;
+    padding:6px 10px;
+    font-size:11px;
+  }
+}
+
 .ticketInternalBadge {
   display: block;
   padding: 8px 10px;

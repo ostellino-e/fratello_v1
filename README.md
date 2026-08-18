@@ -1,4 +1,4 @@
-# Fratello v6.0.2
+# Fratello v6.0.3
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -133,4 +133,11 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - El observador de pestañas agrupa el trabajo para reducir el esfuerzo en celulares Android.
 - Se mantiene sin cambios el canal central rápido de la v6.0.1.
 
-Versión esperada: v6.0.2
+## Mejora v6.0.3
+- Pagos pendientes aparece inmediatamente después de Tickets.
+- Los botones del menú Pedidos son más bajos y compactos en celulares.
+- Las descripciones secundarias se ocultan en móvil para reducir el desplazamiento.
+- Pedidos futuros e Historial también ocupan menos altura.
+- No se modificó la sincronización ni el funcionamiento de los módulos.
+
+Versión esperada: v6.0.3
