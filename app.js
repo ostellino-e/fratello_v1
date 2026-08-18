@@ -7035,6 +7035,36 @@ function formatearCantidadResumen(cantidadBase, producto) {
   return `${fmt(valor)} ${producto?.unidad || "unidad"}`;
 }
 
+// Productos que el panadero controla todos los días en el resumen operativo.
+// El orden coincide con la producción: Chicharrón hasta Medialunas.
+const PRODUCTOS_DIARIOS_PANADERO = [
+  "CHIC", "TREN", "RASP", "CORD_S", "CORD_D", "RASQ_G", "RASQ_M",
+  "BIZ_H", "LIB_MEM", "BIZ_G", "FAC_SUR", "MED"
+];
+
+function esProductoDiarioPanadero(productoOId) {
+  const id = typeof productoOId === "string" ? productoOId : productoOId?.id;
+  return PRODUCTOS_DIARIOS_PANADERO.includes(String(id || ""));
+}
+
+function formatearCantidadPanadero(cantidadBase, producto) {
+  const valor = Math.abs(Number(cantidadBase || 0));
+  const unidad = String(producto?.unidad || "unidad").toLowerCase();
+
+  // Solamente los productos configurados realmente por docena se convierten.
+  if (unidad === "docena" || producto?.formaVenta === "unidad_docena") {
+    const docenas = Math.floor(valor / 12);
+    const unidades = Math.round((valor - docenas * 12) * 1000) / 1000;
+    const partes = [];
+    if (docenas) partes.push(`${fmt(docenas)} ${docenas === 1 ? "docena" : "docenas"}`);
+    if (unidades || !partes.length) partes.push(`${fmt(unidades)} ${unidades === 1 ? "unidad" : "unidades"}`);
+    return partes.join(" + ");
+  }
+
+  if (unidad === "kg") return `${fmt(valor)} kg`;
+  return `${fmt(valor)} ${valor === 1 ? "unidad" : "unidades"}`;
+}
+
 function calcularDiferencias() {
   const totalesPedido = {};
 
@@ -7112,14 +7142,15 @@ function renderComparador(filas) {
 }
 
 function renderResumenPanadero(filas) {
-  const faltas = filas.filter(f => f.estado === "FALTA");
-  const sobras = filas.filter(f => f.estado === "SOBRA");
+  const diarias = filas.filter(f => esProductoDiarioPanadero(f.productoConfig));
+  const faltas = diarias.filter(f => f.estado === "FALTA");
+  const sobras = diarias.filter(f => f.estado === "SOBRA");
 
   let txt = "FRATELLO - RESUMEN PARA PANADERO\n--------------------------------\n\n🔴 FALTANTES A PRODUCIR\n";
-  txt += faltas.length ? faltas.map(f => `- ${f.producto}: HACER ${f.difTexto}`).join("\n") : "No falta producir nada.";
+  txt += faltas.length ? faltas.map(f => `- ${f.producto}: HACER / SACAR ${formatearCantidadPanadero(f.dif, f.productoConfig)}`).join("\n") : "No falta producir nada.";
 
   txt += "\n\n🟢 SOBRANTES / NO HACER MÁS\n";
-  txt += sobras.length ? sobras.map(f => `- ${f.producto}: sobran ${f.difTexto}`).join("\n") : "No hay sobrantes.";
+  txt += sobras.length ? sobras.map(f => `- ${f.producto}: GUARDAR ${formatearCantidadPanadero(f.dif, f.productoConfig)}`).join("\n") : "No hay sobrantes.";
 
   $("resumenPanadero").textContent = txt;
 }
@@ -9910,6 +9941,7 @@ function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, dif
 
   const cambios = [];
   ids.forEach(id => {
+    if (!esProductoDiarioPanadero(id)) return;
     const anterior = Number(diferenciasAnteriores?.[id] || 0);
     const nuevo = Number(diferenciasNuevas?.[id] || 0);
     const delta = nuevo - anterior;
@@ -9921,10 +9953,10 @@ function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, dif
     mensaje += "- El pedido no modifica las cantidades informadas anteriormente.\n";
   } else {
     cambios.forEach(({producto, delta}) => {
-      const cantidadTexto = formatearCantidadResumen(Math.abs(delta), producto);
+      const cantidadTexto = formatearCantidadPanadero(delta, producto);
 
       if (delta < 0) {
-        mensaje += `🔴 AGREGAR / HACER ${cantidadTexto} ${producto.nombre}\n`;
+        mensaje += `🔴 HACER / SACAR ${cantidadTexto} ${producto.nombre}\n`;
       } else {
         mensaje += `🟢 REDUCIR / GUARDAR ${cantidadTexto} ${producto.nombre}\n`;
       }
@@ -10136,8 +10168,9 @@ function generarMensajeGrupoFratello() {
     clientesAcumulados = pedidosNuevos.map(p => p.cliente);
 
     const filas = obtenerFilasComparador();
-    const faltan = filas.filter(f => f.dif < 0);
-    const sobran = filas.filter(f => f.dif > 0);
+    const filasDiarias = filas.filter(f => esProductoDiarioPanadero(f.productoId));
+    const faltan = filasDiarias.filter(f => f.dif < 0);
+    const sobran = filasDiarias.filter(f => f.dif > 0);
 
     mensaje = "FRATELLO - Resumen de producción y pedidos\n\n";
 
@@ -10146,7 +10179,7 @@ function generarMensajeGrupoFratello() {
       mensaje += "- Nada\n";
     } else {
       faltan.forEach(f => {
-        mensaje += `🔴 ${formatearCantidadResumen(Math.abs(f.dif), f.productoConfig)} ${f.producto}\n`;
+        mensaje += `🔴 HACER / SACAR ${formatearCantidadPanadero(f.dif, f.productoConfig)} ${f.producto}\n`;
       });
     }
 
@@ -10155,7 +10188,7 @@ function generarMensajeGrupoFratello() {
       mensaje += "- Nada\n";
     } else {
       sobran.forEach(f => {
-        mensaje += `🟢 ${formatearCantidadResumen(f.dif, f.productoConfig)} ${f.producto}\n`;
+        mensaje += `🟢 GUARDAR ${formatearCantidadPanadero(f.dif, f.productoConfig)} ${f.producto}\n`;
       });
     }
 

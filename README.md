@@ -1,4 +1,4 @@
-# Fratello v6.0.3
+# Fratello v6.0.4
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -140,4 +140,12 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Pedidos futuros e Historial también ocupan menos altura.
 - No se modificó la sincronización ni el funcionamiento de los módulos.
 
-Versión esperada: v6.0.3
+## Mejora v6.0.4
+- El resumen operativo muestra únicamente los productos diarios desde Chicharrón hasta Medialunas.
+- Corderos y demás productos por unidad ya no se convierten incorrectamente en docenas.
+- Facturas y Medialunas mantienen la presentación en docenas y unidades cuando corresponde.
+- Las acciones indican claramente HACER / SACAR o GUARDAR.
+- Los pedidos completos por cliente continúan incluidos debajo del resumen.
+- No se modificó la sincronización ni la pantalla comparadora general.
+
+Versión esperada: v6.0.4
