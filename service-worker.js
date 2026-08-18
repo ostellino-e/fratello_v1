@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v559-estabilidad-android";
+const CACHE_NAME = "fratello-v600-sincronizacion-central";
 const ARCHIVOS = [
   "./",
   "./index.html",

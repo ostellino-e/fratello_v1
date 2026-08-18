@@ -2843,21 +2843,9 @@ async function enviarRegistroPedidoIndividualV557(registro) {
 
   try {
     const ref = coleccion.doc(idPedidoIndividualV557(registro.tipo, registro.id));
-    const escritura = db.runTransaction(async transaccion => {
-      const snapshot = await transaccion.get(ref);
-      if (snapshot.exists) {
-        const remoto = snapshot.data() || {};
-        const tiempoRemoto = Date.parse(remoto.actualizado || "") || 0;
-        const tiempoLocal = Date.parse(registro.actualizado || "") || 0;
-        const remotoEntregado = estaEntregadoParaSync(remoto.pedido);
-        const localEntregado = estaEntregadoParaSync(registro.pedido);
-        if (
-          (remotoEntregado && !localEntregado && !registro.eliminado) ||
-          (tiempoRemoto > tiempoLocal)
-        ) return;
-      }
-      transaccion.set(ref, registro, { merge: true });
-    });
+    // Cada pedido tiene ID propio. Una escritura directa es más rápida y
+    // confiable en Android que abrir una transacción para cada carga.
+    const escritura = ref.set(registro, { merge: true });
     await Promise.race([
       escritura,
       new Promise((_, rechazar) => setTimeout(() => {
@@ -2885,19 +2873,7 @@ function programarReintentoPedidosIndividualesV557() {
 }
 
 async function sincronizarPedidoIndividualV557(pedido, tipo = "normal", eliminado = false) {
-  if (!pedido?.id) return false;
-  const registro = registroPedidoIndividualV557(pedido, tipo, eliminado);
-  encolarPedidoIndividualV557(registro);
-  setEstadoSync(navigator.onLine ? "Sincronizando..." : "Sin conexión — cambios guardados localmente");
-  const guardado = await enviarRegistroPedidoIndividualV557(registro);
-  if (guardado) {
-    setEstadoSync("Guardado online");
-    setTimeout(() => setEstadoSync("Online actualizado"), 700);
-  } else {
-    setEstadoSync(navigator.onLine ? "Online · guardado pendiente" : "Sin conexión — cambios guardados localmente");
-    programarReintentoPedidosIndividualesV557();
-  }
-  return guardado;
+  return syncV600Guardar(tipo === "hoy" ? "pedido_hoy" : "pedido", pedido?.id, pedido, eliminado);
 }
 
 async function reenviarColaPedidosIndividualesV557() {
@@ -3016,26 +2992,13 @@ function idTicketIndividualV558(ticket) {
 }
 
 async function publicarTicketsIndividualesV558(lista = []) {
-  const coleccion = referenciaTicketsIndividualesV558();
-  if (!coleccion || !navigator.onLine) return false;
   const tickets = (Array.isArray(lista) ? lista : []).filter(ticket => ticket?.id);
-
-  for (let inicio = 0; inicio < tickets.length; inicio += 200) {
-    const lote = db.batch();
-    tickets.slice(inicio, inicio + 200).forEach(ticket => {
-      const limpio = JSON.parse(JSON.stringify(ticket));
-      const clave = limpio.claveMemoria || claveTicketMemoria(limpio, limpio.tipoTicket || "normal");
-      const actualizado = limpio.actualizadoTicket || limpio.actualizadoEn || limpio.actualizado ||
-        limpio.fechaEntregaReal || limpio.creado || new Date(0).toISOString();
-      lote.set(coleccion.doc(idTicketIndividualV558(limpio)), {
-        clave,
-        actualizado,
-        ticket: { ...limpio, claveMemoria: clave }
-      }, { merge: true });
-    });
-    await lote.commit();
+  let correcto = true;
+  for (const ticket of tickets.slice(-100)) {
+    const clave = ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal");
+    if (!await syncV600Guardar("ticket", clave, ticket)) correcto = false;
   }
-  return true;
+  return correcto;
 }
 
 function iniciarTicketsIndividualesTiempoRealV558() {
@@ -3122,6 +3085,286 @@ function programarRecuperacionLivianaV559() {
     const ticketsGuardados = await publicarTicketsIndividualesV558(ticketsRecientes).catch(() => false);
     if (ticketsGuardados !== false) localStorage.setItem(clave, "completa");
   }, 10000);
+}
+
+/* =========================================================
+   FRATELLO SYNC CENTRAL — v6.0.0
+   Un documento por operación, un solo listener y una sola cola.
+   ========================================================= */
+const SYNC_V600_QUEUE_KEY = "fratello_sync_v600_queue";
+let syncV600Iniciado = false;
+let syncV600Unsubscribe = null;
+let syncV600Reintentando = false;
+let syncV600RenderTimer = null;
+const syncV600IdsConocidos = new Set();
+const syncV600CambiosPendientes = { pedidos: false, tickets: false, caja: false };
+
+function syncV600Coleccion() {
+  if (!db) return null;
+  return db.collection("fratello").doc("sync_v600").collection("registros");
+}
+
+function syncV600Id(tipo, id) {
+  return encodeURIComponent(`${tipo}__${String(id || "")}`).replace(/%/g, "_").slice(0, 1200);
+}
+
+function syncV600LeerCola() {
+  const cola = leerJsonLocalSeguro(SYNC_V600_QUEUE_KEY, []);
+  return Array.isArray(cola) ? cola : [];
+}
+
+function syncV600GuardarCola(cola) {
+  localStorage.setItem(SYNC_V600_QUEUE_KEY, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-150)));
+}
+
+function syncV600Encolar(registro) {
+  const cola = syncV600LeerCola();
+  const clave = `${registro.tipo}__${registro.entidadId}`;
+  const indice = cola.findIndex(item => `${item.tipo}__${item.entidadId}` === clave);
+  if (indice >= 0) cola[indice] = registro;
+  else cola.push(registro);
+  syncV600GuardarCola(cola);
+}
+
+function syncV600QuitarCola(tipo, entidadId) {
+  syncV600GuardarCola(syncV600LeerCola().filter(item =>
+    `${item.tipo}__${item.entidadId}` !== `${tipo}__${entidadId}`
+  ));
+}
+
+function syncV600Registro(tipo, entidadId, payload, eliminado = false, soloCrear = false) {
+  const ahora = new Date().toISOString();
+  return {
+    tipo,
+    entidadId: String(entidadId || ""),
+    eliminado: Boolean(eliminado),
+    payload: eliminado ? null : JSON.parse(JSON.stringify(payload || {})),
+    actualizadoIso: ahora,
+    dispositivo: typeof descripcionDispositivoCaja === "function"
+      ? descripcionDispositivoCaja()
+      : (navigator.userAgent || "Dispositivo"),
+    soloCrear: Boolean(soloCrear)
+  };
+}
+
+async function syncV600Enviar(registro) {
+  const coleccion = syncV600Coleccion();
+  if (!coleccion || !registro?.entidadId || !navigator.onLine) return false;
+  if (authFratello && !authFratello.currentUser) return false;
+  const ref = coleccion.doc(syncV600Id(registro.tipo, registro.entidadId));
+  const datos = {
+    tipo: registro.tipo,
+    entidadId: registro.entidadId,
+    eliminado: registro.eliminado,
+    payload: registro.payload,
+    actualizadoIso: registro.actualizadoIso,
+    dispositivo: registro.dispositivo,
+    serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    const escritura = registro.soloCrear
+      ? db.runTransaction(async tx => {
+          const snap = await tx.get(ref);
+          if (!snap.exists) tx.set(ref, datos);
+        })
+      : ref.set(datos, { merge: true });
+    await Promise.race([
+      escritura,
+      new Promise((_, rechazar) => setTimeout(() => rechazar(new Error("sync-timeout")), 8000))
+    ]);
+    syncV600QuitarCola(registro.tipo, registro.entidadId);
+    return true;
+  } catch (error) {
+    console.error("Sync central:", registro.tipo, error);
+    return false;
+  }
+}
+
+async function syncV600Guardar(tipo, entidadId, payload, eliminado = false, opciones = {}) {
+  if (!entidadId) return false;
+  const registro = syncV600Registro(tipo, entidadId, payload, eliminado, opciones.soloCrear);
+  syncV600Encolar(registro);
+  setEstadoSync(navigator.onLine ? "Sincronizando..." : "Sin conexión — cambios guardados localmente");
+  const correcto = await syncV600Enviar(registro);
+  setEstadoSync(correcto
+    ? "Guardado online"
+    : (navigator.onLine ? "Online · guardado pendiente" : "Sin conexión — cambios guardados localmente")
+  );
+  return correcto;
+}
+
+async function syncV600ReenviarCola() {
+  if (syncV600Reintentando || !navigator.onLine) return false;
+  syncV600Reintentando = true;
+  try {
+    const cola = syncV600LeerCola();
+    let siguiente = 0;
+    let fallidos = 0;
+    const trabajador = async () => {
+      while (siguiente < cola.length) {
+        const registro = cola[siguiente++];
+        if (!await syncV600Enviar(registro)) fallidos += 1;
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(3, cola.length) }, trabajador));
+    setEstadoSync(fallidos ? `Online · ${fallidos} cambio(s) pendiente(s)` : "Online actualizado");
+    return fallidos === 0;
+  } finally {
+    syncV600Reintentando = false;
+  }
+}
+
+function syncV600FechaServidor(data) {
+  try {
+    return data.serverUpdatedAt?.toDate?.().toISOString() || data.actualizadoIso || new Date().toISOString();
+  } catch {
+    return data.actualizadoIso || new Date().toISOString();
+  }
+}
+
+function syncV600Aplicar(data, cambios) {
+  const tipo = String(data.tipo || "");
+  const id = String(data.entidadId || "");
+  if (!tipo || !id) return;
+  syncV600IdsConocidos.add(`${tipo}__${id}`);
+  const fechaServidor = syncV600FechaServidor(data);
+
+  if (tipo === "pedido" || tipo === "pedido_hoy") {
+    const esHoy = tipo === "pedido_hoy";
+    if (data.eliminado) {
+      if (esHoy) pedidosHoy = pedidosHoy.filter(item => String(item.id) !== id);
+      else {
+        pedidosEliminados = fusionarPedidosEliminados(pedidosEliminados, [{
+          id,
+          eliminadoEn: fechaServidor
+        }]);
+        pedidos = pedidos.filter(item => String(item.id) !== id);
+      }
+    } else if (data.payload) {
+      const pedido = { ...data.payload, actualizado: fechaServidor, actualizadoEn: fechaServidor };
+      if (esHoy) pedidosHoy = fusionarPedidosSync([pedido], pedidosHoy, []);
+      else pedidos = fusionarPedidosSync([pedido], pedidos, pedidosEliminados);
+    }
+    cambios.pedidos = true;
+    return;
+  }
+
+  if (tipo === "ticket") {
+    if (!data.eliminado && data.payload) {
+      const ticket = {
+        ...data.payload,
+        actualizado: fechaServidor,
+        actualizadoEn: fechaServidor,
+        actualizadoTicket: fechaServidor
+      };
+      ticketsMemoria = fusionarTicketsMemoriaSync([ticket], ticketsMemoria);
+      cambios.tickets = true;
+    }
+    return;
+  }
+
+  if (tipo === "caja") {
+    if (data.eliminado) {
+      cierresCajaEliminados = fusionarCierresCajaEliminados(
+        cierresCajaEliminados,
+        [{ id, eliminadoEn: fechaServidor }]
+      );
+      cierresCaja = cierresCaja.filter(cierre => String(cierre.id) !== id);
+    } else if (data.payload) {
+      const cierre = { ...data.payload, actualizado: fechaServidor, actualizadoEn: fechaServidor };
+      cierresCaja = fusionarCierresCaja([cierre], cierresCaja, cierresCajaEliminados);
+    }
+    cambios.caja = true;
+  }
+}
+
+function syncV600Renderizar(cambios) {
+  syncV600CambiosPendientes.pedidos ||= Boolean(cambios.pedidos);
+  syncV600CambiosPendientes.tickets ||= Boolean(cambios.tickets);
+  syncV600CambiosPendientes.caja ||= Boolean(cambios.caja);
+  clearTimeout(syncV600RenderTimer);
+  syncV600RenderTimer = setTimeout(() => {
+    const pendientes = { ...syncV600CambiosPendientes };
+    syncV600CambiosPendientes.pedidos = false;
+    syncV600CambiosPendientes.tickets = false;
+    syncV600CambiosPendientes.caja = false;
+    if (pendientes.pedidos) {
+      guardarPedidosLocal();
+      localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+      sincronizarMemoriaTickets();
+      renderPedidosCargados();
+      renderPedidosFuturos();
+      renderPedidosHoy();
+      renderHistorialPedidos();
+      calcularDiferencias();
+      actualizarEstadoConfirmacion();
+    }
+    if (pendientes.tickets || pendientes.pedidos) {
+      localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+      renderTicketsPorDia();
+    }
+    if (pendientes.caja) {
+      guardarCajaLocal();
+      renderCajaAdmin();
+      renderDashboardCaja();
+      renderAdministracionFinanciera();
+    }
+  }, 350);
+}
+
+function iniciarSyncCentralV600() {
+  if (syncV600Iniciado || !db) return;
+  if (authFratello && !authFratello.currentUser) return;
+  syncV600Iniciado = true;
+  const coleccion = syncV600Coleccion();
+  syncV600Unsubscribe = coleccion.orderBy("serverUpdatedAt", "desc").limit(300)
+    .onSnapshot(snapshot => {
+      const cambios = { pedidos: false, tickets: false, caja: false };
+      snapshot.docChanges().forEach(cambio => {
+        if (cambio.type !== "removed") syncV600Aplicar(cambio.doc.data() || {}, cambios);
+      });
+      if (cambios.pedidos || cambios.tickets || cambios.caja) syncV600Renderizar(cambios);
+      setEstadoSync("Online actualizado");
+    }, error => {
+      console.error("Listener sync central:", error);
+      syncV600Iniciado = false;
+      syncV600Unsubscribe = null;
+      setEstadoSync("Error de sincronización");
+      setTimeout(() => {
+        if (navigator.onLine && (!authFratello || authFratello.currentUser) && !syncV600Iniciado) {
+          iniciarSyncCentralV600();
+        }
+      }, 5000);
+    });
+  syncV600ReenviarCola().catch(() => {});
+  programarMigracionSyncV600();
+}
+
+function programarMigracionSyncV600() {
+  setTimeout(async () => {
+    const clave = "fratello_migracion_sync_v600";
+    if (localStorage.getItem(clave) === "completa") return;
+    const registros = [];
+    (Array.isArray(pedidos) ? pedidos : []).slice(-20).forEach(pedido =>
+      registros.push(syncV600Registro("pedido", pedido.id, pedido, false, true))
+    );
+    (Array.isArray(pedidosHoy) ? pedidosHoy : []).slice(-20).forEach(pedido =>
+      registros.push(syncV600Registro("pedido_hoy", pedido.id, pedido, false, true))
+    );
+    (Array.isArray(ticketsMemoria) ? ticketsMemoria : []).slice(-50).forEach(ticket =>
+      registros.push(syncV600Registro("ticket", ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal"), ticket, false, true))
+    );
+    (Array.isArray(cierresCaja) ? cierresCaja : []).slice(-20).forEach(cierre =>
+      registros.push(syncV600Registro("caja", cierre.id, cierre, false, true))
+    );
+    registros.forEach(registro => {
+      const claveEntidad = `${registro.tipo}__${registro.entidadId}`;
+      if (!syncV600IdsConocidos.has(claveEntidad)) syncV600Encolar(registro);
+    });
+    localStorage.setItem(clave, "completa");
+    await syncV600ReenviarCola();
+  }, 15000);
 }
 
 function datosPedidosModulo() {
@@ -3668,16 +3911,9 @@ async function cargarDesdeNube() {
         exclusionesPedidosFijos
       );
 
-      cierresCajaEliminados = fusionarCierresCajaEliminados(
-        data.cierresCajaEliminados,
-        cierresCajaEliminados
-      );
+      // Los cierres viajan por sync_v600. Este documento queda únicamente
+      // para personas, configuración y auditoría de Caja.
       auditoriaCaja = fusionarAuditoriaCaja(data.auditoriaCaja, auditoriaCaja);
-      cierresCaja = fusionarCierresCaja(
-        data.cierresCaja,
-        cierresCaja,
-        cierresCajaEliminados
-      );
       ultimaFirmaCajaRenderizada = firmaCierresCaja(cierresCaja);
       personasCaja = Array.isArray(data.personasCaja) && data.personasCaja.length
         ? data.personasCaja
@@ -4111,8 +4347,12 @@ function escucharCambiosNube() {
         data.pedidosEliminados,
         pedidosEliminados
       );
+      // El documento histórico solamente sigue siendo la puerta de entrada
+      // del formulario externo. Los pedidos de la app llegan por sync_v600.
+      const pedidosFormulario = (Array.isArray(data.pedidos) ? data.pedidos : [])
+        .filter(pedido => pedido?.origen === "formulario_cliente");
       const pedidosFusionados = fusionarPedidosSync(
-        data.pedidos,
+        pedidosFormulario,
         pedidos,
         pedidosEliminados
       );
@@ -4141,6 +4381,11 @@ function escucharCambiosNube() {
       } else {
         detectarPedidosNotificablesNuevos(pedidos);
       }
+      pedidosFormulario.forEach(pedido => {
+        if (pedido?.id && !syncV600IdsConocidos.has(`pedido__${pedido.id}`)) {
+          syncV600Guardar("pedido", pedido.id, pedido, false, { soloCrear: true }).catch(() => {});
+        }
+      });
 
       predeterminadas = data.predeterminadas || predeterminadas;
       clientes = Array.isArray(data.clientes) && data.clientes.length
@@ -9088,7 +9333,16 @@ async function guardarEntregaTicketV42() {
   guardarCuentaCorrienteV42();
   let entregaSincronizada = false;
   try {
-    entregaSincronizada = await guardarEntregaDedicadaNubeV555(pedido, movimiento);
+    const pedidoOrigen = pedidosHoy.find(p => Number(p.id) === Number(pedido.id)) ||
+      pedidos.find(p => Number(p.id) === Number(pedido.id));
+    const resultados = await Promise.all([
+      syncV600Guardar("ticket", clave, pedido),
+      pedidoOrigen
+        ? syncV600Guardar(pedidosHoy.includes(pedidoOrigen) ? "pedido_hoy" : "pedido", pedidoOrigen.id, pedidoOrigen)
+        : Promise.resolve(true),
+      guardarEntregaDedicadaNubeV555(pedido, movimiento)
+    ]);
+    entregaSincronizada = resultados[0] && resultados[1];
   } catch (error) {
     console.error("No se pudo sincronizar la entrega dedicada:", error);
     registrarErrorFratello("sincronizacion_entrega", error);
@@ -10154,8 +10408,8 @@ function iniciarAccesoAdministrador() {
       rolUsuarioActual = obtenerRolUsuario(usuarioAdministradorActual);
 
       if (usuarioAdministradorActual) {
-        iniciarPedidosIndividualesTiempoRealV557();
-        reenviarColaPedidosIndividualesV557().catch(() => {});
+        iniciarSyncCentralV600();
+        syncV600ReenviarCola().catch(() => {});
         segCargarLocal();
         dispositivoFratelloActual = segObtenerDispositivoActual();
         const dispositivoLocal = seguridadFratello.dispositivos.find(
@@ -12487,6 +12741,7 @@ async function guardarCierreCaja() {
     observacion: String($("cajaObservacion")?.value || "").trim(),
     creado: anterior?.creado || ahora,
     actualizado: ahora,
+    actualizadoEn: ahora,
     dispositivoCarga: anterior?.dispositivoCarga || descripcionDispositivoCaja(),
     dispositivoUltimaEdicion: descripcionDispositivoCaja()
   };
@@ -12508,8 +12763,10 @@ async function guardarCierreCaja() {
   renderCajaAdmin();
   renderDashboardCaja();
 
+  let sincronizadoOnline = false;
   try {
-    await Promise.resolve(guardarCajaModuloEnNube());
+    sincronizadoOnline = await sincronizarCierreCajaIndividualV560(cierre);
+    if (!sincronizadoOnline) throw new Error("El cierre quedó en la cola pendiente");
     registrarEventoAuditoriaCaja({
       fecha,
       turno,
@@ -12535,10 +12792,10 @@ async function guardarCierreCaja() {
   }
 
   if (estado) {
-    estado.textContent = anterior
-      ? `✅ Cierre del turno ${turnoTextoCaja(turno).toLowerCase()} actualizado correctamente.`
-      : `✅ Cierre del turno ${turnoTextoCaja(turno).toLowerCase()} guardado correctamente.`;
-    estado.className = "cajaSaveStatus success";
+    estado.textContent = sincronizadoOnline
+      ? `✅ Cierre guardado online y disponible en los demás dispositivos.`
+      : `⚠️ Cierre guardado en este celular. Sincronización online pendiente.`;
+    estado.className = sincronizadoOnline ? "cajaSaveStatus success" : "cajaSaveStatus error";
   }
 
   limpiarFormularioCaja({ conservarFechaTurno: true });
@@ -13186,8 +13443,9 @@ async function guardarEdicionTurnoCaja(fecha, turno, boton) {
   renderDashboardCaja();
 
   try {
-    await Promise.resolve(guardarCajaModuloEnNube());
-    if (estado) estado.textContent = "✅ Cambios guardados.";
+    const sincronizado = await sincronizarCierreCajaIndividualV560(actualizado);
+    if (!sincronizado) throw new Error("Sincronización pendiente");
+    if (estado) estado.textContent = "✅ Cambios guardados online.";
     abrirDetalleDiaCaja(fecha);
   } catch (error) {
     console.error("Error guardando edición de Caja:", error);
@@ -13233,7 +13491,8 @@ async function eliminarCierreCajaAdmin(fecha, turno) {
   renderDashboardCaja();
 
   try {
-    await Promise.resolve(guardarCajaModuloEnNube());
+    const sincronizado = await sincronizarCierreCajaIndividualV560(cierre, true);
+    if (!sincronizado) throw new Error("Sincronización pendiente");
     renderCajaAdmin();
     renderDashboardCaja();
     alert("Cierre eliminado correctamente.");
@@ -13262,6 +13521,120 @@ let guardandoPreciosModulo = false;
 let cajaModuloPendiente = false;
 let adminModuloPendiente = false;
 let preciosModuloPendiente = false;
+let unsubscribeCierresCajaIndividualesV560 = null;
+const COLA_CAJA_INDIVIDUAL_V560 = "fratello_cola_caja_individual_v560";
+
+function referenciaCierresCajaIndividualesV560() {
+  if (!db) return null;
+  return db.collection("fratello").doc("caja_cierres").collection("registros");
+}
+
+function leerColaCajaIndividualV560() {
+  const cola = leerJsonLocalSeguro(COLA_CAJA_INDIVIDUAL_V560, []);
+  return Array.isArray(cola) ? cola : [];
+}
+
+function guardarColaCajaIndividualV560(cola) {
+  localStorage.setItem(COLA_CAJA_INDIVIDUAL_V560, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-40)));
+}
+
+function encolarCierreCajaIndividualV560(registro) {
+  const cola = leerColaCajaIndividualV560();
+  const indice = cola.findIndex(item => item.id === registro.id);
+  if (indice >= 0) cola[indice] = registro;
+  else cola.push(registro);
+  guardarColaCajaIndividualV560(cola);
+}
+
+async function enviarCierreCajaIndividualV560(registro) {
+  const coleccion = referenciaCierresCajaIndividualesV560();
+  if (!coleccion || !registro?.id || !navigator.onLine) return false;
+  try {
+    await Promise.race([
+      coleccion.doc(encodeURIComponent(registro.id)).set(registro, { merge: true }),
+      new Promise((_, rechazar) => setTimeout(() => rechazar(new Error("Tiempo de sincronización agotado")), 7000))
+    ]);
+    guardarColaCajaIndividualV560(leerColaCajaIndividualV560().filter(item => item.id !== registro.id));
+    return true;
+  } catch (error) {
+    console.error("Error sincronizando cierre individual:", error);
+    return false;
+  }
+}
+
+async function sincronizarCierreCajaIndividualV560(cierre, eliminado = false) {
+  return syncV600Guardar("caja", cierre?.id, cierre, eliminado);
+}
+
+async function reenviarColaCajaIndividualV560() {
+  if (!navigator.onLine) return false;
+  const cola = leerColaCajaIndividualV560();
+  let correctos = true;
+  for (const registro of cola.slice(-20)) {
+    if (!await enviarCierreCajaIndividualV560(registro)) correctos = false;
+  }
+  return correctos;
+}
+
+function escucharCierresCajaIndividualesV560() {
+  const coleccion = referenciaCierresCajaIndividualesV560();
+  if (!coleccion || unsubscribeCierresCajaIndividualesV560) return;
+  unsubscribeCierresCajaIndividualesV560 = coleccion.orderBy("actualizado", "desc").limit(120)
+    .onSnapshot(snapshot => {
+      let cambioReal = false;
+      snapshot.docChanges().forEach(cambio => {
+        if (cambio.type === "removed") return;
+        const registro = cambio.doc.data() || {};
+        if (registro.eliminado) {
+          cierresCajaEliminados = fusionarCierresCajaEliminados(
+            cierresCajaEliminados,
+            [{ id: registro.id, eliminadoEn: registro.actualizado }]
+          );
+          cierresCaja = cierresCaja.filter(cierre => cierre.id !== registro.id);
+        } else if (registro.cierre) {
+          cierresCaja = fusionarCierresCaja([registro.cierre], cierresCaja, cierresCajaEliminados);
+        }
+        cambioReal = true;
+      });
+      if (!cambioReal) return;
+      guardarCajaLocal();
+      clearTimeout(window.__FRATELLO_RENDER_CAJA_V560__);
+      window.__FRATELLO_RENDER_CAJA_V560__ = setTimeout(() => {
+        renderCajaAdmin();
+        renderDashboardCaja();
+        renderAdministracionFinanciera();
+      }, 500);
+      setEstadoSync("Online actualizado");
+    }, error => {
+      console.error("Listener cierres individuales:", error);
+      unsubscribeCierresCajaIndividualesV560 = null;
+      setEstadoSync("Error recibiendo Caja");
+    });
+  reenviarColaCajaIndividualV560().catch(() => {});
+}
+
+function programarMigracionCajaIndividualV560() {
+  setTimeout(() => {
+    const clave = "fratello_migracion_caja_individual_v560";
+    if (localStorage.getItem(clave) === "completa") return;
+    const recientes = (Array.isArray(cierresCaja) ? cierresCaja : [])
+      .slice()
+      .sort((a, b) => String(b.actualizadoEn || b.actualizado || b.creado || "")
+        .localeCompare(String(a.actualizadoEn || a.actualizado || a.creado || "")))
+      .slice(0, 20);
+    recientes.forEach(cierre => {
+      const ahora = cierre.actualizadoEn || cierre.actualizado || cierre.creado || new Date(0).toISOString();
+      encolarCierreCajaIndividualV560({
+        id: cierre.id,
+        actualizado: ahora,
+        eliminado: false,
+        cierre: JSON.parse(JSON.stringify(cierre))
+      });
+    });
+    localStorage.setItem(clave, "completa");
+    reenviarColaCajaIndividualV560().catch(() => {});
+  }, 12000);
+}
 
 async function guardarCajaModuloEnNube() {
   guardarCajaLocal();
@@ -13283,20 +13656,9 @@ async function guardarCajaModuloEnNube() {
       const snap = await tx.get(ref);
       const remoto = snap.exists ? snap.data() : {};
 
-      cierresCajaEliminados = fusionarCierresCajaEliminados(
-        remoto.cierresCajaEliminados,
-        cierresCajaEliminados
-      );
       auditoriaCaja = fusionarAuditoriaCaja(remoto.auditoriaCaja, auditoriaCaja);
-      cierresCaja = fusionarCierresCaja(
-        remoto.cierresCaja,
-        cierresCaja,
-        cierresCajaEliminados
-      );
 
       tx.set(ref, {
-        cierresCaja,
-        cierresCajaEliminados,
         auditoriaCaja,
         personasCaja,
         configuracionCaja,
@@ -13495,7 +13857,6 @@ function escucharModuloCajaNube() {
         configuracionCaja = { ...configuracionCaja, ...data.configuracionCaja };
       }
 
-      ultimaFirmaCajaRenderizada = firmaCierresCaja(cierresCaja);
       guardarCajaLocal();
       renderPersonasCaja();
       renderCajaAdmin();
@@ -13561,26 +13922,7 @@ async function cargarYFusionarCajaModulo() {
     configuracionCaja = { ...remoto.configuracionCaja, ...configuracionCaja };
   }
 
-  const fusionado = {
-    cierresCaja,
-    cierresCajaEliminados,
-    auditoriaCaja,
-    personasCaja,
-    configuracionCaja
-  };
-  const remotoComparable = {
-    cierresCaja: remoto.cierresCaja || [],
-    cierresCajaEliminados: remoto.cierresCajaEliminados || [],
-    auditoriaCaja: remoto.auditoriaCaja || [],
-    personasCaja: remoto.personasCaja || [],
-    configuracionCaja: remoto.configuracionCaja || {}
-  };
-
   guardarCajaLocal();
-
-  if (!snap.exists || firmaModuloSync(fusionado) !== firmaModuloSync(remotoComparable)) {
-    await ref.set({ ...fusionado, actualizado: new Date().toISOString() }, { merge: true });
-  }
 }
 
 async function cargarYFusionarAdminModulo() {
@@ -13639,7 +13981,7 @@ function sincronizarCajaTiempoReal() {
 
 window.addEventListener("online", () => {
   setEstadoSync("Conexión recuperada — sincronizando...");
-  reenviarColaPedidosIndividualesV557().catch(() => {});
+  syncV600ReenviarCola().catch(() => {});
   clearTimeout(temporizadorGuardadoNube);
   intentosGuardadoNube = 0;
   if (guardadoNubePendiente) guardarEnNube(false);
@@ -13965,10 +14307,7 @@ async function init() {
   compactarCacheTicketsLocalV559();
   await cargarDesdeNube();
   await iniciarPedidosModuloNube();
-  iniciarPedidosIndividualesTiempoRealV557();
-  iniciarTicketsIndividualesTiempoRealV558();
-  programarRecuperacionLivianaV559();
-  iniciarEntregasTicketsTiempoRealV555();
+  iniciarSyncCentralV600();
   await iniciarCuentaPendientesNube();
   await iniciarSincronizacionModulosFinancieros();
   await iniciarSincronizacionPrecios();

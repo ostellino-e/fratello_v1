@@ -1,4 +1,4 @@
-# Fratello v5.5.9
+# Fratello v6.0.0
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -103,4 +103,20 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - La recuperación se ejecuta diez segundos después de abrir y procesa como máximo 20 pedidos y 30 tickets.
 - El caché local de tickets se compacta sin borrar los datos guardados en Firebase.
 
-Versión esperada: v5.5.9
+## Mejora v5.6.0
+- Cada cierre de Caja se sincroniza como un registro individual y liviano.
+- Caja informa si el cierre fue confirmado online o quedó pendiente en el celular.
+- Los cierres pendientes se reenvían automáticamente al recuperar Internet.
+- Los demás dispositivos reciben los cierres de Caja en tiempo real.
+- Los últimos cierres locales se migran gradualmente sin bloquear Android.
+- Los pedidos nuevos usan escritura directa para reducir demoras y fallos.
+
+## Mejora v6.0.0
+- Caja, Pedidos y Tickets comparten un único canal de sincronización en tiempo real.
+- Cada cambio se guarda en un registro individual, sin volver a enviar historiales completos.
+- Se eliminan los escuchadores duplicados que cargaban de más a celulares Android.
+- La cola local conserva cambios sin conexión y los reenvía automáticamente al recuperar Internet.
+- Firebase asigna la hora central para resolver correctamente cambios realizados desde dispositivos distintos.
+- La información anterior se importa gradualmente y continúa siendo compatible.
+
+Versión esperada: v6.0.0
