@@ -1,4 +1,4 @@
-# Fratello v6.0.1
+# Fratello v6.0.2
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -125,4 +125,12 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Los cambios pendientes del dispositivo se reenvían apenas queda conectado.
 - PC, celular personal y celular de la panadería usan el mismo canal central.
 
-Versión esperada: v6.0.1
+## Corrección v6.0.2
+- Las actualizaciones recibidas ya no redibujan pantallas que no están abiertas.
+- Una misma operación no vuelve a dibujarse mientras todavía está pendiente en Firebase.
+- Las pestañas abiertas conservan su estado cuando llegan cambios de otros dispositivos.
+- Se ignoran cierres automáticos generados al reemplazar contenido viejo de la pantalla.
+- El observador de pestañas agrupa el trabajo para reducir el esfuerzo en celulares Android.
+- Se mantiene sin cambios el canal central rápido de la v6.0.1.
+
+Versión esperada: v6.0.2

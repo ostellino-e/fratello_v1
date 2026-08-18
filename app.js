@@ -3311,22 +3311,25 @@ function syncV600Renderizar(cambios) {
       guardarPedidosLocal();
       localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
       sincronizarMemoriaTickets();
-      renderPedidosCargados();
-      renderPedidosFuturos();
-      renderPedidosHoy();
-      renderHistorialPedidos();
-      calcularDiferencias();
-      actualizarEstadoConfirmacion();
+      if (seccionActualFratello === "seccionPedidos") {
+        renderPedidosCargados();
+        renderPedidosFuturos();
+        renderPedidosHoy();
+        renderHistorialPedidos();
+        calcularDiferencias();
+        actualizarEstadoConfirmacion();
+      }
     }
     if (pendientes.tickets || pendientes.pedidos) {
       localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
-      renderTicketsPorDia();
+      if (seccionActualFratello === "seccionTickets") renderTicketsPorDia();
     }
     if (pendientes.caja) {
       guardarCajaLocal();
-      renderCajaAdmin();
-      renderDashboardCaja();
-      renderAdministracionFinanciera();
+      if (seccionActualFratello === "seccionAdministracion") {
+        if (vistaAdministracionActual === "caja") renderCajaAdmin();
+        else renderAdministracionFinanciera();
+      }
     }
   }, 350);
 }
@@ -3345,7 +3348,11 @@ function iniciarSyncCentralV600() {
     .onSnapshot(snapshot => {
       const cambios = { pedidos: false, tickets: false, caja: false };
       snapshot.docChanges().forEach(cambio => {
-        if (cambio.type !== "removed") syncV600Aplicar(cambio.doc.data() || {}, cambios);
+        // La pantalla ya muestra el cambio local. Esperar la confirmación del
+        // servidor evita dibujar dos veces por una misma operación.
+        if (cambio.type !== "removed" && !cambio.doc.metadata.hasPendingWrites) {
+          syncV600Aplicar(cambio.doc.data() || {}, cambios);
+        }
       });
       if (cambios.pedidos || cambios.tickets || cambios.caja) syncV600Renderizar(cambios);
       setEstadoSync("Online actualizado");
@@ -4443,11 +4450,13 @@ function escucharCambiosNube() {
       localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
       localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 
-      renderClientes();
-      renderListaClientesCompleta();
-      renderProduccion();
-      renderPedidosCargados();
-      calcularDiferencias();
+      if (seccionActualFratello === "seccionPedidos") {
+        renderClientes();
+        renderListaClientesCompleta();
+        renderPedidosCargados();
+        calcularDiferencias();
+      }
+      if (seccionActualFratello === "seccionProduccion") renderProduccion();
       actualizarPanelMemoriaEnvio();
       actualizarTarjetaDiaPedidos();
 
@@ -13867,16 +13876,9 @@ function escucharModuloCajaNube() {
       if (!doc.exists) return;
       const data = doc.data() || {};
 
-      cierresCajaEliminados = fusionarCierresCajaEliminados(
-        data.cierresCajaEliminados,
-        cierresCajaEliminados
-      );
+      // Los cierres se reciben por el canal central. Este documento solo
+      // conserva personas, configuración y auditoría.
       auditoriaCaja = fusionarAuditoriaCaja(data.auditoriaCaja, auditoriaCaja);
-      cierresCaja = fusionarCierresCaja(
-        data.cierresCaja,
-        cierresCaja,
-        cierresCajaEliminados
-      );
 
       if (Array.isArray(data.personasCaja) && data.personasCaja.length) {
         personasCaja = data.personasCaja;
@@ -13887,9 +13889,10 @@ function escucharModuloCajaNube() {
 
       guardarCajaLocal();
       renderPersonasCaja();
-      renderCajaAdmin();
-      renderDashboardCaja();
-      renderAdministracionFinanciera();
+      if (seccionActualFratello === "seccionAdministracion") {
+        if (vistaAdministracionActual === "caja") renderCajaAdmin();
+        else renderAdministracionFinanciera();
+      }
       setEstadoSync("Online actualizado");
     }, error => {
       console.error("Listener módulo Caja:", error);
@@ -13911,7 +13914,7 @@ function escucharModuloAdminNube() {
         administracionFinanciera
       );
       guardarAdministracionLocal();
-      renderAdministracionFinanciera();
+      if (seccionActualFratello === "seccionAdministracion") renderAdministracionFinanciera();
       setEstadoSync("Online actualizado");
     }, error => {
       console.error("Listener módulo Administración:", error);
@@ -14161,6 +14164,10 @@ function claveDetallePersistente(detalle) {
   ];
   for (const atributo of atributos) {
     if (detalle.dataset[atributo]) {
+      if (atributo === "grupo") {
+        const fechaPadre = detalle.closest(".weeklyDay")?.dataset.fecha || "sin-fecha";
+        return `grupo:${fechaPadre}:${detalle.dataset[atributo]}`;
+      }
       return `${atributo}:${detalle.dataset[atributo]}`;
     }
   }
@@ -14195,14 +14202,23 @@ function iniciarPersistenciaDetalles() {
   document.addEventListener("toggle", evento => {
     const detalle = evento.target;
     if (!(detalle instanceof HTMLDetailsElement)) return;
+    // Al redibujar, el navegador emite un cierre del elemento viejo ya
+    // desconectado. Ignorarlo evita que se pierda la pestaña que estaba abierta.
+    if (!detalle.isConnected) return;
     const clave = claveDetallePersistente(detalle);
     if (!clave) return;
     if (detalle.open) detallesAbiertosPersistentes.add(clave);
     else detallesAbiertosPersistentes.delete(clave);
   }, true);
 
+  let restauracionProgramada = false;
   const observador = new MutationObserver(() => {
-    requestAnimationFrame(restaurarDetallesPersistentes);
+    if (restauracionProgramada) return;
+    restauracionProgramada = true;
+    requestAnimationFrame(() => {
+      restauracionProgramada = false;
+      restaurarDetallesPersistentes();
+    });
   });
   observador.observe(document.body, { childList: true, subtree: true });
 }
