@@ -2212,14 +2212,6 @@ let cargandoDesdeNube = false;
 if (FIREBASE_ACTIVO && typeof firebase !== "undefined") {
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
-  // Mantiene una cola local real en Android y permite que varias pestañas
-  // compartan los cambios pendientes cuando el navegador lo admite.
-  db.enablePersistence({ synchronizeTabs: true }).catch(error => {
-    const codigo = String(error?.code || "");
-    if (!codigo.includes("failed-precondition") && !codigo.includes("unimplemented")) {
-      console.warn("Persistencia offline de Firebase:", error);
-    }
-  });
 }
 
 let authFratello = null;
@@ -2778,6 +2770,7 @@ function iniciarEntregasTicketsTiempoRealV555() {
 const COLA_PEDIDOS_SYNC_KEY_V557 = "fratello_cola_pedidos_sync_v557";
 let escuchandoPedidosIndividualesV557 = false;
 let reintentoPedidosIndividualesV557 = null;
+let renderPedidosIndividualesV557 = null;
 
 function referenciaPedidosIndividualesV557() {
   if (!db) return null;
@@ -2795,6 +2788,19 @@ function leerColaPedidosIndividualesV557() {
 
 function guardarColaPedidosIndividualesV557(cola) {
   localStorage.setItem(COLA_PEDIDOS_SYNC_KEY_V557, JSON.stringify(Array.isArray(cola) ? cola : []));
+}
+
+function aliviarColaPedidosIndividualesV558() {
+  const limite = new Date();
+  limite.setDate(limite.getDate() - 7);
+  const fechaLimite = limite.toISOString().slice(0, 10);
+  const colaReducida = leerColaPedidosIndividualesV557().filter(registro => {
+    if (registro.eliminado) return true;
+    const pedido = registro.pedido || {};
+    const fecha = pedido.fechaEntrega || pedido.jornada || pedido.fecha || "";
+    return !fecha || fecha >= fechaLimite;
+  });
+  guardarColaPedidosIndividualesV557(colaReducida.slice(-60));
 }
 
 function encolarPedidoIndividualV557(registro) {
@@ -2899,9 +2905,14 @@ async function reenviarColaPedidosIndividualesV557() {
   const cola = leerColaPedidosIndividualesV557();
   if (!cola.length) return true;
   let pendientes = 0;
-  for (const registro of cola) {
-    if (!await enviarRegistroPedidoIndividualV557(registro)) pendientes += 1;
-  }
+  let siguiente = 0;
+  const trabajador = async () => {
+    while (siguiente < cola.length) {
+      const indice = siguiente++;
+      if (!await enviarRegistroPedidoIndividualV557(cola[indice])) pendientes += 1;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(3, cola.length) }, trabajador));
   if (pendientes) {
     setEstadoSync(`Online · ${pendientes} pedido(s) pendiente(s)`);
     programarReintentoPedidosIndividualesV557();
@@ -2926,15 +2937,21 @@ function aplicarPedidoIndividualRemotoV557(registro = {}) {
 
   guardarPedidosLocal();
   localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
-  sincronizarMemoriaTickets();
-  renderPedidosCargados();
-  renderPedidosFuturos();
-  renderPedidosHoy();
-  renderTicketsPorDia();
-  renderHistorialPedidos();
-  calcularDiferencias();
-  actualizarEstadoConfirmacion();
   return true;
+}
+
+function programarRenderPedidosIndividualesV557() {
+  clearTimeout(renderPedidosIndividualesV557);
+  renderPedidosIndividualesV557 = setTimeout(() => {
+    sincronizarMemoriaTickets();
+    renderPedidosCargados();
+    renderPedidosFuturos();
+    renderPedidosHoy();
+    renderTicketsPorDia();
+    renderHistorialPedidos();
+    calcularDiferencias();
+    actualizarEstadoConfirmacion();
+  }, 900);
 }
 
 function iniciarPedidosIndividualesTiempoRealV557() {
@@ -2942,12 +2959,13 @@ function iniciarPedidosIndividualesTiempoRealV557() {
   if (!coleccion || escuchandoPedidosIndividualesV557) return;
   escuchandoPedidosIndividualesV557 = true;
 
-  coleccion.onSnapshot(snapshot => {
+  coleccion.orderBy("actualizado", "desc").limit(80).onSnapshot(snapshot => {
     cargandoDesdeNube = true;
     try {
       snapshot.docChanges().forEach(cambio => {
         if (cambio.type !== "removed") aplicarPedidoIndividualRemotoV557(cambio.doc.data());
       });
+      programarRenderPedidosIndividualesV557();
       setEstadoSync("Online actualizado");
     } catch (error) {
       console.error("Error aplicando pedidos individuales:", error);
@@ -2961,6 +2979,7 @@ function iniciarPedidosIndividualesTiempoRealV557() {
     setEstadoSync("Error de sincronización");
   });
 
+  aliviarColaPedidosIndividualesV558();
   reenviarColaPedidosIndividualesV557().catch(() => {});
 }
 
@@ -2981,6 +3000,128 @@ function migrarPedidosLocalesIndividualesV557() {
     .forEach(pedido => encolarPedidoIndividualV557(registroPedidoIndividualV557(pedido, "hoy")));
   localStorage.setItem(claveMigracion, "completa");
   reenviarColaPedidosIndividualesV557().catch(() => {});
+}
+
+// v5.5.8: los tickets históricos se conservan aunque el pedido operativo ya se haya limpiado.
+let escuchandoTicketsIndividualesV558 = false;
+
+function referenciaTicketsIndividualesV558() {
+  if (!db) return null;
+  return db.collection("fratello").doc("tickets_individuales").collection("registros");
+}
+
+function idTicketIndividualV558(ticket) {
+  const clave = ticket?.claveMemoria || claveTicketMemoria(ticket, ticket?.tipoTicket || "normal");
+  return encodeURIComponent(String(clave || "")).replace(/%/g, "_").slice(0, 900);
+}
+
+async function publicarTicketsIndividualesV558(lista = []) {
+  const coleccion = referenciaTicketsIndividualesV558();
+  if (!coleccion || !navigator.onLine) return false;
+  const tickets = (Array.isArray(lista) ? lista : []).filter(ticket => ticket?.id);
+
+  for (let inicio = 0; inicio < tickets.length; inicio += 200) {
+    const lote = db.batch();
+    tickets.slice(inicio, inicio + 200).forEach(ticket => {
+      const limpio = JSON.parse(JSON.stringify(ticket));
+      const clave = limpio.claveMemoria || claveTicketMemoria(limpio, limpio.tipoTicket || "normal");
+      const actualizado = limpio.actualizadoTicket || limpio.actualizadoEn || limpio.actualizado ||
+        limpio.fechaEntregaReal || limpio.creado || new Date(0).toISOString();
+      lote.set(coleccion.doc(idTicketIndividualV558(limpio)), {
+        clave,
+        actualizado,
+        ticket: { ...limpio, claveMemoria: clave }
+      }, { merge: true });
+    });
+    await lote.commit();
+  }
+  return true;
+}
+
+function iniciarTicketsIndividualesTiempoRealV558() {
+  const coleccion = referenciaTicketsIndividualesV558();
+  if (!coleccion || escuchandoTicketsIndividualesV558) return;
+  escuchandoTicketsIndividualesV558 = true;
+
+  coleccion.orderBy("actualizado", "desc").limit(80).onSnapshot(snapshot => {
+    const recibidos = snapshot.docChanges()
+      .filter(cambio => cambio.type !== "removed")
+      .map(cambio => cambio.doc.data()?.ticket)
+      .filter(Boolean);
+    if (!recibidos.length) return;
+    ticketsMemoria = fusionarTicketsMemoriaSync(recibidos, ticketsMemoria);
+    localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+    clearTimeout(window.__FRATELLO_RENDER_TICKETS_SYNC_V558__);
+    window.__FRATELLO_RENDER_TICKETS_SYNC_V558__ = setTimeout(renderTicketsPorDia, 700);
+  }, error => {
+    console.error("Listener de tickets individuales:", error);
+    escuchandoTicketsIndividualesV558 = false;
+  });
+}
+
+async function migrarTicketsLocalesIndividualesV558() {
+  const claveMigracion = "fratello_migracion_tickets_individuales_v558";
+  if (localStorage.getItem(claveMigracion) === "completa") return true;
+  sincronizarMemoriaTickets();
+  const limite = new Date();
+  limite.setDate(limite.getDate() - 90);
+  const fechaLimite = limite.toISOString().slice(0, 10);
+  const recientes = (Array.isArray(ticketsMemoria) ? ticketsMemoria : []).filter(ticket => {
+    const fecha = ticket.fechaTicket || ticket.fechaEntrega || ticket.fecha || "";
+    return !fecha || fecha >= fechaLimite;
+  });
+  try {
+    await publicarTicketsIndividualesV558(recientes);
+    localStorage.setItem(claveMigracion, "completa");
+    return true;
+  } catch (error) {
+    console.error("Migración de tickets individuales:", error);
+    return false;
+  }
+}
+
+function compactarCacheTicketsLocalV559() {
+  if (!Array.isArray(ticketsMemoria) || ticketsMemoria.length <= 500) return;
+  const limite = new Date();
+  limite.setDate(limite.getDate() - 180);
+  const fechaLimite = limite.toISOString().slice(0, 10);
+  const recientes = ticketsMemoria
+    .filter(ticket => {
+      const fecha = ticket.fechaTicket || ticket.fechaEntrega || ticket.fecha || "";
+      return !fecha || fecha >= fechaLimite;
+    })
+    .sort((a, b) => String(b.fechaTicket || b.fechaEntrega || b.fecha || "")
+      .localeCompare(String(a.fechaTicket || a.fechaEntrega || a.fecha || "")))
+    .slice(0, 500);
+  ticketsMemoria = fusionarTicketsMemoriaSync([], recientes);
+  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+}
+
+function programarRecuperacionLivianaV559() {
+  setTimeout(async () => {
+    if (!navigator.onLine) return;
+    const clave = "fratello_recuperacion_liviana_v559";
+    if (localStorage.getItem(clave) === "completa") return;
+
+    const pedidosRecientes = [
+      ...(Array.isArray(pedidos) ? pedidos.map(pedido => ({ pedido, tipo: "normal" })) : []),
+      ...(Array.isArray(pedidosHoy) ? pedidosHoy.map(pedido => ({ pedido, tipo: "hoy" })) : [])
+    ]
+      .sort((a, b) => fechaCambioPedidoSync(b.pedido) - fechaCambioPedidoSync(a.pedido))
+      .slice(0, 20);
+
+    pedidosRecientes.forEach(({ pedido, tipo }) => {
+      encolarPedidoIndividualV557(registroPedidoIndividualV557(pedido, tipo));
+    });
+    reenviarColaPedidosIndividualesV557().catch(() => {});
+
+    const ticketsRecientes = (Array.isArray(ticketsMemoria) ? ticketsMemoria : [])
+      .slice()
+      .sort((a, b) => fechaCambioTicketSync(b) - fechaCambioTicketSync(a))
+      .slice(0, 30);
+    const ticketsGuardados = await publicarTicketsIndividualesV558(ticketsRecientes).catch(() => false);
+    if (ticketsGuardados !== false) localStorage.setItem(clave, "completa");
+  }, 10000);
 }
 
 function datosPedidosModulo() {
@@ -3004,26 +3145,8 @@ function guardarPedidosLocal() {
 }
 
 function aplicarPedidosModuloRemoto(data = {}) {
-  pedidosEliminados = fusionarPedidosEliminados(
-    data.pedidosEliminados,
-    pedidosEliminados
-  );
-
-  pedidos = fusionarPedidosSync(
-    data.pedidos,
-    pedidos,
-    pedidosEliminados
-  )
-    .filter(pedido => !pedidoEstaEliminadoSync(pedido));
-
-  // Si llega un pedido nuevo desde otro dispositivo, esa fecha debe quedar abierta.
-  // Evita que una jornada cerrada localmente oculte pedidos cargados por Atención.
-  [...new Set(
-    pedidos
-      .filter(pedido => !esPedidoFijoRobusto(pedido))
-      .map(pedido => fechaEntregaPedido(pedido))
-      .filter(Boolean)
-  )].forEach(fecha => reabrirJornadaParaNuevoPedido(fecha));
+  // Los pedidos operativos ya no se fusionan desde este documento histórico.
+  // Llegan por el listener individual limitado para evitar bloquear Android.
 
   pedidosFijos = fusionarPedidosFijosSync(
     data.pedidosFijos,
@@ -3038,8 +3161,6 @@ function aplicarPedidosModuloRemoto(data = {}) {
   if (typeof data.pedidosConfirmados === "boolean") {
     pedidosConfirmados = data.pedidosConfirmados;
   }
-  pedidosHoy = fusionarPedidosSync(data.pedidosHoy, pedidosHoy, []);
-  ticketsMemoria = fusionarTicketsMemoriaSync(data.ticketsMemoria, ticketsMemoria);
   cuentaCorrienteV42 = fusionarCuentaCorrienteV42(data.cuentaCorriente, cuentaCorrienteV42);
   clientesCuentaV541 = fusionarClientesCuentaV541(data.clientesCuenta, clientesCuentaV541);
   localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
@@ -3074,15 +3195,6 @@ function guardarPedidosModuloEnNube() {
           const snap = await tx.get(ref);
           const remoto = snap.exists ? snap.data() : {};
 
-          pedidosEliminados = fusionarPedidosEliminados(
-            remoto.pedidosEliminados,
-            pedidosEliminados
-          );
-          pedidos = fusionarPedidosSync(
-            remoto.pedidos,
-            pedidos,
-            pedidosEliminados
-          );
           pedidosFijos = fusionarPedidosFijosSync(
             remoto.pedidosFijos,
             pedidosFijos
@@ -3091,8 +3203,6 @@ function guardarPedidosModuloEnNube() {
             remoto.exclusionesPedidosFijos,
             exclusionesPedidosFijos
           );
-          pedidosHoy = fusionarPedidosSync(remoto.pedidosHoy, pedidosHoy, []);
-          ticketsMemoria = fusionarTicketsMemoriaSync(remoto.ticketsMemoria, ticketsMemoria);
           cuentaCorrienteV42 = fusionarCuentaCorrienteV42(remoto.cuentaCorriente, cuentaCorrienteV42);
           clientesCuentaV541 = fusionarClientesCuentaV541(remoto.clientesCuenta, clientesCuentaV541);
 
@@ -3596,12 +3706,8 @@ async function cargarDesdeNube() {
       // Los precios se cargan únicamente desde precios_estado.
       // El documento general conserva una copia histórica, pero no puede
       // volver a pisar una lista más nueva.
-    ticketsMemoria = Array.isArray(data.ticketsMemoria)
-      ? data.ticketsMemoria
-      : ticketsMemoria;
-    pedidosHoy = Array.isArray(data.pedidosHoy)
-      ? data.pedidosHoy
-      : pedidosHoy;
+      // Tickets y pedidos de hoy llegan por sus canales individuales.
+      // No cargar también la copia histórica pesada del documento general.
       productosExtra = Array.isArray(data.productosExtra)
         ? data.productosExtra
         : productosExtra;
@@ -3708,12 +3814,7 @@ async function actualizarDatosManual(evento = null) {
     clientes = Array.isArray(data.clientes) && data.clientes.length ? data.clientes : clientes;
     datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
     // No recuperar precios desde el documento general: puede ser una copia vieja.
-    ticketsMemoria = Array.isArray(data.ticketsMemoria)
-      ? data.ticketsMemoria
-      : ticketsMemoria;
-    pedidosHoy = Array.isArray(data.pedidosHoy)
-      ? data.pedidosHoy
-      : pedidosHoy;
+    // Tickets y pedidos de hoy se actualizan desde listeners livianos.
     productosExtra = data.productosExtra || productosExtra;
     pedidosConfirmados = Boolean(data.pedidosConfirmados);
     correspondePedido = data.correspondePedido || correspondePedido;
@@ -9594,6 +9695,7 @@ function obtenerFilasComparador() {
 
 
 function limpiarPedidosDespuesDeEnviar() {
+  respaldarTicketsAntesLimpiarV558();
   pedidos = [];
   pedidosConfirmados = false;
 
@@ -9615,6 +9717,7 @@ function limpiarPedidosDespuesDeEnviar() {
 }
 
 function limpiarJornadaDespuesDeEnviar() {
+  respaldarTicketsAntesLimpiarV558();
   pedidos = [];
   pedidosConfirmados = false;
 
@@ -9654,6 +9757,16 @@ function limpiarJornadaDespuesDeEnviar() {
 
   actualizarTarjetaDiaPedidos();
   guardarEnNube();
+}
+
+function respaldarTicketsAntesLimpiarV558() {
+  sincronizarMemoriaTickets();
+  const fecha = fechaJornadaActual();
+  const ticketsJornada = (Array.isArray(ticketsMemoria) ? ticketsMemoria : [])
+    .filter(ticket => (ticket.fechaTicket || ticket.fechaEntrega || ticket.fecha || "") === fecha);
+  publicarTicketsIndividualesV558(ticketsJornada).catch(error => {
+    console.error("Respaldo de tickets antes de limpiar:", error);
+  });
 }
 
 function abrirWhatsApp(numero, mensaje) {
@@ -13849,10 +13962,12 @@ async function init() {
   }
 
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
+  compactarCacheTicketsLocalV559();
   await cargarDesdeNube();
   await iniciarPedidosModuloNube();
   iniciarPedidosIndividualesTiempoRealV557();
-  migrarPedidosLocalesIndividualesV557();
+  iniciarTicketsIndividualesTiempoRealV558();
+  programarRecuperacionLivianaV559();
   iniciarEntregasTicketsTiempoRealV555();
   await iniciarCuentaPendientesNube();
   await iniciarSincronizacionModulosFinancieros();

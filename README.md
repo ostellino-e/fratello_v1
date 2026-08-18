@@ -1,4 +1,4 @@
-# Fratello v5.5.7
+# Fratello v5.5.9
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -87,4 +87,20 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Los documentos generales ya no intentan subir todo el historial en cada cambio.
 - Una copia vieja no puede pisar un pedido más nuevo o ya entregado.
 
-Versión esperada: v5.5.7
+## Corrección v5.5.8
+- La recepción de muchos pedidos ya no redibuja toda la aplicación registro por registro.
+- Los cambios recibidos se agrupan y producen un único refresco de pantalla.
+- La cola del Android se limita a pedidos recientes para evitar bloqueos.
+- Los tickets se sincronizan de manera independiente del pedido operativo.
+- Los tickets históricos permanecen visibles aunque la jornada ya se haya enviado y limpiado.
+- Antes de limpiar una jornada se respalda su pantalla de tickets.
+
+## Corrección v5.5.9
+- Se retiró la persistencia pesada que podía bloquear navegadores Android.
+- La app escucha solamente los 80 pedidos y 80 tickets más recientes.
+- Se eliminó la carga duplicada de tickets y pedidos de hoy desde documentos antiguos.
+- La cola automática se limita a los últimos 7 días y un máximo de 60 registros.
+- La recuperación se ejecuta diez segundos después de abrir y procesa como máximo 20 pedidos y 30 tickets.
+- El caché local de tickets se compacta sin borrar los datos guardados en Firebase.
+
+Versión esperada: v5.5.9
