@@ -1,4 +1,4 @@
-# Fratello v6.0.4
+# Fratello v6.0.5
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -148,4 +148,13 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Los pedidos completos por cliente continúan incluidos debajo del resumen.
 - No se modificó la sincronización ni la pantalla comparadora general.
 
-Versión esperada: v6.0.4
+## Corrección v6.0.5
+- Enviar el resumen por WhatsApp ya no elimina los pedidos cargados.
+- Cada pedido guarda una marca de la versión que ya fue informada al panadero.
+- Un segundo envío sin cambios se bloquea para no repetir producción ni mensajes.
+- Los pedidos tardíos, modificados o cancelados generan solamente una actualización.
+- Confirmar pedidos utiliza el guardado individual liviano y evita cargar el documento histórico completo.
+- Si el navegador Android recupera la página, vuelve a la sección que estaba abierta.
+- Se conserva el formato de resumen aprobado en la v6.0.4.
+
+Versión esperada: v6.0.5

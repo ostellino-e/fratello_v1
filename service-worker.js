@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v604-resumen-panadero";
+const CACHE_NAME = "fratello-v605-pedidos-conservados";
 const ARCHIVOS = [
   "./",
   "./index.html",

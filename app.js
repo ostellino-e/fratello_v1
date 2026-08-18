@@ -1489,6 +1489,7 @@ function mostrarInicioFratello(limpiarPila = true) {
   if (contenido) contenido.classList.remove("contenidoVisible");
 
   seccionActualFratello = "inicio";
+  sessionStorage.setItem("fratello_seccion_actual", "inicio");
   if (limpiarPila) pilaNavegacionFratello = [];
 
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1876,6 +1877,7 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
   });
 
   seccionActualFratello = idSeccion;
+  sessionStorage.setItem("fratello_seccion_actual", idSeccion);
 
   if (idSeccion === "seccionNotificaciones") {
     cargarHistorialNotificaciones();
@@ -2047,7 +2049,12 @@ function iniciarNavegacionFratello() {
     btnBorrarRapido.addEventListener("click", resetDatos);
   }
 
-  mostrarInicioFratello();
+  const seccionGuardada = sessionStorage.getItem("fratello_seccion_actual");
+  if (seccionGuardada && seccionGuardada !== "inicio" && document.getElementById(seccionGuardada)) {
+    mostrarSeccionFratelloSinApilar(seccionGuardada);
+  } else {
+    mostrarInicioFratello();
+  }
 }
 
 let eventoInstalacion = null;
@@ -3294,6 +3301,13 @@ function syncV600Aplicar(data, cambios) {
       cierresCaja = fusionarCierresCaja([cierre], cierresCaja, cierresCajaEliminados);
     }
     cambios.caja = true;
+    return;
+  }
+
+  if (tipo === "resumen" && data.payload) {
+    memoriaUltimoEnvio = { ...data.payload, actualizado: fechaServidor };
+    localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+    actualizarPanelMemoriaEnvio();
   }
 }
 
@@ -3988,7 +4002,7 @@ async function cargarDesdeNube() {
 
       pedidosConfirmados = Boolean(data.pedidosConfirmados);
       correspondePedido = data.correspondePedido || correspondePedido;
-      memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
+      if (!memoriaUltimoEnvio && data.memoriaUltimoEnvio) memoriaUltimoEnvio = data.memoriaUltimoEnvio;
       jornadasCerradas = Array.isArray(data.jornadasCerradas) ? data.jornadasCerradas : jornadasCerradas;
       exclusionesPedidosFijos = fusionarExclusionesPedidosFijos(
         data.exclusionesPedidosFijos,
@@ -4084,7 +4098,7 @@ async function actualizarDatosManual(evento = null) {
     productosExtra = data.productosExtra || productosExtra;
     pedidosConfirmados = Boolean(data.pedidosConfirmados);
     correspondePedido = data.correspondePedido || correspondePedido;
-    memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
+    if (!memoriaUltimoEnvio && data.memoriaUltimoEnvio) memoriaUltimoEnvio = data.memoriaUltimoEnvio;
 
     const preciosDoc = await db.collection("fratello").doc("precios_estado").get();
     if (preciosDoc.exists) aplicarPreciosDesdeNube(preciosDoc.data() || {}, true);
@@ -4427,7 +4441,8 @@ function escucharCambiosNube() {
       productosExtra = data.productosExtra || productosExtra;
       pedidosConfirmados = Boolean(data.pedidosConfirmados);
       correspondePedido = data.correspondePedido || correspondePedido;
-      memoriaUltimoEnvio = data.memoriaUltimoEnvio || memoriaUltimoEnvio;
+      // La memoria de resúmenes llega por sync_v600 y no debe ser reemplazada
+      // por una copia histórica del documento general.
       jornadasCerradas = Array.isArray(data.jornadasCerradas) ? data.jornadasCerradas : jornadasCerradas;
 
       // Caja y Administración se sincronizan en documentos dedicados
@@ -6925,7 +6940,11 @@ function alternarConfirmacionPedido(idPedido, confirmado) {
   }
 
   sincronizarConfirmacionDiaDesdePedidos();
-  guardarTodo();
+  // Guardado liviano: confirmar un pedido no debe volver a leer y subir todo
+  // el historial de la aplicación. Esto evita bloqueos y reinicios en Android.
+  guardarPedidosLocal();
+  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  sincronizarPedidoIndividualV557(pedido, "normal").catch(() => {});
   calcularDiferencias();
   actualizarEstadoConfirmacion();
 }
@@ -9770,10 +9789,6 @@ function reabrirJornadaParaNuevoPedido(fecha) {
   const antes = jornadasCerradas.length;
   jornadasCerradas = (jornadasCerradas || []).filter(item => item !== fecha);
 
-  if (memoriaUltimoEnvio?.fecha === fecha && memoriaUltimoEnvio?.jornadaEnviada === true) {
-    memoriaUltimoEnvio = {};
-  }
-
   if (jornadasCerradas.length !== antes) {
     localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
   }
@@ -9875,6 +9890,52 @@ function memoriaCorrespondeAJornadaActual() {
   return memoriaUltimoEnvio.fecha === fechaJornadaActual();
 }
 
+function firmaPedidoResumen(pedido) {
+  const items = (pedido?.items || [])
+    .filter(item => item.estado !== "NO PEDIDO")
+    .map(item => ({
+      productoId: item.productoId || "",
+      producto: item.producto || "",
+      cantidad: Number(item.cantidad || 0),
+      unidad: item.unidad || ""
+    }));
+  return JSON.stringify({
+    id: String(pedido?.id || ""),
+    cliente: pedido?.cliente || "",
+    fecha: fechaEntregaPedido(pedido),
+    items
+  });
+}
+
+function mapaPedidosEnviadosResumen(lista = []) {
+  const mapa = {};
+  lista.forEach(pedido => {
+    if (!pedido?.id) return;
+    mapa[String(pedido.id)] = {
+      firma: firmaPedidoResumen(pedido),
+      cliente: pedido.cliente || "Cliente"
+    };
+  });
+  return mapa;
+}
+
+function cambiosPendientesResumen(listaActual = []) {
+  const enviados = memoriaUltimoEnvio?.pedidosEnviados || {};
+  const actuales = new Map(listaActual.map(pedido => [String(pedido.id), pedido]));
+  const modificados = listaActual.filter(pedido => {
+    const anterior = enviados[String(pedido.id)];
+    const firmaAnterior = typeof anterior === "string" ? anterior : anterior?.firma;
+    return !firmaAnterior || firmaAnterior !== firmaPedidoResumen(pedido);
+  });
+  const retirados = Object.entries(enviados)
+    .filter(([id]) => !actuales.has(String(id)))
+    .map(([id, dato]) => ({
+      id,
+      cliente: typeof dato === "string" ? "Cliente" : (dato?.cliente || "Cliente")
+    }));
+  return { modificados, retirados };
+}
+
 function actualizarPanelMemoriaEnvio() {
   const estado = $("estadoMemoriaEnvio");
   if (!estado) return;
@@ -9912,25 +9973,26 @@ function borrarMemoriaEnvio() {
   alert("Nueva jornada iniciada. Los pedidos fijos del día volvieron a cargarse.");
 }
 
-function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencias, clientesAcumulados) {
+async function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencias, clientesAcumulados, pedidosIncluidos = [], fechaResumen = fechaJornadaActual()) {
   memoriaUltimoEnvio = {
-    fecha: fechaJornadaActual(),
+    fecha: fechaResumen,
     dia: diaJornadaActual(),
     produccion: produccionMapa,
     pedidosTotales: pedidosAcumulados,
     diferencias,
     clientes: clientesAcumulados,
+    pedidosEnviados: mapaPedidosEnviadosResumen(pedidosIncluidos),
     hora: new Date().toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"}),
     actualizado: new Date().toISOString(),
     jornadaEnviada: true
   };
 
   localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-      localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
   actualizarPanelMemoriaEnvio();
+  return syncV600Guardar("resumen", fechaResumen, memoriaUltimoEnvio);
 }
 
-function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, diferenciasNuevas) {
+function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, diferenciasNuevas, pedidosRetirados = []) {
   let mensaje = "FRATELLO - ACTUALIZACIÓN DE PEDIDOS\n\n";
   mensaje += "⚠️ PRIMERO: CAMBIOS A REALIZAR\n\n";
 
@@ -9966,6 +10028,7 @@ function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, dif
   mensaje += "\n--------------------\n";
   mensaje += "PEDIDOS NUEVOS / TARDÍOS:\n\n";
 
+  if (!pedidosNuevos.length) mensaje += "- No hay pedidos nuevos o modificados.\n";
   pedidosNuevos.forEach(pedido => {
     mensaje += `${pedido.cliente}:\n`;
     const items = (pedido.items || []).filter(i => i.estado !== "NO PEDIDO");
@@ -9978,6 +10041,13 @@ function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, dif
     }
     mensaje += "\n";
   });
+
+  if (pedidosRetirados.length) {
+    mensaje += "\nPEDIDOS RETIRADOS / CANCELADOS:\n";
+    pedidosRetirados.forEach(pedido => {
+      mensaje += `- ${pedido.cliente}\n`;
+    });
+  }
 
   mensaje += "Este mensaje complementa el envío anterior.";
   return mensaje;
@@ -10130,16 +10200,25 @@ function verificarChecksAntesDeWhatsApp() {
   return true;
 }
 
-function generarMensajeGrupoFratello() {
+async function generarMensajeGrupoFratello() {
   if (!verificarChecksAntesDeWhatsApp()) return;
 
-  const pedidosNuevos = pedidosConfirmadosParaFecha(fechaPanelSemanalAbierto() || fechaJornadaActual());
-  if (!pedidosNuevos.length) {
+  const fechaResumen = fechaPanelSemanalAbierto() || fechaJornadaActual();
+  const pedidosConfirmadosFecha = pedidosConfirmadosParaFecha(fechaResumen);
+  if (!pedidosConfirmadosFecha.length) {
     alert("No hay pedidos confirmados para enviar.");
     return;
   }
-  const totalesNuevos = totalesPedidosDe(pedidosNuevos);
-  const esActualizacion = memoriaCorrespondeAJornadaActual();
+  const esActualizacion = memoriaUltimoEnvio?.fecha === fechaResumen && memoriaUltimoEnvio?.jornadaEnviada === true;
+  const cambiosResumen = esActualizacion
+    ? cambiosPendientesResumen(pedidosConfirmadosFecha)
+    : { modificados: pedidosConfirmadosFecha, retirados: [] };
+  const pedidosNuevos = cambiosResumen.modificados;
+
+  if (esActualizacion && !pedidosNuevos.length && !cambiosResumen.retirados.length) {
+    alert("Este resumen ya fue enviado y no hay pedidos nuevos ni modificaciones para informar.");
+    return;
+  }
 
   let produccionMapa;
   let pedidosAcumulados;
@@ -10149,21 +10228,21 @@ function generarMensajeGrupoFratello() {
 
   if (esActualizacion) {
     produccionMapa = memoriaUltimoEnvio.produccion || mapaProduccionActual();
-    pedidosAcumulados = sumarTotales(memoriaUltimoEnvio.pedidosTotales, totalesNuevos);
+    // Recalcular desde los pedidos conservados evita duplicar cantidades y
+    // contempla correctamente ediciones o cancelaciones posteriores.
+    pedidosAcumulados = totalesPedidosDe(pedidosConfirmadosFecha);
     diferenciasNuevas = diferenciasDesde(produccionMapa, pedidosAcumulados);
-    clientesAcumulados = [
-      ...(memoriaUltimoEnvio.clientes || []),
-      ...pedidosNuevos.map(p => p.cliente)
-    ];
+    clientesAcumulados = pedidosConfirmadosFecha.map(p => p.cliente);
 
     mensaje = construirMensajeActualizacion(
       pedidosNuevos,
       memoriaUltimoEnvio.diferencias || {},
-      diferenciasNuevas
+      diferenciasNuevas,
+      cambiosResumen.retirados
     );
   } else {
     produccionMapa = mapaProduccionActual();
-    pedidosAcumulados = totalesNuevos;
+    pedidosAcumulados = totalesPedidosDe(pedidosConfirmadosFecha);
     diferenciasNuevas = diferenciasDesde(produccionMapa, pedidosAcumulados);
     clientesAcumulados = pedidosNuevos.map(p => p.cliente);
 
@@ -10211,16 +10290,19 @@ function generarMensajeGrupoFratello() {
     mensaje += "Enviado desde sistema Fratello.";
   }
 
-  guardarMemoriaEnvio(
+  await guardarMemoriaEnvio(
     produccionMapa,
     pedidosAcumulados,
     diferenciasNuevas,
-    [...new Set(clientesAcumulados)]
+    [...new Set(clientesAcumulados)],
+    pedidosConfirmadosFecha,
+    fechaResumen
   );
 
-  cerrarJornada(fechaJornadaActual());
-  limpiarPedidosDespuesDeEnviar();
-  actualizarPanelMemoriaEnvio();
+  // Los pedidos permanecen visibles para Tickets, entregas y controles.
+  // La memoria de firmas evita repetirlos en un segundo envío.
+  sincronizarMemoriaTickets();
+  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 
   abrirWhatsApp("", mensaje);
 }
