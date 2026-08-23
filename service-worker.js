@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v607-pagos-combinados-claros";
+const CACHE_NAME = "fratello-v608-tickets-proximos";
 const ARCHIVOS = [
   "./",
   "./index.html",

@@ -7913,8 +7913,7 @@ function sincronizarMemoriaTickets() {
       tipoTicket: tipo,
       esPedidoHoy: tipo === "hoy",
       fechaTicket:
-        pedido.fechaEntrega ||
-        pedido.fecha ||
+        fechaEntregaPedido(pedido) ||
         pedido.jornada ||
         anterior.fechaTicket ||
         fechaOperativaActual(),
@@ -8057,9 +8056,10 @@ function renderTicketsPorDia() {
 
   const limites = limitesSemanaTickets();
   const fechas = fechasDisponiblesTickets();
-  const fechasSemana = fechas.filter(
-    fecha => fecha >= limites.inicio && fecha <= limites.fin
-  );
+  // La sección principal conserva la semana actual y también las fechas
+  // futuras. Antes, un pedido del lunes desaparecía si se consultaba el
+  // domingo porque quedaba después del fin de la semana actual.
+  const fechasSemana = fechas.filter(fecha => fecha >= limites.inicio);
   const fechasPendientes = fechas.filter(fecha => fecha < limites.inicio);
 
   if (panelSemana) panelSemana.innerHTML = htmlPanelTicketsFechas(fechasSemana, fechaTicketAbierta);
@@ -8110,7 +8110,7 @@ function renderTicketsPorDia() {
   if ($("rangoSemanaTickets")) {
     const inicio = new Date(limites.inicio + "T12:00:00").toLocaleDateString("es-AR");
     const fin = new Date(limites.fin + "T12:00:00").toLocaleDateString("es-AR");
-    $("rangoSemanaTickets").textContent = `Semana actual: ${inicio} al ${fin}`;
+    $("rangoSemanaTickets").textContent = `Semana actual: ${inicio} al ${fin} · Incluye pedidos próximos`;
   }
 }
 

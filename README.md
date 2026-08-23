@@ -1,4 +1,4 @@
-# Fratello v6.0.7
+# Fratello v6.0.8
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -174,4 +174,11 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - Continúan disponibles únicamente Efectivo, Transferencia y Cheque.
 - No se modificaron los gastos ya guardados ni otros módulos de la aplicación.
 
-Versión esperada: v6.0.7
+## Corrección v6.0.8
+- Tickets ahora muestra la semana actual y todos los pedidos próximos.
+- Los pedidos de mañana lunes permanecen visibles aunque hoy sea domingo.
+- La fecha del ticket se obtiene con la misma regla compatible usada por Pedidos.
+- Los tickets de semanas anteriores continúan separados en Pendientes.
+- No se modificaron la carga de pedidos, la sincronización ni los cobros.
+
+Versión esperada: v6.0.8

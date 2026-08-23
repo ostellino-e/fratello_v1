@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=607" />
+  <link rel="stylesheet" href="styles.css?v=608" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.7";
-    document.documentElement.dataset.fratelloVersion = "6.0.7";
+    window.FRATELLO_VERSION = "6.0.8";
+    document.documentElement.dataset.fratelloVersion = "6.0.8";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.7</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.8</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -320,7 +320,7 @@
 
       <div class="ticketTabs" role="tablist" aria-label="Organización de tickets">
         <button type="button" id="btnTicketsSemanaActual" class="ticketTab active" onclick="mostrarPestanaTickets('semana')">
-          Semana actual <span id="badgeTicketsSemana" class="ticketTabBadge">0</span>
+          Actuales y próximos <span id="badgeTicketsSemana" class="ticketTabBadge">0</span>
         </button>
         <button type="button" id="btnTicketsPendientes" class="ticketTab" onclick="mostrarPestanaTickets('pendientes')">
           Pendientes <span id="badgeTicketsPendientes" class="ticketTabBadge">0</span>
@@ -473,7 +473,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.7 · Pagos combinados claros</span>
+        <span class="adminFinanceVersion">v6.0.8 · Tickets próximos visibles</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -1096,7 +1096,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=607"></script>
+  <script src="app.js?v=608"></script>
 
   
 
