@@ -3690,6 +3690,7 @@ function datosActuales() {
     listasPrecioPersonalizadas,
     productosExtra,
     catalogoProductos: productos,
+    productosCatalogoEliminados,
     pedidosConfirmados,
     correspondePedido,
     memoriaUltimoEnvio,
@@ -3988,9 +3989,14 @@ async function cargarDesdeNube() {
       // volver a pisar una lista más nueva.
       // Tickets y pedidos de hoy llegan por sus canales individuales.
       // No cargar también la copia histórica pesada del documento general.
+      productosCatalogoEliminados = fusionarProductosCatalogoEliminados(
+        data.productosCatalogoEliminados,
+        productosCatalogoEliminados
+      );
       productosExtra = Array.isArray(data.productosExtra)
         ? data.productosExtra
         : productosExtra;
+      quitarProductosCatalogoEliminados();
 
       // El catálogo vigente también pertenece al módulo dedicado de precios.
 
@@ -4095,7 +4101,12 @@ async function actualizarDatosManual(evento = null) {
     datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
     // No recuperar precios desde el documento general: puede ser una copia vieja.
     // Tickets y pedidos de hoy se actualizan desde listeners livianos.
+    productosCatalogoEliminados = fusionarProductosCatalogoEliminados(
+      data.productosCatalogoEliminados,
+      productosCatalogoEliminados
+    );
     productosExtra = data.productosExtra || productosExtra;
+    quitarProductosCatalogoEliminados();
     pedidosConfirmados = Boolean(data.pedidosConfirmados);
     correspondePedido = data.correspondePedido || correspondePedido;
     if (!memoriaUltimoEnvio && data.memoriaUltimoEnvio) memoriaUltimoEnvio = data.memoriaUltimoEnvio;
@@ -4438,7 +4449,12 @@ function escucharCambiosNube() {
       datosClientesCompletos = data.datosClientesCompletos || datosClientesCompletos;
       // v5.5.1: el listener general no modifica precios ni catálogo.
       // Solo precios_estado puede actualizarlos.
+      productosCatalogoEliminados = fusionarProductosCatalogoEliminados(
+        data.productosCatalogoEliminados,
+        productosCatalogoEliminados
+      );
       productosExtra = data.productosExtra || productosExtra;
+      quitarProductosCatalogoEliminados();
       pedidosConfirmados = Boolean(data.pedidosConfirmados);
       correspondePedido = data.correspondePedido || correspondePedido;
       // La memoria de resúmenes llega por sync_v600 y no debe ser reemplazada
@@ -4510,6 +4526,7 @@ function guardarTodo() {
   localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
   localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
   localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
+  localStorage.setItem("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
   localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
   localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
       localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
@@ -4536,7 +4553,34 @@ let clientes = JSON.parse(localStorage.getItem("fratello_clientes") || "null") |
 let datosClientesCompletos = JSON.parse(localStorage.getItem("fratello_clientes_completos") || "{}");
 let listasPrecios = JSON.parse(localStorage.getItem("fratello_listas_precios") || "{}");
 let preciosActualizadosEn = localStorage.getItem("fratello_precios_actualizados_en") || "";
+let productosCatalogoEliminados = JSON.parse(localStorage.getItem("fratello_productos_eliminados") || "[]");
+productosCatalogoEliminados = Array.isArray(productosCatalogoEliminados) ? productosCatalogoEliminados : [];
+function idsProductosCatalogoEliminados() {
+  return new Set(productosCatalogoEliminados.map(item => String(item?.id || item || "")).filter(Boolean));
+}
+function fusionarProductosCatalogoEliminados(remotos = [], locales = []) {
+  const mapa = new Map();
+  [...(Array.isArray(remotos) ? remotos : []), ...(Array.isArray(locales) ? locales : [])].forEach(item => {
+    const normalizado = typeof item === "string" ? { id: item, eliminadoEn: "" } : item;
+    const id = String(normalizado?.id || "");
+    if (!id) return;
+    const anterior = mapa.get(id);
+    const fecha = Date.parse(normalizado.eliminadoEn || "") || 0;
+    const fechaAnterior = Date.parse(anterior?.eliminadoEn || "") || 0;
+    if (!anterior || fecha >= fechaAnterior) mapa.set(id, normalizado);
+  });
+  return [...mapa.values()];
+}
+function quitarProductosCatalogoEliminados() {
+  const eliminados = idsProductosCatalogoEliminados();
+  productosExtra = productosExtra.filter(producto => !eliminados.has(String(producto?.id || "")));
+  for (let indice = productos.length - 1; indice >= 0; indice -= 1) {
+    if (eliminados.has(String(productos[indice]?.id || ""))) productos.splice(indice, 1);
+  }
+  localStorage.setItem("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+}
 let productosExtra = JSON.parse(localStorage.getItem("fratello_productos_extra") || "[]");
+quitarProductosCatalogoEliminados();
 productosExtra.forEach(p => { if (!productos.find(x => x.id === p.id)) productos.push(p); });
 
 function formaVentaPredeterminada(unidad) {
@@ -4894,13 +4938,15 @@ function crearIdProductoCatalogo(nombre) {
     .replace(/^_+|_+$/g, "").toUpperCase() || "PRODUCTO";
   let id = base;
   let numero = 2;
-  while (productos.some(p => p.id === id)) id = `${base}_${numero++}`;
+  const eliminados = idsProductosCatalogoEliminados();
+  while (productos.some(p => p.id === id) || eliminados.has(id)) id = `${base}_${numero++}`;
   return id;
 }
 function guardarCatalogoProductos() {
   localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
   localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
   localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
+  localStorage.setItem("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
   guardarEnNube();
   guardarPreciosModuloEnNube();
 }
@@ -5144,21 +5190,27 @@ function agregarProductoAPredeterminada(id) {
   );
 }
 
-function eliminarProductoCatalogo(id) {
+async function eliminarProductoCatalogo(id) {
   const producto = productos.find(p => p.id === id);
   if (!producto) return;
   if (!confirm(`¿Eliminar "${producto.nombre}" de la producción predeterminada?\n\nLos pedidos históricos no se borrarán.`)) return;
   productos.splice(productos.findIndex(p => p.id === id), 1);
   productosExtra = productosExtra.filter(p => p.id !== id);
+  productosCatalogoEliminados = fusionarProductosCatalogoEliminados(
+    productosCatalogoEliminados,
+    [{ id, nombre: producto.nombre, eliminadoEn: new Date().toISOString() }]
+  );
+  preciosActualizadosEn = new Date().toISOString();
+  localStorage.setItem("fratello_precios_actualizados_en", preciosActualizadosEn);
   dias.forEach(dia => {
     if (predeterminadas[dia]) delete predeterminadas[dia][id];
     delete produccion[`${dia}_${id}`];
   });
-  guardarTodo();
+  guardarCatalogoProductos();
   renderAdministradorProductos();
   renderProduccion();
   calcularDiferencias();
-  alert(`Producto "${producto.nombre}" eliminado.`);
+  alert(`Producto "${producto.nombre}" eliminado. El cambio se sincronizará en todos los dispositivos.`);
 }
 function manejarClicksAdministradorProductos(evento) {
   const predeterminada = evento.target.closest("[data-catalog-predeterminada]");
@@ -13960,6 +14012,7 @@ async function guardarPreciosModuloEnNube() {
       listasPrecios,
       listasPrecioPersonalizadas,
       catalogoProductos: productos,
+      productosCatalogoEliminados,
       actualizado: preciosActualizadosEn || new Date().toISOString()
     }, { merge: true });
     setEstadoSync("Online actualizado");
@@ -13988,10 +14041,18 @@ function aplicarPreciosDesdeNube(data = {}, forzar = false) {
   if (Array.isArray(data.listasPrecioPersonalizadas)) {
     listasPrecioPersonalizadas = data.listasPrecioPersonalizadas;
   }
+  productosCatalogoEliminados = fusionarProductosCatalogoEliminados(
+    data.productosCatalogoEliminados,
+    productosCatalogoEliminados
+  );
   if (Array.isArray(data.catalogoProductos) && data.catalogoProductos.length) {
-    productos.splice(0, productos.length, ...data.catalogoProductos);
+    const eliminados = idsProductosCatalogoEliminados();
+    productos.splice(0, productos.length, ...data.catalogoProductos.filter(
+      producto => !eliminados.has(String(producto?.id || ""))
+    ));
     asegurarProductoCriollosCatalogo();
   }
+  quitarProductosCatalogoEliminados();
 
   localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
   localStorage.setItem(
@@ -13999,6 +14060,8 @@ function aplicarPreciosDesdeNube(data = {}, forzar = false) {
     JSON.stringify(listasPrecioPersonalizadas)
   );
   localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
+  localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
+  localStorage.setItem("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
   preciosActualizadosEn = data.actualizado || preciosActualizadosEn;
   if (preciosActualizadosEn) {
     localStorage.setItem("fratello_precios_actualizados_en", preciosActualizadosEn);

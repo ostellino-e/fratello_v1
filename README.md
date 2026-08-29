@@ -1,4 +1,4 @@
-# Fratello v6.0.8
+# Fratello v6.0.9
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -182,3 +182,12 @@ Caja, Pedidos, Tickets, Pagos pendientes e Ingresos no fueron modificados.
 - No se modificaron la carga de pedidos, la sincronización ni los cobros.
 
 Versión esperada: v6.0.8
+
+## Corrección v6.0.9
+
+- El borrado de productos nuevos queda registrado y sincronizado online.
+- Los productos eliminados no reaparecen al actualizar datos ni al abrir otro dispositivo.
+- Las copias históricas del catálogo respetan las marcas de eliminación.
+- Si luego se crea un producto con el mismo nombre, recibe un identificador nuevo.
+
+Versión esperada: v6.0.9
