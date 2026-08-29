@@ -5227,7 +5227,10 @@ function manejarClicksAdministradorProductos(evento) {
 
 
 function normalizarPedidoInteligente(texto) {
-  let t = String(texto || "").toLowerCase();
+  let t = String(texto || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 
   t = t
     .replace(/(\d)\s*k\b/g, "$1 kg")

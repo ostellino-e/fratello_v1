@@ -1,4 +1,4 @@
-# Fratello v6.0.9
+# Fratello v6.0.10
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -191,3 +191,11 @@ Versión esperada: v6.0.8
 - Si luego se crea un producto con el mismo nombre, recibe un identificador nuevo.
 
 Versión esperada: v6.0.9
+
+## Corrección v6.0.10
+
+- El reconocimiento de pedidos ahora ignora diferencias de tildes.
+- "budin" y "Budín" se identifican como el mismo producto.
+- Se mantiene el borrado definitivo de productos de la v6.0.9.
+
+Versión esperada: v6.0.10
