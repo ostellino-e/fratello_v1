@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6010-reconocimiento-productos";
+const CACHE_NAME = "fratello-v6011-produccion-online";
 const ARCHIVOS = [
   "./",
   "./index.html",

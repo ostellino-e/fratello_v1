@@ -3119,7 +3119,7 @@ let syncV600Unsubscribe = null;
 let syncV600Reintentando = false;
 let syncV600RenderTimer = null;
 const syncV600IdsConocidos = new Set();
-const syncV600CambiosPendientes = { pedidos: false, tickets: false, caja: false };
+const syncV600CambiosPendientes = { pedidos: false, tickets: false, caja: false, produccion: false };
 
 function syncV600Coleccion() {
   if (!db) return null;
@@ -3304,6 +3304,27 @@ function syncV600Aplicar(data, cambios) {
     return;
   }
 
+  if (tipo === "produccion" && data.payload) {
+    const dia = String(data.payload.dia || id);
+    const fechaLocal = Date.parse(produccionActualizadaEnPorDia?.[dia] || "") || 0;
+    const fechaRemota = Date.parse(fechaServidor || data.actualizadoIso || "") || 0;
+
+    // Una confirmación antigua nunca puede pisar lo recién editado en este dispositivo.
+    if (fechaRemota >= fechaLocal) {
+      Object.keys(produccion).forEach(clave => {
+        if (clave.startsWith(`${dia}_`)) delete produccion[clave];
+      });
+      Object.entries(data.payload.valores || {}).forEach(([productoId, cantidad]) => {
+        produccion[`${dia}_${productoId}`] = Number(cantidad || 0);
+      });
+      produccionActualizadaEnPorDia[dia] = fechaServidor;
+      localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
+      localStorage.setItem("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
+      cambios.produccion = true;
+    }
+    return;
+  }
+
   if (tipo === "resumen" && data.payload) {
     memoriaUltimoEnvio = { ...data.payload, actualizado: fechaServidor };
     localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
@@ -3315,12 +3336,14 @@ function syncV600Renderizar(cambios) {
   syncV600CambiosPendientes.pedidos ||= Boolean(cambios.pedidos);
   syncV600CambiosPendientes.tickets ||= Boolean(cambios.tickets);
   syncV600CambiosPendientes.caja ||= Boolean(cambios.caja);
+  syncV600CambiosPendientes.produccion ||= Boolean(cambios.produccion);
   clearTimeout(syncV600RenderTimer);
   syncV600RenderTimer = setTimeout(() => {
     const pendientes = { ...syncV600CambiosPendientes };
     syncV600CambiosPendientes.pedidos = false;
     syncV600CambiosPendientes.tickets = false;
     syncV600CambiosPendientes.caja = false;
+    syncV600CambiosPendientes.produccion = false;
     if (pendientes.pedidos) {
       guardarPedidosLocal();
       localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
@@ -3345,6 +3368,11 @@ function syncV600Renderizar(cambios) {
         else renderAdministracionFinanciera();
       }
     }
+    if (pendientes.produccion && seccionActualFratello === "seccionProduccion") {
+      renderProduccion();
+      calcularDiferencias();
+      actualizarEstadoConfirmacion();
+    }
   }, 350);
 }
 
@@ -3360,7 +3388,7 @@ function iniciarSyncCentralV600() {
   const coleccion = syncV600Coleccion();
   syncV600Unsubscribe = coleccion.orderBy("serverUpdatedAt", "desc").limit(300)
     .onSnapshot(snapshot => {
-      const cambios = { pedidos: false, tickets: false, caja: false };
+      const cambios = { pedidos: false, tickets: false, caja: false, produccion: false };
       snapshot.docChanges().forEach(cambio => {
         // La pantalla ya muestra el cambio local. Esperar la confirmación del
         // servidor evita dibujar dos veces por una misma operación.
@@ -3368,7 +3396,7 @@ function iniciarSyncCentralV600() {
           syncV600Aplicar(cambio.doc.data() || {}, cambios);
         }
       });
-      if (cambios.pedidos || cambios.tickets || cambios.caja) syncV600Renderizar(cambios);
+      if (cambios.pedidos || cambios.tickets || cambios.caja || cambios.produccion) syncV600Renderizar(cambios);
       setEstadoSync("Online actualizado");
     }, error => {
       console.error("Listener sync central:", error);
@@ -3383,6 +3411,30 @@ function iniciarSyncCentralV600() {
     });
   syncV600ReenviarCola().catch(() => {});
   programarMigracionSyncV600();
+  programarMigracionProduccionV6011();
+}
+
+function valoresProduccionPorDia(dia) {
+  const prefijo = `${dia}_`;
+  const valores = {};
+  Object.entries(produccion || {}).forEach(([clave, cantidad]) => {
+    if (clave.startsWith(prefijo)) valores[clave.slice(prefijo.length)] = Number(cantidad || 0);
+  });
+  return valores;
+}
+
+function programarMigracionProduccionV6011() {
+  setTimeout(async () => {
+    const clave = "fratello_migracion_produccion_v6011";
+    if (localStorage.getItem(clave) === "completa") return;
+    for (const dia of dias) {
+      await syncV600Guardar("produccion", dia, {
+        dia,
+        valores: valoresProduccionPorDia(dia)
+      }, false, { soloCrear: true });
+    }
+    localStorage.setItem(clave, "completa");
+  }, 2500);
 }
 
 function programarMigracionSyncV600() {
@@ -4079,7 +4131,7 @@ async function actualizarDatosManual(evento = null) {
     const data = doc.data();
     cargandoDesdeNube = true;
 
-    produccion = data.produccion || produccion;
+    // Producción se actualiza desde el canal central; no recuperar aquí una copia vieja.
     jornadasCerradas = Array.isArray(data.jornadasCerradas)
       ? data.jornadasCerradas
       : jornadasCerradas;
@@ -4396,7 +4448,7 @@ function escucharCambiosNube() {
     try {
       const data = doc.data();
 
-      produccion = data.produccion || produccion;
+      // Producción se recibe por sync_v600 para evitar que una copia histórica pise cambios nuevos.
 
       pedidosEliminados = fusionarPedidosEliminados(
         data.pedidosEliminados,
@@ -4536,6 +4588,10 @@ function guardarTodo() {
 
 
 let produccion = JSON.parse(localStorage.getItem("fratello_produccion") || "{}");
+let produccionActualizadaEnPorDia = JSON.parse(localStorage.getItem("fratello_produccion_actualizada_por_dia") || "{}");
+if (!produccionActualizadaEnPorDia || typeof produccionActualizadaEnPorDia !== "object" || Array.isArray(produccionActualizadaEnPorDia)) {
+  produccionActualizadaEnPorDia = {};
+}
 let pedidos = JSON.parse(localStorage.getItem("fratello_pedidos") || "[]");
 let pedidosEliminados = JSON.parse(localStorage.getItem("fratello_pedidos_eliminados") || "[]");
 // Migración v5.2.2: descartar firmas semánticas antiguas de pedidos manuales.
@@ -4829,7 +4885,7 @@ function bloquearProduccion() {
   renderProduccion();
 }
 
-function guardarProduccion() {
+async function guardarProduccion() {
   if (!produccionDesbloqueada) {
     alert("Producción bloqueada. Primero desbloqueá.");
     return;
@@ -4862,8 +4918,22 @@ function guardarProduccion() {
     produccion[claveProduccion(prodId)] = cantidad;
   });
 
+  const dia = diaActual();
+  produccionActualizadaEnPorDia[dia] = new Date().toISOString();
+  localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
+  localStorage.setItem("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
+
+  const guardadoOnline = await syncV600Guardar("produccion", dia, {
+    dia,
+    valores: valoresProduccionPorDia(dia)
+  });
+
+  // Se conserva la copia general solamente como respaldo para versiones anteriores.
   guardarTodo();
-  alert("Producción estibada/realizada guardada.");
+  alert(guardadoOnline
+    ? "Producción estibada/realizada guardada online."
+    : "La producción quedó guardada en este dispositivo, pero no se pudo confirmar online. Revisá la conexión antes de actualizar."
+  );
   calcularDiferencias();
   actualizarEstadoConfirmacion();
 }

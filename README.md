@@ -1,4 +1,4 @@
-# Fratello v6.0.10
+# Fratello v6.0.11
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -199,3 +199,12 @@ Versión esperada: v6.0.9
 - Se mantiene el borrado definitivo de productos de la v6.0.9.
 
 Versión esperada: v6.0.10
+
+## Corrección v6.0.11
+
+- La producción realizada y estibada se guarda inmediatamente en el canal central.
+- Cada día de producción se sincroniza como un registro independiente.
+- Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
+- El mensaje de éxito aparece después de la confirmación online.
+
+Versión esperada: v6.0.11
