@@ -12424,6 +12424,21 @@ function eliminarPresupuestoAdministracion(id) {
 // v6.0.12 · Cálculo local de horas desde el archivo del reloj
 let archivoHorasEmpleadosActual = null;
 let resultadoHorasEmpleadosActual = [];
+let correccionHorasActual = null;
+const HORAS_CORRECCIONES_STORAGE = "fratello_horas_correcciones_v6013";
+
+function horasCargarCorrecciones() {
+  try { return JSON.parse(localStorage.getItem(HORAS_CORRECCIONES_STORAGE) || "{}"); }
+  catch (_) { return {}; }
+}
+
+function horasGuardarCorrecciones(datos) {
+  localStorage.setItem(HORAS_CORRECCIONES_STORAGE, JSON.stringify(datos || {}));
+}
+
+function horasClaveCorreccion(numeroEmpleado, fecha) {
+  return `${archivoHorasEmpleadosActual?.nombreArchivo || "archivo"}|${numeroEmpleado}|${fecha}`;
+}
 
 function horasNormalizarNombre(valor) {
   return String(valor || "")
@@ -12608,6 +12623,22 @@ function horasCalcularResultados() {
     if (clave === "ana") jornadas = horasProcesarAna(empleado.dias);
     else if (clave === "arnold") jornadas = horasProcesarArnold(empleado.dias, archivoHorasEmpleadosActual.periodo);
     else jornadas = horasProcesarEmpleadoContinuo(empleado.nombre, empleado.dias);
+    const correcciones = horasCargarCorrecciones();
+    jornadas = jornadas.map(jornada => {
+      const manual = correcciones[horasClaveCorreccion(empleado.numero, jornada.fecha)];
+      if (!manual?.marcaciones?.length) return jornada;
+      const calculada = horasCalcularMarcacionesManuales(empleado.nombre, manual.marcaciones);
+      if (!calculada.ok) return jornada;
+      return {
+        ...jornada,
+        marcasOriginales:jornada.marcas,
+        marcas:calculada.marcas,
+        minutos:calculada.minutos,
+        estado:"Corregido manualmente",
+        revisar:false,
+        manual:true
+      };
+    });
     jornadas = jornadas.filter(j => j.fecha >= desde && j.fecha <= hasta && (j.marcas.length || j.minutos));
     const totalMinutos = jornadas.reduce((s,j) => s + j.minutos, 0);
     const revisar = jornadas.filter(j => j.revisar).length;
@@ -12628,7 +12659,97 @@ function horasRenderResultados() {
     return;
   }
   resumen.innerHTML = resultados.map(e => `<article class="employeeHoursCard"><span>${adminFinEscapar(e.nombre)}</span><strong>${horasFormatearMinutos(e.totalMinutos)}</strong><small>${e.totalMinutos} minutos${e.revisar ? ` · ${e.revisar} día(s) para revisar` : ""}</small></article>`).join("");
-  detalle.innerHTML = resultados.map(e => `<details class="employeeHoursEmployee"><summary><span><strong>${adminFinEscapar(e.nombre)}</strong><small>${e.jornadas.length} jornada(s)${e.revisar ? ` · ${e.revisar} para revisar` : ""}</small></span><b>${horasFormatearMinutos(e.totalMinutos)}</b></summary><div class="employeeHoursTableWrap"><table class="employeeHoursTable"><thead><tr><th>Día laboral</th><th>Marcaciones</th><th>Minutos</th><th>Horas</th><th>Estado</th></tr></thead><tbody>${e.jornadas.map(j => `<tr><td>${adminFinEscapar(horasFechaLegible(j.fecha))}</td><td>${adminFinEscapar(j.marcas.map(m => m.texto).join(" → ") || "—")}</td><td>${j.minutos}</td><td>${horasFormatearMinutos(j.minutos)}</td><td class="${j.revisar ? "employeeHoursReview" : "employeeHoursOk"}">${adminFinEscapar(j.estado)}</td></tr>`).join("")}</tbody></table></div></details>`).join("");
+  detalle.innerHTML = resultados.map(e => `<details class="employeeHoursEmployee"><summary><span><strong>${adminFinEscapar(e.nombre)}</strong><small>${e.jornadas.length} jornada(s)${e.revisar ? ` · ${e.revisar} para revisar` : ""}</small></span><b>${horasFormatearMinutos(e.totalMinutos)}</b></summary><div class="employeeHoursTableWrap"><table class="employeeHoursTable"><thead><tr><th>Día laboral</th><th>Marcaciones</th><th>Minutos</th><th>Horas</th><th>Estado</th></tr></thead><tbody>${e.jornadas.map(j => `<tr><td>${adminFinEscapar(horasFechaLegible(j.fecha))}</td><td>${adminFinEscapar(j.marcas.map(m => m.texto).join(" → ") || "—")}${j.manual ? '<span class="employeeHoursManualBadge">EDITADO</span>' : ""}</td><td>${j.minutos}</td><td>${horasFormatearMinutos(j.minutos)}</td><td class="${j.revisar ? "employeeHoursReview" : "employeeHoursOk"}">${adminFinEscapar(j.estado)}${j.revisar || j.manual ? `<br><button class="employeeHoursRowAction" type="button" data-editar-horas="1" data-empleado-horas="${adminFinEscapar(e.numero)}" data-fecha-horas="${adminFinEscapar(j.fecha)}">${j.manual ? "Volver a editar" : "Corregir marcaciones"}</button>` : ""}</td></tr>`).join("")}</tbody></table></div></details>`).join("");
+}
+
+function horasCalcularMarcacionesManuales(nombreEmpleado, textos) {
+  const marcas = (textos || []).map(texto => {
+    const m = String(texto || "").match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+    if (!m) return null;
+    const hora = Number(m[1]);
+    const minuto = Number(m[2]);
+    return { hora, minuto, minutosDia:hora * 60 + minuto, texto:`${m[1]}:${m[2]}` };
+  });
+  if (marcas.some(x => !x) || marcas.length < 2) return { ok:false, mensaje:"Completá al menos una entrada y una salida." };
+  const clave = horasNormalizarNombre(nombreEmpleado);
+  if (clave !== "ana" && marcas.length !== 2) return { ok:false, mensaje:"Para este empleado deben quedar exactamente una entrada y una salida." };
+  if (clave === "ana" && marcas.length % 2 !== 0) return { ok:false, mensaje:"Ana debe tener pares completos de entrada y salida." };
+  let minutos = 0;
+  if (clave === "ana") {
+    for (let i=0; i<marcas.length; i+=2) {
+      if (marcas[i+1].minutosDia <= marcas[i].minutosDia) return { ok:false, mensaje:"Cada salida de Ana debe ser posterior a su entrada." };
+      minutos += marcas[i+1].minutosDia - marcas[i].minutosDia;
+    }
+  } else if (clave === "arnold") {
+    let salida = marcas[1].minutosDia;
+    if (salida <= marcas[0].minutosDia) salida += 1440;
+    minutos = salida - marcas[0].minutosDia;
+    if (minutos <= 0 || minutos > 12 * 60) return { ok:false, mensaje:"El turno de Arnold debe durar entre 1 minuto y 12 horas." };
+  } else {
+    if (marcas[1].minutosDia <= marcas[0].minutosDia) return { ok:false, mensaje:"La salida debe ser posterior a la entrada." };
+    minutos = marcas[1].minutosDia - marcas[0].minutosDia;
+  }
+  return { ok:true, marcas, minutos };
+}
+
+function horasRenderEditorMarcaciones(marcaciones = []) {
+  const host = $("listaCorreccionMarcaciones");
+  if (!host) return;
+  const valores = marcaciones.length ? [...marcaciones] : ["", ""];
+  while (valores.length < 2) valores.push("");
+  host.innerHTML = valores.map((valor, indice) => `<div class="employeeHoursEditRow"><span>${indice + 1}</span><input type="time" value="${adminFinEscapar(valor)}" aria-label="Marcación ${indice + 1}"><button type="button" data-quitar-marcacion="${indice}" ${valores.length <= 2 ? "disabled" : ""}>Quitar</button></div>`).join("");
+}
+
+function horasAbrirCorreccion(numeroEmpleado, fecha) {
+  const empleado = resultadoHorasEmpleadosActual.find(e => String(e.numero) === String(numeroEmpleado));
+  const jornada = empleado?.jornadas.find(j => j.fecha === fecha);
+  if (!empleado || !jornada) return;
+  correccionHorasActual = { numeroEmpleado:String(numeroEmpleado), nombreEmpleado:empleado.nombre, fecha };
+  $("tituloCorregirHoras").textContent = `Editar marcaciones · ${empleado.nombre}`;
+  $("detalleCorregirHoras").textContent = `${horasFechaLegible(fecha)} · Día laboral ${fecha}`;
+  $("estadoCorreccionHoras").textContent = "";
+  horasRenderEditorMarcaciones(jornada.marcas.map(m => m.texto));
+  $("modalCorregirHoras").classList.remove("hidden");
+}
+
+function horasCerrarCorreccion() {
+  $("modalCorregirHoras")?.classList.add("hidden");
+  correccionHorasActual = null;
+}
+
+function horasValoresEditor() {
+  return [...document.querySelectorAll("#listaCorreccionMarcaciones input[type=time]")].map(input => input.value);
+}
+
+function horasAgregarMarcacionEditor() {
+  const valores = horasValoresEditor();
+  valores.push("");
+  horasRenderEditorMarcaciones(valores);
+}
+
+function horasQuitarMarcacionEditor(indice) {
+  const valores = horasValoresEditor();
+  if (valores.length <= 2) return;
+  valores.splice(indice, 1);
+  horasRenderEditorMarcaciones(valores);
+}
+
+function horasGuardarCorreccionManual() {
+  if (!correccionHorasActual) return;
+  const valores = horasValoresEditor();
+  const calculada = horasCalcularMarcacionesManuales(correccionHorasActual.nombreEmpleado, valores);
+  if (!calculada.ok) {
+    $("estadoCorreccionHoras").textContent = calculada.mensaje;
+    return;
+  }
+  const correcciones = horasCargarCorrecciones();
+  correcciones[horasClaveCorreccion(correccionHorasActual.numeroEmpleado, correccionHorasActual.fecha)] = {
+    marcaciones:calculada.marcas.map(m => m.texto),
+    actualizadoEn:new Date().toISOString()
+  };
+  horasGuardarCorrecciones(correcciones);
+  horasCerrarCorreccion();
+  horasRenderResultados();
 }
 
 async function horasCargarArchivo(evento) {
@@ -12672,6 +12793,21 @@ function iniciarModuloHorasEmpleados() {
   $("archivoRelojEmpleados")?.addEventListener("change", horasCargarArchivo);
   $("btnCalcularHorasEmpleados")?.addEventListener("click", horasRenderResultados);
   $("btnExportarHorasEmpleados")?.addEventListener("click", horasExportarCSV);
+  $("detalleHorasEmpleados")?.addEventListener("click", evento => {
+    const boton = evento.target.closest("[data-editar-horas]");
+    if (boton) horasAbrirCorreccion(boton.dataset.empleadoHoras, boton.dataset.fechaHoras);
+  });
+  $("btnAgregarMarcacionHoras")?.addEventListener("click", horasAgregarMarcacionEditor);
+  $("listaCorreccionMarcaciones")?.addEventListener("click", evento => {
+    const boton = evento.target.closest("[data-quitar-marcacion]");
+    if (boton) horasQuitarMarcacionEditor(Number(boton.dataset.quitarMarcacion));
+  });
+  $("btnGuardarCorregirHoras")?.addEventListener("click", horasGuardarCorreccionManual);
+  $("btnCerrarCorregirHoras")?.addEventListener("click", horasCerrarCorreccion);
+  $("btnCancelarCorregirHoras")?.addEventListener("click", horasCerrarCorreccion);
+  $("modalCorregirHoras")?.addEventListener("click", evento => {
+    if (evento.target?.id === "modalCorregirHoras") horasCerrarCorreccion();
+  });
 }
 
 function tituloTabAdministracion(nombre) {

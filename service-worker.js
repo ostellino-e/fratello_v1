@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6012-horas-empleados";
+const CACHE_NAME = "fratello-v6013-correccion-marcaciones";
 const ARCHIVOS = [
   "./",
   "./index.html",

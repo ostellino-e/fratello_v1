@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.12";
-    document.documentElement.dataset.fratelloVersion = "6.0.12";
+    window.FRATELLO_VERSION = "6.0.13";
+    document.documentElement.dataset.fratelloVersion = "6.0.13";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.12</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.13</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -473,7 +473,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.12 · Horas de empleados</span>
+        <span class="adminFinanceVersion">v6.0.13 · Corrección de marcaciones</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -833,6 +833,23 @@
             <span>Arnold: el turno cercano a las 00:00 se asigna al día laboral anterior.</span>
             <span>Marcaciones incompletas quedan señaladas para revisar.</span>
           </aside>
+
+          <div id="modalCorregirHoras" class="employeeHoursModal hidden" role="dialog" aria-modal="true" aria-labelledby="tituloCorregirHoras">
+            <div class="employeeHoursModalCard">
+              <button id="btnCerrarCorregirHoras" class="employeeHoursModalClose" type="button" aria-label="Cerrar">×</button>
+              <span class="securityEyebrow">CORRECCIÓN MANUAL</span>
+              <h3 id="tituloCorregirHoras">Editar marcaciones</h3>
+              <p id="detalleCorregirHoras"></p>
+              <div id="listaCorreccionMarcaciones" class="employeeHoursEditMarks"></div>
+              <button id="btnAgregarMarcacionHoras" type="button">＋ Agregar marcación</button>
+              <small class="employeeHoursEditHint">Ordenalas como entrada y salida. Ana puede tener cuatro marcaciones: entrada, salida, entrada y salida.</small>
+              <div id="estadoCorreccionHoras" class="employeeHoursEditStatus"></div>
+              <div class="employeeHoursModalActions">
+                <button id="btnCancelarCorregirHoras" type="button">Cancelar</button>
+                <button id="btnGuardarCorregirHoras" class="primary" type="button">Guardar y recalcular</button>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section class="adminFinanceTab securityPanel" data-admin-panel="usuarios">
@@ -1130,7 +1147,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6012"></script>
+  <script src="app.js?v=6013"></script>
 
   
 

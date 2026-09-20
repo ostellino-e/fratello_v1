@@ -1,4 +1,12 @@
-# Fratello v6.0.12
+# Fratello v6.0.13
+
+## Mejora v6.0.13
+
+- Las jornadas marcadas para revisar ahora se pueden editar.
+- Permite completar, cambiar, agregar o quitar marcaciones.
+- Al guardar recalcula el día y el total del empleado inmediatamente.
+- Las correcciones quedan guardadas localmente para el mismo archivo y fecha.
+- Las marcaciones corregidas quedan identificadas como **EDITADO**.
 
 ## Mejora v6.0.12
 
@@ -217,4 +225,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.12
+Versión esperada: v6.0.13
