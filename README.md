@@ -1,4 +1,21 @@
-# Fratello v6.0.13
+# Fratello v6.0.15
+
+## Mejora v6.0.15
+
+- Guarda el último archivo de horas procesado para abrirlo en otros dispositivos.
+- Sincroniza también correcciones y jornadas agregadas manualmente.
+- Muestra una tarjeta con el último archivo guardado en Administración.
+- Permite ver las marcaciones originales como tabla desde la app.
+- Permite descargar esa vista como imagen PNG.
+- El ZIP de entrega incluye los archivos directamente en la raíz.
+
+## Mejora v6.0.14
+
+- Unifica automáticamente marcaciones duplicadas separadas por hasta 10 minutos.
+- Una marca aislada puede invertirse de entrada a salida antes de completar la faltante.
+- Permite agregar una jornada manual en un día sin ninguna fichada.
+- Las nuevas jornadas permiten elegir empleado, fecha, entrada y salida.
+- Los totales se recalculan inmediatamente después de cada corrección.
 
 ## Mejora v6.0.13
 
@@ -225,4 +242,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.13
+Versión esperada: v6.0.15

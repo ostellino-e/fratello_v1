@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.13";
-    document.documentElement.dataset.fratelloVersion = "6.0.13";
+    window.FRATELLO_VERSION = "6.0.15";
+    document.documentElement.dataset.fratelloVersion = "6.0.15";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.13</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.15</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -473,7 +473,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.13 · Corrección de marcaciones</span>
+        <span class="adminFinanceVersion">v6.0.15 · Horas en todos los dispositivos</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -816,10 +816,18 @@
 
           <div id="estadoHorasEmpleados" class="employeeHoursStatus">Todavía no cargaste un archivo.</div>
 
+          <article id="ultimoArchivoHorasGuardado" class="employeeHoursCloudCard hidden">
+            <div><span>☁️ ÚLTIMO ARCHIVO GUARDADO</span><strong id="nombreUltimoArchivoHoras">—</strong><small id="detalleUltimoArchivoHoras">—</small></div>
+            <button id="btnCargarUltimoArchivoHoras" class="primary" type="button">Abrir últimos datos</button>
+          </article>
+
           <section id="controlesHorasEmpleados" class="employeeHoursControls hidden">
             <label>Desde<input id="horasEmpleadosDesde" type="date"></label>
             <label>Hasta<input id="horasEmpleadosHasta" type="date"></label>
             <button id="btnCalcularHorasEmpleados" class="primary" type="button">Calcular período</button>
+            <button id="btnAgregarJornadaManual" type="button">＋ Agregar jornada manual</button>
+            <button id="btnGuardarHorasOnline" type="button">☁️ Guardar para todos</button>
+            <button id="btnVerArchivoHoras" type="button">👁️ Ver archivo cargado</button>
             <button id="btnExportarHorasEmpleados" type="button">Exportar CSV</button>
           </section>
 
@@ -840,13 +848,34 @@
               <span class="securityEyebrow">CORRECCIÓN MANUAL</span>
               <h3 id="tituloCorregirHoras">Editar marcaciones</h3>
               <p id="detalleCorregirHoras"></p>
+              <div id="datosNuevaJornadaHoras" class="employeeHoursNewShift hidden">
+                <label>Empleado<select id="empleadoNuevaJornadaHoras"></select></label>
+                <label>Día trabajado<input id="fechaNuevaJornadaHoras" type="date"></label>
+              </div>
               <div id="listaCorreccionMarcaciones" class="employeeHoursEditMarks"></div>
-              <button id="btnAgregarMarcacionHoras" type="button">＋ Agregar marcación</button>
+              <div class="employeeHoursEditTools">
+                <button id="btnInvertirMarcacionHoras" class="hidden" type="button">⇄ Esta marca es la salida</button>
+                <button id="btnAgregarMarcacionHoras" type="button">＋ Agregar marcación</button>
+              </div>
               <small class="employeeHoursEditHint">Ordenalas como entrada y salida. Ana puede tener cuatro marcaciones: entrada, salida, entrada y salida.</small>
               <div id="estadoCorreccionHoras" class="employeeHoursEditStatus"></div>
               <div class="employeeHoursModalActions">
                 <button id="btnCancelarCorregirHoras" type="button">Cancelar</button>
                 <button id="btnGuardarCorregirHoras" class="primary" type="button">Guardar y recalcular</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="modalVistaArchivoHoras" class="employeeHoursModal hidden" role="dialog" aria-modal="true" aria-labelledby="tituloVistaArchivoHoras">
+            <div class="employeeHoursModalCard employeeHoursPreviewCard">
+              <button id="btnCerrarVistaArchivoHoras" class="employeeHoursModalClose" type="button" aria-label="Cerrar">×</button>
+              <span class="securityEyebrow">ARCHIVO DEL RELOJ</span>
+              <h3 id="tituloVistaArchivoHoras">Vista del archivo cargado</h3>
+              <p id="detalleVistaArchivoHoras"></p>
+              <div id="contenidoVistaArchivoHoras" class="employeeHoursFilePreview"></div>
+              <div class="employeeHoursModalActions">
+                <button id="btnDescargarImagenHoras" type="button">🖼️ Descargar imagen</button>
+                <button id="btnCerrarVistaArchivoHorasAbajo" class="primary" type="button">Cerrar</button>
               </div>
             </div>
           </div>
@@ -1147,7 +1176,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6013"></script>
+  <script src="app.js?v=6015"></script>
 
   
 
