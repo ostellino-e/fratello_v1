@@ -1,4 +1,14 @@
-# Fratello v6.0.11
+# Fratello v6.0.12
+
+## Mejora v6.0.12
+
+- Nueva sección **Administración → Horas de empleados**.
+- Importa directamente archivos `.XLS` y `.XLSX` del reloj de marcación.
+- Calcula minutos reales y los convierte a horas y minutos, sin redondeo.
+- Para Ana suma por separado los turnos de mañana y tarde.
+- Para Arnold une el turno que cruza las 00:00 y lo asigna al día laboral anterior.
+- Marca fichadas incompletas o adicionales para revisión.
+- Permite filtrar el período y exportar el detalle a CSV.
 
 ## Gastos por fuera de Caja
 - Un gasto puede dividirse entre Efectivo, Transferencia, Cheque, Mercado Pago y Otro.
@@ -207,4 +217,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.11
+Versión esperada: v6.0.12

@@ -132,13 +132,14 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6011-produccion-online";
+const CACHE_NAME = "fratello-v6012-horas-empleados";
 const ARCHIVOS = [
   "./",
   "./index.html",
   "./pedido.html",
   "./styles.css",
   "./app.js",
+  "./xlsx.full.min.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",

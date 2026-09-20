@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.11";
-    document.documentElement.dataset.fratelloVersion = "6.0.11";
+    window.FRATELLO_VERSION = "6.0.12";
+    document.documentElement.dataset.fratelloVersion = "6.0.12";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.11</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.12</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -473,7 +473,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.11 · Producción guardada online</span>
+        <span class="adminFinanceVersion">v6.0.12 · Horas de empleados</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -497,6 +497,7 @@
           <button type="button" data-admin-tab="gastos">💸 Gastos</button>
           <button type="button" data-admin-tab="presupuesto">📅 Presupuesto</button>
           <button type="button" data-admin-tab="caja">🏦 Caja privada <span class="adminTabNew">NUEVO</span></button>
+          <button type="button" data-admin-tab="horas">⏱️ Horas de empleados <span class="adminTabNew">NUEVO</span></button>
           <button type="button" data-admin-tab="usuarios">👥 Usuarios</button>
           <button type="button" data-admin-tab="dispositivos">📱 Dispositivos</button>
           <button type="button" data-admin-tab="auditoria">📜 Auditoría</button>
@@ -802,6 +803,38 @@
           </section>
         </section>
 
+        <section class="adminFinanceTab employeeHoursPanel hidden" data-admin-panel="horas">
+          <article class="employeeHoursHero">
+            <div>
+              <span class="securityEyebrow">RELOJ DE MARCACIÓN</span>
+              <h3>Horas de empleados</h3>
+              <p>Cargá el archivo .XLS del reloj. El cálculo se realiza en este dispositivo y muestra minutos reales convertidos a horas y minutos.</p>
+            </div>
+            <label class="employeeHoursUpload primary" for="archivoRelojEmpleados">📥 Cargar archivo del reloj</label>
+            <input id="archivoRelojEmpleados" type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+          </article>
+
+          <div id="estadoHorasEmpleados" class="employeeHoursStatus">Todavía no cargaste un archivo.</div>
+
+          <section id="controlesHorasEmpleados" class="employeeHoursControls hidden">
+            <label>Desde<input id="horasEmpleadosDesde" type="date"></label>
+            <label>Hasta<input id="horasEmpleadosHasta" type="date"></label>
+            <button id="btnCalcularHorasEmpleados" class="primary" type="button">Calcular período</button>
+            <button id="btnExportarHorasEmpleados" type="button">Exportar CSV</button>
+          </section>
+
+          <div id="resumenHorasEmpleados" class="employeeHoursSummary"></div>
+          <div id="detalleHorasEmpleados" class="employeeHoursDetail"></div>
+
+          <aside class="employeeHoursRules">
+            <strong>Reglas aplicadas</strong>
+            <span>Minutos reales, sin redondeo.</span>
+            <span>Ana: suma separada de mañana y tarde.</span>
+            <span>Arnold: el turno cercano a las 00:00 se asigna al día laboral anterior.</span>
+            <span>Marcaciones incompletas quedan señaladas para revisar.</span>
+          </aside>
+        </section>
+
         <section class="adminFinanceTab securityPanel" data-admin-panel="usuarios">
           <article class="securityHero">
             <div><span class="securityEyebrow">CONTROL DE ACCESO</span><h3>Usuarios y roles</h3>
@@ -1096,7 +1129,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="app.js?v=608"></script>
+  <script src="xlsx.full.min.js?v=185"></script>
+  <script src="app.js?v=6012"></script>
 
   
 

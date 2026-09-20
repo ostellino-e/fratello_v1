@@ -5245,3 +5245,21 @@ body.modal-open{
     font-size:9px!important;
   }
 }
+/* v6.0.12 · Horas de empleados */
+.employeeHoursPanel{display:grid;gap:16px}
+.employeeHoursHero{display:flex;align-items:center;gap:18px;padding:22px;border-radius:18px;background:linear-gradient(135deg,#fff7df,#fff);border:1px solid #ead9a9}
+.employeeHoursHero>div{flex:1}.employeeHoursHero h3{margin:4px 0 6px;font-size:1.35rem}.employeeHoursHero p{margin:0;color:#5f6368;line-height:1.45}
+.employeeHoursUpload{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:12px;cursor:pointer;white-space:nowrap}
+.employeeHoursStatus{padding:13px 16px;border-radius:12px;background:#f3f5f7;color:#4b5563;border:1px solid #e1e5e9}
+.employeeHoursStatus.ok{background:#eaf8ef;color:#176b37;border-color:#bde2c9}.employeeHoursStatus.error{background:#fff0f0;color:#a32828;border-color:#efc1c1}
+.employeeHoursControls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;padding:16px;border-radius:14px;background:#fff;border:1px solid #e3e5e8}
+.employeeHoursControls label{display:grid;gap:6px;font-weight:700;color:#374151}.employeeHoursControls input{min-height:42px;padding:8px 10px;border:1px solid #cfd4da;border-radius:10px;background:#fff}
+.employeeHoursSummary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.employeeHoursCard{padding:16px;border-radius:15px;background:#fff;border:1px solid #e1e4e8;box-shadow:0 4px 14px rgba(0,0,0,.04)}
+.employeeHoursCard span{display:block;color:#6b7280;font-size:.86rem}.employeeHoursCard strong{display:block;margin-top:5px;font-size:1.35rem;color:#18212b}.employeeHoursCard small{display:block;margin-top:5px;color:#8a4b08}
+.employeeHoursDetail{display:grid;gap:12px}.employeeHoursEmployee{border:1px solid #dfe3e7;border-radius:15px;background:#fff;overflow:hidden}
+.employeeHoursEmployee summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px;cursor:pointer;list-style:none}.employeeHoursEmployee summary::-webkit-details-marker{display:none}
+.employeeHoursEmployee summary span{display:grid;gap:3px}.employeeHoursEmployee summary small{color:#6b7280}.employeeHoursEmployee summary b{font-size:1.15rem;white-space:nowrap}
+.employeeHoursTableWrap{overflow:auto;border-top:1px solid #eceff1}.employeeHoursTable{width:100%;border-collapse:collapse;min-width:650px}.employeeHoursTable th,.employeeHoursTable td{padding:11px 12px;text-align:left;border-bottom:1px solid #edf0f2}.employeeHoursTable th{background:#f7f8f9;color:#4b5563;font-size:.82rem}.employeeHoursTable td:last-child{font-weight:700}
+.employeeHoursReview{color:#a32828;font-weight:700}.employeeHoursOk{color:#176b37}.employeeHoursRules{display:flex;gap:8px;flex-wrap:wrap;padding:15px;border-radius:13px;background:#f8f5ed;border:1px solid #e7dfc9}.employeeHoursRules strong{width:100%}.employeeHoursRules span{font-size:.86rem;color:#5f6368}.employeeHoursRules span:not(:last-child)::after{content:" ·"}
+@media(max-width:720px){.employeeHoursHero{align-items:stretch;flex-direction:column}.employeeHoursUpload{width:100%}.employeeHoursControls>*{width:100%}.employeeHoursEmployee summary{padding:14px}.employeeHoursCard{padding:14px}}

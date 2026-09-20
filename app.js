@@ -12421,6 +12421,259 @@ function eliminarPresupuestoAdministracion(id) {
   guardarAdministracion();
 }
 
+// v6.0.12 · Cálculo local de horas desde el archivo del reloj
+let archivoHorasEmpleadosActual = null;
+let resultadoHorasEmpleadosActual = [];
+
+function horasNormalizarNombre(valor) {
+  return String(valor || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .trim().toLowerCase();
+}
+
+function horasFechaISO(fecha) {
+  return `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, "0")}-${String(fecha.getUTCDate()).padStart(2, "0")}`;
+}
+
+function horasMoverFecha(fechaISO, dias) {
+  const [a, m, d] = String(fechaISO).split("-").map(Number);
+  return horasFechaISO(new Date(Date.UTC(a, m - 1, d + dias)));
+}
+
+function horasFechaLegible(fechaISO) {
+  const [a, m, d] = String(fechaISO).split("-").map(Number);
+  return new Intl.DateTimeFormat("es-AR", { weekday:"short", day:"2-digit", month:"2-digit", timeZone:"UTC" })
+    .format(new Date(Date.UTC(a, m - 1, d)));
+}
+
+function horasExtraerMarcaciones(valor) {
+  const coincidencias = String(valor ?? "").match(/(?:^|\D)([01]?\d|2[0-3]):([0-5]\d)(?=\D|$)/g) || [];
+  return coincidencias.map(texto => {
+    const partes = texto.match(/([01]?\d|2[0-3]):([0-5]\d)/);
+    const hora = Number(partes[1]);
+    const minuto = Number(partes[2]);
+    return { hora, minuto, minutosDia: hora * 60 + minuto, texto: `${String(hora).padStart(2,"0")}:${String(minuto).padStart(2,"0")}` };
+  });
+}
+
+function horasFormatearMinutos(total) {
+  const minutos = Math.max(0, Math.round(Number(total) || 0));
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+  if (!resto) return `${horas} h`;
+  return `${horas} h ${resto} min`;
+}
+
+function horasLeerPeriodo(filas) {
+  const texto = filas.slice(0, 4).flat().map(x => String(x ?? "")).join(" ");
+  const m = texto.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\s*~\s*(?:(\d{4})\/)?(\d{1,2})\/(\d{1,2})/);
+  if (!m) return null;
+  const desde = `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;
+  const anioHasta = m[4] || m[1];
+  const hasta = `${anioHasta}-${String(m[5]).padStart(2,"0")}-${String(m[6]).padStart(2,"0")}`;
+  return { desde, hasta };
+}
+
+function horasFechasPorColumnas(filaCabecera, periodo) {
+  const fechas = new Map();
+  if (!periodo) return fechas;
+  const [anioInicial, mesInicial] = periodo.desde.split("-").map(Number);
+  let anio = anioInicial;
+  let mes = mesInicial;
+  let diaAnterior = 0;
+  for (let columna = 3; columna < filaCabecera.length; columna++) {
+    const dia = Number(filaCabecera[columna]);
+    if (!Number.isInteger(dia) || dia < 1 || dia > 31) continue;
+    if (diaAnterior && dia < diaAnterior) {
+      mes += 1;
+      if (mes > 12) { mes = 1; anio += 1; }
+    }
+    fechas.set(columna, `${anio}-${String(mes).padStart(2,"0")}-${String(dia).padStart(2,"0")}`);
+    diaAnterior = dia;
+  }
+  return fechas;
+}
+
+function horasProcesarEmpleadoContinuo(nombre, dias) {
+  return dias.map(dia => {
+    const marcas = dia.marcas.slice().sort((a,b) => a.minutosDia - b.minutosDia);
+    if (marcas.length < 2) return { ...dia, minutos:0, estado: marcas.length ? "Marcación incompleta" : "Sin marcaciones", revisar:Boolean(marcas.length) };
+    const minutos = marcas[marcas.length - 1].minutosDia - marcas[0].minutosDia;
+    return {
+      ...dia, minutos:Math.max(0, minutos),
+      estado: marcas.length > 2 ? "Calculado de primera a última · revisar fichadas extra" : "Correcto",
+      revisar: marcas.length > 2
+    };
+  });
+}
+
+function horasProcesarAna(dias) {
+  return dias.map(dia => {
+    const originales = dia.marcas.slice().sort((a,b) => a.minutosDia - b.minutosDia);
+    const marcas = [];
+    let duplicadaCercana = false;
+    originales.forEach(marca => {
+      const anterior = marcas[marcas.length - 1];
+      if (anterior && marca.minutosDia - anterior.minutosDia <= 10) {
+        marcas[marcas.length - 1] = marca;
+        duplicadaCercana = true;
+      } else {
+        marcas.push(marca);
+      }
+    });
+    if (marcas.length % 2 !== 0) {
+      return { ...dia, marcas:originales, minutos:0, estado:"Horario cortado incompleto", revisar:true };
+    }
+    let minutos = 0;
+    for (let i = 0; i + 1 < marcas.length; i += 2) minutos += Math.max(0, marcas[i+1].minutosDia - marcas[i].minutosDia);
+    return { ...dia, marcas:originales, minutos, estado: duplicadaCercana ? "Calculado · posible fichada duplicada" : (marcas.length ? "Correcto" : "Sin marcaciones"), revisar:duplicadaCercana };
+  });
+}
+
+function horasProcesarArnold(dias, periodo) {
+  const eventos = [];
+  dias.forEach(dia => dia.marcas.forEach(marca => {
+    const [a,m,d] = dia.fecha.split("-").map(Number);
+    eventos.push({ ...marca, fecha:dia.fecha, instante:Date.UTC(a,m-1,d,marca.hora,marca.minuto) });
+  }));
+  eventos.sort((a,b) => a.instante - b.instante);
+  const usados = new Set();
+  const resultados = [];
+  const entradas = eventos.filter(e => e.hora >= 22 || e.hora <= 2);
+  entradas.forEach(entrada => {
+    const indiceEntrada = eventos.indexOf(entrada);
+    if (usados.has(indiceEntrada)) return;
+    const indiceSalida = eventos.findIndex((salida, indice) =>
+      !usados.has(indice) && salida.instante > entrada.instante &&
+      salida.instante - entrada.instante <= 12 * 60 * 60 * 1000 &&
+      salida.hora >= 3 && salida.hora <= 12
+    );
+    const fechaLaboral = entrada.hora <= 2 ? horasMoverFecha(entrada.fecha, -1) : entrada.fecha;
+    usados.add(indiceEntrada);
+    if (indiceSalida < 0) {
+      resultados.push({ fecha:fechaLaboral, marcas:[entrada], minutos:0, estado:"Falta salida", revisar:true });
+      return;
+    }
+    usados.add(indiceSalida);
+    const salida = eventos[indiceSalida];
+    resultados.push({
+      fecha:fechaLaboral,
+      marcas:[entrada, salida],
+      minutos:Math.round((salida.instante - entrada.instante) / 60000),
+      estado:"Correcto · turno asignado al día laboral anterior",
+      revisar:false
+    });
+  });
+  eventos.forEach((evento, indice) => {
+    if (usados.has(indice)) return;
+    const fechaLaboral = evento.hora <= 12 ? horasMoverFecha(evento.fecha, -1) : evento.fecha;
+    resultados.push({ fecha:fechaLaboral, marcas:[evento], minutos:0, estado:"Marcación sin pareja", revisar:true });
+  });
+  return resultados.sort((a,b) => a.fecha.localeCompare(b.fecha));
+}
+
+async function horasLeerArchivoReloj(archivo) {
+  if (!window.XLSX) throw new Error("No se pudo cargar el lector de Excel. Conectate a Internet y volvé a abrir la app.");
+  const buffer = await archivo.arrayBuffer();
+  const libro = XLSX.read(buffer, { type:"array", cellDates:false });
+  const nombreHoja = libro.SheetNames.find(n => horasNormalizarNombre(n) === "entr");
+  if (!nombreHoja) throw new Error('El archivo no contiene la hoja "Entr" del reloj.');
+  const filas = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header:1, raw:false, defval:"" });
+  const indiceCabecera = filas.findIndex(fila => horasNormalizarNombre(fila[0]) === "no" && horasNormalizarNombre(fila[1]).startsWith("nom"));
+  if (indiceCabecera < 0) throw new Error("No se encontró la tabla de empleados y marcaciones.");
+  const periodo = horasLeerPeriodo(filas);
+  if (!periodo) throw new Error("No se pudo identificar el período del archivo.");
+  const fechasColumnas = horasFechasPorColumnas(filas[indiceCabecera], periodo);
+  const empleados = [];
+  for (let i = indiceCabecera + 2; i < filas.length; i++) {
+    const fila = filas[i] || [];
+    const numero = String(fila[0] ?? "").trim();
+    const nombre = String(fila[1] ?? "").trim();
+    if (!nombre || !numero || !/^\d+$/.test(numero)) continue;
+    const dias = [];
+    fechasColumnas.forEach((fecha, columna) => dias.push({ fecha, marcas:horasExtraerMarcaciones(fila[columna]), valorOriginal:String(fila[columna] ?? "") }));
+    empleados.push({ numero, nombre, dias });
+  }
+  if (!empleados.length) throw new Error("No se encontraron empleados en la hoja Entr.");
+  return { nombreArchivo:archivo.name, periodo, empleados };
+}
+
+function horasCalcularResultados() {
+  if (!archivoHorasEmpleadosActual) return [];
+  const desde = $("horasEmpleadosDesde")?.value || archivoHorasEmpleadosActual.periodo.desde;
+  const hasta = $("horasEmpleadosHasta")?.value || archivoHorasEmpleadosActual.periodo.hasta;
+  const resultados = archivoHorasEmpleadosActual.empleados.map(empleado => {
+    const clave = horasNormalizarNombre(empleado.nombre);
+    let jornadas;
+    if (clave === "ana") jornadas = horasProcesarAna(empleado.dias);
+    else if (clave === "arnold") jornadas = horasProcesarArnold(empleado.dias, archivoHorasEmpleadosActual.periodo);
+    else jornadas = horasProcesarEmpleadoContinuo(empleado.nombre, empleado.dias);
+    jornadas = jornadas.filter(j => j.fecha >= desde && j.fecha <= hasta && (j.marcas.length || j.minutos));
+    const totalMinutos = jornadas.reduce((s,j) => s + j.minutos, 0);
+    const revisar = jornadas.filter(j => j.revisar).length;
+    return { numero:empleado.numero, nombre:empleado.nombre, jornadas, totalMinutos, revisar };
+  }).filter(e => e.jornadas.length);
+  resultadoHorasEmpleadosActual = resultados;
+  return resultados;
+}
+
+function horasRenderResultados() {
+  const resultados = horasCalcularResultados();
+  const resumen = $("resumenHorasEmpleados");
+  const detalle = $("detalleHorasEmpleados");
+  if (!resumen || !detalle) return;
+  if (!resultados.length) {
+    resumen.innerHTML = "";
+    detalle.innerHTML = '<div class="employeeHoursStatus">No hay marcaciones en el período seleccionado.</div>';
+    return;
+  }
+  resumen.innerHTML = resultados.map(e => `<article class="employeeHoursCard"><span>${adminFinEscapar(e.nombre)}</span><strong>${horasFormatearMinutos(e.totalMinutos)}</strong><small>${e.totalMinutos} minutos${e.revisar ? ` · ${e.revisar} día(s) para revisar` : ""}</small></article>`).join("");
+  detalle.innerHTML = resultados.map(e => `<details class="employeeHoursEmployee"><summary><span><strong>${adminFinEscapar(e.nombre)}</strong><small>${e.jornadas.length} jornada(s)${e.revisar ? ` · ${e.revisar} para revisar` : ""}</small></span><b>${horasFormatearMinutos(e.totalMinutos)}</b></summary><div class="employeeHoursTableWrap"><table class="employeeHoursTable"><thead><tr><th>Día laboral</th><th>Marcaciones</th><th>Minutos</th><th>Horas</th><th>Estado</th></tr></thead><tbody>${e.jornadas.map(j => `<tr><td>${adminFinEscapar(horasFechaLegible(j.fecha))}</td><td>${adminFinEscapar(j.marcas.map(m => m.texto).join(" → ") || "—")}</td><td>${j.minutos}</td><td>${horasFormatearMinutos(j.minutos)}</td><td class="${j.revisar ? "employeeHoursReview" : "employeeHoursOk"}">${adminFinEscapar(j.estado)}</td></tr>`).join("")}</tbody></table></div></details>`).join("");
+}
+
+async function horasCargarArchivo(evento) {
+  const archivo = evento.target.files?.[0];
+  if (!archivo) return;
+  const estado = $("estadoHorasEmpleados");
+  try {
+    estado.className = "employeeHoursStatus";
+    estado.textContent = "Leyendo el archivo del reloj...";
+    archivoHorasEmpleadosActual = await horasLeerArchivoReloj(archivo);
+    $("horasEmpleadosDesde").value = archivoHorasEmpleadosActual.periodo.desde;
+    $("horasEmpleadosHasta").value = archivoHorasEmpleadosActual.periodo.hasta;
+    $("controlesHorasEmpleados").classList.remove("hidden");
+    estado.className = "employeeHoursStatus ok";
+    estado.textContent = `${archivo.name} · ${archivoHorasEmpleadosActual.empleados.length} empleados · ${archivoHorasEmpleadosActual.periodo.desde} al ${archivoHorasEmpleadosActual.periodo.hasta}`;
+    horasRenderResultados();
+  } catch (error) {
+    console.error("Horas de empleados:", error);
+    archivoHorasEmpleadosActual = null;
+    estado.className = "employeeHoursStatus error";
+    estado.textContent = error.message || "No se pudo leer el archivo.";
+  } finally {
+    evento.target.value = "";
+  }
+}
+
+function horasExportarCSV() {
+  if (!resultadoHorasEmpleadosActual.length) return alert("Primero cargá y calculá un archivo del reloj.");
+  const filas = [["Empleado","Día laboral","Entrada/Salida","Minutos","Horas","Estado"]];
+  resultadoHorasEmpleadosActual.forEach(e => {
+    e.jornadas.forEach(j => filas.push([e.nombre,j.fecha,j.marcas.map(m=>m.texto).join(" - "),j.minutos,horasFormatearMinutos(j.minutos),j.estado]));
+    filas.push([e.nombre,"TOTAL","",e.totalMinutos,horasFormatearMinutos(e.totalMinutos),e.revisar ? `${e.revisar} para revisar` : "Correcto"]);
+  });
+  const csv = "\uFEFF" + filas.map(f => f.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+  segDescargar(`fratello_horas_${adminFinHoy()}.csv`, csv, "text/csv;charset=utf-8");
+}
+
+function iniciarModuloHorasEmpleados() {
+  if (window.__FRATELLO_HORAS_INICIADO__) return;
+  window.__FRATELLO_HORAS_INICIADO__ = true;
+  $("archivoRelojEmpleados")?.addEventListener("change", horasCargarArchivo);
+  $("btnCalcularHorasEmpleados")?.addEventListener("click", horasRenderResultados);
+  $("btnExportarHorasEmpleados")?.addEventListener("click", horasExportarCSV);
+}
+
 function tituloTabAdministracion(nombre) {
   const titulos = {
     resumen: "📊 Resumen",
@@ -12428,6 +12681,7 @@ function tituloTabAdministracion(nombre) {
     gastos: "💸 Gastos",
     presupuesto: "📅 Presupuesto",
     caja: "🏦 Caja privada",
+    horas: "⏱️ Horas de empleados",
     usuarios: "👥 Usuarios",
     dispositivos: "📱 Dispositivos",
     auditoria: "📜 Auditoría",
@@ -12465,7 +12719,7 @@ function mostrarMenuAdministracion() {
 }
 
 function activarTabAdministracion(nombre = "resumen", opciones = {}) {
-  const tabsSeguras = ["caja", "usuarios", "dispositivos", "auditoria", "backup"];
+  const tabsSeguras = ["caja", "horas", "usuarios", "dispositivos", "auditoria", "backup"];
   if (tabsSeguras.includes(nombre) && !tieneRolAdministrador()) {
     mostrarModalAdministrador();
     return false;
@@ -12515,6 +12769,10 @@ function activarTabAdministracion(nombre = "resumen", opciones = {}) {
       break;
     case "caja":
       cajaAdminActivo = true; renderCajaAdminSeguro(); break;
+    case "horas":
+      iniciarModuloHorasEmpleados();
+      if (archivoHorasEmpleadosActual) horasRenderResultados();
+      break;
     case "usuarios": case "dispositivos": case "auditoria": case "backup":
       renderSeguridadCompleta(); break;
   }
@@ -12565,6 +12823,7 @@ function iniciarModuloAdministracion() {
   asegurarCajaPrivadaDentroAdministracion();
   instalarNavegacionAdministracionEstable();
   iniciarSeguridadFratello();
+  iniciarModuloHorasEmpleados();
   cargarAdministracionLocal();
   sincronizarSelectoresMesAdministracion(adminFinMesActual());
 
