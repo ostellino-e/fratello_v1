@@ -2240,24 +2240,79 @@ function tieneRolAdministrador() {
 if (FIREBASE_ACTIVO && typeof firebase !== "undefined" && firebase.auth) {
   try {
     authFratello = firebase.auth();
-    authFratello.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    authFratello.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(error => {
+      console.warn("No se pudo conservar la sesión de Firebase:", error);
+      registrarErrorFratello("persistencia_firebase", error);
+    });
   } catch (error) {
     console.error("No se pudo iniciar Firebase Authentication:", error);
   }
 }
 
-async function asegurarSesionOperativaV601() {
-  if (!authFratello || authFratello.currentUser || iniciandoSesionOperativaV601 || !navigator.onLine) return false;
+function errorRequiereRenovarSesionFirebase(error) {
+  const codigo = String(error?.code || "").toLowerCase();
+  const mensaje = String(error?.message || error || "").toLowerCase();
+  return codigo.includes("user-token-expired") ||
+    codigo.includes("invalid-user-token") ||
+    codigo.includes("user-disabled") ||
+    codigo.includes("permission-denied") ||
+    mensaje.includes("token") || mensaje.includes("credential");
+}
+
+async function esperarEstadoInicialAuthV6016(limiteMs = 2500) {
+  if (!authFratello) return null;
+  return new Promise(resolve => {
+    let terminado = false;
+    let cancelar = () => {};
+    const finalizar = usuario => {
+      if (terminado) return;
+      terminado = true;
+      clearTimeout(temporizador);
+      cancelar();
+      resolve(usuario || null);
+    };
+    const temporizador = setTimeout(() => finalizar(authFratello.currentUser), limiteMs);
+    cancelar = authFratello.onAuthStateChanged(finalizar, () => finalizar(authFratello.currentUser));
+  });
+}
+
+async function asegurarSesionOperativaV601(forzarValidacion = false) {
+  if (!authFratello || !navigator.onLine) return Boolean(authFratello?.currentUser);
+  if (iniciandoSesionOperativaV601) {
+    for (let intento = 0; intento < 50 && iniciandoSesionOperativaV601; intento += 1) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return Boolean(authFratello.currentUser);
+  }
   iniciandoSesionOperativaV601 = true;
   try {
+    await esperarEstadoInicialAuthV6016();
+    if (authFratello.currentUser) {
+      if (!forzarValidacion) return true;
+      try {
+        await authFratello.currentUser.getIdToken(true);
+        return true;
+      } catch (errorToken) {
+        if (!errorRequiereRenovarSesionFirebase(errorToken)) throw errorToken;
+        console.warn("La sesión Firebase venció. Se creará una nueva sesión operativa.", errorToken);
+        await authFratello.signOut().catch(() => {});
+      }
+    }
     await authFratello.signInAnonymously();
-    return true;
+    return Boolean(authFratello.currentUser);
   } catch (error) {
     console.warn("No se pudo iniciar la sesión operativa automática:", error);
+    registrarErrorFratello("sesion_operativa", error);
     return false;
   } finally {
     iniciandoSesionOperativaV601 = false;
   }
+}
+
+async function asegurarConexionFirebaseV6016(forzarValidacion = false) {
+  if (!db || !navigator.onLine) return false;
+  if (!authFratello) return true;
+  return asegurarSesionOperativaV601(forzarValidacion);
 }
 
 
@@ -3118,6 +3173,9 @@ let syncV600Iniciado = false;
 let syncV600Unsubscribe = null;
 let syncV600Reintentando = false;
 let syncV600RenderTimer = null;
+let syncV600Recuperando = false;
+let syncV600UltimaRecepcionMs = 0;
+let syncV600UltimoErrorMs = 0;
 const syncV600IdsConocidos = new Set();
 const syncV600CambiosPendientes = { pedidos: false, tickets: false, caja: false, produccion: false };
 
@@ -3376,6 +3434,44 @@ function syncV600Renderizar(cambios) {
   }, 350);
 }
 
+async function syncV600CargarInstantaneaV6016() {
+  const coleccion = syncV600Coleccion();
+  if (!coleccion) return false;
+  const snapshot = await coleccion.orderBy("serverUpdatedAt", "desc").limit(300).get();
+  const cambios = { pedidos:false, tickets:false, caja:false, produccion:false };
+  snapshot.docs.forEach(doc => syncV600Aplicar(doc.data() || {}, cambios));
+  if (cambios.pedidos || cambios.tickets || cambios.caja || cambios.produccion) {
+    syncV600Renderizar(cambios);
+  }
+  syncV600UltimaRecepcionMs = Date.now();
+  return true;
+}
+
+async function recuperarSincronizacionFirebaseV6016(motivo = "recuperacion") {
+  if (syncV600Recuperando || !navigator.onLine || !db) return false;
+  syncV600Recuperando = true;
+  setEstadoSync("Reconectando Firebase...");
+  try {
+    const sesionLista = await asegurarConexionFirebaseV6016(true);
+    if (!sesionLista) throw new Error("No se pudo iniciar una sesión operativa válida.");
+    try { syncV600Unsubscribe?.(); } catch (_) {}
+    syncV600Unsubscribe = null;
+    syncV600Iniciado = false;
+    await syncV600CargarInstantaneaV6016();
+    iniciarSyncCentralV600();
+    await syncV600ReenviarCola();
+    setEstadoSync("Online actualizado");
+    return true;
+  } catch (error) {
+    console.error(`Recuperación Firebase (${motivo}):`, error);
+    registrarErrorFratello(`recuperacion_firebase_${motivo}`, error);
+    setEstadoSync("Sin conexión con Firebase — reintentando");
+    return false;
+  } finally {
+    syncV600Recuperando = false;
+  }
+}
+
 function iniciarSyncCentralV600() {
   if (syncV600Iniciado || !db) return;
   if (authFratello && !authFratello.currentUser) {
@@ -3388,6 +3484,8 @@ function iniciarSyncCentralV600() {
   const coleccion = syncV600Coleccion();
   syncV600Unsubscribe = coleccion.orderBy("serverUpdatedAt", "desc").limit(300)
     .onSnapshot(snapshot => {
+      syncV600UltimaRecepcionMs = Date.now();
+      syncV600UltimoErrorMs = 0;
       const cambios = { pedidos: false, tickets: false, caja: false, produccion: false };
       snapshot.docChanges().forEach(cambio => {
         // La pantalla ya muestra el cambio local. Esperar la confirmación del
@@ -3400,14 +3498,13 @@ function iniciarSyncCentralV600() {
       setEstadoSync("Online actualizado");
     }, error => {
       console.error("Listener sync central:", error);
+      syncV600UltimoErrorMs = Date.now();
       syncV600Iniciado = false;
       syncV600Unsubscribe = null;
       setEstadoSync("Error de sincronización");
       setTimeout(() => {
-        if (navigator.onLine && (!authFratello || authFratello.currentUser) && !syncV600Iniciado) {
-          iniciarSyncCentralV600();
-        }
-      }, 5000);
+        recuperarSincronizacionFirebaseV6016("listener").catch(() => {});
+      }, 2500);
     });
   syncV600ReenviarCola().catch(() => {});
   programarMigracionSyncV600();
@@ -4124,6 +4221,13 @@ async function actualizarDatosManual(evento = null) {
 
   try {
     if (!db) throw new Error("Firebase no está conectado.");
+    const sesionLista = await asegurarConexionFirebaseV6016(true);
+    if (!sesionLista) throw new Error("No se pudo recuperar la sesión de Firebase.");
+
+    // Los pedidos actuales viven en el canal central. La actualización manual
+    // debe leerlo directamente, aunque el listener de este perfil haya fallado.
+    await syncV600CargarInstantaneaV6016();
+    if (!syncV600Iniciado) iniciarSyncCentralV600();
 
     const doc = await db.collection("fratello").doc("estado").get();
     if (!doc.exists) throw new Error("No hay datos guardados en Firebase.");
@@ -4218,6 +4322,7 @@ async function actualizarDatosManual(evento = null) {
     console.error("Error actualizando datos:", error);
     if (estado) estado.textContent = "❌ No se pudieron actualizar los datos";
     if (botonGlobal) botonGlobal.textContent = "⚠️";
+    recuperarSincronizacionFirebaseV6016("actualizacion_manual").catch(() => {});
 
     setTimeout(() => {
       if (botonGlobal) botonGlobal.textContent = "🔄";
@@ -12494,7 +12599,7 @@ async function horasGuardarUltimosDatosOnline(silencioso = false) {
       archivo:JSON.parse(JSON.stringify(archivoHorasEmpleadosActual)),
       correcciones:horasCorreccionesArchivoActual(),
       actualizadoEn:new Date().toISOString(),
-      version:"6.0.15"
+      version:"6.0.16"
     };
     await db.collection("administracion").doc("horas_empleados_ultimo").set(datos);
     horasArchivoVinculadoNube = true;
@@ -14947,7 +15052,7 @@ function sincronizarCajaTiempoReal() {
 
 window.addEventListener("online", () => {
   setEstadoSync("Conexión recuperada — sincronizando...");
-  syncV600ReenviarCola().catch(() => {});
+  recuperarSincronizacionFirebaseV6016("conexion_recuperada").catch(() => {});
   clearTimeout(temporizadorGuardadoNube);
   intentosGuardadoNube = 0;
   if (guardadoNubePendiente) guardarEnNube(false);
@@ -14957,6 +15062,19 @@ window.addEventListener("online", () => {
 window.addEventListener("offline", () => {
   setEstadoSync("Sin conexión — modo local");
 });
+
+function verificarSaludFirebaseV6016() {
+  if (!navigator.onLine || document.visibilityState === "hidden") return;
+  if (!syncV600Iniciado || syncV600UltimoErrorMs) {
+    recuperarSincronizacionFirebaseV6016("verificacion").catch(() => {});
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") verificarSaludFirebaseV6016();
+});
+window.addEventListener("focus", verificarSaludFirebaseV6016);
+setInterval(verificarSaludFirebaseV6016, 3 * 60 * 1000);
 
 function iniciarModuloCaja() {
   if (window.__FRATELLO_CAJA_INICIADA__) {
@@ -15284,6 +15402,10 @@ async function init() {
 
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   compactarCacheTicketsLocalV559();
+  const sesionFirebaseLista = await asegurarConexionFirebaseV6016(false);
+  if (!sesionFirebaseLista && navigator.onLine) {
+    setEstadoSync("Reconectando Firebase...");
+  }
   await cargarDesdeNube();
   await iniciarPedidosModuloNube();
   iniciarSyncCentralV600();

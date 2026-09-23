@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6015-horas-compartidas";
+const CACHE_NAME = "fratello-v6016-reconexion-firebase";
 const ARCHIVOS = [
   "./",
   "./index.html",

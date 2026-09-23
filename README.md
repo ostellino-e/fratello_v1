@@ -1,4 +1,14 @@
-# Fratello v6.0.15
+# Fratello v6.0.16
+
+## Corrección v6.0.16
+
+- Espera una sesión válida de Firebase antes de cargar los datos iniciales.
+- Renueva automáticamente una sesión operativa vencida o inválida.
+- Si el listener central falla, lo cierra, vuelve a autenticar y lo abre nuevamente.
+- El botón **Actualizar datos** consulta directamente el canal central de pedidos.
+- Al recuperar Internet, vuelve a cargar la instantánea online y reenvía cambios pendientes.
+- Al regresar a una pestaña con error, intenta recuperar la sincronización.
+- Fuerza un Service Worker nuevo para evitar cachés diferentes entre perfiles de Windows.
 
 ## Mejora v6.0.15
 
@@ -242,4 +252,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.15
+Versión esperada: v6.0.16
