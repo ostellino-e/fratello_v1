@@ -30,8 +30,13 @@
           await Promise.all(nombres.map(nombre => caches.delete(nombre)));
         }
 
-        localStorage.setItem("fratello_actualizacion_forzada", new Date().toISOString());
-        estado.textContent = "Actualización completada. Abriendo Fratello v6.0.16…";
+        // Si el perfil ya agotó localStorage, esta marca no debe impedir abrir
+        // la aplicación: la v6.0.17 hará la limpieza al iniciar.
+        try {
+          localStorage.removeItem("pedidos");
+          localStorage.setItem("fratello_actualizacion_forzada", new Date().toISOString());
+        } catch (_) {}
+        estado.textContent = "Actualización completada. Abriendo Fratello v6.0.17…";
 
         setTimeout(() => {
           location.replace("./index.html?v=547&actualizado=" + Date.now());

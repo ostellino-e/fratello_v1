@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6016-reconexion-firebase";
+const CACHE_NAME = "fratello-v6017-almacenamiento-local";
 const ARCHIVOS = [
   "./",
   "./index.html",

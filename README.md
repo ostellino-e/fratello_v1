@@ -1,4 +1,13 @@
-# Fratello v6.0.16
+# Fratello v6.0.17
+
+## Corrección v6.0.17
+
+- Corrige el error `QuotaExceededError` que impedía cargar e imprimir pedidos.
+- Reduce automáticamente copias locales históricas cuando Chrome agota su espacio.
+- Elimina la clave antigua `pedidos`, que duplicaba información ya guardada.
+- Limita la caché local de tickets, Caja, auditoría e historiales; Firebase conserva el total.
+- Ningún error al guardar una caché local interrumpe ahora la actualización desde Firebase.
+- La limpieza se ejecuta al abrir la app y también vuelve a intentarse si el cupo se llena.
 
 ## Corrección v6.0.16
 
@@ -252,4 +261,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.16
+Versión esperada: v6.0.17

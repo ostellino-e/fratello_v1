@@ -30,7 +30,7 @@ function segCargarLocal() {
   } catch (e) { console.warn("Seguridad local:", e); }
 }
 function segGuardarLocal() {
-  localStorage.setItem(SEG_STORAGE_KEY, JSON.stringify(seguridadFratello));
+  guardarLocalSeguroV6017(SEG_STORAGE_KEY, JSON.stringify(seguridadFratello));
 }
 function segNombreDispositivo() {
   const ua = navigator.userAgent || "";
@@ -43,12 +43,12 @@ function segObtenerDispositivoActual() {
   let id = localStorage.getItem(SEG_DEVICE_KEY);
   if (!id) {
     id = segId("device");
-    localStorage.setItem(SEG_DEVICE_KEY, id);
+    guardarLocalSeguroV6017(SEG_DEVICE_KEY, id);
   }
   let nombre = localStorage.getItem(SEG_DEVICE_NAME_KEY);
   if (!nombre) {
     nombre = segNombreDispositivo();
-    localStorage.setItem(SEG_DEVICE_NAME_KEY, nombre);
+    guardarLocalSeguroV6017(SEG_DEVICE_NAME_KEY, nombre);
   }
   return { id, nombre, userAgent: navigator.userAgent || "", ultimaActividad: segAhora() };
 }
@@ -258,7 +258,7 @@ async function restaurarBackupCompleto() {
   const archivo=$("archivoRestaurarBackup")?.files?.[0]; if(!archivo)return alert("Seleccioná un archivo de copia.");
   if(!confirm("La restauración reemplazará datos locales de Fratello. ¿Continuar?"))return;
   try { const datos=JSON.parse(await archivo.text()); if(datos.formato!=="FratelloBackup"||!datos.localStorage)throw new Error("Formato inválido");
-    Object.entries(datos.localStorage).forEach(([k,v])=>localStorage.setItem(k,v)); await segAuditar("backup","Copia restaurada",archivo.name); alert("Copia restaurada. La aplicación se recargará."); location.reload();
+    Object.entries(datos.localStorage).forEach(([k,v])=>guardarLocalSeguroV6017(k,v)); await segAuditar("backup","Copia restaurada",archivo.name); alert("Copia restaurada. La aplicación se recargará."); location.reload();
   } catch(e){ alert("No se pudo restaurar: "+e.message); }
 }
 function exportarAdministracionCSV() {
@@ -609,7 +609,7 @@ function leerColaRecordatorios() {
 }
 
 function guardarColaRecordatorios(cola) {
-  localStorage.setItem("fratello_cola_recordatorios", JSON.stringify(cola || []));
+  guardarLocalSeguroV6017("fratello_cola_recordatorios", JSON.stringify(cola || []));
   actualizarEstadoColaRecordatorios();
 }
 
@@ -700,7 +700,7 @@ function recordarTodosLosPendientes() {
 
 
 function guardarPedidosHoy() {
-  localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  guardarLocalSeguroV6017("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
 }
 
 function depurarPedidosHoyPorJornada() {
@@ -1511,7 +1511,7 @@ let colaNotificacionesPedidos = [];
 let temporizadorGrupoNotificaciones = null;
 
 function guardarConfiguracionNotificaciones() {
-  localStorage.setItem(
+  guardarLocalSeguroV6017(
     CLAVE_CONFIG_NOTIFICACIONES,
     JSON.stringify(configuracionNotificaciones)
   );
@@ -1615,7 +1615,7 @@ function alternarNotificacionesCliente(nombre, activo) {
 
 function marcarNotificacionesVistasAlAbrirApp() {
   ultimaNotificacionVista = new Date().toISOString();
-  localStorage.setItem(
+  guardarLocalSeguroV6017(
     "fratello_ultima_notificacion_vista",
     ultimaNotificacionVista
   );
@@ -1751,7 +1751,7 @@ async function borrarTodasLasNotificaciones() {
 
     notificacionesHistorial = [];
     ultimaNotificacionVista = new Date().toISOString();
-    localStorage.setItem(
+    guardarLocalSeguroV6017(
       "fratello_ultima_notificacion_vista",
       ultimaNotificacionVista
     );
@@ -1852,7 +1852,7 @@ function escucharHistorialNotificaciones() {
 
 function marcarNotificacionesComoVistas() {
   ultimaNotificacionVista = new Date().toISOString();
-  localStorage.setItem(
+  guardarLocalSeguroV6017(
     "fratello_ultima_notificacion_vista",
     ultimaNotificacionVista
   );
@@ -2179,6 +2179,128 @@ function leerJsonLocalSeguro(clave, valorPredeterminado = {}) {
   }
 }
 
+// v6.0.17: Chrome limita localStorage por perfil. La cuenta genérica de la
+// panadería acumuló copias históricas hasta superar ese límite y una escritura
+// fallida detenía la carga de Firebase. Estas utilidades reducen únicamente
+// cachés locales reproducibles; la información completa continúa en Firebase.
+function esErrorCuotaLocalV6017(error) {
+  return Boolean(
+    error && (
+      error.name === "QuotaExceededError" ||
+      error.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+      error.code === 22 ||
+      error.code === 1014 ||
+      /quota|almacenamiento|storage/i.test(String(error.message || ""))
+    )
+  );
+}
+
+function escribirLocalNativoV6017(clave, valor) {
+  Storage.prototype.setItem.call(localStorage, clave, valor);
+}
+
+function recortarArrayLocalV6017(clave, maximo) {
+  try {
+    const lista = JSON.parse(localStorage.getItem(clave) || "[]");
+    if (!Array.isArray(lista) || lista.length <= maximo) return;
+    escribirLocalNativoV6017(clave, JSON.stringify(lista.slice(-maximo)));
+  } catch (_) {
+    try { localStorage.removeItem(clave); } catch (_) {}
+  }
+}
+
+function limpiarAlmacenamientoLocalV6017(informar = false) {
+  try {
+    // Clave antigua duplicada: la vigente es fratello_pedidos.
+    localStorage.removeItem("pedidos");
+
+    recortarArrayLocalV6017("fratello_tickets_memoria", 350);
+    recortarArrayLocalV6017("fratello_pedidos", 500);
+    recortarArrayLocalV6017("fratello_pedidos_hoy", 300);
+    recortarArrayLocalV6017("fratello_historial_pedidos", 250);
+    recortarArrayLocalV6017("fratello_pedidos_eliminados", 400);
+    recortarArrayLocalV6017("fratello_productos_eliminados", 250);
+    recortarArrayLocalV6017("fratello_cuenta_corriente_v42", 500);
+    recortarArrayLocalV6017("fratello_registro_errores", 10);
+
+    const claveCaja = "fratello_caja_v390";
+    const caja = JSON.parse(localStorage.getItem(claveCaja) || "null");
+    if (caja && typeof caja === "object") {
+      const cajaReducida = {
+        ...caja,
+        cierresCaja: Array.isArray(caja.cierresCaja) ? caja.cierresCaja.slice(-240) : [],
+        cierresCajaEliminados: Array.isArray(caja.cierresCajaEliminados)
+          ? caja.cierresCajaEliminados.slice(-240)
+          : [],
+        auditoriaCaja: Array.isArray(caja.auditoriaCaja) ? caja.auditoriaCaja.slice(-400) : []
+      };
+      escribirLocalNativoV6017(claveCaja, JSON.stringify(cajaReducida));
+    }
+
+    if (informar) console.info("Fratello liberó espacio de caché local sin borrar datos de Firebase.");
+  } catch (error) {
+    console.warn("No se pudo reducir completamente la caché local:", error);
+  }
+}
+
+function guardarLocalSeguroV6017(clave, valor) {
+  let texto = typeof valor === "string" ? valor : JSON.stringify(valor);
+  try {
+    const limites = {
+      fratello_tickets_memoria: 350,
+      fratello_pedidos: 500,
+      fratello_pedidos_hoy: 300,
+      fratello_historial_pedidos: 250,
+      fratello_pedidos_eliminados: 400,
+      fratello_productos_eliminados: 250,
+      fratello_cuenta_corriente_v42: 500,
+      fratello_registro_errores: 10
+    };
+    const maximo = limites[clave];
+    if (maximo) {
+      const lista = JSON.parse(texto);
+      if (Array.isArray(lista) && lista.length > maximo) {
+        texto = JSON.stringify(lista.slice(-maximo));
+      }
+    } else if (clave === "fratello_caja_v390") {
+      const caja = JSON.parse(texto);
+      if (caja && typeof caja === "object") {
+        texto = JSON.stringify({
+          ...caja,
+          cierresCaja: Array.isArray(caja.cierresCaja) ? caja.cierresCaja.slice(-240) : [],
+          cierresCajaEliminados: Array.isArray(caja.cierresCajaEliminados)
+            ? caja.cierresCajaEliminados.slice(-240)
+            : [],
+          auditoriaCaja: Array.isArray(caja.auditoriaCaja) ? caja.auditoriaCaja.slice(-400) : []
+        });
+      }
+    }
+  } catch (_) {}
+  try {
+    escribirLocalNativoV6017(clave, texto);
+    return true;
+  } catch (error) {
+    if (!esErrorCuotaLocalV6017(error)) {
+      console.warn(`No se pudo guardar ${clave} localmente:`, error);
+      return false;
+    }
+
+    limpiarAlmacenamientoLocalV6017(true);
+    try {
+      escribirLocalNativoV6017(clave, texto);
+      return true;
+    } catch (segundoError) {
+      // La pantalla debe seguir funcionando con los datos ya cargados desde
+      // Firebase aunque este perfil no pueda conservar otra copia local.
+      console.warn(`Sin espacio para la caché ${clave}; Firebase sigue activo.`, segundoError);
+      return false;
+    }
+  }
+}
+
+// Se ejecuta al abrir la versión nueva, antes de iniciar la sincronización.
+limpiarAlmacenamientoLocalV6017(false);
+
 function registrarErrorFratello(tipo, error) {
   try {
     const clave = "fratello_registro_errores";
@@ -2190,7 +2312,7 @@ function registrarErrorFratello(tipo, error) {
       fecha: new Date().toISOString(),
       version: window.FRATELLO_VERSION || "desconocida"
     });
-    localStorage.setItem(clave, JSON.stringify(lista.slice(-20)));
+    guardarLocalSeguroV6017(clave, JSON.stringify(lista.slice(-20)));
   } catch (_) {}
 }
 
@@ -2259,7 +2381,7 @@ function errorRequiereRenovarSesionFirebase(error) {
     mensaje.includes("token") || mensaje.includes("credential");
 }
 
-async function esperarEstadoInicialAuthV6016(limiteMs = 2500) {
+async function esperarEstadoInicialAuthV6017(limiteMs = 2500) {
   if (!authFratello) return null;
   return new Promise(resolve => {
     let terminado = false;
@@ -2286,7 +2408,7 @@ async function asegurarSesionOperativaV601(forzarValidacion = false) {
   }
   iniciandoSesionOperativaV601 = true;
   try {
-    await esperarEstadoInicialAuthV6016();
+    await esperarEstadoInicialAuthV6017();
     if (authFratello.currentUser) {
       if (!forzarValidacion) return true;
       try {
@@ -2309,7 +2431,7 @@ async function asegurarSesionOperativaV601(forzarValidacion = false) {
   }
 }
 
-async function asegurarConexionFirebaseV6016(forzarValidacion = false) {
+async function asegurarConexionFirebaseV6017(forzarValidacion = false) {
   if (!db || !navigator.onLine) return false;
   if (!authFratello) return true;
   return asegurarSesionOperativaV601(forzarValidacion);
@@ -2485,7 +2607,7 @@ async function activarNotificacionesFratello() {
     }
 
     tokenNotificaciones = token;
-    localStorage.setItem("fratello_token_notificaciones", token);
+    guardarLocalSeguroV6017("fratello_token_notificaciones", token);
     await guardarTokenNotificaciones(token);
     await enviarPreferenciasNotificacionesAlServiceWorker();
 
@@ -2812,8 +2934,8 @@ function aplicarEntregaDedicadaRemotaV555(data = {}) {
     cuentaCorrienteV42 = fusionarCuentaCorrienteV42([data.movimiento], cuentaCorrienteV42);
   }
   actualizarPedidoOrigenEntregaV42(ticketFusionado);
-  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
-  localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6017(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
   renderPedidosHoy();
   renderTicketsPorDia();
   renderPagosPendientes();
@@ -2864,7 +2986,7 @@ function leerColaPedidosIndividualesV557() {
 }
 
 function guardarColaPedidosIndividualesV557(cola) {
-  localStorage.setItem(COLA_PEDIDOS_SYNC_KEY_V557, JSON.stringify(Array.isArray(cola) ? cola : []));
+  guardarLocalSeguroV6017(COLA_PEDIDOS_SYNC_KEY_V557, JSON.stringify(Array.isArray(cola) ? cola : []));
 }
 
 function aliviarColaPedidosIndividualesV558() {
@@ -2989,7 +3111,7 @@ function aplicarPedidoIndividualRemotoV557(registro = {}) {
   }
 
   guardarPedidosLocal();
-  localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  guardarLocalSeguroV6017("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
   return true;
 }
 
@@ -3051,7 +3173,7 @@ function migrarPedidosLocalesIndividualesV557() {
   recientes.forEach(pedido => encolarPedidoIndividualV557(registroPedidoIndividualV557(pedido, "normal")));
   (Array.isArray(pedidosHoy) ? pedidosHoy : [])
     .forEach(pedido => encolarPedidoIndividualV557(registroPedidoIndividualV557(pedido, "hoy")));
-  localStorage.setItem(claveMigracion, "completa");
+  guardarLocalSeguroV6017(claveMigracion, "completa");
   reenviarColaPedidosIndividualesV557().catch(() => {});
 }
 
@@ -3090,7 +3212,7 @@ function iniciarTicketsIndividualesTiempoRealV558() {
       .filter(Boolean);
     if (!recibidos.length) return;
     ticketsMemoria = fusionarTicketsMemoriaSync(recibidos, ticketsMemoria);
-    localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+    guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
     clearTimeout(window.__FRATELLO_RENDER_TICKETS_SYNC_V558__);
     window.__FRATELLO_RENDER_TICKETS_SYNC_V558__ = setTimeout(renderTicketsPorDia, 700);
   }, error => {
@@ -3112,7 +3234,7 @@ async function migrarTicketsLocalesIndividualesV558() {
   });
   try {
     await publicarTicketsIndividualesV558(recientes);
-    localStorage.setItem(claveMigracion, "completa");
+    guardarLocalSeguroV6017(claveMigracion, "completa");
     return true;
   } catch (error) {
     console.error("Migración de tickets individuales:", error);
@@ -3134,7 +3256,7 @@ function compactarCacheTicketsLocalV559() {
       .localeCompare(String(a.fechaTicket || a.fechaEntrega || a.fecha || "")))
     .slice(0, 500);
   ticketsMemoria = fusionarTicketsMemoriaSync([], recientes);
-  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 }
 
 function programarRecuperacionLivianaV559() {
@@ -3160,7 +3282,7 @@ function programarRecuperacionLivianaV559() {
       .sort((a, b) => fechaCambioTicketSync(b) - fechaCambioTicketSync(a))
       .slice(0, 30);
     const ticketsGuardados = await publicarTicketsIndividualesV558(ticketsRecientes).catch(() => false);
-    if (ticketsGuardados !== false) localStorage.setItem(clave, "completa");
+    if (ticketsGuardados !== false) guardarLocalSeguroV6017(clave, "completa");
   }, 10000);
 }
 
@@ -3194,7 +3316,7 @@ function syncV600LeerCola() {
 }
 
 function syncV600GuardarCola(cola) {
-  localStorage.setItem(SYNC_V600_QUEUE_KEY, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-150)));
+  guardarLocalSeguroV6017(SYNC_V600_QUEUE_KEY, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-150)));
 }
 
 function syncV600Encolar(registro) {
@@ -3376,8 +3498,8 @@ function syncV600Aplicar(data, cambios) {
         produccion[`${dia}_${productoId}`] = Number(cantidad || 0);
       });
       produccionActualizadaEnPorDia[dia] = fechaServidor;
-      localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
-      localStorage.setItem("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
+      guardarLocalSeguroV6017("fratello_produccion", JSON.stringify(produccion));
+      guardarLocalSeguroV6017("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
       cambios.produccion = true;
     }
     return;
@@ -3385,7 +3507,7 @@ function syncV600Aplicar(data, cambios) {
 
   if (tipo === "resumen" && data.payload) {
     memoriaUltimoEnvio = { ...data.payload, actualizado: fechaServidor };
-    localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+    guardarLocalSeguroV6017("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
     actualizarPanelMemoriaEnvio();
   }
 }
@@ -3404,7 +3526,7 @@ function syncV600Renderizar(cambios) {
     syncV600CambiosPendientes.produccion = false;
     if (pendientes.pedidos) {
       guardarPedidosLocal();
-      localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+      guardarLocalSeguroV6017("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
       sincronizarMemoriaTickets();
       if (seccionActualFratello === "seccionPedidos") {
         renderPedidosCargados();
@@ -3416,7 +3538,7 @@ function syncV600Renderizar(cambios) {
       }
     }
     if (pendientes.tickets || pendientes.pedidos) {
-      localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+      guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
       if (seccionActualFratello === "seccionTickets") renderTicketsPorDia();
     }
     if (pendientes.caja) {
@@ -3434,7 +3556,7 @@ function syncV600Renderizar(cambios) {
   }, 350);
 }
 
-async function syncV600CargarInstantaneaV6016() {
+async function syncV600CargarInstantaneaV6017() {
   const coleccion = syncV600Coleccion();
   if (!coleccion) return false;
   const snapshot = await coleccion.orderBy("serverUpdatedAt", "desc").limit(300).get();
@@ -3447,17 +3569,17 @@ async function syncV600CargarInstantaneaV6016() {
   return true;
 }
 
-async function recuperarSincronizacionFirebaseV6016(motivo = "recuperacion") {
+async function recuperarSincronizacionFirebaseV6017(motivo = "recuperacion") {
   if (syncV600Recuperando || !navigator.onLine || !db) return false;
   syncV600Recuperando = true;
   setEstadoSync("Reconectando Firebase...");
   try {
-    const sesionLista = await asegurarConexionFirebaseV6016(true);
+    const sesionLista = await asegurarConexionFirebaseV6017(true);
     if (!sesionLista) throw new Error("No se pudo iniciar una sesión operativa válida.");
     try { syncV600Unsubscribe?.(); } catch (_) {}
     syncV600Unsubscribe = null;
     syncV600Iniciado = false;
-    await syncV600CargarInstantaneaV6016();
+    await syncV600CargarInstantaneaV6017();
     iniciarSyncCentralV600();
     await syncV600ReenviarCola();
     setEstadoSync("Online actualizado");
@@ -3503,7 +3625,7 @@ function iniciarSyncCentralV600() {
       syncV600Unsubscribe = null;
       setEstadoSync("Error de sincronización");
       setTimeout(() => {
-        recuperarSincronizacionFirebaseV6016("listener").catch(() => {});
+        recuperarSincronizacionFirebaseV6017("listener").catch(() => {});
       }, 2500);
     });
   syncV600ReenviarCola().catch(() => {});
@@ -3530,7 +3652,7 @@ function programarMigracionProduccionV6011() {
         valores: valoresProduccionPorDia(dia)
       }, false, { soloCrear: true });
     }
-    localStorage.setItem(clave, "completa");
+    guardarLocalSeguroV6017(clave, "completa");
   }, 2500);
 }
 
@@ -3555,7 +3677,7 @@ function programarMigracionSyncV600() {
       const claveEntidad = `${registro.tipo}__${registro.entidadId}`;
       if (!syncV600IdsConocidos.has(claveEntidad)) syncV600Encolar(registro);
     });
-    localStorage.setItem(clave, "completa");
+    guardarLocalSeguroV6017(clave, "completa");
     await syncV600ReenviarCola();
   }, 15000);
 }
@@ -3573,11 +3695,11 @@ function datosPedidosModulo() {
 }
 
 function guardarPedidosLocal() {
-  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
-  localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-  localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
-  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  guardarLocalSeguroV6017("fratello_pedidos", JSON.stringify(pedidos));
+  guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6017("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  guardarLocalSeguroV6017("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+  guardarLocalSeguroV6017("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
 }
 
 function aplicarPedidosModuloRemoto(data = {}) {
@@ -3599,9 +3721,9 @@ function aplicarPedidosModuloRemoto(data = {}) {
   }
   cuentaCorrienteV42 = fusionarCuentaCorrienteV42(data.cuentaCorriente, cuentaCorrienteV42);
   clientesCuentaV541 = fusionarClientesCuentaV541(data.clientesCuenta, clientesCuentaV541);
-  localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
-  localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
-  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6017(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  guardarLocalSeguroV6017("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
   guardarClientesCuentaLocalV541();
 
   guardarPedidosLocal();
@@ -3649,9 +3771,9 @@ function guardarPedidosModuloEnNube() {
         });
 
         guardarPedidosLocal();
-        localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
-        localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
-        localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+        guardarLocalSeguroV6017("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+        guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+        guardarLocalSeguroV6017(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
         guardarClientesCuentaLocalV541();
         resolve(true);
       } catch (error) {
@@ -4166,36 +4288,36 @@ async function cargarDesdeNube() {
 
       validarClientes();
 
-      localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
-      localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
-      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-      localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-      localStorage.setItem("fratello_historial_pedidos", JSON.stringify(historialPedidos));
-      localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
-  localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-  localStorage.setItem("fratello_historial_pedidos", JSON.stringify(historialPedidos));
-      localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
-      localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
-      localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-    localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
-  localStorage.setItem(
+      guardarLocalSeguroV6017("fratello_produccion", JSON.stringify(produccion));
+      guardarLocalSeguroV6017("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+      guardarLocalSeguroV6017("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+      guardarLocalSeguroV6017("fratello_historial_pedidos", JSON.stringify(historialPedidos));
+      guardarLocalSeguroV6017("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+  guardarLocalSeguroV6017("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  guardarLocalSeguroV6017("fratello_historial_pedidos", JSON.stringify(historialPedidos));
+      guardarLocalSeguroV6017("fratello_predeterminadas", JSON.stringify(predeterminadas));
+      guardarLocalSeguroV6017("fratello_clientes", JSON.stringify(clientes));
+      guardarLocalSeguroV6017("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+    guardarLocalSeguroV6017("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6017(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
-      localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
-      localStorage.setItem(
+      guardarLocalSeguroV6017("fratello_listas_precios", JSON.stringify(listasPrecios));
+      guardarLocalSeguroV6017(
         "fratello_listas_precio_personalizadas",
         JSON.stringify(listasPrecioPersonalizadas)
       );
-      localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
-      localStorage.setItem("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
-      localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
-      localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
-      localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-      localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-      localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
-      localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+      guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+      guardarLocalSeguroV6017("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+      guardarLocalSeguroV6017("fratello_productos_extra", JSON.stringify(productosExtra));
+      guardarLocalSeguroV6017("fratello_catalogo_productos", JSON.stringify(productos));
+      guardarLocalSeguroV6017("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+      guardarLocalSeguroV6017("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      guardarLocalSeguroV6017("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      guardarLocalSeguroV6017("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
 }
 
     setEstadoSync("Online");
@@ -4221,12 +4343,12 @@ async function actualizarDatosManual(evento = null) {
 
   try {
     if (!db) throw new Error("Firebase no está conectado.");
-    const sesionLista = await asegurarConexionFirebaseV6016(true);
+    const sesionLista = await asegurarConexionFirebaseV6017(true);
     if (!sesionLista) throw new Error("No se pudo recuperar la sesión de Firebase.");
 
     // Los pedidos actuales viven en el canal central. La actualización manual
     // debe leerlo directamente, aunque el listener de este perfil haya fallado.
-    await syncV600CargarInstantaneaV6016();
+    await syncV600CargarInstantaneaV6017();
     if (!syncV600Iniciado) iniciarSyncCentralV600();
 
     const doc = await db.collection("fratello").doc("estado").get();
@@ -4275,23 +4397,23 @@ async function actualizarDatosManual(evento = null) {
       if (!productos.find(item => item.id === producto.id)) productos.push(producto);
     });
 
-    localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
-    localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
-      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-    localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
-    localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
-    localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-    localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
-    localStorage.setItem(
+    guardarLocalSeguroV6017("fratello_produccion", JSON.stringify(produccion));
+    guardarLocalSeguroV6017("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+    guardarLocalSeguroV6017("fratello_predeterminadas", JSON.stringify(predeterminadas));
+    guardarLocalSeguroV6017("fratello_clientes", JSON.stringify(clientes));
+    guardarLocalSeguroV6017("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+    guardarLocalSeguroV6017("fratello_listas_precios", JSON.stringify(listasPrecios));
+    guardarLocalSeguroV6017(
       "fratello_listas_precio_personalizadas",
       JSON.stringify(listasPrecioPersonalizadas)
     );
-    localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
-    localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
-    localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-    localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-    localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
-      localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+    guardarLocalSeguroV6017("fratello_productos_extra", JSON.stringify(productosExtra));
+    guardarLocalSeguroV6017("fratello_catalogo_productos", JSON.stringify(productos));
+    guardarLocalSeguroV6017("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+    guardarLocalSeguroV6017("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+    guardarLocalSeguroV6017("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      guardarLocalSeguroV6017("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
 
     renderClientes();
     renderListaClientesCompleta();
@@ -4322,7 +4444,7 @@ async function actualizarDatosManual(evento = null) {
     console.error("Error actualizando datos:", error);
     if (estado) estado.textContent = "❌ No se pudieron actualizar los datos";
     if (botonGlobal) botonGlobal.textContent = "⚠️";
-    recuperarSincronizacionFirebaseV6016("actualizacion_manual").catch(() => {});
+    recuperarSincronizacionFirebaseV6017("actualizacion_manual").catch(() => {});
 
     setTimeout(() => {
       if (botonGlobal) botonGlobal.textContent = "🔄";
@@ -4627,16 +4749,16 @@ function escucharCambiosNube() {
         if (!productos.find(x => x.id === p.id)) productos.push(p);
       });
 
-      localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
-      localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
-      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-      localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
-      localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
-      localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-      localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
-      localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-      localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-      localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      guardarLocalSeguroV6017("fratello_produccion", JSON.stringify(produccion));
+      guardarLocalSeguroV6017("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+      guardarLocalSeguroV6017("fratello_predeterminadas", JSON.stringify(predeterminadas));
+      guardarLocalSeguroV6017("fratello_clientes", JSON.stringify(clientes));
+      guardarLocalSeguroV6017("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+      guardarLocalSeguroV6017("fratello_productos_extra", JSON.stringify(productosExtra));
+      guardarLocalSeguroV6017("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+      guardarLocalSeguroV6017("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      guardarLocalSeguroV6017("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 
       if (seccionActualFratello === "seccionPedidos") {
         renderClientes();
@@ -4674,20 +4796,20 @@ function escucharCambiosNube() {
 }
 
 function guardarTodo() {
-  localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
-  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
-      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  localStorage.setItem("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-  localStorage.setItem("fratello_historial_pedidos", JSON.stringify(historialPedidos));
-  localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
-  localStorage.setItem("fratello_clientes", JSON.stringify(clientes));
-  localStorage.setItem("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-  localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
-  localStorage.setItem("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
-  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-  localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-      localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
-  localStorage.setItem("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+  guardarLocalSeguroV6017("fratello_produccion", JSON.stringify(produccion));
+  guardarLocalSeguroV6017("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6017("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  guardarLocalSeguroV6017("fratello_historial_pedidos", JSON.stringify(historialPedidos));
+  guardarLocalSeguroV6017("fratello_predeterminadas", JSON.stringify(predeterminadas));
+  guardarLocalSeguroV6017("fratello_clientes", JSON.stringify(clientes));
+  guardarLocalSeguroV6017("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+  guardarLocalSeguroV6017("fratello_productos_extra", JSON.stringify(productosExtra));
+  guardarLocalSeguroV6017("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6017("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  guardarLocalSeguroV6017("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      guardarLocalSeguroV6017("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  guardarLocalSeguroV6017("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
   guardarEnNube();
 }
 
@@ -4705,7 +4827,7 @@ pedidosEliminados = pedidosEliminados.filter(item => {
   if (!clave) return true;
   return clave.includes("|pedido_fijo|") || clave.includes("|fijo:");
 });
-localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
 
 let pedidosFijos = JSON.parse(localStorage.getItem("fratello_pedidos_fijos") || "[]");
 let historialPedidos = JSON.parse(localStorage.getItem("fratello_historial_pedidos") || "[]");
@@ -4738,7 +4860,7 @@ function quitarProductosCatalogoEliminados() {
   for (let indice = productos.length - 1; indice >= 0; indice -= 1) {
     if (eliminados.has(String(productos[indice]?.id || ""))) productos.splice(indice, 1);
   }
-  localStorage.setItem("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6017("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
 }
 let productosExtra = JSON.parse(localStorage.getItem("fratello_productos_extra") || "[]");
 quitarProductosCatalogoEliminados();
@@ -4791,7 +4913,7 @@ function asegurarProductoCriollosCatalogo() {
   }
 
   try {
-    localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
+    guardarLocalSeguroV6017("fratello_catalogo_productos", JSON.stringify(productos));
   } catch (error) {
     console.warn("No se pudo actualizar el catálogo local de Criollos:", error);
   }
@@ -5025,8 +5147,8 @@ async function guardarProduccion() {
 
   const dia = diaActual();
   produccionActualizadaEnPorDia[dia] = new Date().toISOString();
-  localStorage.setItem("fratello_produccion", JSON.stringify(produccion));
-  localStorage.setItem("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
+  guardarLocalSeguroV6017("fratello_produccion", JSON.stringify(produccion));
+  guardarLocalSeguroV6017("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
 
   const guardadoOnline = await syncV600Guardar("produccion", dia, {
     dia,
@@ -5118,10 +5240,10 @@ function crearIdProductoCatalogo(nombre) {
   return id;
 }
 function guardarCatalogoProductos() {
-  localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
-  localStorage.setItem("fratello_predeterminadas", JSON.stringify(predeterminadas));
-  localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
-  localStorage.setItem("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6017("fratello_catalogo_productos", JSON.stringify(productos));
+  guardarLocalSeguroV6017("fratello_predeterminadas", JSON.stringify(predeterminadas));
+  guardarLocalSeguroV6017("fratello_productos_extra", JSON.stringify(productosExtra));
+  guardarLocalSeguroV6017("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
   guardarEnNube();
   guardarPreciosModuloEnNube();
 }
@@ -5300,7 +5422,7 @@ function guardarProductoCatalogo(id) {
   producto.visible = fila.querySelector("[data-catalog-visible]").checked;
   producto.activo = fila.querySelector("[data-catalog-activo]").checked;
   preciosActualizadosEn = new Date().toISOString();
-  localStorage.setItem("fratello_precios_actualizados_en", preciosActualizadosEn);
+  guardarLocalSeguroV6017("fratello_precios_actualizados_en", preciosActualizadosEn);
   const extra = productosExtra.find(p => p.id === id);
   if (extra) Object.assign(extra, producto);
   guardarCatalogoProductos();
@@ -5376,7 +5498,7 @@ async function eliminarProductoCatalogo(id) {
     [{ id, nombre: producto.nombre, eliminadoEn: new Date().toISOString() }]
   );
   preciosActualizadosEn = new Date().toISOString();
-  localStorage.setItem("fratello_precios_actualizados_en", preciosActualizadosEn);
+  guardarLocalSeguroV6017("fratello_precios_actualizados_en", preciosActualizadosEn);
   dias.forEach(dia => {
     if (predeterminadas[dia]) delete predeterminadas[dia][id];
     delete produccion[`${dia}_${id}`];
@@ -7173,7 +7295,7 @@ function alternarConfirmacionPedido(idPedido, confirmado) {
   // Guardado liviano: confirmar un pedido no debe volver a leer y subir todo
   // el historial de la aplicación. Esto evita bloqueos y reinicios en Android.
   guardarPedidosLocal();
-  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  guardarLocalSeguroV6017("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
   sincronizarPedidoIndividualV557(pedido, "normal").catch(() => {});
   calcularDiferencias();
   actualizarEstadoConfirmacion();
@@ -7200,7 +7322,7 @@ function borrarPedido(id) {
 
   excluirPedidoFijoEnFecha(pedido);
   registrarPedidoEliminado(pedido);
-  localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
   pedidos = pedidos.filter(p => Number(p.id) !== Number(id));
   pedidosConfirmados = false;
   guardarTodo();
@@ -7232,7 +7354,7 @@ function borrarPedidosSeleccionados() {
       excluirPedidoFijoEnFecha(pedido);
       registrarPedidoEliminado(pedido);
     });
-  localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
 
   pedidos = pedidos.filter(p => !seleccionados.includes(Number(p.id)));
   pedidosConfirmados = false;
@@ -7672,7 +7794,7 @@ function agregarListaPrecioPersonalizada() {
   };
 
   listasPrecioPersonalizadas.push(nueva);
-  localStorage.setItem(
+  guardarLocalSeguroV6017(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
@@ -7705,7 +7827,7 @@ function eliminarListaPrecioPersonalizada(id) {
     }
   });
 
-  localStorage.setItem(
+  guardarLocalSeguroV6017(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
@@ -7804,8 +7926,8 @@ async function guardarListasPrecios(){
   }
 
   preciosActualizadosEn = new Date().toISOString();
-  localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
-  localStorage.setItem("fratello_precios_actualizados_en", preciosActualizadosEn);
+  guardarLocalSeguroV6017("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6017("fratello_precios_actualizados_en", preciosActualizadosEn);
   guardarEnNube();
   const guardadoOnline = await guardarPreciosModuloEnNube();
   renderTicketsPorDia();
@@ -7999,11 +8121,10 @@ function repararDuplicadosPedidosFijos(fechaObjetivo = "", mostrarAviso = false)
       cuentaCorrienteV42 = cuentaCorrienteV42.filter(movimiento =>
         !movimientosAEliminar.has(String(movimiento.claveTicket || ""))
       );
-      localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+      guardarLocalSeguroV6017(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
     }
 
-    localStorage.setItem("pedidos", JSON.stringify(pedidos));
-    localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+    guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 
     if (typeof guardarTodo === "function") guardarTodo();
     else if (typeof guardarEnNube === "function") guardarEnNube();
@@ -8057,7 +8178,7 @@ function claveTicketMemoria(pedido, tipo = "normal") {
 }
 
 function guardarMemoriaTickets() {
-  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
   guardarEnNube();
 }
 
@@ -8081,7 +8202,7 @@ function recuperarTicketsPedidoHoyV422() {
   });
 
   if (recuperados) {
-    localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+    guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
   }
   return recuperados;
 }
@@ -8169,7 +8290,7 @@ function sincronizarMemoriaTickets() {
       String(a.cliente || "").localeCompare(String(b.cliente || ""), "es")
     );
 
-  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 }
 
 function ticketsMemoriaParaFecha(fecha) {
@@ -9101,11 +9222,11 @@ function fusionarClientesCuentaV541(remotos=[], locales=[]) {
   return [...new Set([...(Array.isArray(remotos)?remotos:[]), ...(Array.isArray(locales)?locales:[])].map(x=>String(x||"").trim()).filter(Boolean))];
 }
 function guardarClientesCuentaLocalV541() {
-  localStorage.setItem(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
+  guardarLocalSeguroV6017(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
 }
 function guardarCuentaCorrienteV42() {
-  localStorage.setItem(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
-  localStorage.setItem(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
+  guardarLocalSeguroV6017(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  guardarLocalSeguroV6017(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
   if (typeof guardarPedidosModuloEnNube === "function") guardarPedidosModuloEnNube().catch(() => {});
   renderPagosPendientes();
 }
@@ -9909,8 +10030,8 @@ function resetDatos() {
   if (!confirm("¿Seguro que querés borrar solo los pedidos cargados?")) return;
 
   pedidos = [];
-  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
-      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6017("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
   guardarEnNube();
 
   renderPedidosCargados();
@@ -10020,7 +10141,7 @@ function reabrirJornadaParaNuevoPedido(fecha) {
   jornadasCerradas = (jornadasCerradas || []).filter(item => item !== fecha);
 
   if (jornadasCerradas.length !== antes) {
-    localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+    guardarLocalSeguroV6017("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
   }
 }
 
@@ -10032,13 +10153,13 @@ function cerrarJornada(fecha) {
   if (!fecha) return;
   if (!Array.isArray(jornadasCerradas)) jornadasCerradas = [];
   if (!jornadasCerradas.includes(fecha)) jornadasCerradas.push(fecha);
-  localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  guardarLocalSeguroV6017("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 }
 
 function reabrirJornada(fecha) {
   jornadasCerradas = (Array.isArray(jornadasCerradas) ? jornadasCerradas : [])
     .filter(item => item !== fecha);
-  localStorage.setItem("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  guardarLocalSeguroV6017("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 }
 
 function estadoJornadaActual() {
@@ -10217,7 +10338,7 @@ async function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencia
     jornadaEnviada: true
   };
 
-  localStorage.setItem("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+  guardarLocalSeguroV6017("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
   actualizarPanelMemoriaEnvio();
   return syncV600Guardar("resumen", fechaResumen, memoriaUltimoEnvio);
 }
@@ -10317,8 +10438,8 @@ function limpiarPedidosDespuesDeEnviar() {
   pedidos = [];
   pedidosConfirmados = false;
 
-  localStorage.setItem("fratello_pedidos", JSON.stringify([]));
-  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(false));
+  guardarLocalSeguroV6017("fratello_pedidos", JSON.stringify([]));
+  guardarLocalSeguroV6017("fratello_pedidos_confirmados", JSON.stringify(false));
 
   if ($("checkPedidoCompleto")) $("checkPedidoCompleto").checked = false;
   if ($("pedidoCrudo")) $("pedidoCrudo").value = "";
@@ -10339,9 +10460,9 @@ function limpiarJornadaDespuesDeEnviar() {
   pedidos = [];
   pedidosConfirmados = false;
 
-  localStorage.setItem("fratello_pedidos", JSON.stringify(pedidos));
-      localStorage.setItem("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  localStorage.setItem("fratello_pedidos_confirmados", JSON.stringify(false));
+  guardarLocalSeguroV6017("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6017("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6017("fratello_pedidos_confirmados", JSON.stringify(false));
 
   const selectorProduccion = $("diaProduccion");
   const selectorPedidos = $("diaProduccionPedidos");
@@ -10532,7 +10653,7 @@ async function generarMensajeGrupoFratello() {
   // Los pedidos permanecen visibles para Tickets, entregas y controles.
   // La memoria de firmas evita repetirlos en un segundo envío.
   sincronizarMemoriaTickets();
-  localStorage.setItem("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6017("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 
   abrirWhatsApp("", mensaje);
 }
@@ -10939,7 +11060,7 @@ function cargarAdministracionLocal() {
 }
 
 function guardarAdministracionLocal() {
-  localStorage.setItem(ADMIN_FIN_STORAGE_KEY, JSON.stringify(administracionFinanciera));
+  guardarLocalSeguroV6017(ADMIN_FIN_STORAGE_KEY, JSON.stringify(administracionFinanciera));
 }
 
 function guardarAdministracion() {
@@ -12540,7 +12661,7 @@ function horasCargarCorrecciones() {
 }
 
 function horasGuardarCorrecciones(datos) {
-  localStorage.setItem(HORAS_CORRECCIONES_STORAGE, JSON.stringify(datos || {}));
+  guardarLocalSeguroV6017(HORAS_CORRECCIONES_STORAGE, JSON.stringify(datos || {}));
 }
 
 function horasCorreccionesArchivoActual() {
@@ -12599,7 +12720,7 @@ async function horasGuardarUltimosDatosOnline(silencioso = false) {
       archivo:JSON.parse(JSON.stringify(archivoHorasEmpleadosActual)),
       correcciones:horasCorreccionesArchivoActual(),
       actualizadoEn:new Date().toISOString(),
-      version:"6.0.16"
+      version:"6.0.17"
     };
     await db.collection("administracion").doc("horas_empleados_ultimo").set(datos);
     horasArchivoVinculadoNube = true;
@@ -13482,7 +13603,7 @@ function cargarCajaLocal() {
 }
 
 function guardarCajaLocal() {
-  localStorage.setItem(CAJA_STORAGE_KEY, JSON.stringify({
+  guardarLocalSeguroV6017(CAJA_STORAGE_KEY, JSON.stringify({
     cierresCaja,
     cierresCajaEliminados,
     auditoriaCaja,
@@ -13638,7 +13759,7 @@ function idDispositivoCaja() {
   let id = localStorage.getItem(clave);
   if (!id) {
     id = `DISP-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-    localStorage.setItem(clave, id);
+    guardarLocalSeguroV6017(clave, id);
   }
   return id;
 }
@@ -14601,7 +14722,7 @@ function leerColaCajaIndividualV560() {
 }
 
 function guardarColaCajaIndividualV560(cola) {
-  localStorage.setItem(COLA_CAJA_INDIVIDUAL_V560, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-40)));
+  guardarLocalSeguroV6017(COLA_CAJA_INDIVIDUAL_V560, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-40)));
 }
 
 function encolarCierreCajaIndividualV560(registro) {
@@ -14697,7 +14818,7 @@ function programarMigracionCajaIndividualV560() {
         cierre: JSON.parse(JSON.stringify(cierre))
       });
     });
-    localStorage.setItem(clave, "completa");
+    guardarLocalSeguroV6017(clave, "completa");
     reenviarColaCajaIndividualV560().catch(() => {});
   }, 12000);
 }
@@ -14802,8 +14923,8 @@ async function guardarAdminModuloEnNube() {
 }
 
 async function guardarPreciosModuloEnNube() {
-  localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
-  localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
+  guardarLocalSeguroV6017("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6017("fratello_catalogo_productos", JSON.stringify(productos));
   if (!db) return false;
   if (guardandoPreciosModulo) {
     preciosModuloPendiente = true;
@@ -14858,17 +14979,17 @@ function aplicarPreciosDesdeNube(data = {}, forzar = false) {
   }
   quitarProductosCatalogoEliminados();
 
-  localStorage.setItem("fratello_listas_precios", JSON.stringify(listasPrecios));
-  localStorage.setItem(
+  guardarLocalSeguroV6017("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6017(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
-  localStorage.setItem("fratello_catalogo_productos", JSON.stringify(productos));
-  localStorage.setItem("fratello_productos_extra", JSON.stringify(productosExtra));
-  localStorage.setItem("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6017("fratello_catalogo_productos", JSON.stringify(productos));
+  guardarLocalSeguroV6017("fratello_productos_extra", JSON.stringify(productosExtra));
+  guardarLocalSeguroV6017("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
   preciosActualizadosEn = data.actualizado || preciosActualizadosEn;
   if (preciosActualizadosEn) {
-    localStorage.setItem("fratello_precios_actualizados_en", preciosActualizadosEn);
+    guardarLocalSeguroV6017("fratello_precios_actualizados_en", preciosActualizadosEn);
   }
   renderListasPrecios();
   renderAdministradorProductos();
@@ -15052,7 +15173,7 @@ function sincronizarCajaTiempoReal() {
 
 window.addEventListener("online", () => {
   setEstadoSync("Conexión recuperada — sincronizando...");
-  recuperarSincronizacionFirebaseV6016("conexion_recuperada").catch(() => {});
+  recuperarSincronizacionFirebaseV6017("conexion_recuperada").catch(() => {});
   clearTimeout(temporizadorGuardadoNube);
   intentosGuardadoNube = 0;
   if (guardadoNubePendiente) guardarEnNube(false);
@@ -15063,18 +15184,18 @@ window.addEventListener("offline", () => {
   setEstadoSync("Sin conexión — modo local");
 });
 
-function verificarSaludFirebaseV6016() {
+function verificarSaludFirebaseV6017() {
   if (!navigator.onLine || document.visibilityState === "hidden") return;
   if (!syncV600Iniciado || syncV600UltimoErrorMs) {
-    recuperarSincronizacionFirebaseV6016("verificacion").catch(() => {});
+    recuperarSincronizacionFirebaseV6017("verificacion").catch(() => {});
   }
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") verificarSaludFirebaseV6016();
+  if (document.visibilityState === "visible") verificarSaludFirebaseV6017();
 });
-window.addEventListener("focus", verificarSaludFirebaseV6016);
-setInterval(verificarSaludFirebaseV6016, 3 * 60 * 1000);
+window.addEventListener("focus", verificarSaludFirebaseV6017);
+setInterval(verificarSaludFirebaseV6017, 3 * 60 * 1000);
 
 function iniciarModuloCaja() {
   if (window.__FRATELLO_CAJA_INICIADA__) {
@@ -15402,7 +15523,7 @@ async function init() {
 
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   compactarCacheTicketsLocalV559();
-  const sesionFirebaseLista = await asegurarConexionFirebaseV6016(false);
+  const sesionFirebaseLista = await asegurarConexionFirebaseV6017(false);
   if (!sesionFirebaseLista && navigator.onLine) {
     setEstadoSync("Reconectando Firebase...");
   }
