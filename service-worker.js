@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6019-pedidos-fragmentados";
+const CACHE_NAME = "fratello-v6020-navegacion-fluida";
 const ARCHIVOS = [
   "./",
   "./index.html",

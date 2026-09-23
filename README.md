@@ -1,4 +1,13 @@
-# Fratello v6.0.19
+# Fratello v6.0.20
+
+## Corrección v6.0.20
+
+- Tickets arma las tarjetas del día solo cuando se abre ese día; los demás días muestran conteos livianos.
+- Sincroniza la memoria de tickets una vez por render en vez de recalcularla por cada fecha.
+- Pedidos y Tickets dejan de reconstruirse cuando estás mirando otra pantalla.
+- Evita reabrir y reprocesar pedidos fijos en cada redibujado sin cambios.
+- Mantiene el día visible durante actualizaciones, sin saltos al inicio o a una posición vieja.
+- Corrige el botón de inicio que navegaba dos veces y el destino inválido del botón Atrás.
 
 ## Corrección v6.0.19
 
@@ -276,4 +285,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.19
+Versión esperada: v6.0.20
