@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6018-sincronizacion-liviana";
+const CACHE_NAME = "fratello-v6019-pedidos-fragmentados";
 const ARCHIVOS = [
   "./",
   "./index.html",

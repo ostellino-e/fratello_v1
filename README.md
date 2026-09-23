@@ -1,4 +1,12 @@
-# Fratello v6.0.18
+# Fratello v6.0.19
+
+## Corrección v6.0.19
+
+- Corrige el error exacto de la captura: `fratello/pedidos_estado` excede 1 MiB.
+- El documento antiguo queda intacto y solo se lee para migrar los datos.
+- Pedidos fijos, exclusiones y cuenta corriente se guardan en documentos de menos de 150 KB.
+- Publica la referencia a una revisión solo cuando todas sus partes están guardadas.
+- Evita repetir la migración y las escrituras si esos datos no cambiaron.
 
 ## Corrección v6.0.18
 
@@ -268,4 +276,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.18
+Versión esperada: v6.0.19

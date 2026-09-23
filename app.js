@@ -30,7 +30,7 @@ function segCargarLocal() {
   } catch (e) { console.warn("Seguridad local:", e); }
 }
 function segGuardarLocal() {
-  guardarLocalSeguroV6018(SEG_STORAGE_KEY, JSON.stringify(seguridadFratello));
+  guardarLocalSeguroV6019(SEG_STORAGE_KEY, JSON.stringify(seguridadFratello));
 }
 function segNombreDispositivo() {
   const ua = navigator.userAgent || "";
@@ -43,12 +43,12 @@ function segObtenerDispositivoActual() {
   let id = localStorage.getItem(SEG_DEVICE_KEY);
   if (!id) {
     id = segId("device");
-    guardarLocalSeguroV6018(SEG_DEVICE_KEY, id);
+    guardarLocalSeguroV6019(SEG_DEVICE_KEY, id);
   }
   let nombre = localStorage.getItem(SEG_DEVICE_NAME_KEY);
   if (!nombre) {
     nombre = segNombreDispositivo();
-    guardarLocalSeguroV6018(SEG_DEVICE_NAME_KEY, nombre);
+    guardarLocalSeguroV6019(SEG_DEVICE_NAME_KEY, nombre);
   }
   return { id, nombre, userAgent: navigator.userAgent || "", ultimaActividad: segAhora() };
 }
@@ -258,7 +258,7 @@ async function restaurarBackupCompleto() {
   const archivo=$("archivoRestaurarBackup")?.files?.[0]; if(!archivo)return alert("Seleccioná un archivo de copia.");
   if(!confirm("La restauración reemplazará datos locales de Fratello. ¿Continuar?"))return;
   try { const datos=JSON.parse(await archivo.text()); if(datos.formato!=="FratelloBackup"||!datos.localStorage)throw new Error("Formato inválido");
-    Object.entries(datos.localStorage).forEach(([k,v])=>guardarLocalSeguroV6018(k,v)); await segAuditar("backup","Copia restaurada",archivo.name); alert("Copia restaurada. La aplicación se recargará."); location.reload();
+    Object.entries(datos.localStorage).forEach(([k,v])=>guardarLocalSeguroV6019(k,v)); await segAuditar("backup","Copia restaurada",archivo.name); alert("Copia restaurada. La aplicación se recargará."); location.reload();
   } catch(e){ alert("No se pudo restaurar: "+e.message); }
 }
 function exportarAdministracionCSV() {
@@ -609,7 +609,7 @@ function leerColaRecordatorios() {
 }
 
 function guardarColaRecordatorios(cola) {
-  guardarLocalSeguroV6018("fratello_cola_recordatorios", JSON.stringify(cola || []));
+  guardarLocalSeguroV6019("fratello_cola_recordatorios", JSON.stringify(cola || []));
   actualizarEstadoColaRecordatorios();
 }
 
@@ -700,7 +700,7 @@ function recordarTodosLosPendientes() {
 
 
 function guardarPedidosHoy() {
-  guardarLocalSeguroV6018("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  guardarLocalSeguroV6019("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
 }
 
 function depurarPedidosHoyPorJornada() {
@@ -1511,7 +1511,7 @@ let colaNotificacionesPedidos = [];
 let temporizadorGrupoNotificaciones = null;
 
 function guardarConfiguracionNotificaciones() {
-  guardarLocalSeguroV6018(
+  guardarLocalSeguroV6019(
     CLAVE_CONFIG_NOTIFICACIONES,
     JSON.stringify(configuracionNotificaciones)
   );
@@ -1615,7 +1615,7 @@ function alternarNotificacionesCliente(nombre, activo) {
 
 function marcarNotificacionesVistasAlAbrirApp() {
   ultimaNotificacionVista = new Date().toISOString();
-  guardarLocalSeguroV6018(
+  guardarLocalSeguroV6019(
     "fratello_ultima_notificacion_vista",
     ultimaNotificacionVista
   );
@@ -1751,7 +1751,7 @@ async function borrarTodasLasNotificaciones() {
 
     notificacionesHistorial = [];
     ultimaNotificacionVista = new Date().toISOString();
-    guardarLocalSeguroV6018(
+    guardarLocalSeguroV6019(
       "fratello_ultima_notificacion_vista",
       ultimaNotificacionVista
     );
@@ -1852,7 +1852,7 @@ function escucharHistorialNotificaciones() {
 
 function marcarNotificacionesComoVistas() {
   ultimaNotificacionVista = new Date().toISOString();
-  guardarLocalSeguroV6018(
+  guardarLocalSeguroV6019(
     "fratello_ultima_notificacion_vista",
     ultimaNotificacionVista
   );
@@ -2179,11 +2179,11 @@ function leerJsonLocalSeguro(clave, valorPredeterminado = {}) {
   }
 }
 
-// v6.0.18: Chrome limita localStorage por perfil. La cuenta genérica de la
+// v6.0.19: Chrome limita localStorage por perfil. La cuenta genérica de la
 // panadería acumuló copias históricas hasta superar ese límite y una escritura
 // fallida detenía la carga de Firebase. Estas utilidades reducen únicamente
 // cachés locales reproducibles; la información completa continúa en Firebase.
-function esErrorCuotaLocalV6018(error) {
+function esErrorCuotaLocalV6019(error) {
   return Boolean(
     error && (
       error.name === "QuotaExceededError" ||
@@ -2195,33 +2195,33 @@ function esErrorCuotaLocalV6018(error) {
   );
 }
 
-function escribirLocalNativoV6018(clave, valor) {
+function escribirLocalNativoV6019(clave, valor) {
   Storage.prototype.setItem.call(localStorage, clave, valor);
 }
 
-function recortarArrayLocalV6018(clave, maximo) {
+function recortarArrayLocalV6019(clave, maximo) {
   try {
     const lista = JSON.parse(localStorage.getItem(clave) || "[]");
     if (!Array.isArray(lista) || lista.length <= maximo) return;
-    escribirLocalNativoV6018(clave, JSON.stringify(lista.slice(-maximo)));
+    escribirLocalNativoV6019(clave, JSON.stringify(lista.slice(-maximo)));
   } catch (_) {
     try { localStorage.removeItem(clave); } catch (_) {}
   }
 }
 
-function limpiarAlmacenamientoLocalV6018(informar = false) {
+function limpiarAlmacenamientoLocalV6019(informar = false) {
   try {
     // Clave antigua duplicada: la vigente es fratello_pedidos.
     localStorage.removeItem("pedidos");
 
-    recortarArrayLocalV6018("fratello_tickets_memoria", 350);
-    recortarArrayLocalV6018("fratello_pedidos", 500);
-    recortarArrayLocalV6018("fratello_pedidos_hoy", 300);
-    recortarArrayLocalV6018("fratello_historial_pedidos", 250);
-    recortarArrayLocalV6018("fratello_pedidos_eliminados", 400);
-    recortarArrayLocalV6018("fratello_productos_eliminados", 250);
-    recortarArrayLocalV6018("fratello_cuenta_corriente_v42", 500);
-    recortarArrayLocalV6018("fratello_registro_errores", 10);
+    recortarArrayLocalV6019("fratello_tickets_memoria", 350);
+    recortarArrayLocalV6019("fratello_pedidos", 500);
+    recortarArrayLocalV6019("fratello_pedidos_hoy", 300);
+    recortarArrayLocalV6019("fratello_historial_pedidos", 250);
+    recortarArrayLocalV6019("fratello_pedidos_eliminados", 400);
+    recortarArrayLocalV6019("fratello_productos_eliminados", 250);
+    recortarArrayLocalV6019("fratello_cuenta_corriente_v42", 500);
+    recortarArrayLocalV6019("fratello_registro_errores", 10);
 
     const claveCaja = "fratello_caja_v390";
     const caja = JSON.parse(localStorage.getItem(claveCaja) || "null");
@@ -2234,7 +2234,7 @@ function limpiarAlmacenamientoLocalV6018(informar = false) {
           : [],
         auditoriaCaja: Array.isArray(caja.auditoriaCaja) ? caja.auditoriaCaja.slice(-400) : []
       };
-      escribirLocalNativoV6018(claveCaja, JSON.stringify(cajaReducida));
+      escribirLocalNativoV6019(claveCaja, JSON.stringify(cajaReducida));
     }
 
     if (informar) console.info("Fratello liberó espacio de caché local sin borrar datos de Firebase.");
@@ -2243,7 +2243,7 @@ function limpiarAlmacenamientoLocalV6018(informar = false) {
   }
 }
 
-function guardarLocalSeguroV6018(clave, valor) {
+function guardarLocalSeguroV6019(clave, valor) {
   let texto = typeof valor === "string" ? valor : JSON.stringify(valor);
   try {
     const limites = {
@@ -2277,17 +2277,17 @@ function guardarLocalSeguroV6018(clave, valor) {
     }
   } catch (_) {}
   try {
-    escribirLocalNativoV6018(clave, texto);
+    escribirLocalNativoV6019(clave, texto);
     return true;
   } catch (error) {
-    if (!esErrorCuotaLocalV6018(error)) {
+    if (!esErrorCuotaLocalV6019(error)) {
       console.warn(`No se pudo guardar ${clave} localmente:`, error);
       return false;
     }
 
-    limpiarAlmacenamientoLocalV6018(true);
+    limpiarAlmacenamientoLocalV6019(true);
     try {
-      escribirLocalNativoV6018(clave, texto);
+      escribirLocalNativoV6019(clave, texto);
       return true;
     } catch (segundoError) {
       // La pantalla debe seguir funcionando con los datos ya cargados desde
@@ -2299,7 +2299,7 @@ function guardarLocalSeguroV6018(clave, valor) {
 }
 
 // Se ejecuta al abrir la versión nueva, antes de iniciar la sincronización.
-limpiarAlmacenamientoLocalV6018(false);
+limpiarAlmacenamientoLocalV6019(false);
 
 function registrarErrorFratello(tipo, error) {
   try {
@@ -2312,7 +2312,7 @@ function registrarErrorFratello(tipo, error) {
       fecha: new Date().toISOString(),
       version: window.FRATELLO_VERSION || "desconocida"
     });
-    guardarLocalSeguroV6018(clave, JSON.stringify(lista.slice(-20)));
+    guardarLocalSeguroV6019(clave, JSON.stringify(lista.slice(-20)));
   } catch (_) {}
 }
 
@@ -2381,7 +2381,7 @@ function errorRequiereRenovarSesionFirebase(error) {
     mensaje.includes("token") || mensaje.includes("credential");
 }
 
-async function esperarEstadoInicialAuthV6018(limiteMs = 2500) {
+async function esperarEstadoInicialAuthV6019(limiteMs = 2500) {
   if (!authFratello) return null;
   return new Promise(resolve => {
     let terminado = false;
@@ -2408,7 +2408,7 @@ async function asegurarSesionOperativaV601(forzarValidacion = false) {
   }
   iniciandoSesionOperativaV601 = true;
   try {
-    await esperarEstadoInicialAuthV6018();
+    await esperarEstadoInicialAuthV6019();
     if (authFratello.currentUser) {
       if (!forzarValidacion) return true;
       try {
@@ -2431,7 +2431,7 @@ async function asegurarSesionOperativaV601(forzarValidacion = false) {
   }
 }
 
-async function asegurarConexionFirebaseV6018(forzarValidacion = false) {
+async function asegurarConexionFirebaseV6019(forzarValidacion = false) {
   if (!db || !navigator.onLine) return false;
   if (!authFratello) return true;
   return asegurarSesionOperativaV601(forzarValidacion);
@@ -2607,7 +2607,7 @@ async function activarNotificacionesFratello() {
     }
 
     tokenNotificaciones = token;
-    guardarLocalSeguroV6018("fratello_token_notificaciones", token);
+    guardarLocalSeguroV6019("fratello_token_notificaciones", token);
     await guardarTokenNotificaciones(token);
     await enviarPreferenciasNotificacionesAlServiceWorker();
 
@@ -2934,8 +2934,8 @@ function aplicarEntregaDedicadaRemotaV555(data = {}) {
     cuentaCorrienteV42 = fusionarCuentaCorrienteV42([data.movimiento], cuentaCorrienteV42);
   }
   actualizarPedidoOrigenEntregaV42(ticketFusionado);
-  guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
-  guardarLocalSeguroV6018(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6019(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
   renderPedidosHoy();
   renderTicketsPorDia();
   renderPagosPendientes();
@@ -2986,7 +2986,7 @@ function leerColaPedidosIndividualesV557() {
 }
 
 function guardarColaPedidosIndividualesV557(cola) {
-  guardarLocalSeguroV6018(COLA_PEDIDOS_SYNC_KEY_V557, JSON.stringify(Array.isArray(cola) ? cola : []));
+  guardarLocalSeguroV6019(COLA_PEDIDOS_SYNC_KEY_V557, JSON.stringify(Array.isArray(cola) ? cola : []));
 }
 
 function aliviarColaPedidosIndividualesV558() {
@@ -3111,7 +3111,7 @@ function aplicarPedidoIndividualRemotoV557(registro = {}) {
   }
 
   guardarPedidosLocal();
-  guardarLocalSeguroV6018("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  guardarLocalSeguroV6019("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
   return true;
 }
 
@@ -3173,7 +3173,7 @@ function migrarPedidosLocalesIndividualesV557() {
   recientes.forEach(pedido => encolarPedidoIndividualV557(registroPedidoIndividualV557(pedido, "normal")));
   (Array.isArray(pedidosHoy) ? pedidosHoy : [])
     .forEach(pedido => encolarPedidoIndividualV557(registroPedidoIndividualV557(pedido, "hoy")));
-  guardarLocalSeguroV6018(claveMigracion, "completa");
+  guardarLocalSeguroV6019(claveMigracion, "completa");
   reenviarColaPedidosIndividualesV557().catch(() => {});
 }
 
@@ -3212,7 +3212,7 @@ function iniciarTicketsIndividualesTiempoRealV558() {
       .filter(Boolean);
     if (!recibidos.length) return;
     ticketsMemoria = fusionarTicketsMemoriaSync(recibidos, ticketsMemoria);
-    guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+    guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
     clearTimeout(window.__FRATELLO_RENDER_TICKETS_SYNC_V558__);
     window.__FRATELLO_RENDER_TICKETS_SYNC_V558__ = setTimeout(renderTicketsPorDia, 700);
   }, error => {
@@ -3234,7 +3234,7 @@ async function migrarTicketsLocalesIndividualesV558() {
   });
   try {
     await publicarTicketsIndividualesV558(recientes);
-    guardarLocalSeguroV6018(claveMigracion, "completa");
+    guardarLocalSeguroV6019(claveMigracion, "completa");
     return true;
   } catch (error) {
     console.error("Migración de tickets individuales:", error);
@@ -3256,7 +3256,7 @@ function compactarCacheTicketsLocalV559() {
       .localeCompare(String(a.fechaTicket || a.fechaEntrega || a.fecha || "")))
     .slice(0, 500);
   ticketsMemoria = fusionarTicketsMemoriaSync([], recientes);
-  guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 }
 
 function programarRecuperacionLivianaV559() {
@@ -3282,7 +3282,7 @@ function programarRecuperacionLivianaV559() {
       .sort((a, b) => fechaCambioTicketSync(b) - fechaCambioTicketSync(a))
       .slice(0, 30);
     const ticketsGuardados = await publicarTicketsIndividualesV558(ticketsRecientes).catch(() => false);
-    if (ticketsGuardados !== false) guardarLocalSeguroV6018(clave, "completa");
+    if (ticketsGuardados !== false) guardarLocalSeguroV6019(clave, "completa");
   }, 10000);
 }
 
@@ -3316,7 +3316,7 @@ function syncV600LeerCola() {
 }
 
 function syncV600GuardarCola(cola) {
-  guardarLocalSeguroV6018(SYNC_V600_QUEUE_KEY, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-150)));
+  guardarLocalSeguroV6019(SYNC_V600_QUEUE_KEY, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-150)));
 }
 
 function syncV600Encolar(registro) {
@@ -3498,8 +3498,8 @@ function syncV600Aplicar(data, cambios) {
         produccion[`${dia}_${productoId}`] = Number(cantidad || 0);
       });
       produccionActualizadaEnPorDia[dia] = fechaServidor;
-      guardarLocalSeguroV6018("fratello_produccion", JSON.stringify(produccion));
-      guardarLocalSeguroV6018("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
+      guardarLocalSeguroV6019("fratello_produccion", JSON.stringify(produccion));
+      guardarLocalSeguroV6019("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
       cambios.produccion = true;
     }
     return;
@@ -3507,7 +3507,7 @@ function syncV600Aplicar(data, cambios) {
 
   if (tipo === "resumen" && data.payload) {
     memoriaUltimoEnvio = { ...data.payload, actualizado: fechaServidor };
-    guardarLocalSeguroV6018("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+    guardarLocalSeguroV6019("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
     actualizarPanelMemoriaEnvio();
   }
 }
@@ -3526,7 +3526,7 @@ function syncV600Renderizar(cambios) {
     syncV600CambiosPendientes.produccion = false;
     if (pendientes.pedidos) {
       guardarPedidosLocal();
-      guardarLocalSeguroV6018("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+      guardarLocalSeguroV6019("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
       sincronizarMemoriaTickets();
       if (seccionActualFratello === "seccionPedidos") {
         renderPedidosCargados();
@@ -3538,7 +3538,7 @@ function syncV600Renderizar(cambios) {
       }
     }
     if (pendientes.tickets || pendientes.pedidos) {
-      guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+      guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
       if (seccionActualFratello === "seccionTickets") renderTicketsPorDia();
     }
     if (pendientes.caja) {
@@ -3556,7 +3556,7 @@ function syncV600Renderizar(cambios) {
   }, 350);
 }
 
-async function syncV600CargarInstantaneaV6018() {
+async function syncV600CargarInstantaneaV6019() {
   const coleccion = syncV600Coleccion();
   if (!coleccion) return false;
   const snapshot = await coleccion.orderBy("serverUpdatedAt", "desc").limit(300).get();
@@ -3569,17 +3569,17 @@ async function syncV600CargarInstantaneaV6018() {
   return true;
 }
 
-async function recuperarSincronizacionFirebaseV6018(motivo = "recuperacion") {
+async function recuperarSincronizacionFirebaseV6019(motivo = "recuperacion") {
   if (syncV600Recuperando || !navigator.onLine || !db) return false;
   syncV600Recuperando = true;
   setEstadoSync("Reconectando Firebase...");
   try {
-    const sesionLista = await asegurarConexionFirebaseV6018(true);
+    const sesionLista = await asegurarConexionFirebaseV6019(true);
     if (!sesionLista) throw new Error("No se pudo iniciar una sesión operativa válida.");
     try { syncV600Unsubscribe?.(); } catch (_) {}
     syncV600Unsubscribe = null;
     syncV600Iniciado = false;
-    await syncV600CargarInstantaneaV6018();
+    await syncV600CargarInstantaneaV6019();
     iniciarSyncCentralV600();
     await syncV600ReenviarCola();
     setEstadoSync("Online actualizado");
@@ -3625,7 +3625,7 @@ function iniciarSyncCentralV600() {
       syncV600Unsubscribe = null;
       setEstadoSync("Error de sincronización");
       setTimeout(() => {
-        recuperarSincronizacionFirebaseV6018("listener").catch(() => {});
+        recuperarSincronizacionFirebaseV6019("listener").catch(() => {});
       }, 2500);
     });
   syncV600ReenviarCola().catch(() => {});
@@ -3652,7 +3652,7 @@ function programarMigracionProduccionV6011() {
         valores: valoresProduccionPorDia(dia)
       }, false, { soloCrear: true });
     }
-    guardarLocalSeguroV6018(clave, "completa");
+    guardarLocalSeguroV6019(clave, "completa");
   }, 2500);
 }
 
@@ -3677,7 +3677,7 @@ function programarMigracionSyncV600() {
       const claveEntidad = `${registro.tipo}__${registro.entidadId}`;
       if (!syncV600IdsConocidos.has(claveEntidad)) syncV600Encolar(registro);
     });
-    guardarLocalSeguroV6018(clave, "completa");
+    guardarLocalSeguroV6019(clave, "completa");
     await syncV600ReenviarCola();
   }, 15000);
 }
@@ -3694,12 +3694,117 @@ function datosPedidosModulo() {
   };
 }
 
+// v6.0.19: el documento pedidos_estado llegó al límite de 1 MiB de Firestore.
+// Las revisiones completas se guardan en documentos pequeños y el manifiesto
+// se publica al final, para que otros dispositivos no lean una carga a medias.
+const CAMPOS_PEDIDOS_PARTES_V6019 = [
+  "pedidosFijos", "exclusionesPedidosFijos", "cuentaCorriente", "clientesCuenta"
+];
+let ultimaRevisionPedidosPartesV6019 = "";
+let ultimaFirmaPedidosPartesV6019 = "";
+let pedidosPartesInicializadosV6019 = false;
+let colaRevisionesPedidosPartesV6019 = Promise.resolve();
+
+function referenciaPedidosPartesV6019() {
+  return db.collection("fratello").doc("pedidos_estado_partes_v6019");
+}
+
+function fragmentarListaPedidosV6019(lista) {
+  const partes = [];
+  let parte = [];
+  let bytes = 0;
+  for (const item of lista) {
+    const tamano = new TextEncoder().encode(JSON.stringify(item)).length;
+    if (tamano > 150000) throw new Error("Un registro de pedidos supera 150 KB; requiere revisión.");
+    if (parte.length && bytes + tamano > 150000) {
+      partes.push(parte);
+      parte = [];
+      bytes = 0;
+    }
+    parte.push(item);
+    bytes += tamano;
+  }
+  if (parte.length) partes.push(parte);
+  return partes;
+}
+
+async function cargarPedidosPartesV6019(manifiesto, dibujar = true) {
+  const revision = String(manifiesto?.revision || "");
+  if (!revision || revision === ultimaRevisionPedidosPartesV6019) return false;
+  const snapshot = await referenciaPedidosPartesV6019().collection("registros")
+    .where("revision", "==", revision).get();
+  const datos = { pedidosConfirmados: Boolean(manifiesto.pedidosConfirmados) };
+  for (const campo of CAMPOS_PEDIDOS_PARTES_V6019) {
+    const partes = snapshot.docs.map(doc => doc.data())
+      .filter(item => item.campo === campo)
+      .sort((a, b) => a.indice - b.indice);
+    if (partes.length !== Number(manifiesto.partes?.[campo] || 0)) {
+      throw new Error(`Faltan fragmentos de ${campo} en la revisión ${revision}`);
+    }
+    datos[campo] = partes.flatMap(item => item.valores || []);
+  }
+  cargandoDesdeNube = true;
+  try {
+    aplicarPedidosModuloRemoto(datos);
+    ultimaRevisionPedidosPartesV6019 = revision;
+    if (JSON.stringify(datosPedidosModulo()) === JSON.stringify({
+      pedidosFijos: datos.pedidosFijos,
+      exclusionesPedidosFijos: datos.exclusionesPedidosFijos,
+      pedidosConfirmados: datos.pedidosConfirmados,
+      cuentaCorriente: datos.cuentaCorriente,
+      clientesCuenta: datos.clientesCuenta
+    })) {
+      ultimaFirmaPedidosPartesV6019 = JSON.stringify(datosPedidosModulo());
+    }
+    if (dibujar) {
+      renderPedidosCargados();
+      renderPedidosFuturos();
+      renderPedidosHoy();
+      renderTicketsPorDia();
+      renderPagosPendientes();
+      calcularDiferencias();
+      actualizarEstadoConfirmacion();
+    }
+  } finally {
+    cargandoDesdeNube = false;
+  }
+  return true;
+}
+
+async function publicarPedidosPartesV6019() {
+  const ref = referenciaPedidosPartesV6019();
+  const revision = `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const datos = datosPedidosModulo();
+  const partes = {};
+  const registros = [];
+  for (const campo of CAMPOS_PEDIDOS_PARTES_V6019) {
+    const fragmentos = fragmentarListaPedidosV6019(datos[campo]);
+    partes[campo] = fragmentos.length;
+    fragmentos.forEach((valores, indice) => {
+      registros.push({ campo, indice, revision, valores });
+    });
+  }
+  // Lotes acotados: cada fragmento pesa menos de 150 KB y cada lote tiene
+  // menos de 500 escrituras. No publicar el manifiesto hasta terminar todos.
+  for (let i = 0; i < registros.length; i += 15) {
+    const lote = db.batch();
+    registros.slice(i, i + 15).forEach(item => {
+      lote.set(ref.collection("registros").doc(`${revision}_${item.campo}_${item.indice}`), item);
+    });
+    await lote.commit();
+  }
+  await ref.set({ revision, partes, pedidosConfirmados: datos.pedidosConfirmados,
+    actualizado: new Date().toISOString() });
+  ultimaRevisionPedidosPartesV6019 = revision;
+  ultimaFirmaPedidosPartesV6019 = JSON.stringify(datos);
+}
+
 function guardarPedidosLocal() {
-  guardarLocalSeguroV6018("fratello_pedidos", JSON.stringify(pedidos));
-  guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  guardarLocalSeguroV6018("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-  guardarLocalSeguroV6018("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
-  guardarLocalSeguroV6018("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  guardarLocalSeguroV6019("fratello_pedidos", JSON.stringify(pedidos));
+  guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6019("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  guardarLocalSeguroV6019("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+  guardarLocalSeguroV6019("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
 }
 
 function aplicarPedidosModuloRemoto(data = {}) {
@@ -3721,9 +3826,9 @@ function aplicarPedidosModuloRemoto(data = {}) {
   }
   cuentaCorrienteV42 = fusionarCuentaCorrienteV42(data.cuentaCorriente, cuentaCorrienteV42);
   clientesCuentaV541 = fusionarClientesCuentaV541(data.clientesCuenta, clientesCuentaV541);
-  guardarLocalSeguroV6018(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
-  guardarLocalSeguroV6018("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
-  guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6019(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  guardarLocalSeguroV6019("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
   guardarClientesCuentaLocalV541();
 
   guardarPedidosLocal();
@@ -3731,7 +3836,10 @@ function aplicarPedidosModuloRemoto(data = {}) {
 }
 
 function guardarPedidosModuloEnNube() {
-  if (!db || cargandoDesdeNube) return Promise.resolve(false);
+  if (!db || cargandoDesdeNube || !pedidosPartesInicializadosV6019) return Promise.resolve(false);
+  if (ultimaFirmaPedidosPartesV6019 === JSON.stringify(datosPedidosModulo())) {
+    return Promise.resolve(true);
+  }
 
   guardadoPedidosModuloPendiente = true;
   clearTimeout(temporizadorPedidosModulo);
@@ -3747,38 +3855,17 @@ function guardarPedidosModuloEnNube() {
       guardadoPedidosModuloPendiente = false;
 
       try {
-        const ref = db.collection("fratello").doc("pedidos_estado");
-
-        await db.runTransaction(async tx => {
-          const snap = await tx.get(ref);
-          const remoto = snap.exists ? snap.data() : {};
-
-          pedidosFijos = fusionarPedidosFijosSync(
-            remoto.pedidosFijos,
-            pedidosFijos
-          );
-          exclusionesPedidosFijos = fusionarExclusionesPedidosFijos(
-            remoto.exclusionesPedidosFijos,
-            exclusionesPedidosFijos
-          );
-          cuentaCorrienteV42 = fusionarCuentaCorrienteV42(remoto.cuentaCorriente, cuentaCorrienteV42);
-          clientesCuentaV541 = fusionarClientesCuentaV541(remoto.clientesCuenta, clientesCuentaV541);
-
-          tx.set(ref, {
-            ...datosPedidosModulo(),
-            actualizado: new Date().toISOString()
-          }, { merge: true });
-        });
+        await publicarPedidosPartesV6019();
 
         guardarPedidosLocal();
-        guardarLocalSeguroV6018("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
-        guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
-        guardarLocalSeguroV6018(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+        guardarLocalSeguroV6019("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+        guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+        guardarLocalSeguroV6019(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
         guardarClientesCuentaLocalV541();
         resolve(true);
       } catch (error) {
         console.error("Error sincronizando Pedidos dedicado:", error);
-        // El guardado general sigue funcionando como respaldo.
+        setEstadoSync("Error guardando pedidos — revisar consola");
         resolve(false);
       } finally {
         guardadoPedidosModuloEnCurso = false;
@@ -3792,43 +3879,37 @@ async function iniciarPedidosModuloNube() {
   if (!db) return;
 
   try {
-    const ref = db.collection("fratello").doc("pedidos_estado");
-    const snap = await ref.get();
-
-    if (snap.exists) {
-      cargandoDesdeNube = true;
-      try {
-        aplicarPedidosModuloRemoto(snap.data());
-      } finally {
-        cargandoDesdeNube = false;
+    const ref = referenciaPedidosPartesV6019();
+    const manifiesto = await ref.get();
+    if (manifiesto.exists && manifiesto.data()?.revision) {
+      await cargarPedidosPartesV6019(manifiesto.data(), false);
+    } else {
+      // Migración inicial: el documento grande se lee, nunca se vuelve a
+      // escribir. Queda intacto como respaldo recuperable.
+      const anterior = await db.collection("fratello").doc("pedidos_estado").get();
+      if (anterior.exists) {
+        cargandoDesdeNube = true;
+        try { aplicarPedidosModuloRemoto(anterior.data()); }
+        finally { cargandoDesdeNube = false; }
       }
+      await publicarPedidosPartesV6019();
     }
 
-    // Publica la fusión inicial para migrar pedidos que todavía estuvieran
-    // solamente en el documento general o en almacenamiento local.
-    guardarPedidosModuloEnNube().catch(() => {});
+    pedidosPartesInicializadosV6019 = true;
+    if (ultimaFirmaPedidosPartesV6019 !== JSON.stringify(datosPedidosModulo())) {
+      guardarPedidosModuloEnNube().catch(() => {});
+    }
 
     if (!escuchandoPedidosModulo) {
       escuchandoPedidosModulo = true;
       ref.onSnapshot(doc => {
-        if (!doc.exists) return;
-
-        cargandoDesdeNube = true;
-        try {
-          aplicarPedidosModuloRemoto(doc.data());
-          renderPedidosCargados();
-          renderPedidosFuturos();
-          renderHistorialPedidos();
-          renderPedidosHoy();
-          renderTicketsPorDia();
-          renderPagosPendientes();
-          calcularDiferencias();
-          actualizarEstadoConfirmacion();
-        } catch (error) {
-          console.error("Error recibiendo Pedidos dedicado:", error);
-        } finally {
-          cargandoDesdeNube = false;
-        }
+        if (!doc.exists || !doc.data()?.revision) return;
+        const manifiestoRecibido = doc.data();
+        colaRevisionesPedidosPartesV6019 = colaRevisionesPedidosPartesV6019
+          .then(() => cargarPedidosPartesV6019(manifiestoRecibido)).catch(error => {
+          console.error("Error recibiendo Pedidos dedicados:", error);
+          setEstadoSync("Error recibiendo pedidos — revisar consola");
+        });
       }, error => {
         console.error("Listener Pedidos dedicado:", error);
       });
@@ -3968,36 +4049,36 @@ function datosActuales() {
 
 // El documento heredado "estado" contiene años de duplicados. Sus escrituras
 // con merge conservaban esos campos indefinidamente hasta superar 1 MiB.
-const CAMPOS_ARCHIVO_ESTADO_V6018 = [
+const CAMPOS_ARCHIVO_ESTADO_V6019 = [
   "ticketsMemoria", "pedidosHoy", "cierresCaja", "cierresCajaEliminados",
   "auditoriaCaja", "administracionFinanciera", "cuentaCorriente",
   "clientesCuenta", "historialPedidos", "pedidosEliminados",
   "produccion", "listasPrecios", "listasPrecioPersonalizadas",
   "catalogoProductos", "preciosActualizadosEn"
 ];
-let compactacionEstadoEnCursoV6018 = null;
-let estadoHeredadoCompactadoV6018 = false;
+let compactacionEstadoEnCursoV6019 = null;
+let estadoHeredadoCompactadoV6019 = false;
 
-async function compactarEstadoHeredadoV6018() {
+async function compactarEstadoHeredadoV6019() {
   if (!db) return false;
-  if (estadoHeredadoCompactadoV6018) return true;
-  if (compactacionEstadoEnCursoV6018) return compactacionEstadoEnCursoV6018;
-  compactacionEstadoEnCursoV6018 = (async () => {
+  if (estadoHeredadoCompactadoV6019) return true;
+  if (compactacionEstadoEnCursoV6019) return compactacionEstadoEnCursoV6019;
+  compactacionEstadoEnCursoV6019 = (async () => {
     const ref = db.collection("fratello").doc("estado");
     const snapshot = await ref.get();
     if (!snapshot.exists) return true;
     const data = snapshot.data() || {};
-    const campos = CAMPOS_ARCHIVO_ESTADO_V6018.filter(campo =>
+    const campos = CAMPOS_ARCHIVO_ESTADO_V6019.filter(campo =>
       Object.prototype.hasOwnProperty.call(data, campo)
     );
     if (!campos.length) {
-      estadoHeredadoCompactadoV6018 = true;
+      estadoHeredadoCompactadoV6019 = true;
       return true;
     }
 
     // Respaldar cada campo como fragmentos inferiores a 150 KB antes de
     // eliminarlo. Repetir la operación es seguro si se cierra la pestaña.
-    const archivo = ref.collection("archivo_v6018");
+    const archivo = ref.collection("archivo_v6019");
     for (const campo of campos) {
       const contenido = JSON.stringify(data[campo]);
       const partes = contenido.match(/[\s\S]{1,60000}/g) || [""];
@@ -4013,13 +4094,13 @@ async function compactarEstadoHeredadoV6018() {
       borrados[campo] = firebase.firestore.FieldValue.delete();
     });
     await ref.update(borrados);
-    estadoHeredadoCompactadoV6018 = true;
+    estadoHeredadoCompactadoV6019 = true;
     return true;
   })().catch(error => {
     console.error("No se pudo respaldar y compactar el estado antiguo:", error);
     return false;
-  }).finally(() => { compactacionEstadoEnCursoV6018 = null; });
-  return compactacionEstadoEnCursoV6018;
+  }).finally(() => { compactacionEstadoEnCursoV6019 = null; });
+  return compactacionEstadoEnCursoV6019;
 }
 
 
@@ -4175,7 +4256,7 @@ function guardarEnNube(esReintento = false) {
       setEstadoSync("Sincronizando...");
 
       try {
-        const compactado = await compactarEstadoHeredadoV6018();
+        const compactado = await compactarEstadoHeredadoV6019();
         if (!compactado) {
           // No sobrescribir ni reducir un documento que no se pudo respaldar.
           // Los pedidos actuales se guardan en sus canales individuales.
@@ -4347,36 +4428,36 @@ async function cargarDesdeNube() {
 
       validarClientes();
 
-      guardarLocalSeguroV6018("fratello_produccion", JSON.stringify(produccion));
-      guardarLocalSeguroV6018("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-      guardarLocalSeguroV6018("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-      guardarLocalSeguroV6018("fratello_historial_pedidos", JSON.stringify(historialPedidos));
-      guardarLocalSeguroV6018("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
-  guardarLocalSeguroV6018("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-  guardarLocalSeguroV6018("fratello_historial_pedidos", JSON.stringify(historialPedidos));
-      guardarLocalSeguroV6018("fratello_predeterminadas", JSON.stringify(predeterminadas));
-      guardarLocalSeguroV6018("fratello_clientes", JSON.stringify(clientes));
-      guardarLocalSeguroV6018("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-    guardarLocalSeguroV6018("fratello_listas_precios", JSON.stringify(listasPrecios));
-  guardarLocalSeguroV6018(
+      guardarLocalSeguroV6019("fratello_produccion", JSON.stringify(produccion));
+      guardarLocalSeguroV6019("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+      guardarLocalSeguroV6019("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+      guardarLocalSeguroV6019("fratello_historial_pedidos", JSON.stringify(historialPedidos));
+      guardarLocalSeguroV6019("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+  guardarLocalSeguroV6019("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  guardarLocalSeguroV6019("fratello_historial_pedidos", JSON.stringify(historialPedidos));
+      guardarLocalSeguroV6019("fratello_predeterminadas", JSON.stringify(predeterminadas));
+      guardarLocalSeguroV6019("fratello_clientes", JSON.stringify(clientes));
+      guardarLocalSeguroV6019("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+    guardarLocalSeguroV6019("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6019(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
-      guardarLocalSeguroV6018("fratello_listas_precios", JSON.stringify(listasPrecios));
-      guardarLocalSeguroV6018(
+      guardarLocalSeguroV6019("fratello_listas_precios", JSON.stringify(listasPrecios));
+      guardarLocalSeguroV6019(
         "fratello_listas_precio_personalizadas",
         JSON.stringify(listasPrecioPersonalizadas)
       );
-      guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
-      guardarLocalSeguroV6018("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
-      guardarLocalSeguroV6018("fratello_productos_extra", JSON.stringify(productosExtra));
-      guardarLocalSeguroV6018("fratello_catalogo_productos", JSON.stringify(productos));
-      guardarLocalSeguroV6018("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-      guardarLocalSeguroV6018("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-      guardarLocalSeguroV6018("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
-      guardarLocalSeguroV6018("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+      guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+      guardarLocalSeguroV6019("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+      guardarLocalSeguroV6019("fratello_productos_extra", JSON.stringify(productosExtra));
+      guardarLocalSeguroV6019("fratello_catalogo_productos", JSON.stringify(productos));
+      guardarLocalSeguroV6019("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+      guardarLocalSeguroV6019("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      guardarLocalSeguroV6019("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      guardarLocalSeguroV6019("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
 }
 
     setEstadoSync("Online");
@@ -4402,13 +4483,13 @@ async function actualizarDatosManual(evento = null) {
 
   try {
     if (!db) throw new Error("Firebase no está conectado.");
-    const sesionLista = await asegurarConexionFirebaseV6018(true);
+    const sesionLista = await asegurarConexionFirebaseV6019(true);
     if (!sesionLista) throw new Error("No se pudo recuperar la sesión de Firebase.");
 
     // La actualización operativa sólo necesita el canal individual. El
     // documento histórico puede medir casi 1 MiB y los demás módulos ya
     // disponen de listeners propios; esperar sus lecturas bloqueaba Android.
-    await syncV600CargarInstantaneaV6018();
+    await syncV600CargarInstantaneaV6019();
     if (!syncV600Iniciado) iniciarSyncCentralV600();
     renderPedidosCargados();
     renderPedidosFuturos();
@@ -4428,7 +4509,7 @@ async function actualizarDatosManual(evento = null) {
 
     // Los pedidos actuales viven en el canal central. La actualización manual
     // debe leerlo directamente, aunque el listener de este perfil haya fallado.
-    await syncV600CargarInstantaneaV6018();
+    await syncV600CargarInstantaneaV6019();
     if (!syncV600Iniciado) iniciarSyncCentralV600();
 
     const doc = await db.collection("fratello").doc("estado").get();
@@ -4477,23 +4558,23 @@ async function actualizarDatosManual(evento = null) {
       if (!productos.find(item => item.id === producto.id)) productos.push(producto);
     });
 
-    guardarLocalSeguroV6018("fratello_produccion", JSON.stringify(produccion));
-    guardarLocalSeguroV6018("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-    guardarLocalSeguroV6018("fratello_predeterminadas", JSON.stringify(predeterminadas));
-    guardarLocalSeguroV6018("fratello_clientes", JSON.stringify(clientes));
-    guardarLocalSeguroV6018("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-    guardarLocalSeguroV6018("fratello_listas_precios", JSON.stringify(listasPrecios));
-    guardarLocalSeguroV6018(
+    guardarLocalSeguroV6019("fratello_produccion", JSON.stringify(produccion));
+    guardarLocalSeguroV6019("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+    guardarLocalSeguroV6019("fratello_predeterminadas", JSON.stringify(predeterminadas));
+    guardarLocalSeguroV6019("fratello_clientes", JSON.stringify(clientes));
+    guardarLocalSeguroV6019("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+    guardarLocalSeguroV6019("fratello_listas_precios", JSON.stringify(listasPrecios));
+    guardarLocalSeguroV6019(
       "fratello_listas_precio_personalizadas",
       JSON.stringify(listasPrecioPersonalizadas)
     );
-    guardarLocalSeguroV6018("fratello_productos_extra", JSON.stringify(productosExtra));
-    guardarLocalSeguroV6018("fratello_catalogo_productos", JSON.stringify(productos));
-    guardarLocalSeguroV6018("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-    guardarLocalSeguroV6018("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-    guardarLocalSeguroV6018("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
-      guardarLocalSeguroV6018("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+    guardarLocalSeguroV6019("fratello_productos_extra", JSON.stringify(productosExtra));
+    guardarLocalSeguroV6019("fratello_catalogo_productos", JSON.stringify(productos));
+    guardarLocalSeguroV6019("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+    guardarLocalSeguroV6019("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+    guardarLocalSeguroV6019("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      guardarLocalSeguroV6019("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
 
     renderClientes();
     renderListaClientesCompleta();
@@ -4524,7 +4605,7 @@ async function actualizarDatosManual(evento = null) {
     console.error("Error actualizando datos:", error);
     if (estado) estado.textContent = "❌ No se pudieron actualizar los datos";
     if (botonGlobal) botonGlobal.textContent = "⚠️";
-    recuperarSincronizacionFirebaseV6018("actualizacion_manual").catch(() => {});
+    recuperarSincronizacionFirebaseV6019("actualizacion_manual").catch(() => {});
 
     setTimeout(() => {
       if (botonGlobal) botonGlobal.textContent = "🔄";
@@ -4828,16 +4909,16 @@ function escucharCambiosNube() {
         if (!productos.find(x => x.id === p.id)) productos.push(p);
       });
 
-      guardarLocalSeguroV6018("fratello_produccion", JSON.stringify(produccion));
-      guardarLocalSeguroV6018("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-      guardarLocalSeguroV6018("fratello_predeterminadas", JSON.stringify(predeterminadas));
-      guardarLocalSeguroV6018("fratello_clientes", JSON.stringify(clientes));
-      guardarLocalSeguroV6018("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-      guardarLocalSeguroV6018("fratello_productos_extra", JSON.stringify(productosExtra));
-      guardarLocalSeguroV6018("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-      guardarLocalSeguroV6018("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-      guardarLocalSeguroV6018("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      guardarLocalSeguroV6019("fratello_produccion", JSON.stringify(produccion));
+      guardarLocalSeguroV6019("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+      guardarLocalSeguroV6019("fratello_predeterminadas", JSON.stringify(predeterminadas));
+      guardarLocalSeguroV6019("fratello_clientes", JSON.stringify(clientes));
+      guardarLocalSeguroV6019("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+      guardarLocalSeguroV6019("fratello_productos_extra", JSON.stringify(productosExtra));
+      guardarLocalSeguroV6019("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+      guardarLocalSeguroV6019("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      guardarLocalSeguroV6019("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 
       if (seccionActualFratello === "seccionPedidos") {
         renderClientes();
@@ -4875,20 +4956,20 @@ function escucharCambiosNube() {
 }
 
 function guardarTodo() {
-  guardarLocalSeguroV6018("fratello_produccion", JSON.stringify(produccion));
-  guardarLocalSeguroV6018("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  guardarLocalSeguroV6018("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-  guardarLocalSeguroV6018("fratello_historial_pedidos", JSON.stringify(historialPedidos));
-  guardarLocalSeguroV6018("fratello_predeterminadas", JSON.stringify(predeterminadas));
-  guardarLocalSeguroV6018("fratello_clientes", JSON.stringify(clientes));
-  guardarLocalSeguroV6018("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-  guardarLocalSeguroV6018("fratello_productos_extra", JSON.stringify(productosExtra));
-  guardarLocalSeguroV6018("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
-  guardarLocalSeguroV6018("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-  guardarLocalSeguroV6018("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-      guardarLocalSeguroV6018("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
-  guardarLocalSeguroV6018("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+  guardarLocalSeguroV6019("fratello_produccion", JSON.stringify(produccion));
+  guardarLocalSeguroV6019("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6019("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  guardarLocalSeguroV6019("fratello_historial_pedidos", JSON.stringify(historialPedidos));
+  guardarLocalSeguroV6019("fratello_predeterminadas", JSON.stringify(predeterminadas));
+  guardarLocalSeguroV6019("fratello_clientes", JSON.stringify(clientes));
+  guardarLocalSeguroV6019("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+  guardarLocalSeguroV6019("fratello_productos_extra", JSON.stringify(productosExtra));
+  guardarLocalSeguroV6019("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6019("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  guardarLocalSeguroV6019("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      guardarLocalSeguroV6019("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  guardarLocalSeguroV6019("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
   guardarEnNube();
 }
 
@@ -4906,7 +4987,7 @@ pedidosEliminados = pedidosEliminados.filter(item => {
   if (!clave) return true;
   return clave.includes("|pedido_fijo|") || clave.includes("|fijo:");
 });
-guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
 
 let pedidosFijos = JSON.parse(localStorage.getItem("fratello_pedidos_fijos") || "[]");
 let historialPedidos = JSON.parse(localStorage.getItem("fratello_historial_pedidos") || "[]");
@@ -4939,7 +5020,7 @@ function quitarProductosCatalogoEliminados() {
   for (let indice = productos.length - 1; indice >= 0; indice -= 1) {
     if (eliminados.has(String(productos[indice]?.id || ""))) productos.splice(indice, 1);
   }
-  guardarLocalSeguroV6018("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6019("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
 }
 let productosExtra = JSON.parse(localStorage.getItem("fratello_productos_extra") || "[]");
 quitarProductosCatalogoEliminados();
@@ -4992,7 +5073,7 @@ function asegurarProductoCriollosCatalogo() {
   }
 
   try {
-    guardarLocalSeguroV6018("fratello_catalogo_productos", JSON.stringify(productos));
+    guardarLocalSeguroV6019("fratello_catalogo_productos", JSON.stringify(productos));
   } catch (error) {
     console.warn("No se pudo actualizar el catálogo local de Criollos:", error);
   }
@@ -5226,8 +5307,8 @@ async function guardarProduccion() {
 
   const dia = diaActual();
   produccionActualizadaEnPorDia[dia] = new Date().toISOString();
-  guardarLocalSeguroV6018("fratello_produccion", JSON.stringify(produccion));
-  guardarLocalSeguroV6018("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
+  guardarLocalSeguroV6019("fratello_produccion", JSON.stringify(produccion));
+  guardarLocalSeguroV6019("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
 
   const guardadoOnline = await syncV600Guardar("produccion", dia, {
     dia,
@@ -5319,10 +5400,10 @@ function crearIdProductoCatalogo(nombre) {
   return id;
 }
 function guardarCatalogoProductos() {
-  guardarLocalSeguroV6018("fratello_catalogo_productos", JSON.stringify(productos));
-  guardarLocalSeguroV6018("fratello_predeterminadas", JSON.stringify(predeterminadas));
-  guardarLocalSeguroV6018("fratello_productos_extra", JSON.stringify(productosExtra));
-  guardarLocalSeguroV6018("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6019("fratello_catalogo_productos", JSON.stringify(productos));
+  guardarLocalSeguroV6019("fratello_predeterminadas", JSON.stringify(predeterminadas));
+  guardarLocalSeguroV6019("fratello_productos_extra", JSON.stringify(productosExtra));
+  guardarLocalSeguroV6019("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
   guardarEnNube();
   guardarPreciosModuloEnNube();
 }
@@ -5501,7 +5582,7 @@ function guardarProductoCatalogo(id) {
   producto.visible = fila.querySelector("[data-catalog-visible]").checked;
   producto.activo = fila.querySelector("[data-catalog-activo]").checked;
   preciosActualizadosEn = new Date().toISOString();
-  guardarLocalSeguroV6018("fratello_precios_actualizados_en", preciosActualizadosEn);
+  guardarLocalSeguroV6019("fratello_precios_actualizados_en", preciosActualizadosEn);
   const extra = productosExtra.find(p => p.id === id);
   if (extra) Object.assign(extra, producto);
   guardarCatalogoProductos();
@@ -5577,7 +5658,7 @@ async function eliminarProductoCatalogo(id) {
     [{ id, nombre: producto.nombre, eliminadoEn: new Date().toISOString() }]
   );
   preciosActualizadosEn = new Date().toISOString();
-  guardarLocalSeguroV6018("fratello_precios_actualizados_en", preciosActualizadosEn);
+  guardarLocalSeguroV6019("fratello_precios_actualizados_en", preciosActualizadosEn);
   dias.forEach(dia => {
     if (predeterminadas[dia]) delete predeterminadas[dia][id];
     delete produccion[`${dia}_${id}`];
@@ -7374,7 +7455,7 @@ function alternarConfirmacionPedido(idPedido, confirmado) {
   // Guardado liviano: confirmar un pedido no debe volver a leer y subir todo
   // el historial de la aplicación. Esto evita bloqueos y reinicios en Android.
   guardarPedidosLocal();
-  guardarLocalSeguroV6018("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  guardarLocalSeguroV6019("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
   sincronizarPedidoIndividualV557(pedido, "normal").catch(() => {});
   calcularDiferencias();
   actualizarEstadoConfirmacion();
@@ -7401,7 +7482,7 @@ function borrarPedido(id) {
 
   excluirPedidoFijoEnFecha(pedido);
   registrarPedidoEliminado(pedido);
-  guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
   pedidos = pedidos.filter(p => Number(p.id) !== Number(id));
   pedidosConfirmados = false;
   guardarTodo();
@@ -7433,7 +7514,7 @@ function borrarPedidosSeleccionados() {
       excluirPedidoFijoEnFecha(pedido);
       registrarPedidoEliminado(pedido);
     });
-  guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
 
   pedidos = pedidos.filter(p => !seleccionados.includes(Number(p.id)));
   pedidosConfirmados = false;
@@ -7873,7 +7954,7 @@ function agregarListaPrecioPersonalizada() {
   };
 
   listasPrecioPersonalizadas.push(nueva);
-  guardarLocalSeguroV6018(
+  guardarLocalSeguroV6019(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
@@ -7906,7 +7987,7 @@ function eliminarListaPrecioPersonalizada(id) {
     }
   });
 
-  guardarLocalSeguroV6018(
+  guardarLocalSeguroV6019(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
@@ -8005,8 +8086,8 @@ async function guardarListasPrecios(){
   }
 
   preciosActualizadosEn = new Date().toISOString();
-  guardarLocalSeguroV6018("fratello_listas_precios", JSON.stringify(listasPrecios));
-  guardarLocalSeguroV6018("fratello_precios_actualizados_en", preciosActualizadosEn);
+  guardarLocalSeguroV6019("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6019("fratello_precios_actualizados_en", preciosActualizadosEn);
   guardarEnNube();
   const guardadoOnline = await guardarPreciosModuloEnNube();
   renderTicketsPorDia();
@@ -8200,10 +8281,10 @@ function repararDuplicadosPedidosFijos(fechaObjetivo = "", mostrarAviso = false)
       cuentaCorrienteV42 = cuentaCorrienteV42.filter(movimiento =>
         !movimientosAEliminar.has(String(movimiento.claveTicket || ""))
       );
-      guardarLocalSeguroV6018(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+      guardarLocalSeguroV6019(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
     }
 
-    guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+    guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 
     if (typeof guardarTodo === "function") guardarTodo();
     else if (typeof guardarEnNube === "function") guardarEnNube();
@@ -8257,7 +8338,7 @@ function claveTicketMemoria(pedido, tipo = "normal") {
 }
 
 function guardarMemoriaTickets() {
-  guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
   guardarEnNube();
 }
 
@@ -8281,7 +8362,7 @@ function recuperarTicketsPedidoHoyV422() {
   });
 
   if (recuperados) {
-    guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+    guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
   }
   return recuperados;
 }
@@ -8369,7 +8450,7 @@ function sincronizarMemoriaTickets() {
       String(a.cliente || "").localeCompare(String(b.cliente || ""), "es")
     );
 
-  guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 }
 
 function ticketsMemoriaParaFecha(fecha) {
@@ -9301,11 +9382,11 @@ function fusionarClientesCuentaV541(remotos=[], locales=[]) {
   return [...new Set([...(Array.isArray(remotos)?remotos:[]), ...(Array.isArray(locales)?locales:[])].map(x=>String(x||"").trim()).filter(Boolean))];
 }
 function guardarClientesCuentaLocalV541() {
-  guardarLocalSeguroV6018(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
+  guardarLocalSeguroV6019(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
 }
 function guardarCuentaCorrienteV42() {
-  guardarLocalSeguroV6018(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
-  guardarLocalSeguroV6018(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
+  guardarLocalSeguroV6019(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  guardarLocalSeguroV6019(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
   if (typeof guardarPedidosModuloEnNube === "function") guardarPedidosModuloEnNube().catch(() => {});
   renderPagosPendientes();
 }
@@ -10109,8 +10190,8 @@ function resetDatos() {
   if (!confirm("¿Seguro que querés borrar solo los pedidos cargados?")) return;
 
   pedidos = [];
-  guardarLocalSeguroV6018("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6019("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
   guardarEnNube();
 
   renderPedidosCargados();
@@ -10220,7 +10301,7 @@ function reabrirJornadaParaNuevoPedido(fecha) {
   jornadasCerradas = (jornadasCerradas || []).filter(item => item !== fecha);
 
   if (jornadasCerradas.length !== antes) {
-    guardarLocalSeguroV6018("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+    guardarLocalSeguroV6019("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
   }
 }
 
@@ -10232,13 +10313,13 @@ function cerrarJornada(fecha) {
   if (!fecha) return;
   if (!Array.isArray(jornadasCerradas)) jornadasCerradas = [];
   if (!jornadasCerradas.includes(fecha)) jornadasCerradas.push(fecha);
-  guardarLocalSeguroV6018("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  guardarLocalSeguroV6019("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 }
 
 function reabrirJornada(fecha) {
   jornadasCerradas = (Array.isArray(jornadasCerradas) ? jornadasCerradas : [])
     .filter(item => item !== fecha);
-  guardarLocalSeguroV6018("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  guardarLocalSeguroV6019("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 }
 
 function estadoJornadaActual() {
@@ -10417,7 +10498,7 @@ async function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencia
     jornadaEnviada: true
   };
 
-  guardarLocalSeguroV6018("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+  guardarLocalSeguroV6019("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
   actualizarPanelMemoriaEnvio();
   return syncV600Guardar("resumen", fechaResumen, memoriaUltimoEnvio);
 }
@@ -10517,8 +10598,8 @@ function limpiarPedidosDespuesDeEnviar() {
   pedidos = [];
   pedidosConfirmados = false;
 
-  guardarLocalSeguroV6018("fratello_pedidos", JSON.stringify([]));
-  guardarLocalSeguroV6018("fratello_pedidos_confirmados", JSON.stringify(false));
+  guardarLocalSeguroV6019("fratello_pedidos", JSON.stringify([]));
+  guardarLocalSeguroV6019("fratello_pedidos_confirmados", JSON.stringify(false));
 
   if ($("checkPedidoCompleto")) $("checkPedidoCompleto").checked = false;
   if ($("pedidoCrudo")) $("pedidoCrudo").value = "";
@@ -10539,9 +10620,9 @@ function limpiarJornadaDespuesDeEnviar() {
   pedidos = [];
   pedidosConfirmados = false;
 
-  guardarLocalSeguroV6018("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6018("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  guardarLocalSeguroV6018("fratello_pedidos_confirmados", JSON.stringify(false));
+  guardarLocalSeguroV6019("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6019("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6019("fratello_pedidos_confirmados", JSON.stringify(false));
 
   const selectorProduccion = $("diaProduccion");
   const selectorPedidos = $("diaProduccionPedidos");
@@ -10732,7 +10813,7 @@ async function generarMensajeGrupoFratello() {
   // Los pedidos permanecen visibles para Tickets, entregas y controles.
   // La memoria de firmas evita repetirlos en un segundo envío.
   sincronizarMemoriaTickets();
-  guardarLocalSeguroV6018("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6019("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 
   abrirWhatsApp("", mensaje);
 }
@@ -11139,7 +11220,7 @@ function cargarAdministracionLocal() {
 }
 
 function guardarAdministracionLocal() {
-  guardarLocalSeguroV6018(ADMIN_FIN_STORAGE_KEY, JSON.stringify(administracionFinanciera));
+  guardarLocalSeguroV6019(ADMIN_FIN_STORAGE_KEY, JSON.stringify(administracionFinanciera));
 }
 
 function guardarAdministracion() {
@@ -12740,7 +12821,7 @@ function horasCargarCorrecciones() {
 }
 
 function horasGuardarCorrecciones(datos) {
-  guardarLocalSeguroV6018(HORAS_CORRECCIONES_STORAGE, JSON.stringify(datos || {}));
+  guardarLocalSeguroV6019(HORAS_CORRECCIONES_STORAGE, JSON.stringify(datos || {}));
 }
 
 function horasCorreccionesArchivoActual() {
@@ -12799,7 +12880,7 @@ async function horasGuardarUltimosDatosOnline(silencioso = false) {
       archivo:JSON.parse(JSON.stringify(archivoHorasEmpleadosActual)),
       correcciones:horasCorreccionesArchivoActual(),
       actualizadoEn:new Date().toISOString(),
-      version:"6.0.18"
+      version:"6.0.19"
     };
     await db.collection("administracion").doc("horas_empleados_ultimo").set(datos);
     horasArchivoVinculadoNube = true;
@@ -13682,7 +13763,7 @@ function cargarCajaLocal() {
 }
 
 function guardarCajaLocal() {
-  guardarLocalSeguroV6018(CAJA_STORAGE_KEY, JSON.stringify({
+  guardarLocalSeguroV6019(CAJA_STORAGE_KEY, JSON.stringify({
     cierresCaja,
     cierresCajaEliminados,
     auditoriaCaja,
@@ -13838,7 +13919,7 @@ function idDispositivoCaja() {
   let id = localStorage.getItem(clave);
   if (!id) {
     id = `DISP-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-    guardarLocalSeguroV6018(clave, id);
+    guardarLocalSeguroV6019(clave, id);
   }
   return id;
 }
@@ -14801,7 +14882,7 @@ function leerColaCajaIndividualV560() {
 }
 
 function guardarColaCajaIndividualV560(cola) {
-  guardarLocalSeguroV6018(COLA_CAJA_INDIVIDUAL_V560, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-40)));
+  guardarLocalSeguroV6019(COLA_CAJA_INDIVIDUAL_V560, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-40)));
 }
 
 function encolarCierreCajaIndividualV560(registro) {
@@ -14897,7 +14978,7 @@ function programarMigracionCajaIndividualV560() {
         cierre: JSON.parse(JSON.stringify(cierre))
       });
     });
-    guardarLocalSeguroV6018(clave, "completa");
+    guardarLocalSeguroV6019(clave, "completa");
     reenviarColaCajaIndividualV560().catch(() => {});
   }, 12000);
 }
@@ -15002,8 +15083,8 @@ async function guardarAdminModuloEnNube() {
 }
 
 async function guardarPreciosModuloEnNube() {
-  guardarLocalSeguroV6018("fratello_listas_precios", JSON.stringify(listasPrecios));
-  guardarLocalSeguroV6018("fratello_catalogo_productos", JSON.stringify(productos));
+  guardarLocalSeguroV6019("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6019("fratello_catalogo_productos", JSON.stringify(productos));
   if (!db) return false;
   if (guardandoPreciosModulo) {
     preciosModuloPendiente = true;
@@ -15058,17 +15139,17 @@ function aplicarPreciosDesdeNube(data = {}, forzar = false) {
   }
   quitarProductosCatalogoEliminados();
 
-  guardarLocalSeguroV6018("fratello_listas_precios", JSON.stringify(listasPrecios));
-  guardarLocalSeguroV6018(
+  guardarLocalSeguroV6019("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6019(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
-  guardarLocalSeguroV6018("fratello_catalogo_productos", JSON.stringify(productos));
-  guardarLocalSeguroV6018("fratello_productos_extra", JSON.stringify(productosExtra));
-  guardarLocalSeguroV6018("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6019("fratello_catalogo_productos", JSON.stringify(productos));
+  guardarLocalSeguroV6019("fratello_productos_extra", JSON.stringify(productosExtra));
+  guardarLocalSeguroV6019("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
   preciosActualizadosEn = data.actualizado || preciosActualizadosEn;
   if (preciosActualizadosEn) {
-    guardarLocalSeguroV6018("fratello_precios_actualizados_en", preciosActualizadosEn);
+    guardarLocalSeguroV6019("fratello_precios_actualizados_en", preciosActualizadosEn);
   }
   renderListasPrecios();
   renderAdministradorProductos();
@@ -15252,7 +15333,7 @@ function sincronizarCajaTiempoReal() {
 
 window.addEventListener("online", () => {
   setEstadoSync("Conexión recuperada — sincronizando...");
-  recuperarSincronizacionFirebaseV6018("conexion_recuperada").catch(() => {});
+  recuperarSincronizacionFirebaseV6019("conexion_recuperada").catch(() => {});
   clearTimeout(temporizadorGuardadoNube);
   intentosGuardadoNube = 0;
   if (guardadoNubePendiente) guardarEnNube(false);
@@ -15263,18 +15344,18 @@ window.addEventListener("offline", () => {
   setEstadoSync("Sin conexión — modo local");
 });
 
-function verificarSaludFirebaseV6018() {
+function verificarSaludFirebaseV6019() {
   if (!navigator.onLine || document.visibilityState === "hidden") return;
   if (!syncV600Iniciado || syncV600UltimoErrorMs) {
-    recuperarSincronizacionFirebaseV6018("verificacion").catch(() => {});
+    recuperarSincronizacionFirebaseV6019("verificacion").catch(() => {});
   }
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") verificarSaludFirebaseV6018();
+  if (document.visibilityState === "visible") verificarSaludFirebaseV6019();
 });
-window.addEventListener("focus", verificarSaludFirebaseV6018);
-setInterval(verificarSaludFirebaseV6018, 3 * 60 * 1000);
+window.addEventListener("focus", verificarSaludFirebaseV6019);
+setInterval(verificarSaludFirebaseV6019, 3 * 60 * 1000);
 
 function iniciarModuloCaja() {
   if (window.__FRATELLO_CAJA_INICIADA__) {
@@ -15602,7 +15683,7 @@ async function init() {
 
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   compactarCacheTicketsLocalV559();
-  const sesionFirebaseLista = await asegurarConexionFirebaseV6018(false);
+  const sesionFirebaseLista = await asegurarConexionFirebaseV6019(false);
   if (!sesionFirebaseLista && navigator.onLine) {
     setEstadoSync("Reconectando Firebase...");
   }

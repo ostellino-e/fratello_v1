@@ -31,12 +31,12 @@
         }
 
         // Si el perfil ya agotó localStorage, esta marca no debe impedir abrir
-        // la aplicación: la v6.0.18 hará la limpieza al iniciar.
+        // la aplicación: la v6.0.19 hará la limpieza al iniciar.
         try {
           localStorage.removeItem("pedidos");
           localStorage.setItem("fratello_actualizacion_forzada", new Date().toISOString());
         } catch (_) {}
-        estado.textContent = "Actualización completada. Abriendo Fratello v6.0.18…";
+        estado.textContent = "Actualización completada. Abriendo Fratello v6.0.19…";
 
         setTimeout(() => {
           location.replace("./index.html?v=547&actualizado=" + Date.now());
