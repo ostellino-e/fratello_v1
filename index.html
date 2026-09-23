@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.17";
-    document.documentElement.dataset.fratelloVersion = "6.0.17";
+    window.FRATELLO_VERSION = "6.0.18";
+    document.documentElement.dataset.fratelloVersion = "6.0.18";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.17</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.18</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -473,7 +473,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.17 · Almacenamiento corregido</span>
+        <span class="adminFinanceVersion">v6.0.18 · Sincronización liviana</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -1176,7 +1176,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6017"></script>
+  <script src="app.js?v=6018"></script>
 
   
 
@@ -1193,12 +1193,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6017")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6018")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6017", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6018", {
             scope: "./",
             updateViaCache: "none"
           });

@@ -1,4 +1,11 @@
-# Fratello v6.0.17
+# Fratello v6.0.18
+
+## Corrección v6.0.18
+
+- Evita que el documento histórico de Firebase supere el límite de 1 MiB.
+- Respalda en fragmentos los campos duplicados antes de retirarlos del documento antiguo.
+- Impide que escrituras posteriores vuelvan a inflarlo.
+- El botón **Actualizar datos** lee el canal liviano de pedidos y tickets sin esperar al documento histórico.
 
 ## Corrección v6.0.17
 
@@ -261,4 +268,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.17
+Versión esperada: v6.0.18
