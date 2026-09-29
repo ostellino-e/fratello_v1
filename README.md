@@ -1,4 +1,10 @@
-# Fratello v6.0.24
+# Fratello v6.0.25
+
+## Ajuste v6.0.25
+
+- Elimina el margen general de 12 px que se aplicaba a cada campo y agrandaba los recuadros de Stock en celular.
+- Las etiquetas Inicial, Agregado y Final se ubican dentro de los campos; las filas quedan realmente más bajas.
+- Conserva el número Vendido grande y destacado.
 
 ## Ajuste v6.0.24
 
@@ -311,4 +317,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.24
+Versión esperada: v6.0.25
