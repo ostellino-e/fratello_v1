@@ -1,4 +1,10 @@
-# Fratello v6.0.23
+# Fratello v6.0.24
+
+## Ajuste v6.0.24
+
+- Stock en celular: menos separación y menos alto por producto.
+- La cantidad vendida aparece en un recuadro verde con número más grande; los valores negativos se muestran en rojo.
+- La unidad se conserva junto al producto y en la vista de PC.
 
 ## Ajuste v6.0.23
 
@@ -305,4 +311,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.23
+Versión esperada: v6.0.24

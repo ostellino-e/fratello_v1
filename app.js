@@ -15777,7 +15777,7 @@ function stockRenderFilasV6021(items) {
     const vendido = stockVendidoV6021(item);
     return `<div class="stockRow" data-id="${escaparHtmlCatalogo(item.id)}" data-nombre="${nombre}" data-unidad="${unidad}">
       <div class="stockProduct"><strong>${nombre}</strong><small>${unidad}</small></div>${campos}
-      <div class="stockSold ${vendido !== null && vendido < 0 ? "invalid" : ""}">Vendido: ${vendido === null ? "—" : `${stockFormatoV6021(vendido)} ${unidad}`}</div>
+      <div class="stockSold ${vendido !== null && vendido < 0 ? "invalid" : ""}"><span class="stockSoldLabel">Vendido</span><strong class="stockSoldValue">${vendido === null ? "—" : stockFormatoV6021(vendido)}</strong><span class="stockSoldUnit">${vendido === null ? "" : unidad}</span></div>
     </div>`;
   }).join("");
   stockActualizarResumenV6021();
@@ -15792,7 +15792,8 @@ function stockActualizarResumenV6021() {
     const valor = item ? stockVendidoV6021(item) : null;
     const el = fila.querySelector(".stockSold");
     if (!el) return;
-    el.textContent = `Vendido: ${valor === null ? "—" : `${stockFormatoV6021(valor)} ${fila.dataset.unidad}`}`;
+    el.querySelector(".stockSoldValue").textContent = valor === null ? "—" : stockFormatoV6021(valor);
+    el.querySelector(".stockSoldUnit").textContent = valor === null ? "" : fila.dataset.unidad;
     el.classList.toggle("invalid", valor !== null && valor < 0);
   });
 }
