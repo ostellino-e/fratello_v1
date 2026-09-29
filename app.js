@@ -12916,6 +12916,90 @@ const HORAS_CORRECCIONES_STORAGE = "fratello_horas_correcciones_v6013";
 let ultimoArchivoHorasNube = null;
 let horasArchivoVinculadoNube = false;
 
+const HORAS_VALORES_STORAGE = "fratello_horas_valores_hora_v1";
+let horasValoresHora = leerJsonLocalSeguro(HORAS_VALORES_STORAGE, {});
+if (!horasValoresHora || typeof horasValoresHora !== "object" || Array.isArray(horasValoresHora)) horasValoresHora = {};
+const horasValoresPendientes = new Map();
+
+function horasLeerValorHora(valor) {
+  if (valor === null || valor === undefined || String(valor).trim() === "") return null;
+  const numero = Number(String(valor).replace(",", "."));
+  return Number.isFinite(numero) && numero >= 0 ? numero : null;
+}
+
+function horasValorHora(numero) {
+  const clave = String(numero);
+  return horasLeerValorHora(horasValoresPendientes.has(clave) ? horasValoresPendientes.get(clave) : horasValoresHora[clave]);
+}
+
+function horasImporteMinutos(minutos, valorHora) {
+  if (valorHora === null) return null;
+  return Math.round((minutos / 60 * valorHora + Number.EPSILON) * 100) / 100;
+}
+
+function horasDinero(valor) {
+  return valor === null ? "—" : new Intl.NumberFormat("es-AR", {
+    style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2
+  }).format(valor);
+}
+
+function horasActualizarImportes() {
+  document.querySelectorAll("[data-horas-importe]").forEach(el => {
+    el.textContent = horasDinero(horasImporteMinutos(Number(el.dataset.minutos), horasValorHora(el.dataset.empleado)));
+  });
+  document.querySelectorAll("[data-horas-valor]").forEach(input => {
+    const clave = input.dataset.horasValor;
+    if (!horasValoresPendientes.has(clave) && document.activeElement !== input) input.value = horasValoresHora[clave] ?? "";
+  });
+  const total = $("horasTotalAPagar");
+  if (total) {
+    const conValor = resultadoHorasEmpleadosActual.filter(e => horasValorHora(e.numero) !== null);
+    const importe = conValor.reduce((s,e) => s + horasImporteMinutos(e.totalMinutos, horasValorHora(e.numero)), 0);
+    const faltantes = resultadoHorasEmpleadosActual.length - conValor.length;
+    total.classList.toggle("hidden", !resultadoHorasEmpleadosActual.length);
+    total.textContent = `Total calculado: ${horasDinero(importe)}${faltantes ? ` · ${faltantes} empleado(s) sin valor hora` : ""}`;
+  }
+}
+
+async function horasConsultarValoresOnline() {
+  if (!db || !tieneRolAdministrador()) return;
+  try {
+    const snap = await db.collection("administracion").doc("horas_valores_hora").collection("empleados").get();
+    snap.forEach(doc => {
+      const dato = doc.data(), valor = horasLeerValorHora(dato.valorHora);
+      if (dato.numeroEmpleado !== undefined && valor !== null) horasValoresHora[String(dato.numeroEmpleado)] = valor;
+    });
+    guardarLocalSeguroV6021(HORAS_VALORES_STORAGE, JSON.stringify(horasValoresHora));
+    horasActualizarImportes();
+  } catch (error) { console.warn("No se pudieron consultar los valores hora:", error); }
+}
+
+async function horasGuardarValorHora(boton) {
+  const numero = boton.dataset.guardarValorHora;
+  const card = boton.closest(".employeeHoursCard");
+  const input = card.querySelector("[data-horas-valor]");
+  const estado = card.querySelector(".employeeHoursRateStatus");
+  const valorHora = horasLeerValorHora(input.value);
+  if (valorHora === null) { estado.textContent = "Ingresá un valor hora válido."; return; }
+  if (!db || !tieneRolAdministrador()) { estado.textContent = "Necesitás conexión y sesión de administrador para guardar."; return; }
+  boton.disabled = true; input.disabled = true;
+  estado.textContent = "Guardando...";
+  try {
+    await db.collection("administracion").doc("horas_valores_hora").collection("empleados").doc(encodeURIComponent(String(numero))).set({
+      numeroEmpleado:String(numero), valorHora, actualizadoEn:new Date().toISOString()
+    });
+    horasValoresHora[String(numero)] = valorHora;
+    horasValoresPendientes.delete(String(numero));
+    guardarLocalSeguroV6021(HORAS_VALORES_STORAGE, JSON.stringify(horasValoresHora));
+    estado.textContent = "Valor hora guardado para todos los dispositivos.";
+    horasActualizarImportes();
+  } catch (error) {
+    console.error("No se pudo guardar el valor hora:", error);
+    estado.textContent = "No se guardó online. Conservá el valor y reintentá.";
+  } finally { boton.disabled = false; input.disabled = false; }
+}
+
+
 function horasCargarCorrecciones() {
   try { return JSON.parse(localStorage.getItem(HORAS_CORRECCIONES_STORAGE) || "{}"); }
   catch (_) { return {}; }
@@ -12956,6 +13040,7 @@ function horasMostrarTarjetaNube(datos) {
 
 async function horasConsultarUltimoOnline() {
   if (!db || !tieneRolAdministrador()) return;
+  horasConsultarValoresOnline();
   try {
     const snap = await db.collection("administracion").doc("horas_empleados_ultimo").get();
     horasMostrarTarjetaNube(snap.exists ? snap.data() : null);
@@ -12981,7 +13066,7 @@ async function horasGuardarUltimosDatosOnline(silencioso = false) {
       archivo:JSON.parse(JSON.stringify(archivoHorasEmpleadosActual)),
       correcciones:horasCorreccionesArchivoActual(),
       actualizadoEn:new Date().toISOString(),
-      version:"6.0.21"
+      version:window.FRATELLO_VERSION || "6.0.30"
     };
     await db.collection("administracion").doc("horas_empleados_ultimo").set(datos);
     horasArchivoVinculadoNube = true;
@@ -13263,11 +13348,13 @@ function horasRenderResultados() {
   if (!resumen || !detalle) return;
   if (!resultados.length) {
     resumen.innerHTML = "";
+    horasActualizarImportes();
     detalle.innerHTML = '<div class="employeeHoursStatus">No hay marcaciones en el período seleccionado.</div>';
     return;
   }
-  resumen.innerHTML = resultados.map(e => `<article class="employeeHoursCard"><span>${adminFinEscapar(e.nombre)}</span><strong>${horasFormatearMinutos(e.totalMinutos)}</strong><small>${e.totalMinutos} minutos${e.revisar ? ` · ${e.revisar} día(s) para revisar` : ""}</small></article>`).join("");
-  detalle.innerHTML = resultados.map(e => `<details class="employeeHoursEmployee"><summary><span><strong>${adminFinEscapar(e.nombre)}</strong><small>${e.jornadas.length} jornada(s)${e.revisar ? ` · ${e.revisar} para revisar` : ""}</small></span><b>${horasFormatearMinutos(e.totalMinutos)}</b></summary><div class="employeeHoursTableWrap"><table class="employeeHoursTable"><thead><tr><th>Día laboral</th><th>Marcaciones</th><th>Minutos</th><th>Horas</th><th>Estado</th></tr></thead><tbody>${e.jornadas.map(j => `<tr><td>${adminFinEscapar(horasFechaLegible(j.fecha))}</td><td>${adminFinEscapar(j.marcas.map(m => m.texto).join(" → ") || "—")}${j.manual ? '<span class="employeeHoursManualBadge">EDITADO</span>' : ""}</td><td>${j.minutos}</td><td>${horasFormatearMinutos(j.minutos)}</td><td class="${j.revisar ? "employeeHoursReview" : "employeeHoursOk"}">${adminFinEscapar(j.estado)}${j.revisar || j.manual ? `<br><button class="employeeHoursRowAction" type="button" data-editar-horas="1" data-empleado-horas="${adminFinEscapar(e.numero)}" data-fecha-horas="${adminFinEscapar(j.fecha)}">${j.manual ? "Volver a editar" : "Corregir marcaciones"}</button>` : ""}</td></tr>`).join("")}</tbody></table></div></details>`).join("");
+  resumen.innerHTML = resultados.map(e => `<article class="employeeHoursCard"><span>${adminFinEscapar(e.nombre)}</span><strong>${horasFormatearMinutos(e.totalMinutos)}</strong><small>${e.totalMinutos} minutos${e.revisar ? ` · ${e.revisar} día(s) para revisar` : ""}</small><label class="employeeHoursRateLabel">Valor hora ($)<input type="number" inputmode="decimal" min="0" step="0.01" data-horas-valor="${adminFinEscapar(e.numero)}" value="${adminFinEscapar(horasValoresPendientes.get(String(e.numero)) ?? horasValoresHora[String(e.numero)] ?? "")}"></label><button type="button" data-guardar-valor-hora="${adminFinEscapar(e.numero)}">Guardar valor hora</button><small class="employeeHoursRateStatus">${horasValoresPendientes.has(String(e.numero)) ? "Valor modificado sin guardar." : ""}</small><div class="employeeHoursPay"><span>Importe del período</span><strong data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${e.totalMinutos}">—</strong></div></article>`).join("");
+  detalle.innerHTML = resultados.map(e => `<details class="employeeHoursEmployee"><summary><span><strong>${adminFinEscapar(e.nombre)}</strong><small>${e.jornadas.length} jornada(s)${e.revisar ? ` · ${e.revisar} para revisar` : ""}</small></span><b>${horasFormatearMinutos(e.totalMinutos)}</b></summary><div class="employeeHoursTableWrap"><table class="employeeHoursTable"><thead><tr><th>Día laboral</th><th>Marcaciones</th><th>Minutos</th><th>Horas</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${e.jornadas.map(j => `<tr><td>${adminFinEscapar(horasFechaLegible(j.fecha))}</td><td>${adminFinEscapar(j.marcas.map(m => m.texto).join(" → ") || "—")}${j.manual ? '<span class="employeeHoursManualBadge">EDITADO</span>' : ""}</td><td>${j.minutos}</td><td>${horasFormatearMinutos(j.minutos)}</td><td data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${j.minutos}">—</td><td class="${j.revisar ? "employeeHoursReview" : "employeeHoursOk"}">${adminFinEscapar(j.estado)}${j.revisar || j.manual ? `<br><button class="employeeHoursRowAction" type="button" data-editar-horas="1" data-empleado-horas="${adminFinEscapar(e.numero)}" data-fecha-horas="${adminFinEscapar(j.fecha)}">${j.manual ? "Volver a editar" : "Corregir marcaciones"}</button>` : ""}</td></tr>`).join("")}</tbody></table></div></details>`).join("");
+  horasActualizarImportes();
 }
 
 function horasCalcularMarcacionesManuales(nombreEmpleado, textos) {
@@ -13483,10 +13570,10 @@ function horasDescargarImagenArchivo() {
 
 function horasExportarCSV() {
   if (!resultadoHorasEmpleadosActual.length) return alert("Primero cargá y calculá un archivo del reloj.");
-  const filas = [["Empleado","Día laboral","Entrada/Salida","Minutos","Horas","Estado"]];
+  const filas = [["Empleado","Día laboral","Entrada/Salida","Minutos","Horas","Estado","Valor hora","Importe"]];
   resultadoHorasEmpleadosActual.forEach(e => {
-    e.jornadas.forEach(j => filas.push([e.nombre,j.fecha,j.marcas.map(m=>m.texto).join(" - "),j.minutos,horasFormatearMinutos(j.minutos),j.estado]));
-    filas.push([e.nombre,"TOTAL","",e.totalMinutos,horasFormatearMinutos(e.totalMinutos),e.revisar ? `${e.revisar} para revisar` : "Correcto"]);
+    e.jornadas.forEach(j => filas.push([e.nombre,j.fecha,j.marcas.map(m=>m.texto).join(" - "),j.minutos,horasFormatearMinutos(j.minutos),j.estado,horasValorHora(e.numero),horasImporteMinutos(j.minutos,horasValorHora(e.numero))]));
+    filas.push([e.nombre,"TOTAL","",e.totalMinutos,horasFormatearMinutos(e.totalMinutos),e.revisar ? `${e.revisar} para revisar` : "Correcto",horasValorHora(e.numero),horasImporteMinutos(e.totalMinutos,horasValorHora(e.numero))]);
   });
   const csv = "\uFEFF" + filas.map(f => f.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n");
   segDescargar(`fratello_horas_${adminFinHoy()}.csv`, csv, "text/csv;charset=utf-8");
@@ -13502,6 +13589,17 @@ function iniciarModuloHorasEmpleados() {
   $("btnCargarUltimoArchivoHoras")?.addEventListener("click", horasCargarUltimoGuardado);
   $("btnVerArchivoHoras")?.addEventListener("click", horasAbrirVistaArchivo);
   $("btnExportarHorasEmpleados")?.addEventListener("click", horasExportarCSV);
+  $("resumenHorasEmpleados")?.addEventListener("input", evento => {
+    const input = evento.target.closest("[data-horas-valor]");
+    if (!input) return;
+    horasValoresPendientes.set(input.dataset.horasValor, input.value);
+    input.closest(".employeeHoursCard").querySelector(".employeeHoursRateStatus").textContent = "Valor modificado sin guardar.";
+    horasActualizarImportes();
+  });
+  $("resumenHorasEmpleados")?.addEventListener("click", evento => {
+    const boton = evento.target.closest("[data-guardar-valor-hora]");
+    if (boton) horasGuardarValorHora(boton);
+  });
   $("detalleHorasEmpleados")?.addEventListener("click", evento => {
     const boton = evento.target.closest("[data-editar-horas]");
     if (boton) horasAbrirCorreccion(boton.dataset.empleadoHoras, boton.dataset.fechaHoras);
@@ -15785,8 +15883,6 @@ function stockRenderFilasV6021(items) {
 
 function stockActualizarResumenV6021() {
   const items = stockCapturarFilasV6021();
-  const completos = items.filter(item => stockVendidoV6021(item) !== null);
-  $("stockResumenTurno").textContent = `${completos.length} producto(s) con cantidad disponible y cierre completos · ${items.length - completos.length} pendiente(s). Si la apertura está vacía, se toma como cero cuando cargás un agregado.`;
   document.querySelectorAll("#stockFilas .stockRow").forEach(fila => {
     const item = items.find(v => v.id === fila.dataset.id);
     const valor = item ? stockVendidoV6021(item) : null;

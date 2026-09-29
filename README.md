@@ -1,4 +1,18 @@
-# Fratello v6.0.28
+# Fratello v6.0.30
+
+## Mejora v6.0.30
+
+- Valor hora individual por empleado, guardado en Firebase en Administración para abrirlo en otros dispositivos.
+- Cálculo proporcional: minutos trabajados ÷ 60 × valor hora, con importes a dos decimales.
+- Importe por jornada, por empleado y total calculado para el período seleccionado.
+- El CSV incluye valor hora e importe.
+- El valor hora actual se aplica al período seleccionado; los días para revisar siguen señalados.
+
+## Ajuste v6.0.29
+
+- Elimina el recuadro beige con el conteo de productos completos y pendientes debajo de Guardar stock.
+- Elimina el recuadro amarillo explicativo debajo de Promedios de venta.
+- Conserva los resultados de venta, promedios y registros recientes.
 
 ## Ajuste v6.0.28
 
@@ -333,4 +347,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.28
+Versión esperada: v6.0.30

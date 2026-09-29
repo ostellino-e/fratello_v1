@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=615" />
+  <link rel="stylesheet" href="styles.css?v=617" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.28";
-    document.documentElement.dataset.fratelloVersion = "6.0.28";
+    window.FRATELLO_VERSION = "6.0.30";
+    document.documentElement.dataset.fratelloVersion = "6.0.30";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.28</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.30</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -476,7 +476,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.28 · Stock de mercadería</span>
+        <span class="adminFinanceVersion">v6.0.30 · Horas y valor hora</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -811,7 +811,7 @@
             <div>
               <span class="securityEyebrow">RELOJ DE MARCACIÓN</span>
               <h3>Horas de empleados</h3>
-              <p>Cargá el archivo .XLS del reloj. El cálculo se realiza en este dispositivo y muestra minutos reales convertidos a horas y minutos.</p>
+              <p>Cargá el archivo .XLS del reloj. Muestra minutos reales convertidos a horas y minutos. Cargá el valor hora de cada empleado para calcular el importe del período.</p>
             </div>
             <label class="employeeHoursUpload primary" for="archivoRelojEmpleados">📥 Cargar archivo del reloj</label>
             <input id="archivoRelojEmpleados" type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
@@ -835,6 +835,7 @@
           </section>
 
           <div id="resumenHorasEmpleados" class="employeeHoursSummary"></div>
+          <div id="horasTotalAPagar" class="employeeHoursPayTotal hidden"></div>
           <div id="detalleHorasEmpleados" class="employeeHoursDetail"></div>
 
           <aside class="employeeHoursRules">
@@ -1063,8 +1064,7 @@
         <button id="stockGuardar" type="button" class="primary">Guardar stock del turno</button>
         <button id="stockDescartarBorrador" type="button" class="hidden">Descartar borrador y cargar lo guardado</button>
       </div>
-      <p id="stockResumenTurno" class="stockResumenTurno"></p>
-      <section class="stockAnalysis"><h3>Promedios de venta</h3><p class="hint">Para este día de la semana y este turno, según registros de los últimos 90 días con cantidad inicial o agregada y stock final completos.</p><div id="stockPromedios"></div></section>
+      <section class="stockAnalysis"><h3>Promedios de venta</h3><div id="stockPromedios"></div></section>
       <section class="stockAnalysis"><h3>Registros recientes</h3><div id="stockHistorial"></div></section>
     </section>
 
@@ -1204,7 +1204,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6028"></script>
+  <script src="app.js?v=6030"></script>
 
   
 
@@ -1221,12 +1221,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6028")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6030")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6028", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6030", {
             scope: "./",
             updateViaCache: "none"
           });
