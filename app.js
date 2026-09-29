@@ -30,7 +30,7 @@ function segCargarLocal() {
   } catch (e) { console.warn("Seguridad local:", e); }
 }
 function segGuardarLocal() {
-  guardarLocalSeguroV6020(SEG_STORAGE_KEY, JSON.stringify(seguridadFratello));
+  guardarLocalSeguroV6021(SEG_STORAGE_KEY, JSON.stringify(seguridadFratello));
 }
 function segNombreDispositivo() {
   const ua = navigator.userAgent || "";
@@ -43,12 +43,12 @@ function segObtenerDispositivoActual() {
   let id = localStorage.getItem(SEG_DEVICE_KEY);
   if (!id) {
     id = segId("device");
-    guardarLocalSeguroV6020(SEG_DEVICE_KEY, id);
+    guardarLocalSeguroV6021(SEG_DEVICE_KEY, id);
   }
   let nombre = localStorage.getItem(SEG_DEVICE_NAME_KEY);
   if (!nombre) {
     nombre = segNombreDispositivo();
-    guardarLocalSeguroV6020(SEG_DEVICE_NAME_KEY, nombre);
+    guardarLocalSeguroV6021(SEG_DEVICE_NAME_KEY, nombre);
   }
   return { id, nombre, userAgent: navigator.userAgent || "", ultimaActividad: segAhora() };
 }
@@ -258,7 +258,7 @@ async function restaurarBackupCompleto() {
   const archivo=$("archivoRestaurarBackup")?.files?.[0]; if(!archivo)return alert("Seleccioná un archivo de copia.");
   if(!confirm("La restauración reemplazará datos locales de Fratello. ¿Continuar?"))return;
   try { const datos=JSON.parse(await archivo.text()); if(datos.formato!=="FratelloBackup"||!datos.localStorage)throw new Error("Formato inválido");
-    Object.entries(datos.localStorage).forEach(([k,v])=>guardarLocalSeguroV6020(k,v)); await segAuditar("backup","Copia restaurada",archivo.name); alert("Copia restaurada. La aplicación se recargará."); location.reload();
+    Object.entries(datos.localStorage).forEach(([k,v])=>guardarLocalSeguroV6021(k,v)); await segAuditar("backup","Copia restaurada",archivo.name); alert("Copia restaurada. La aplicación se recargará."); location.reload();
   } catch(e){ alert("No se pudo restaurar: "+e.message); }
 }
 function exportarAdministracionCSV() {
@@ -609,7 +609,7 @@ function leerColaRecordatorios() {
 }
 
 function guardarColaRecordatorios(cola) {
-  guardarLocalSeguroV6020("fratello_cola_recordatorios", JSON.stringify(cola || []));
+  guardarLocalSeguroV6021("fratello_cola_recordatorios", JSON.stringify(cola || []));
   actualizarEstadoColaRecordatorios();
 }
 
@@ -700,7 +700,7 @@ function recordarTodosLosPendientes() {
 
 
 function guardarPedidosHoy() {
-  guardarLocalSeguroV6020("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  guardarLocalSeguroV6021("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
 }
 
 function depurarPedidosHoyPorJornada() {
@@ -1130,7 +1130,7 @@ function restaurarEstadoPanelPedidosSemana(panel, estado) {
   }
 }
 
-let firmaPreparacionPanelPedidosV6020 = "";
+let firmaPreparacionPanelPedidosV6021 = "";
 
 function renderPanelPedidosSemana() {
   const panel = $("panelPedidosSemana");
@@ -1150,7 +1150,7 @@ function renderPanelPedidosSemana() {
     exclusionesPedidosFijos.length,
     jornadasCerradas.length
   ]);
-  if (firmaPreparacion !== firmaPreparacionPanelPedidosV6020) {
+  if (firmaPreparacion !== firmaPreparacionPanelPedidosV6021) {
     fechas.forEach(fecha => {
       const tienePedidoNuevo = pedidos.some(pedido =>
         fechaEntregaPedido(pedido) === fecha && !esPedidoFijoRobusto(pedido)
@@ -1158,7 +1158,7 @@ function renderPanelPedidosSemana() {
       if (tienePedidoNuevo) reabrirJornadaParaNuevoPedido(fecha);
       asegurarPedidosFijosParaFecha(fecha, false);
     });
-    firmaPreparacionPanelPedidosV6020 = JSON.stringify([
+    firmaPreparacionPanelPedidosV6021 = JSON.stringify([
       fechas,
       pedidosFijos.map(fijo => [fijo.id, fijo.actualizado, fijo.texto, fijo.dias, fijo.activo]),
       pedidos.map(pedido => [pedido.id, pedido.actualizadoEn, pedido.fecha, pedido.fechaEntrega]),
@@ -1499,6 +1499,10 @@ function configurarPedidoFijoCliente(nombre) {
 }
 
 function mostrarInicioFratello(limpiarPila = true) {
+  if (seccionActualFratello === "seccionStockMercaderia" && stockEscuchaV6021) {
+    stockEscuchaV6021();
+    stockEscuchaV6021 = null;
+  }
   const inicio = document.getElementById("panelInicio");
   const contenido = document.getElementById("contenidoApp");
 
@@ -1532,7 +1536,7 @@ let colaNotificacionesPedidos = [];
 let temporizadorGrupoNotificaciones = null;
 
 function guardarConfiguracionNotificaciones() {
-  guardarLocalSeguroV6020(
+  guardarLocalSeguroV6021(
     CLAVE_CONFIG_NOTIFICACIONES,
     JSON.stringify(configuracionNotificaciones)
   );
@@ -1636,7 +1640,7 @@ function alternarNotificacionesCliente(nombre, activo) {
 
 function marcarNotificacionesVistasAlAbrirApp() {
   ultimaNotificacionVista = new Date().toISOString();
-  guardarLocalSeguroV6020(
+  guardarLocalSeguroV6021(
     "fratello_ultima_notificacion_vista",
     ultimaNotificacionVista
   );
@@ -1772,7 +1776,7 @@ async function borrarTodasLasNotificaciones() {
 
     notificacionesHistorial = [];
     ultimaNotificacionVista = new Date().toISOString();
-    guardarLocalSeguroV6020(
+    guardarLocalSeguroV6021(
       "fratello_ultima_notificacion_vista",
       ultimaNotificacionVista
     );
@@ -1873,7 +1877,7 @@ function escucharHistorialNotificaciones() {
 
 function marcarNotificacionesComoVistas() {
   ultimaNotificacionVista = new Date().toISOString();
-  guardarLocalSeguroV6020(
+  guardarLocalSeguroV6021(
     "fratello_ultima_notificacion_vista",
     ultimaNotificacionVista
   );
@@ -1891,6 +1895,10 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
   if (!destino) return;
   const mismaSeccion = seccionActualFratello === idSeccion;
   if (mismaSeccion && destino.classList.contains("seccionActiva")) return;
+  if (seccionActualFratello === "seccionStockMercaderia" && idSeccion !== "seccionStockMercaderia" && stockEscuchaV6021) {
+    stockEscuchaV6021();
+    stockEscuchaV6021 = null;
+  }
 
   if (inicio) inicio.classList.add("hidden");
   if (contenido) contenido.classList.add("contenidoVisible");
@@ -1909,6 +1917,10 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
 
   if (idSeccion === "seccionTickets") {
     renderTicketsPorDia();
+  }
+
+  if (idSeccion === "seccionStockMercaderia") {
+    abrirStockMercaderia();
   }
 
   if (idSeccion === "seccionAdministracion" && tieneRolAdministrador()) {
@@ -2210,7 +2222,7 @@ function leerJsonLocalSeguro(clave, valorPredeterminado = {}) {
 // panadería acumuló copias históricas hasta superar ese límite y una escritura
 // fallida detenía la carga de Firebase. Estas utilidades reducen únicamente
 // cachés locales reproducibles; la información completa continúa en Firebase.
-function esErrorCuotaLocalV6020(error) {
+function esErrorCuotaLocalV6021(error) {
   return Boolean(
     error && (
       error.name === "QuotaExceededError" ||
@@ -2222,33 +2234,33 @@ function esErrorCuotaLocalV6020(error) {
   );
 }
 
-function escribirLocalNativoV6020(clave, valor) {
+function escribirLocalNativoV6021(clave, valor) {
   Storage.prototype.setItem.call(localStorage, clave, valor);
 }
 
-function recortarArrayLocalV6020(clave, maximo) {
+function recortarArrayLocalV6021(clave, maximo) {
   try {
     const lista = JSON.parse(localStorage.getItem(clave) || "[]");
     if (!Array.isArray(lista) || lista.length <= maximo) return;
-    escribirLocalNativoV6020(clave, JSON.stringify(lista.slice(-maximo)));
+    escribirLocalNativoV6021(clave, JSON.stringify(lista.slice(-maximo)));
   } catch (_) {
     try { localStorage.removeItem(clave); } catch (_) {}
   }
 }
 
-function limpiarAlmacenamientoLocalV6020(informar = false) {
+function limpiarAlmacenamientoLocalV6021(informar = false) {
   try {
     // Clave antigua duplicada: la vigente es fratello_pedidos.
     localStorage.removeItem("pedidos");
 
-    recortarArrayLocalV6020("fratello_tickets_memoria", 350);
-    recortarArrayLocalV6020("fratello_pedidos", 500);
-    recortarArrayLocalV6020("fratello_pedidos_hoy", 300);
-    recortarArrayLocalV6020("fratello_historial_pedidos", 250);
-    recortarArrayLocalV6020("fratello_pedidos_eliminados", 400);
-    recortarArrayLocalV6020("fratello_productos_eliminados", 250);
-    recortarArrayLocalV6020("fratello_cuenta_corriente_v42", 500);
-    recortarArrayLocalV6020("fratello_registro_errores", 10);
+    recortarArrayLocalV6021("fratello_tickets_memoria", 350);
+    recortarArrayLocalV6021("fratello_pedidos", 500);
+    recortarArrayLocalV6021("fratello_pedidos_hoy", 300);
+    recortarArrayLocalV6021("fratello_historial_pedidos", 250);
+    recortarArrayLocalV6021("fratello_pedidos_eliminados", 400);
+    recortarArrayLocalV6021("fratello_productos_eliminados", 250);
+    recortarArrayLocalV6021("fratello_cuenta_corriente_v42", 500);
+    recortarArrayLocalV6021("fratello_registro_errores", 10);
 
     const claveCaja = "fratello_caja_v390";
     const caja = JSON.parse(localStorage.getItem(claveCaja) || "null");
@@ -2261,7 +2273,7 @@ function limpiarAlmacenamientoLocalV6020(informar = false) {
           : [],
         auditoriaCaja: Array.isArray(caja.auditoriaCaja) ? caja.auditoriaCaja.slice(-400) : []
       };
-      escribirLocalNativoV6020(claveCaja, JSON.stringify(cajaReducida));
+      escribirLocalNativoV6021(claveCaja, JSON.stringify(cajaReducida));
     }
 
     if (informar) console.info("Fratello liberó espacio de caché local sin borrar datos de Firebase.");
@@ -2270,7 +2282,7 @@ function limpiarAlmacenamientoLocalV6020(informar = false) {
   }
 }
 
-function guardarLocalSeguroV6020(clave, valor) {
+function guardarLocalSeguroV6021(clave, valor) {
   let texto = typeof valor === "string" ? valor : JSON.stringify(valor);
   try {
     const limites = {
@@ -2304,17 +2316,17 @@ function guardarLocalSeguroV6020(clave, valor) {
     }
   } catch (_) {}
   try {
-    escribirLocalNativoV6020(clave, texto);
+    escribirLocalNativoV6021(clave, texto);
     return true;
   } catch (error) {
-    if (!esErrorCuotaLocalV6020(error)) {
+    if (!esErrorCuotaLocalV6021(error)) {
       console.warn(`No se pudo guardar ${clave} localmente:`, error);
       return false;
     }
 
-    limpiarAlmacenamientoLocalV6020(true);
+    limpiarAlmacenamientoLocalV6021(true);
     try {
-      escribirLocalNativoV6020(clave, texto);
+      escribirLocalNativoV6021(clave, texto);
       return true;
     } catch (segundoError) {
       // La pantalla debe seguir funcionando con los datos ya cargados desde
@@ -2326,7 +2338,7 @@ function guardarLocalSeguroV6020(clave, valor) {
 }
 
 // Se ejecuta al abrir la versión nueva, antes de iniciar la sincronización.
-limpiarAlmacenamientoLocalV6020(false);
+limpiarAlmacenamientoLocalV6021(false);
 
 function registrarErrorFratello(tipo, error) {
   try {
@@ -2339,7 +2351,7 @@ function registrarErrorFratello(tipo, error) {
       fecha: new Date().toISOString(),
       version: window.FRATELLO_VERSION || "desconocida"
     });
-    guardarLocalSeguroV6020(clave, JSON.stringify(lista.slice(-20)));
+    guardarLocalSeguroV6021(clave, JSON.stringify(lista.slice(-20)));
   } catch (_) {}
 }
 
@@ -2408,7 +2420,7 @@ function errorRequiereRenovarSesionFirebase(error) {
     mensaje.includes("token") || mensaje.includes("credential");
 }
 
-async function esperarEstadoInicialAuthV6020(limiteMs = 2500) {
+async function esperarEstadoInicialAuthV6021(limiteMs = 2500) {
   if (!authFratello) return null;
   return new Promise(resolve => {
     let terminado = false;
@@ -2435,7 +2447,7 @@ async function asegurarSesionOperativaV601(forzarValidacion = false) {
   }
   iniciandoSesionOperativaV601 = true;
   try {
-    await esperarEstadoInicialAuthV6020();
+    await esperarEstadoInicialAuthV6021();
     if (authFratello.currentUser) {
       if (!forzarValidacion) return true;
       try {
@@ -2458,7 +2470,7 @@ async function asegurarSesionOperativaV601(forzarValidacion = false) {
   }
 }
 
-async function asegurarConexionFirebaseV6020(forzarValidacion = false) {
+async function asegurarConexionFirebaseV6021(forzarValidacion = false) {
   if (!db || !navigator.onLine) return false;
   if (!authFratello) return true;
   return asegurarSesionOperativaV601(forzarValidacion);
@@ -2634,7 +2646,7 @@ async function activarNotificacionesFratello() {
     }
 
     tokenNotificaciones = token;
-    guardarLocalSeguroV6020("fratello_token_notificaciones", token);
+    guardarLocalSeguroV6021("fratello_token_notificaciones", token);
     await guardarTokenNotificaciones(token);
     await enviarPreferenciasNotificacionesAlServiceWorker();
 
@@ -2961,8 +2973,8 @@ function aplicarEntregaDedicadaRemotaV555(data = {}) {
     cuentaCorrienteV42 = fusionarCuentaCorrienteV42([data.movimiento], cuentaCorrienteV42);
   }
   actualizarPedidoOrigenEntregaV42(ticketFusionado);
-  guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
-  guardarLocalSeguroV6020(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6021(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
   renderPedidosHoy();
   renderTicketsPorDia();
   renderPagosPendientes();
@@ -3013,7 +3025,7 @@ function leerColaPedidosIndividualesV557() {
 }
 
 function guardarColaPedidosIndividualesV557(cola) {
-  guardarLocalSeguroV6020(COLA_PEDIDOS_SYNC_KEY_V557, JSON.stringify(Array.isArray(cola) ? cola : []));
+  guardarLocalSeguroV6021(COLA_PEDIDOS_SYNC_KEY_V557, JSON.stringify(Array.isArray(cola) ? cola : []));
 }
 
 function aliviarColaPedidosIndividualesV558() {
@@ -3138,7 +3150,7 @@ function aplicarPedidoIndividualRemotoV557(registro = {}) {
   }
 
   guardarPedidosLocal();
-  guardarLocalSeguroV6020("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  guardarLocalSeguroV6021("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
   return true;
 }
 
@@ -3200,7 +3212,7 @@ function migrarPedidosLocalesIndividualesV557() {
   recientes.forEach(pedido => encolarPedidoIndividualV557(registroPedidoIndividualV557(pedido, "normal")));
   (Array.isArray(pedidosHoy) ? pedidosHoy : [])
     .forEach(pedido => encolarPedidoIndividualV557(registroPedidoIndividualV557(pedido, "hoy")));
-  guardarLocalSeguroV6020(claveMigracion, "completa");
+  guardarLocalSeguroV6021(claveMigracion, "completa");
   reenviarColaPedidosIndividualesV557().catch(() => {});
 }
 
@@ -3239,7 +3251,7 @@ function iniciarTicketsIndividualesTiempoRealV558() {
       .filter(Boolean);
     if (!recibidos.length) return;
     ticketsMemoria = fusionarTicketsMemoriaSync(recibidos, ticketsMemoria);
-    guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+    guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
     clearTimeout(window.__FRATELLO_RENDER_TICKETS_SYNC_V558__);
     window.__FRATELLO_RENDER_TICKETS_SYNC_V558__ = setTimeout(renderTicketsPorDia, 700);
   }, error => {
@@ -3261,7 +3273,7 @@ async function migrarTicketsLocalesIndividualesV558() {
   });
   try {
     await publicarTicketsIndividualesV558(recientes);
-    guardarLocalSeguroV6020(claveMigracion, "completa");
+    guardarLocalSeguroV6021(claveMigracion, "completa");
     return true;
   } catch (error) {
     console.error("Migración de tickets individuales:", error);
@@ -3283,7 +3295,7 @@ function compactarCacheTicketsLocalV559() {
       .localeCompare(String(a.fechaTicket || a.fechaEntrega || a.fecha || "")))
     .slice(0, 500);
   ticketsMemoria = fusionarTicketsMemoriaSync([], recientes);
-  guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 }
 
 function programarRecuperacionLivianaV559() {
@@ -3309,7 +3321,7 @@ function programarRecuperacionLivianaV559() {
       .sort((a, b) => fechaCambioTicketSync(b) - fechaCambioTicketSync(a))
       .slice(0, 30);
     const ticketsGuardados = await publicarTicketsIndividualesV558(ticketsRecientes).catch(() => false);
-    if (ticketsGuardados !== false) guardarLocalSeguroV6020(clave, "completa");
+    if (ticketsGuardados !== false) guardarLocalSeguroV6021(clave, "completa");
   }, 10000);
 }
 
@@ -3343,7 +3355,7 @@ function syncV600LeerCola() {
 }
 
 function syncV600GuardarCola(cola) {
-  guardarLocalSeguroV6020(SYNC_V600_QUEUE_KEY, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-150)));
+  guardarLocalSeguroV6021(SYNC_V600_QUEUE_KEY, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-150)));
 }
 
 function syncV600Encolar(registro) {
@@ -3525,8 +3537,8 @@ function syncV600Aplicar(data, cambios) {
         produccion[`${dia}_${productoId}`] = Number(cantidad || 0);
       });
       produccionActualizadaEnPorDia[dia] = fechaServidor;
-      guardarLocalSeguroV6020("fratello_produccion", JSON.stringify(produccion));
-      guardarLocalSeguroV6020("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
+      guardarLocalSeguroV6021("fratello_produccion", JSON.stringify(produccion));
+      guardarLocalSeguroV6021("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
       cambios.produccion = true;
     }
     return;
@@ -3534,7 +3546,7 @@ function syncV600Aplicar(data, cambios) {
 
   if (tipo === "resumen" && data.payload) {
     memoriaUltimoEnvio = { ...data.payload, actualizado: fechaServidor };
-    guardarLocalSeguroV6020("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+    guardarLocalSeguroV6021("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
     actualizarPanelMemoriaEnvio();
   }
 }
@@ -3553,7 +3565,7 @@ function syncV600Renderizar(cambios) {
     syncV600CambiosPendientes.produccion = false;
     if (pendientes.pedidos) {
       guardarPedidosLocal();
-      guardarLocalSeguroV6020("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+      guardarLocalSeguroV6021("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
       sincronizarMemoriaTickets();
       if (seccionActualFratello === "seccionPedidos") {
         renderPedidosCargados();
@@ -3565,7 +3577,7 @@ function syncV600Renderizar(cambios) {
       }
     }
     if (pendientes.tickets || pendientes.pedidos) {
-      guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+      guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
       if (seccionActualFratello === "seccionTickets") renderTicketsPorDia();
     }
     if (pendientes.caja) {
@@ -3583,7 +3595,7 @@ function syncV600Renderizar(cambios) {
   }, 350);
 }
 
-async function syncV600CargarInstantaneaV6020() {
+async function syncV600CargarInstantaneaV6021() {
   const coleccion = syncV600Coleccion();
   if (!coleccion) return false;
   const snapshot = await coleccion.orderBy("serverUpdatedAt", "desc").limit(300).get();
@@ -3596,17 +3608,17 @@ async function syncV600CargarInstantaneaV6020() {
   return true;
 }
 
-async function recuperarSincronizacionFirebaseV6020(motivo = "recuperacion") {
+async function recuperarSincronizacionFirebaseV6021(motivo = "recuperacion") {
   if (syncV600Recuperando || !navigator.onLine || !db) return false;
   syncV600Recuperando = true;
   setEstadoSync("Reconectando Firebase...");
   try {
-    const sesionLista = await asegurarConexionFirebaseV6020(true);
+    const sesionLista = await asegurarConexionFirebaseV6021(true);
     if (!sesionLista) throw new Error("No se pudo iniciar una sesión operativa válida.");
     try { syncV600Unsubscribe?.(); } catch (_) {}
     syncV600Unsubscribe = null;
     syncV600Iniciado = false;
-    await syncV600CargarInstantaneaV6020();
+    await syncV600CargarInstantaneaV6021();
     iniciarSyncCentralV600();
     await syncV600ReenviarCola();
     setEstadoSync("Online actualizado");
@@ -3652,7 +3664,7 @@ function iniciarSyncCentralV600() {
       syncV600Unsubscribe = null;
       setEstadoSync("Error de sincronización");
       setTimeout(() => {
-        recuperarSincronizacionFirebaseV6020("listener").catch(() => {});
+        recuperarSincronizacionFirebaseV6021("listener").catch(() => {});
       }, 2500);
     });
   syncV600ReenviarCola().catch(() => {});
@@ -3679,7 +3691,7 @@ function programarMigracionProduccionV6011() {
         valores: valoresProduccionPorDia(dia)
       }, false, { soloCrear: true });
     }
-    guardarLocalSeguroV6020(clave, "completa");
+    guardarLocalSeguroV6021(clave, "completa");
   }, 2500);
 }
 
@@ -3704,7 +3716,7 @@ function programarMigracionSyncV600() {
       const claveEntidad = `${registro.tipo}__${registro.entidadId}`;
       if (!syncV600IdsConocidos.has(claveEntidad)) syncV600Encolar(registro);
     });
-    guardarLocalSeguroV6020(clave, "completa");
+    guardarLocalSeguroV6021(clave, "completa");
     await syncV600ReenviarCola();
   }, 15000);
 }
@@ -3724,19 +3736,19 @@ function datosPedidosModulo() {
 // v6.0.19: el documento pedidos_estado llegó al límite de 1 MiB de Firestore.
 // Las revisiones completas se guardan en documentos pequeños y el manifiesto
 // se publica al final, para que otros dispositivos no lean una carga a medias.
-const CAMPOS_PEDIDOS_PARTES_V6020 = [
+const CAMPOS_PEDIDOS_PARTES_V6021 = [
   "pedidosFijos", "exclusionesPedidosFijos", "cuentaCorriente", "clientesCuenta"
 ];
-let ultimaRevisionPedidosPartesV6020 = "";
-let ultimaFirmaPedidosPartesV6020 = "";
-let pedidosPartesInicializadosV6020 = false;
-let colaRevisionesPedidosPartesV6020 = Promise.resolve();
+let ultimaRevisionPedidosPartesV6021 = "";
+let ultimaFirmaPedidosPartesV6021 = "";
+let pedidosPartesInicializadosV6021 = false;
+let colaRevisionesPedidosPartesV6021 = Promise.resolve();
 
-function referenciaPedidosPartesV6020() {
+function referenciaPedidosPartesV6021() {
   return db.collection("fratello").doc("pedidos_estado_partes_v6019");
 }
 
-function fragmentarListaPedidosV6020(lista) {
+function fragmentarListaPedidosV6021(lista) {
   const partes = [];
   let parte = [];
   let bytes = 0;
@@ -3755,13 +3767,13 @@ function fragmentarListaPedidosV6020(lista) {
   return partes;
 }
 
-async function cargarPedidosPartesV6020(manifiesto, dibujar = true) {
+async function cargarPedidosPartesV6021(manifiesto, dibujar = true) {
   const revision = String(manifiesto?.revision || "");
-  if (!revision || revision === ultimaRevisionPedidosPartesV6020) return false;
-  const snapshot = await referenciaPedidosPartesV6020().collection("registros")
+  if (!revision || revision === ultimaRevisionPedidosPartesV6021) return false;
+  const snapshot = await referenciaPedidosPartesV6021().collection("registros")
     .where("revision", "==", revision).get();
   const datos = { pedidosConfirmados: Boolean(manifiesto.pedidosConfirmados) };
-  for (const campo of CAMPOS_PEDIDOS_PARTES_V6020) {
+  for (const campo of CAMPOS_PEDIDOS_PARTES_V6021) {
     const partes = snapshot.docs.map(doc => doc.data())
       .filter(item => item.campo === campo)
       .sort((a, b) => a.indice - b.indice);
@@ -3773,7 +3785,7 @@ async function cargarPedidosPartesV6020(manifiesto, dibujar = true) {
   cargandoDesdeNube = true;
   try {
     aplicarPedidosModuloRemoto(datos);
-    ultimaRevisionPedidosPartesV6020 = revision;
+    ultimaRevisionPedidosPartesV6021 = revision;
     if (JSON.stringify(datosPedidosModulo()) === JSON.stringify({
       pedidosFijos: datos.pedidosFijos,
       exclusionesPedidosFijos: datos.exclusionesPedidosFijos,
@@ -3781,7 +3793,7 @@ async function cargarPedidosPartesV6020(manifiesto, dibujar = true) {
       cuentaCorriente: datos.cuentaCorriente,
       clientesCuenta: datos.clientesCuenta
     })) {
-      ultimaFirmaPedidosPartesV6020 = JSON.stringify(datosPedidosModulo());
+      ultimaFirmaPedidosPartesV6021 = JSON.stringify(datosPedidosModulo());
     }
     if (dibujar) {
       if (seccionActualFratello === "seccionPedidos") {
@@ -3800,14 +3812,14 @@ async function cargarPedidosPartesV6020(manifiesto, dibujar = true) {
   return true;
 }
 
-async function publicarPedidosPartesV6020() {
-  const ref = referenciaPedidosPartesV6020();
+async function publicarPedidosPartesV6021() {
+  const ref = referenciaPedidosPartesV6021();
   const revision = `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const datos = datosPedidosModulo();
   const partes = {};
   const registros = [];
-  for (const campo of CAMPOS_PEDIDOS_PARTES_V6020) {
-    const fragmentos = fragmentarListaPedidosV6020(datos[campo]);
+  for (const campo of CAMPOS_PEDIDOS_PARTES_V6021) {
+    const fragmentos = fragmentarListaPedidosV6021(datos[campo]);
     partes[campo] = fragmentos.length;
     fragmentos.forEach((valores, indice) => {
       registros.push({ campo, indice, revision, valores });
@@ -3824,16 +3836,16 @@ async function publicarPedidosPartesV6020() {
   }
   await ref.set({ revision, partes, pedidosConfirmados: datos.pedidosConfirmados,
     actualizado: new Date().toISOString() });
-  ultimaRevisionPedidosPartesV6020 = revision;
-  ultimaFirmaPedidosPartesV6020 = JSON.stringify(datos);
+  ultimaRevisionPedidosPartesV6021 = revision;
+  ultimaFirmaPedidosPartesV6021 = JSON.stringify(datos);
 }
 
 function guardarPedidosLocal() {
-  guardarLocalSeguroV6020("fratello_pedidos", JSON.stringify(pedidos));
-  guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  guardarLocalSeguroV6020("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-  guardarLocalSeguroV6020("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
-  guardarLocalSeguroV6020("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  guardarLocalSeguroV6021("fratello_pedidos", JSON.stringify(pedidos));
+  guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6021("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  guardarLocalSeguroV6021("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+  guardarLocalSeguroV6021("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
 }
 
 function aplicarPedidosModuloRemoto(data = {}) {
@@ -3855,9 +3867,9 @@ function aplicarPedidosModuloRemoto(data = {}) {
   }
   cuentaCorrienteV42 = fusionarCuentaCorrienteV42(data.cuentaCorriente, cuentaCorrienteV42);
   clientesCuentaV541 = fusionarClientesCuentaV541(data.clientesCuenta, clientesCuentaV541);
-  guardarLocalSeguroV6020(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
-  guardarLocalSeguroV6020("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
-  guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6021(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  guardarLocalSeguroV6021("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+  guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
   guardarClientesCuentaLocalV541();
 
   guardarPedidosLocal();
@@ -3865,8 +3877,8 @@ function aplicarPedidosModuloRemoto(data = {}) {
 }
 
 function guardarPedidosModuloEnNube() {
-  if (!db || cargandoDesdeNube || !pedidosPartesInicializadosV6020) return Promise.resolve(false);
-  if (ultimaFirmaPedidosPartesV6020 === JSON.stringify(datosPedidosModulo())) {
+  if (!db || cargandoDesdeNube || !pedidosPartesInicializadosV6021) return Promise.resolve(false);
+  if (ultimaFirmaPedidosPartesV6021 === JSON.stringify(datosPedidosModulo())) {
     return Promise.resolve(true);
   }
 
@@ -3884,12 +3896,12 @@ function guardarPedidosModuloEnNube() {
       guardadoPedidosModuloPendiente = false;
 
       try {
-        await publicarPedidosPartesV6020();
+        await publicarPedidosPartesV6021();
 
         guardarPedidosLocal();
-        guardarLocalSeguroV6020("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
-        guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
-        guardarLocalSeguroV6020(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+        guardarLocalSeguroV6021("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+        guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+        guardarLocalSeguroV6021(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
         guardarClientesCuentaLocalV541();
         resolve(true);
       } catch (error) {
@@ -3908,10 +3920,10 @@ async function iniciarPedidosModuloNube() {
   if (!db) return;
 
   try {
-    const ref = referenciaPedidosPartesV6020();
+    const ref = referenciaPedidosPartesV6021();
     const manifiesto = await ref.get();
     if (manifiesto.exists && manifiesto.data()?.revision) {
-      await cargarPedidosPartesV6020(manifiesto.data(), false);
+      await cargarPedidosPartesV6021(manifiesto.data(), false);
     } else {
       // Migración inicial: el documento grande se lee, nunca se vuelve a
       // escribir. Queda intacto como respaldo recuperable.
@@ -3921,11 +3933,11 @@ async function iniciarPedidosModuloNube() {
         try { aplicarPedidosModuloRemoto(anterior.data()); }
         finally { cargandoDesdeNube = false; }
       }
-      await publicarPedidosPartesV6020();
+      await publicarPedidosPartesV6021();
     }
 
-    pedidosPartesInicializadosV6020 = true;
-    if (ultimaFirmaPedidosPartesV6020 !== JSON.stringify(datosPedidosModulo())) {
+    pedidosPartesInicializadosV6021 = true;
+    if (ultimaFirmaPedidosPartesV6021 !== JSON.stringify(datosPedidosModulo())) {
       guardarPedidosModuloEnNube().catch(() => {});
     }
 
@@ -3934,8 +3946,8 @@ async function iniciarPedidosModuloNube() {
       ref.onSnapshot(doc => {
         if (!doc.exists || !doc.data()?.revision) return;
         const manifiestoRecibido = doc.data();
-        colaRevisionesPedidosPartesV6020 = colaRevisionesPedidosPartesV6020
-          .then(() => cargarPedidosPartesV6020(manifiestoRecibido)).catch(error => {
+        colaRevisionesPedidosPartesV6021 = colaRevisionesPedidosPartesV6021
+          .then(() => cargarPedidosPartesV6021(manifiestoRecibido)).catch(error => {
           console.error("Error recibiendo Pedidos dedicados:", error);
           setEstadoSync("Error recibiendo pedidos — revisar consola");
         });
@@ -4078,30 +4090,30 @@ function datosActuales() {
 
 // El documento heredado "estado" contiene años de duplicados. Sus escrituras
 // con merge conservaban esos campos indefinidamente hasta superar 1 MiB.
-const CAMPOS_ARCHIVO_ESTADO_V6020 = [
+const CAMPOS_ARCHIVO_ESTADO_V6021 = [
   "ticketsMemoria", "pedidosHoy", "cierresCaja", "cierresCajaEliminados",
   "auditoriaCaja", "administracionFinanciera", "cuentaCorriente",
   "clientesCuenta", "historialPedidos", "pedidosEliminados",
   "produccion", "listasPrecios", "listasPrecioPersonalizadas",
   "catalogoProductos", "preciosActualizadosEn"
 ];
-let compactacionEstadoEnCursoV6020 = null;
-let estadoHeredadoCompactadoV6020 = false;
+let compactacionEstadoEnCursoV6021 = null;
+let estadoHeredadoCompactadoV6021 = false;
 
-async function compactarEstadoHeredadoV6020() {
+async function compactarEstadoHeredadoV6021() {
   if (!db) return false;
-  if (estadoHeredadoCompactadoV6020) return true;
-  if (compactacionEstadoEnCursoV6020) return compactacionEstadoEnCursoV6020;
-  compactacionEstadoEnCursoV6020 = (async () => {
+  if (estadoHeredadoCompactadoV6021) return true;
+  if (compactacionEstadoEnCursoV6021) return compactacionEstadoEnCursoV6021;
+  compactacionEstadoEnCursoV6021 = (async () => {
     const ref = db.collection("fratello").doc("estado");
     const snapshot = await ref.get();
     if (!snapshot.exists) return true;
     const data = snapshot.data() || {};
-    const campos = CAMPOS_ARCHIVO_ESTADO_V6020.filter(campo =>
+    const campos = CAMPOS_ARCHIVO_ESTADO_V6021.filter(campo =>
       Object.prototype.hasOwnProperty.call(data, campo)
     );
     if (!campos.length) {
-      estadoHeredadoCompactadoV6020 = true;
+      estadoHeredadoCompactadoV6021 = true;
       return true;
     }
 
@@ -4123,13 +4135,13 @@ async function compactarEstadoHeredadoV6020() {
       borrados[campo] = firebase.firestore.FieldValue.delete();
     });
     await ref.update(borrados);
-    estadoHeredadoCompactadoV6020 = true;
+    estadoHeredadoCompactadoV6021 = true;
     return true;
   })().catch(error => {
     console.error("No se pudo respaldar y compactar el estado antiguo:", error);
     return false;
-  }).finally(() => { compactacionEstadoEnCursoV6020 = null; });
-  return compactacionEstadoEnCursoV6020;
+  }).finally(() => { compactacionEstadoEnCursoV6021 = null; });
+  return compactacionEstadoEnCursoV6021;
 }
 
 
@@ -4285,7 +4297,7 @@ function guardarEnNube(esReintento = false) {
       setEstadoSync("Sincronizando...");
 
       try {
-        const compactado = await compactarEstadoHeredadoV6020();
+        const compactado = await compactarEstadoHeredadoV6021();
         if (!compactado) {
           // No sobrescribir ni reducir un documento que no se pudo respaldar.
           // Los pedidos actuales se guardan en sus canales individuales.
@@ -4457,36 +4469,36 @@ async function cargarDesdeNube() {
 
       validarClientes();
 
-      guardarLocalSeguroV6020("fratello_produccion", JSON.stringify(produccion));
-      guardarLocalSeguroV6020("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-      guardarLocalSeguroV6020("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-      guardarLocalSeguroV6020("fratello_historial_pedidos", JSON.stringify(historialPedidos));
-      guardarLocalSeguroV6020("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
-  guardarLocalSeguroV6020("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-  guardarLocalSeguroV6020("fratello_historial_pedidos", JSON.stringify(historialPedidos));
-      guardarLocalSeguroV6020("fratello_predeterminadas", JSON.stringify(predeterminadas));
-      guardarLocalSeguroV6020("fratello_clientes", JSON.stringify(clientes));
-      guardarLocalSeguroV6020("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-    guardarLocalSeguroV6020("fratello_listas_precios", JSON.stringify(listasPrecios));
-  guardarLocalSeguroV6020(
+      guardarLocalSeguroV6021("fratello_produccion", JSON.stringify(produccion));
+      guardarLocalSeguroV6021("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+      guardarLocalSeguroV6021("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+      guardarLocalSeguroV6021("fratello_historial_pedidos", JSON.stringify(historialPedidos));
+      guardarLocalSeguroV6021("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+  guardarLocalSeguroV6021("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  guardarLocalSeguroV6021("fratello_historial_pedidos", JSON.stringify(historialPedidos));
+      guardarLocalSeguroV6021("fratello_predeterminadas", JSON.stringify(predeterminadas));
+      guardarLocalSeguroV6021("fratello_clientes", JSON.stringify(clientes));
+      guardarLocalSeguroV6021("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+    guardarLocalSeguroV6021("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6021(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
-      guardarLocalSeguroV6020("fratello_listas_precios", JSON.stringify(listasPrecios));
-      guardarLocalSeguroV6020(
+      guardarLocalSeguroV6021("fratello_listas_precios", JSON.stringify(listasPrecios));
+      guardarLocalSeguroV6021(
         "fratello_listas_precio_personalizadas",
         JSON.stringify(listasPrecioPersonalizadas)
       );
-      guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
-      guardarLocalSeguroV6020("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
-      guardarLocalSeguroV6020("fratello_productos_extra", JSON.stringify(productosExtra));
-      guardarLocalSeguroV6020("fratello_catalogo_productos", JSON.stringify(productos));
-      guardarLocalSeguroV6020("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-      guardarLocalSeguroV6020("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-      guardarLocalSeguroV6020("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
-      guardarLocalSeguroV6020("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+      guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+      guardarLocalSeguroV6021("fratello_pedidos_hoy", JSON.stringify(pedidosHoy));
+      guardarLocalSeguroV6021("fratello_productos_extra", JSON.stringify(productosExtra));
+      guardarLocalSeguroV6021("fratello_catalogo_productos", JSON.stringify(productos));
+      guardarLocalSeguroV6021("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+      guardarLocalSeguroV6021("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      guardarLocalSeguroV6021("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      guardarLocalSeguroV6021("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
 }
 
     setEstadoSync("Online");
@@ -4512,13 +4524,13 @@ async function actualizarDatosManual(evento = null) {
 
   try {
     if (!db) throw new Error("Firebase no está conectado.");
-    const sesionLista = await asegurarConexionFirebaseV6020(true);
+    const sesionLista = await asegurarConexionFirebaseV6021(true);
     if (!sesionLista) throw new Error("No se pudo recuperar la sesión de Firebase.");
 
     // La actualización operativa sólo necesita el canal individual. El
     // documento histórico puede medir casi 1 MiB y los demás módulos ya
     // disponen de listeners propios; esperar sus lecturas bloqueaba Android.
-    await syncV600CargarInstantaneaV6020();
+    await syncV600CargarInstantaneaV6021();
     if (!syncV600Iniciado) iniciarSyncCentralV600();
     if (seccionActualFratello === "seccionPedidos") {
       renderPedidosCargados();
@@ -4540,7 +4552,7 @@ async function actualizarDatosManual(evento = null) {
 
     // Los pedidos actuales viven en el canal central. La actualización manual
     // debe leerlo directamente, aunque el listener de este perfil haya fallado.
-    await syncV600CargarInstantaneaV6020();
+    await syncV600CargarInstantaneaV6021();
     if (!syncV600Iniciado) iniciarSyncCentralV600();
 
     const doc = await db.collection("fratello").doc("estado").get();
@@ -4589,23 +4601,23 @@ async function actualizarDatosManual(evento = null) {
       if (!productos.find(item => item.id === producto.id)) productos.push(producto);
     });
 
-    guardarLocalSeguroV6020("fratello_produccion", JSON.stringify(produccion));
-    guardarLocalSeguroV6020("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-    guardarLocalSeguroV6020("fratello_predeterminadas", JSON.stringify(predeterminadas));
-    guardarLocalSeguroV6020("fratello_clientes", JSON.stringify(clientes));
-    guardarLocalSeguroV6020("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-    guardarLocalSeguroV6020("fratello_listas_precios", JSON.stringify(listasPrecios));
-    guardarLocalSeguroV6020(
+    guardarLocalSeguroV6021("fratello_produccion", JSON.stringify(produccion));
+    guardarLocalSeguroV6021("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+    guardarLocalSeguroV6021("fratello_predeterminadas", JSON.stringify(predeterminadas));
+    guardarLocalSeguroV6021("fratello_clientes", JSON.stringify(clientes));
+    guardarLocalSeguroV6021("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+    guardarLocalSeguroV6021("fratello_listas_precios", JSON.stringify(listasPrecios));
+    guardarLocalSeguroV6021(
       "fratello_listas_precio_personalizadas",
       JSON.stringify(listasPrecioPersonalizadas)
     );
-    guardarLocalSeguroV6020("fratello_productos_extra", JSON.stringify(productosExtra));
-    guardarLocalSeguroV6020("fratello_catalogo_productos", JSON.stringify(productos));
-    guardarLocalSeguroV6020("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-    guardarLocalSeguroV6020("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-    guardarLocalSeguroV6020("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
-      guardarLocalSeguroV6020("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+    guardarLocalSeguroV6021("fratello_productos_extra", JSON.stringify(productosExtra));
+    guardarLocalSeguroV6021("fratello_catalogo_productos", JSON.stringify(productos));
+    guardarLocalSeguroV6021("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+    guardarLocalSeguroV6021("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+    guardarLocalSeguroV6021("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      guardarLocalSeguroV6021("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
 
     renderClientes();
     renderListaClientesCompleta();
@@ -4636,7 +4648,7 @@ async function actualizarDatosManual(evento = null) {
     console.error("Error actualizando datos:", error);
     if (estado) estado.textContent = "❌ No se pudieron actualizar los datos";
     if (botonGlobal) botonGlobal.textContent = "⚠️";
-    recuperarSincronizacionFirebaseV6020("actualizacion_manual").catch(() => {});
+    recuperarSincronizacionFirebaseV6021("actualizacion_manual").catch(() => {});
 
     setTimeout(() => {
       if (botonGlobal) botonGlobal.textContent = "🔄";
@@ -4940,16 +4952,16 @@ function escucharCambiosNube() {
         if (!productos.find(x => x.id === p.id)) productos.push(p);
       });
 
-      guardarLocalSeguroV6020("fratello_produccion", JSON.stringify(produccion));
-      guardarLocalSeguroV6020("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-      guardarLocalSeguroV6020("fratello_predeterminadas", JSON.stringify(predeterminadas));
-      guardarLocalSeguroV6020("fratello_clientes", JSON.stringify(clientes));
-      guardarLocalSeguroV6020("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-      guardarLocalSeguroV6020("fratello_productos_extra", JSON.stringify(productosExtra));
-      guardarLocalSeguroV6020("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-      guardarLocalSeguroV6020("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-      guardarLocalSeguroV6020("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+      guardarLocalSeguroV6021("fratello_produccion", JSON.stringify(produccion));
+      guardarLocalSeguroV6021("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+      guardarLocalSeguroV6021("fratello_predeterminadas", JSON.stringify(predeterminadas));
+      guardarLocalSeguroV6021("fratello_clientes", JSON.stringify(clientes));
+      guardarLocalSeguroV6021("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+      guardarLocalSeguroV6021("fratello_productos_extra", JSON.stringify(productosExtra));
+      guardarLocalSeguroV6021("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+      guardarLocalSeguroV6021("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      guardarLocalSeguroV6021("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 
       if (seccionActualFratello === "seccionPedidos") {
         renderClientes();
@@ -4987,20 +4999,20 @@ function escucharCambiosNube() {
 }
 
 function guardarTodo() {
-  guardarLocalSeguroV6020("fratello_produccion", JSON.stringify(produccion));
-  guardarLocalSeguroV6020("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  guardarLocalSeguroV6020("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
-  guardarLocalSeguroV6020("fratello_historial_pedidos", JSON.stringify(historialPedidos));
-  guardarLocalSeguroV6020("fratello_predeterminadas", JSON.stringify(predeterminadas));
-  guardarLocalSeguroV6020("fratello_clientes", JSON.stringify(clientes));
-  guardarLocalSeguroV6020("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
-  guardarLocalSeguroV6020("fratello_productos_extra", JSON.stringify(productosExtra));
-  guardarLocalSeguroV6020("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
-  guardarLocalSeguroV6020("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
-  guardarLocalSeguroV6020("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
-      guardarLocalSeguroV6020("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
-  guardarLocalSeguroV6020("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
+  guardarLocalSeguroV6021("fratello_produccion", JSON.stringify(produccion));
+  guardarLocalSeguroV6021("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6021("fratello_pedidos_fijos", JSON.stringify(pedidosFijos));
+  guardarLocalSeguroV6021("fratello_historial_pedidos", JSON.stringify(historialPedidos));
+  guardarLocalSeguroV6021("fratello_predeterminadas", JSON.stringify(predeterminadas));
+  guardarLocalSeguroV6021("fratello_clientes", JSON.stringify(clientes));
+  guardarLocalSeguroV6021("fratello_clientes_completos", JSON.stringify(datosClientesCompletos));
+  guardarLocalSeguroV6021("fratello_productos_extra", JSON.stringify(productosExtra));
+  guardarLocalSeguroV6021("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6021("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  guardarLocalSeguroV6021("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+      guardarLocalSeguroV6021("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  guardarLocalSeguroV6021("fratello_exclusiones_pedidos_fijos", JSON.stringify(exclusionesPedidosFijos));
   guardarEnNube();
 }
 
@@ -5018,7 +5030,7 @@ pedidosEliminados = pedidosEliminados.filter(item => {
   if (!clave) return true;
   return clave.includes("|pedido_fijo|") || clave.includes("|fijo:");
 });
-guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
 
 let pedidosFijos = JSON.parse(localStorage.getItem("fratello_pedidos_fijos") || "[]");
 let historialPedidos = JSON.parse(localStorage.getItem("fratello_historial_pedidos") || "[]");
@@ -5051,7 +5063,7 @@ function quitarProductosCatalogoEliminados() {
   for (let indice = productos.length - 1; indice >= 0; indice -= 1) {
     if (eliminados.has(String(productos[indice]?.id || ""))) productos.splice(indice, 1);
   }
-  guardarLocalSeguroV6020("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6021("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
 }
 let productosExtra = JSON.parse(localStorage.getItem("fratello_productos_extra") || "[]");
 quitarProductosCatalogoEliminados();
@@ -5104,7 +5116,7 @@ function asegurarProductoCriollosCatalogo() {
   }
 
   try {
-    guardarLocalSeguroV6020("fratello_catalogo_productos", JSON.stringify(productos));
+    guardarLocalSeguroV6021("fratello_catalogo_productos", JSON.stringify(productos));
   } catch (error) {
     console.warn("No se pudo actualizar el catálogo local de Criollos:", error);
   }
@@ -5338,8 +5350,8 @@ async function guardarProduccion() {
 
   const dia = diaActual();
   produccionActualizadaEnPorDia[dia] = new Date().toISOString();
-  guardarLocalSeguroV6020("fratello_produccion", JSON.stringify(produccion));
-  guardarLocalSeguroV6020("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
+  guardarLocalSeguroV6021("fratello_produccion", JSON.stringify(produccion));
+  guardarLocalSeguroV6021("fratello_produccion_actualizada_por_dia", JSON.stringify(produccionActualizadaEnPorDia));
 
   const guardadoOnline = await syncV600Guardar("produccion", dia, {
     dia,
@@ -5431,10 +5443,10 @@ function crearIdProductoCatalogo(nombre) {
   return id;
 }
 function guardarCatalogoProductos() {
-  guardarLocalSeguroV6020("fratello_catalogo_productos", JSON.stringify(productos));
-  guardarLocalSeguroV6020("fratello_predeterminadas", JSON.stringify(predeterminadas));
-  guardarLocalSeguroV6020("fratello_productos_extra", JSON.stringify(productosExtra));
-  guardarLocalSeguroV6020("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6021("fratello_catalogo_productos", JSON.stringify(productos));
+  guardarLocalSeguroV6021("fratello_predeterminadas", JSON.stringify(predeterminadas));
+  guardarLocalSeguroV6021("fratello_productos_extra", JSON.stringify(productosExtra));
+  guardarLocalSeguroV6021("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
   guardarEnNube();
   guardarPreciosModuloEnNube();
 }
@@ -5613,7 +5625,7 @@ function guardarProductoCatalogo(id) {
   producto.visible = fila.querySelector("[data-catalog-visible]").checked;
   producto.activo = fila.querySelector("[data-catalog-activo]").checked;
   preciosActualizadosEn = new Date().toISOString();
-  guardarLocalSeguroV6020("fratello_precios_actualizados_en", preciosActualizadosEn);
+  guardarLocalSeguroV6021("fratello_precios_actualizados_en", preciosActualizadosEn);
   const extra = productosExtra.find(p => p.id === id);
   if (extra) Object.assign(extra, producto);
   guardarCatalogoProductos();
@@ -5689,7 +5701,7 @@ async function eliminarProductoCatalogo(id) {
     [{ id, nombre: producto.nombre, eliminadoEn: new Date().toISOString() }]
   );
   preciosActualizadosEn = new Date().toISOString();
-  guardarLocalSeguroV6020("fratello_precios_actualizados_en", preciosActualizadosEn);
+  guardarLocalSeguroV6021("fratello_precios_actualizados_en", preciosActualizadosEn);
   dias.forEach(dia => {
     if (predeterminadas[dia]) delete predeterminadas[dia][id];
     delete produccion[`${dia}_${id}`];
@@ -7486,7 +7498,7 @@ function alternarConfirmacionPedido(idPedido, confirmado) {
   // Guardado liviano: confirmar un pedido no debe volver a leer y subir todo
   // el historial de la aplicación. Esto evita bloqueos y reinicios en Android.
   guardarPedidosLocal();
-  guardarLocalSeguroV6020("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
+  guardarLocalSeguroV6021("fratello_pedidos_confirmados", JSON.stringify(pedidosConfirmados));
   sincronizarPedidoIndividualV557(pedido, "normal").catch(() => {});
   calcularDiferencias();
   actualizarEstadoConfirmacion();
@@ -7513,7 +7525,7 @@ function borrarPedido(id) {
 
   excluirPedidoFijoEnFecha(pedido);
   registrarPedidoEliminado(pedido);
-  guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
   pedidos = pedidos.filter(p => Number(p.id) !== Number(id));
   pedidosConfirmados = false;
   guardarTodo();
@@ -7545,7 +7557,7 @@ function borrarPedidosSeleccionados() {
       excluirPedidoFijoEnFecha(pedido);
       registrarPedidoEliminado(pedido);
     });
-  guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
 
   pedidos = pedidos.filter(p => !seleccionados.includes(Number(p.id)));
   pedidosConfirmados = false;
@@ -7985,7 +7997,7 @@ function agregarListaPrecioPersonalizada() {
   };
 
   listasPrecioPersonalizadas.push(nueva);
-  guardarLocalSeguroV6020(
+  guardarLocalSeguroV6021(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
@@ -8018,7 +8030,7 @@ function eliminarListaPrecioPersonalizada(id) {
     }
   });
 
-  guardarLocalSeguroV6020(
+  guardarLocalSeguroV6021(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
@@ -8117,8 +8129,8 @@ async function guardarListasPrecios(){
   }
 
   preciosActualizadosEn = new Date().toISOString();
-  guardarLocalSeguroV6020("fratello_listas_precios", JSON.stringify(listasPrecios));
-  guardarLocalSeguroV6020("fratello_precios_actualizados_en", preciosActualizadosEn);
+  guardarLocalSeguroV6021("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6021("fratello_precios_actualizados_en", preciosActualizadosEn);
   guardarEnNube();
   const guardadoOnline = await guardarPreciosModuloEnNube();
   renderTicketsPorDia();
@@ -8312,10 +8324,10 @@ function repararDuplicadosPedidosFijos(fechaObjetivo = "", mostrarAviso = false)
       cuentaCorrienteV42 = cuentaCorrienteV42.filter(movimiento =>
         !movimientosAEliminar.has(String(movimiento.claveTicket || ""))
       );
-      guardarLocalSeguroV6020(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+      guardarLocalSeguroV6021(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
     }
 
-    guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+    guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 
     if (typeof guardarTodo === "function") guardarTodo();
     else if (typeof guardarEnNube === "function") guardarEnNube();
@@ -8369,7 +8381,7 @@ function claveTicketMemoria(pedido, tipo = "normal") {
 }
 
 function guardarMemoriaTickets() {
-  guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
   guardarEnNube();
 }
 
@@ -8393,7 +8405,7 @@ function recuperarTicketsPedidoHoyV422() {
   });
 
   if (recuperados) {
-    guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+    guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
   }
   return recuperados;
 }
@@ -8481,7 +8493,7 @@ function sincronizarMemoriaTickets() {
       String(a.cliente || "").localeCompare(String(b.cliente || ""), "es")
     );
 
-  guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 }
 
 function ticketsMemoriaParaFecha(fecha) {
@@ -8502,13 +8514,13 @@ function ticketsMemoriaParaFecha(fecha) {
 }
 
 function pedidosTicketParaFecha(fecha) {
-  if (mapaTicketsRenderV6020) return mapaTicketsRenderV6020.get(fecha) || [];
+  if (mapaTicketsRenderV6021) return mapaTicketsRenderV6021.get(fecha) || [];
   return ticketsMemoriaParaFecha(fecha);
 }
 
-let mapaTicketsRenderV6020 = null;
+let mapaTicketsRenderV6021 = null;
 
-function agruparTicketsParaPantallaV6020() {
+function agruparTicketsParaPantallaV6021() {
   const mapa = new Map();
   ticketsMemoria.forEach(ticket => {
     if (!ticket?.fechaTicket) return;
@@ -8615,10 +8627,10 @@ function renderTicketsPorDia() {
   if (!panelSemana && !panelPendientes) return;
 
   sincronizarMemoriaTickets();
-  mapaTicketsRenderV6020 = agruparTicketsParaPantallaV6020();
+  mapaTicketsRenderV6021 = agruparTicketsParaPantallaV6021();
 
   const limites = limitesSemanaTickets();
-  const fechas = [...mapaTicketsRenderV6020.keys()].sort();
+  const fechas = [...mapaTicketsRenderV6021.keys()].sort();
   // La sección principal conserva la semana actual y también las fechas
   // futuras. Antes, un pedido del lunes desaparecía si se consultaba el
   // domingo porque quedaba después del fin de la semana actual.
@@ -8676,11 +8688,11 @@ function renderTicketsPorDia() {
           // Crear los botones solamente para el día que se abre. Los cientos
           // de tickets pendientes quedan como filas livianas hasta entonces.
           const fecha = detalle.dataset.ticketFecha;
-          const anterior = mapaTicketsRenderV6020;
-          mapaTicketsRenderV6020 = agruparTicketsParaPantallaV6020();
+          const anterior = mapaTicketsRenderV6021;
+          mapaTicketsRenderV6021 = agruparTicketsParaPantallaV6021();
           const temporal = document.createElement("div");
           temporal.innerHTML = htmlPanelTicketsFechas([fecha], fecha);
-          mapaTicketsRenderV6020 = anterior;
+          mapaTicketsRenderV6021 = anterior;
           cuerpo.innerHTML = temporal.querySelector(".ticketDayBody")?.innerHTML || "";
           cuerpo.dataset.cargado = "1";
         }
@@ -8711,7 +8723,7 @@ function renderTicketsPorDia() {
     const fin = new Date(limites.fin + "T12:00:00").toLocaleDateString("es-AR");
     $("rangoSemanaTickets").textContent = `Semana actual: ${inicio} al ${fin} · Incluye pedidos próximos`;
   }
-  mapaTicketsRenderV6020 = null;
+  mapaTicketsRenderV6021 = null;
 }
 
 function buscarPedidoTicket(tipo, id) {
@@ -9471,11 +9483,11 @@ function fusionarClientesCuentaV541(remotos=[], locales=[]) {
   return [...new Set([...(Array.isArray(remotos)?remotos:[]), ...(Array.isArray(locales)?locales:[])].map(x=>String(x||"").trim()).filter(Boolean))];
 }
 function guardarClientesCuentaLocalV541() {
-  guardarLocalSeguroV6020(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
+  guardarLocalSeguroV6021(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
 }
 function guardarCuentaCorrienteV42() {
-  guardarLocalSeguroV6020(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
-  guardarLocalSeguroV6020(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
+  guardarLocalSeguroV6021(CUENTA_CORRIENTE_KEY_V42, JSON.stringify(cuentaCorrienteV42));
+  guardarLocalSeguroV6021(CLIENTES_CUENTA_KEY_V541, JSON.stringify(clientesCuentaV541));
   if (typeof guardarPedidosModuloEnNube === "function") guardarPedidosModuloEnNube().catch(() => {});
   renderPagosPendientes();
 }
@@ -10279,8 +10291,8 @@ function resetDatos() {
   if (!confirm("¿Seguro que querés borrar solo los pedidos cargados?")) return;
 
   pedidos = [];
-  guardarLocalSeguroV6020("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6021("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
   guardarEnNube();
 
   renderPedidosCargados();
@@ -10390,7 +10402,7 @@ function reabrirJornadaParaNuevoPedido(fecha) {
   jornadasCerradas = (jornadasCerradas || []).filter(item => item !== fecha);
 
   if (jornadasCerradas.length !== antes) {
-    guardarLocalSeguroV6020("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+    guardarLocalSeguroV6021("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
   }
 }
 
@@ -10402,13 +10414,13 @@ function cerrarJornada(fecha) {
   if (!fecha) return;
   if (!Array.isArray(jornadasCerradas)) jornadasCerradas = [];
   if (!jornadasCerradas.includes(fecha)) jornadasCerradas.push(fecha);
-  guardarLocalSeguroV6020("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  guardarLocalSeguroV6021("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 }
 
 function reabrirJornada(fecha) {
   jornadasCerradas = (Array.isArray(jornadasCerradas) ? jornadasCerradas : [])
     .filter(item => item !== fecha);
-  guardarLocalSeguroV6020("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
+  guardarLocalSeguroV6021("fratello_jornadas_cerradas", JSON.stringify(jornadasCerradas));
 }
 
 function estadoJornadaActual() {
@@ -10587,7 +10599,7 @@ async function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencia
     jornadaEnviada: true
   };
 
-  guardarLocalSeguroV6020("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
+  guardarLocalSeguroV6021("fratello_memoria_envio", JSON.stringify(memoriaUltimoEnvio));
   actualizarPanelMemoriaEnvio();
   return syncV600Guardar("resumen", fechaResumen, memoriaUltimoEnvio);
 }
@@ -10687,8 +10699,8 @@ function limpiarPedidosDespuesDeEnviar() {
   pedidos = [];
   pedidosConfirmados = false;
 
-  guardarLocalSeguroV6020("fratello_pedidos", JSON.stringify([]));
-  guardarLocalSeguroV6020("fratello_pedidos_confirmados", JSON.stringify(false));
+  guardarLocalSeguroV6021("fratello_pedidos", JSON.stringify([]));
+  guardarLocalSeguroV6021("fratello_pedidos_confirmados", JSON.stringify(false));
 
   if ($("checkPedidoCompleto")) $("checkPedidoCompleto").checked = false;
   if ($("pedidoCrudo")) $("pedidoCrudo").value = "";
@@ -10709,9 +10721,9 @@ function limpiarJornadaDespuesDeEnviar() {
   pedidos = [];
   pedidosConfirmados = false;
 
-  guardarLocalSeguroV6020("fratello_pedidos", JSON.stringify(pedidos));
-      guardarLocalSeguroV6020("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
-  guardarLocalSeguroV6020("fratello_pedidos_confirmados", JSON.stringify(false));
+  guardarLocalSeguroV6021("fratello_pedidos", JSON.stringify(pedidos));
+      guardarLocalSeguroV6021("fratello_pedidos_eliminados", JSON.stringify(pedidosEliminados));
+  guardarLocalSeguroV6021("fratello_pedidos_confirmados", JSON.stringify(false));
 
   const selectorProduccion = $("diaProduccion");
   const selectorPedidos = $("diaProduccionPedidos");
@@ -10902,7 +10914,7 @@ async function generarMensajeGrupoFratello() {
   // Los pedidos permanecen visibles para Tickets, entregas y controles.
   // La memoria de firmas evita repetirlos en un segundo envío.
   sincronizarMemoriaTickets();
-  guardarLocalSeguroV6020("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
+  guardarLocalSeguroV6021("fratello_tickets_memoria", JSON.stringify(ticketsMemoria));
 
   abrirWhatsApp("", mensaje);
 }
@@ -11309,7 +11321,7 @@ function cargarAdministracionLocal() {
 }
 
 function guardarAdministracionLocal() {
-  guardarLocalSeguroV6020(ADMIN_FIN_STORAGE_KEY, JSON.stringify(administracionFinanciera));
+  guardarLocalSeguroV6021(ADMIN_FIN_STORAGE_KEY, JSON.stringify(administracionFinanciera));
 }
 
 function guardarAdministracion() {
@@ -12910,7 +12922,7 @@ function horasCargarCorrecciones() {
 }
 
 function horasGuardarCorrecciones(datos) {
-  guardarLocalSeguroV6020(HORAS_CORRECCIONES_STORAGE, JSON.stringify(datos || {}));
+  guardarLocalSeguroV6021(HORAS_CORRECCIONES_STORAGE, JSON.stringify(datos || {}));
 }
 
 function horasCorreccionesArchivoActual() {
@@ -12969,7 +12981,7 @@ async function horasGuardarUltimosDatosOnline(silencioso = false) {
       archivo:JSON.parse(JSON.stringify(archivoHorasEmpleadosActual)),
       correcciones:horasCorreccionesArchivoActual(),
       actualizadoEn:new Date().toISOString(),
-      version:"6.0.20"
+      version:"6.0.21"
     };
     await db.collection("administracion").doc("horas_empleados_ultimo").set(datos);
     horasArchivoVinculadoNube = true;
@@ -13852,7 +13864,7 @@ function cargarCajaLocal() {
 }
 
 function guardarCajaLocal() {
-  guardarLocalSeguroV6020(CAJA_STORAGE_KEY, JSON.stringify({
+  guardarLocalSeguroV6021(CAJA_STORAGE_KEY, JSON.stringify({
     cierresCaja,
     cierresCajaEliminados,
     auditoriaCaja,
@@ -14008,7 +14020,7 @@ function idDispositivoCaja() {
   let id = localStorage.getItem(clave);
   if (!id) {
     id = `DISP-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-    guardarLocalSeguroV6020(clave, id);
+    guardarLocalSeguroV6021(clave, id);
   }
   return id;
 }
@@ -14971,7 +14983,7 @@ function leerColaCajaIndividualV560() {
 }
 
 function guardarColaCajaIndividualV560(cola) {
-  guardarLocalSeguroV6020(COLA_CAJA_INDIVIDUAL_V560, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-40)));
+  guardarLocalSeguroV6021(COLA_CAJA_INDIVIDUAL_V560, JSON.stringify((Array.isArray(cola) ? cola : []).slice(-40)));
 }
 
 function encolarCierreCajaIndividualV560(registro) {
@@ -15067,7 +15079,7 @@ function programarMigracionCajaIndividualV560() {
         cierre: JSON.parse(JSON.stringify(cierre))
       });
     });
-    guardarLocalSeguroV6020(clave, "completa");
+    guardarLocalSeguroV6021(clave, "completa");
     reenviarColaCajaIndividualV560().catch(() => {});
   }, 12000);
 }
@@ -15172,8 +15184,8 @@ async function guardarAdminModuloEnNube() {
 }
 
 async function guardarPreciosModuloEnNube() {
-  guardarLocalSeguroV6020("fratello_listas_precios", JSON.stringify(listasPrecios));
-  guardarLocalSeguroV6020("fratello_catalogo_productos", JSON.stringify(productos));
+  guardarLocalSeguroV6021("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6021("fratello_catalogo_productos", JSON.stringify(productos));
   if (!db) return false;
   if (guardandoPreciosModulo) {
     preciosModuloPendiente = true;
@@ -15228,17 +15240,17 @@ function aplicarPreciosDesdeNube(data = {}, forzar = false) {
   }
   quitarProductosCatalogoEliminados();
 
-  guardarLocalSeguroV6020("fratello_listas_precios", JSON.stringify(listasPrecios));
-  guardarLocalSeguroV6020(
+  guardarLocalSeguroV6021("fratello_listas_precios", JSON.stringify(listasPrecios));
+  guardarLocalSeguroV6021(
     "fratello_listas_precio_personalizadas",
     JSON.stringify(listasPrecioPersonalizadas)
   );
-  guardarLocalSeguroV6020("fratello_catalogo_productos", JSON.stringify(productos));
-  guardarLocalSeguroV6020("fratello_productos_extra", JSON.stringify(productosExtra));
-  guardarLocalSeguroV6020("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
+  guardarLocalSeguroV6021("fratello_catalogo_productos", JSON.stringify(productos));
+  guardarLocalSeguroV6021("fratello_productos_extra", JSON.stringify(productosExtra));
+  guardarLocalSeguroV6021("fratello_productos_eliminados", JSON.stringify(productosCatalogoEliminados));
   preciosActualizadosEn = data.actualizado || preciosActualizadosEn;
   if (preciosActualizadosEn) {
-    guardarLocalSeguroV6020("fratello_precios_actualizados_en", preciosActualizadosEn);
+    guardarLocalSeguroV6021("fratello_precios_actualizados_en", preciosActualizadosEn);
   }
   renderListasPrecios();
   renderAdministradorProductos();
@@ -15422,7 +15434,7 @@ function sincronizarCajaTiempoReal() {
 
 window.addEventListener("online", () => {
   setEstadoSync("Conexión recuperada — sincronizando...");
-  recuperarSincronizacionFirebaseV6020("conexion_recuperada").catch(() => {});
+  recuperarSincronizacionFirebaseV6021("conexion_recuperada").catch(() => {});
   clearTimeout(temporizadorGuardadoNube);
   intentosGuardadoNube = 0;
   if (guardadoNubePendiente) guardarEnNube(false);
@@ -15433,18 +15445,18 @@ window.addEventListener("offline", () => {
   setEstadoSync("Sin conexión — modo local");
 });
 
-function verificarSaludFirebaseV6020() {
+function verificarSaludFirebaseV6021() {
   if (!navigator.onLine || document.visibilityState === "hidden") return;
   if (!syncV600Iniciado || syncV600UltimoErrorMs) {
-    recuperarSincronizacionFirebaseV6020("verificacion").catch(() => {});
+    recuperarSincronizacionFirebaseV6021("verificacion").catch(() => {});
   }
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") verificarSaludFirebaseV6020();
+  if (document.visibilityState === "visible") verificarSaludFirebaseV6021();
 });
-window.addEventListener("focus", verificarSaludFirebaseV6020);
-setInterval(verificarSaludFirebaseV6020, 3 * 60 * 1000);
+window.addEventListener("focus", verificarSaludFirebaseV6021);
+setInterval(verificarSaludFirebaseV6021, 3 * 60 * 1000);
 
 function iniciarModuloCaja() {
   if (window.__FRATELLO_CAJA_INICIADA__) {
@@ -15646,12 +15658,439 @@ function iniciarPersistenciaDetalles() {
   observador.observe(document.body, { childList: true, subtree: true });
 }
 
+/* =========================================================
+   STOCK DE MERCADERÍA — v6.0.21
+   Un documento por fecha y turno. Los turnos incompletos se pueden guardar
+   al abrir y completar al cerrar; solo los completos entran al promedio.
+   ========================================================= */
+const STOCK_LOCAL_KEY_V6021 = "fratello_stock_mercaderia_v1";
+const STOCK_DRAFT_KEY_V6021 = "fratello_stock_borrador_v1";
+const stockCacheInicialV6021 = leerJsonLocalSeguro(STOCK_LOCAL_KEY_V6021, []);
+const stockRegistrosV6021 = new Map(
+  (Array.isArray(stockCacheInicialV6021) ? stockCacheInicialV6021 : [])
+    .filter(item => item?.fecha && item?.turno)
+    .map(item => [`${item.fecha}_${item.turno}`, item])
+);
+let stockFechaV6021 = "";
+let stockTurnoV6021 = "";
+let stockRevisionBaseV6021 = "";
+let stockSucioV6021 = false;
+let stockEscuchaV6021 = null;
+let stockCargaTokenV6021 = 0;
+let stockTimerBorradorV6021 = null;
+
+function stockClaveV6021(fecha, turno) {
+  return `${fecha}_${turno}`;
+}
+
+function stockReferenciaV6021(fecha, turno) {
+  return db.collection("fratello").doc("stock_mercaderia")
+    .collection("registros").doc(stockClaveV6021(fecha, turno));
+}
+
+function stockFechaHoyV6021() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function stockFechaLimiteV6021() {
+  const d = new Date();
+  d.setDate(d.getDate() - 90);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function stockFormatoV6021(numero) {
+  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 }).format(numero);
+}
+
+function stockCatalogoV6021(registro = null) {
+  const mapa = new Map();
+  [...productos, ...productosExtra].forEach(p => {
+    if (!p?.id || !p?.nombre || p.activo === false || p.visible === false) return;
+    if (!mapa.has(String(p.id))) mapa.set(String(p.id), {
+      id: String(p.id), nombre: String(p.nombre), unidad: String(p.unidad || "unidad"),
+      inicial: null, agregado: null, final: null
+    });
+  });
+  (registro?.items || []).forEach(item => {
+    if (!item?.id) return;
+    mapa.set(String(item.id), { ...mapa.get(String(item.id)), ...item });
+  });
+  return [...mapa.values()];
+}
+
+function stockGuardarCacheV6021() {
+  const lista = [...stockRegistrosV6021.values()]
+    .sort((a, b) => `${b.fecha}_${b.turno}`.localeCompare(`${a.fecha}_${a.turno}`))
+    .slice(0, 240);
+  guardarLocalSeguroV6021(STOCK_LOCAL_KEY_V6021, JSON.stringify(lista));
+}
+
+function stockCantidadV6021(valor) {
+  if (valor === "" || valor === null || valor === undefined) return null;
+  const n = Number(String(valor).replace(",", "."));
+  return Number.isFinite(n) && n >= 0 ? n : NaN;
+}
+
+function stockVendidoV6021(item) {
+  if (item.inicial === null || item.final === null) return null;
+  return Number((item.inicial + (item.agregado || 0) - item.final).toFixed(2));
+}
+
+function stockCapturarFilasV6021(incluirVacias = false) {
+  return [...document.querySelectorAll("#stockFilas .stockRow")].map(fila => {
+    const leer = campo => stockCantidadV6021(fila.querySelector(`[data-stock-campo="${campo}"]`)?.value);
+    return {
+      id: fila.dataset.id, nombre: fila.dataset.nombre, unidad: fila.dataset.unidad,
+      inicial: leer("inicial"), agregado: leer("agregado"), final: leer("final")
+    };
+  }).filter(item => incluirVacias || item.inicial !== null || item.agregado !== null || item.final !== null);
+}
+
+function stockHtmlNumeroV6021(valor) {
+  return valor === null || valor === undefined ? "" : String(valor);
+}
+
+function stockRenderFilasV6021(items) {
+  const host = $("stockFilas");
+  if (!host) return;
+  host.innerHTML = items.map(item => {
+    const nombre = escaparHtmlCatalogo(item.nombre || "Producto");
+    const unidad = escaparHtmlCatalogo(item.unidad || "unidad");
+    const campos = ["inicial", "agregado", "final"].map(campo => `
+      <label><span class="stockMobileLabel">${campo === "agregado" ? "Agregado" : campo === "inicial" ? "Inicial" : "Final"}</span>
+      <input type="number" inputmode="decimal" min="0" step="any" data-stock-campo="${campo}"
+        aria-label="${campo} de ${nombre}" value="${stockHtmlNumeroV6021(item[campo])}"></label>`).join("");
+    const vendido = stockVendidoV6021(item);
+    return `<div class="stockRow" data-id="${escaparHtmlCatalogo(item.id)}" data-nombre="${nombre}" data-unidad="${unidad}">
+      <div class="stockProduct"><strong>${nombre}</strong><small>${unidad}</small></div>${campos}
+      <div class="stockSold ${vendido !== null && vendido < 0 ? "invalid" : ""}">Vendido: ${vendido === null ? "—" : `${stockFormatoV6021(vendido)} ${unidad}`}</div>
+    </div>`;
+  }).join("");
+  stockActualizarResumenV6021();
+}
+
+function stockActualizarResumenV6021() {
+  const items = stockCapturarFilasV6021();
+  const completos = items.filter(item => stockVendidoV6021(item) !== null);
+  $("stockResumenTurno").textContent = `${completos.length} producto(s) con apertura y cierre completos · ${items.length - completos.length} pendiente(s). Las ventas solo se calculan cuando cargás el stock final.`;
+  document.querySelectorAll("#stockFilas .stockRow").forEach(fila => {
+    const item = items.find(v => v.id === fila.dataset.id);
+    const valor = item ? stockVendidoV6021(item) : null;
+    const el = fila.querySelector(".stockSold");
+    if (!el) return;
+    el.textContent = `Vendido: ${valor === null ? "—" : `${stockFormatoV6021(valor)} ${fila.dataset.unidad}`}`;
+    el.classList.toggle("invalid", valor !== null && valor < 0);
+  });
+}
+
+function stockBorradorV6021() {
+  clearTimeout(stockTimerBorradorV6021);
+  stockTimerBorradorV6021 = setTimeout(stockGuardarBorradorAhoraV6021, 350);
+}
+
+function stockLeerBorradoresV6021() {
+  const valor = leerJsonLocalSeguro(STOCK_DRAFT_KEY_V6021, {});
+  return valor && typeof valor === "object" && !Array.isArray(valor) ? valor : {};
+}
+
+function stockGuardarBorradorAhoraV6021() {
+  clearTimeout(stockTimerBorradorV6021);
+  if (!stockSucioV6021 || !stockFechaV6021) return;
+  const borradores = stockLeerBorradoresV6021();
+  borradores[stockClaveV6021(stockFechaV6021, stockTurnoV6021)] = {
+    base: stockRevisionBaseV6021, items: stockCapturarFilasV6021(true)
+  };
+  guardarLocalSeguroV6021(STOCK_DRAFT_KEY_V6021, JSON.stringify(borradores));
+}
+
+function stockEliminarBorradorV6021(fecha, turno) {
+  const borradores = stockLeerBorradoresV6021();
+  delete borradores[stockClaveV6021(fecha, turno)];
+  guardarLocalSeguroV6021(STOCK_DRAFT_KEY_V6021, JSON.stringify(borradores));
+}
+
+function stockEstadoV6021(texto) {
+  const estado = $("stockEstado");
+  if (estado) estado.textContent = texto;
+}
+
+function stockCargarSeleccionV6021() {
+  const fecha = $("stockFecha")?.value || stockFechaHoyV6021();
+  const turno = $("stockTurno")?.value || "manana";
+  stockFechaV6021 = fecha;
+  stockTurnoV6021 = turno;
+  stockSucioV6021 = false;
+  const registro = stockRegistrosV6021.get(stockClaveV6021(fecha, turno)) || null;
+  stockRevisionBaseV6021 = registro?.revision || registro?.actualizadoEn || "";
+  const borrador = stockLeerBorradoresV6021()[stockClaveV6021(fecha, turno)];
+  const usarBorrador = Boolean(borrador);
+  if (usarBorrador) {
+    stockRevisionBaseV6021 = borrador.base || "";
+    stockSucioV6021 = true;
+  }
+  stockRenderFilasV6021(stockCatalogoV6021({ items: usarBorrador ? borrador.items : registro?.items }));
+  stockEstadoV6021(usarBorrador ? "Borrador sin guardar recuperado en este dispositivo." :
+    registro ? "Turno guardado. Podés corregirlo y volver a guardar." : "Turno nuevo: cargá el stock inicial.");
+  $("stockDescartarBorrador")?.classList.toggle("hidden", !usarBorrador);
+  $("stockTraerManana")?.classList.toggle("hidden", turno !== "tarde");
+  stockRenderAnalisisV6021();
+
+  // Al elegir una fecha antigua, consultar su documento exacto aunque no esté
+  // en la lista de los últimos 90 días. Nunca pisar un borrador en edición.
+  const token = ++stockCargaTokenV6021;
+  if (!registro && !usarBorrador && db) {
+    stockReferenciaV6021(fecha, turno).get().then(snap => {
+      if (!snap.exists || token !== stockCargaTokenV6021) return;
+      const remoto = snap.data();
+      stockRegistrosV6021.set(stockClaveV6021(fecha, turno), remoto);
+      stockGuardarCacheV6021();
+      if (!stockSucioV6021) {
+        stockRevisionBaseV6021 = remoto.revision || remoto.actualizadoEn || "";
+        stockRenderFilasV6021(stockCatalogoV6021(remoto));
+        stockEstadoV6021("Turno cargado desde Firebase.");
+      }
+    }).catch(error => console.warn("No se pudo consultar el stock del turno:", error));
+  }
+}
+
+function stockDiaSemanaV6021(fecha) {
+  return new Date(`${fecha}T12:00:00`).getDay();
+}
+
+function stockRenderAnalisisV6021() {
+  const promedios = $("stockPromedios");
+  const historial = $("stockHistorial");
+  if (!promedios || !historial) return;
+  const registros = [...stockRegistrosV6021.values()]
+    .filter(item => item.fecha >= stockFechaLimiteV6021())
+    .sort((a, b) => `${b.fecha}_${b.turno}`.localeCompare(`${a.fecha}_${a.turno}`));
+  const dia = stockDiaSemanaV6021(stockFechaV6021);
+  const nombreDia = new Intl.DateTimeFormat("es-AR", { weekday: "long" })
+    .format(new Date(`${stockFechaV6021}T12:00:00`));
+  const muestras = new Map();
+  registros.filter(r => r.turno === stockTurnoV6021 && stockDiaSemanaV6021(r.fecha) === dia)
+    .forEach(r => (r.items || []).forEach(item => {
+      const vendido = stockVendidoV6021(item);
+      if (vendido === null || vendido < 0) return;
+      const clave = `${item.id}|${item.unidad}`;
+      if (!muestras.has(clave)) muestras.set(clave, { nombre: item.nombre, unidad: item.unidad, total: 0, dias: 0 });
+      const valor = muestras.get(clave);
+      valor.total += vendido;
+      valor.dias += 1;
+    }));
+  const porUnidad = new Map();
+  [...muestras.values()].forEach(item => {
+    if (!porUnidad.has(item.unidad)) porUnidad.set(item.unidad, []);
+    porUnidad.get(item.unidad).push(item);
+  });
+  const grupos = [...porUnidad.entries()].map(([unidad, lista]) => {
+    lista.sort((a, b) => b.total / b.dias - a.total / a.dias);
+    const mayor = lista[0], menor = lista[lista.length - 1];
+    return `<div class="stockUnitGroup"><h4>${escaparHtmlCatalogo(unidad)}</h4>
+      <p>Más sale: <strong>${escaparHtmlCatalogo(mayor.nombre)}</strong> (${stockFormatoV6021(mayor.total / mayor.dias)}) · Menos sale: <strong>${escaparHtmlCatalogo(menor.nombre)}</strong> (${stockFormatoV6021(menor.total / menor.dias)})</p>
+      <div class="stockAverageList">${lista.map(item => `<div class="stockAverageLine"><span>${escaparHtmlCatalogo(item.nombre)} <small>(${item.dias} turno${item.dias === 1 ? "" : "s"})</small></span><strong>${stockFormatoV6021(item.total / item.dias)} ${escaparHtmlCatalogo(unidad)}</strong></div>`).join("")}</div></div>`;
+  });
+  promedios.innerHTML = `<p>Promedio de los ${nombreDia} · turno ${stockTurnoV6021 === "tarde" ? "tarde" : "mañana"}</p>` +
+    (grupos.join("") || '<p class="hint">Todavía no hay cierres completos para este día y turno.</p>');
+  historial.innerHTML = registros.length ? `<div class="stockHistoryList">${registros.slice(0, 30).map(r => {
+    const completos = (r.items || []).filter(item => stockVendidoV6021(item) !== null).length;
+    return `<button class="stockHistoryButton" type="button" data-stock-fecha="${r.fecha}" data-stock-turno="${r.turno}"><span>${r.fecha} · ${r.turno === "tarde" ? "Tarde" : "Mañana"}</span><small>${completos} productos cerrados</small></button>`;
+  }).join("")}</div>` : '<p class="hint">Sin registros recientes.</p>';
+}
+
+async function stockGuardarTurnoV6021() {
+  const items = stockCapturarFilasV6021();
+  if (!items.length) return stockEstadoV6021("Cargá al menos un producto antes de guardar.");
+  if (items.some(item => [item.inicial, item.agregado, item.final].some(Number.isNaN))) {
+    return stockEstadoV6021("Revisá las cantidades: deben ser números iguales o mayores que cero.");
+  }
+  if (items.some(item => stockVendidoV6021(item) !== null && stockVendidoV6021(item) < 0)) {
+    return stockEstadoV6021("El stock final no puede superar al inicial más lo agregado. Revisá las filas en rojo.");
+  }
+  if (!db) return stockEstadoV6021("Firebase no está disponible. El borrador queda en este dispositivo.");
+  const controles = [...$("seccionStockMercaderia").querySelectorAll("input, select, button")]
+    .map(el => ({ el, disabled: el.disabled }));
+  controles.forEach(({ el }) => { el.disabled = true; });
+  stockEstadoV6021("Guardando el turno en Firebase...");
+  const fecha = stockFechaV6021, turno = stockTurnoV6021;
+  const base = stockRevisionBaseV6021;
+  const actualizadoEn = new Date().toISOString();
+  const revision = `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const registro = { fecha, turno, items, actualizadoEn, revision };
+  try {
+    if (!await asegurarSesionOperativaV601()) throw new Error("No hay sesión de Firebase.");
+    const ref = stockReferenciaV6021(fecha, turno);
+    await db.runTransaction(async tx => {
+      const actual = await tx.get(ref);
+      if ((actual.exists ? actual.data().revision || actual.data().actualizadoEn || "" : "") !== base) {
+        throw new Error("stock-conflicto");
+      }
+      tx.set(ref, registro);
+    });
+    stockRegistrosV6021.set(stockClaveV6021(fecha, turno), registro);
+    stockGuardarCacheV6021();
+    clearTimeout(stockTimerBorradorV6021);
+    stockEliminarBorradorV6021(fecha, turno);
+    stockSucioV6021 = false;
+    $("stockDescartarBorrador")?.classList.add("hidden");
+    stockRevisionBaseV6021 = revision;
+    stockEstadoV6021("✅ Stock guardado y compartido con los otros dispositivos.");
+    stockRenderAnalisisV6021();
+  } catch (error) {
+    console.error("No se pudo guardar el stock:", error);
+    stockBorradorV6021();
+    stockEstadoV6021(error.message === "stock-conflicto"
+      ? "Otro dispositivo modificó este turno. Tus cambios siguen como borrador; revisá el registro antes de guardar otra vez."
+      : "No se pudo guardar online. El borrador queda en este dispositivo para reintentar.");
+  } finally {
+    controles.forEach(({ el, disabled }) => { el.disabled = disabled; });
+  }
+}
+
+async function stockTraerMananaV6021() {
+  if (stockTurnoV6021 !== "tarde") return;
+  const fecha = stockFechaV6021;
+  let manana = stockRegistrosV6021.get(stockClaveV6021(fecha, "manana"));
+  if (!manana && db) {
+    try {
+      const snap = await stockReferenciaV6021(fecha, "manana").get();
+      if (snap.exists) manana = snap.data();
+    } catch (_) {}
+  }
+  if (fecha !== stockFechaV6021 || stockTurnoV6021 !== "tarde") return;
+  if (!manana) return stockEstadoV6021("Guardá primero el turno mañana para usar su stock final.");
+  const finales = new Map((manana.items || []).filter(item => item.final !== null)
+    .map(item => [item.id, item.final]));
+  document.querySelectorAll("#stockFilas .stockRow").forEach(fila => {
+    if (!finales.has(fila.dataset.id)) return;
+    const input = fila.querySelector('[data-stock-campo="inicial"]');
+    if (input && input.value === "") input.value = String(finales.get(fila.dataset.id));
+  });
+  stockSucioV6021 = true;
+  $("stockDescartarBorrador")?.classList.remove("hidden");
+  stockActualizarResumenV6021();
+  stockBorradorV6021();
+  stockEstadoV6021("Copiado el stock final de mañana en las aperturas vacías de la tarde. Revisalo antes de guardar.");
+}
+
+function stockEscucharV6021() {
+  if (!db || stockEscuchaV6021) return;
+  stockEscuchaV6021 = db.collection("fratello").doc("stock_mercaderia")
+    .collection("registros").where("fecha", ">=", stockFechaLimiteV6021())
+    .onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(cambio => {
+        const r = cambio.doc.data();
+        const clave = stockClaveV6021(r.fecha, r.turno);
+        if (cambio.type === "removed") stockRegistrosV6021.delete(clave);
+        else stockRegistrosV6021.set(clave, r);
+      });
+      stockGuardarCacheV6021();
+      if (seccionActualFratello !== "seccionStockMercaderia") return;
+      const actual = stockRegistrosV6021.get(stockClaveV6021(stockFechaV6021, stockTurnoV6021));
+      if (!stockSucioV6021 && actual && (actual.revision || actual.actualizadoEn) !== stockRevisionBaseV6021) {
+        stockRevisionBaseV6021 = actual.revision || actual.actualizadoEn;
+        stockRenderFilasV6021(stockCatalogoV6021(actual));
+        stockEstadoV6021("Stock actualizado desde otro dispositivo.");
+      } else if (stockSucioV6021 && actual && (actual.revision || actual.actualizadoEn) !== stockRevisionBaseV6021) {
+        stockEstadoV6021("Hay una versión nueva en otro dispositivo. Guardá o descartá tu borrador después de revisarla.");
+      }
+      stockRenderAnalisisV6021();
+    }, error => {
+      console.error("No se pudo escuchar el stock:", error);
+      stockEscuchaV6021 = null;
+      stockEstadoV6021("Stock local visible. No se pudo conectar con Firebase.");
+    });
+}
+
+function abrirStockMercaderia() {
+  if (!stockFechaV6021) stockCargarSeleccionV6021();
+  stockEscucharV6021();
+}
+
+function iniciarModuloStockMercaderia() {
+  const fecha = $("stockFecha"), turno = $("stockTurno"), filas = $("stockFilas");
+  if (!fecha || !turno || !filas) return;
+  fecha.value = stockFechaHoyV6021();
+  turno.value = new Date().getHours() >= 15 ? "tarde" : "manana";
+  const cambiar = () => {
+    if (stockSucioV6021 && !confirm("Hay cambios de stock sin guardar. ¿Querés cambiar de fecha o turno y conservarlos como borrador local?")) {
+      fecha.value = stockFechaV6021;
+      turno.value = stockTurnoV6021;
+      return;
+    }
+    stockGuardarBorradorAhoraV6021();
+    stockCargarSeleccionV6021();
+  };
+  fecha.addEventListener("change", cambiar);
+  turno.addEventListener("change", cambiar);
+  filas.addEventListener("input", evento => {
+    if (!evento.target.matches("[data-stock-campo]")) return;
+    stockSucioV6021 = true;
+    $("stockDescartarBorrador")?.classList.remove("hidden");
+    stockActualizarResumenV6021();
+    stockBorradorV6021();
+  });
+  $("stockAgregarProducto")?.addEventListener("click", () => {
+    const input = $("stockNuevoProducto");
+    const nombre = String(input?.value || "").trim();
+    const unidad = $("stockNuevaUnidad")?.value || "unidad";
+    if (!nombre) return stockEstadoV6021("Escribí el nombre del producto.");
+    const id = `manual_${normalizar(nombre).replace(/[^a-z0-9]+/g, "_")}_${unidad}`;
+    if ([...filas.querySelectorAll(".stockRow")].some(fila => fila.dataset.id === id ||
+      (normalizar(fila.dataset.nombre) === normalizar(nombre) && fila.dataset.unidad === unidad))) {
+      return stockEstadoV6021("Ese producto ya figura en este turno.");
+    }
+    const actuales = stockCapturarFilasV6021(true);
+    // Conservar también las filas vacías del catálogo al añadir una nueva.
+    const catalogo = stockCatalogoV6021({ items: actuales });
+    catalogo.push({ id, nombre, unidad, inicial: null, agregado: null, final: null });
+    stockRenderFilasV6021(catalogo);
+    input.value = "";
+    stockSucioV6021 = true;
+    $("stockDescartarBorrador")?.classList.remove("hidden");
+    stockBorradorV6021();
+  });
+  $("stockDescartarBorrador")?.addEventListener("click", async () => {
+    if (!confirm("¿Descartar los cambios de este turno que todavía no se guardaron en Firebase?")) return;
+    const fechaActual = stockFechaV6021, turnoActual = stockTurnoV6021;
+    clearTimeout(stockTimerBorradorV6021);
+    stockEliminarBorradorV6021(fechaActual, turnoActual);
+    stockSucioV6021 = false;
+    stockCargarSeleccionV6021();
+    if (!db) return;
+    try {
+      const snap = await stockReferenciaV6021(fechaActual, turnoActual).get();
+      if (fechaActual !== stockFechaV6021 || turnoActual !== stockTurnoV6021) return;
+      if (snap.exists) {
+        const registro = snap.data();
+        stockRegistrosV6021.set(stockClaveV6021(fechaActual, turnoActual), registro);
+        stockRevisionBaseV6021 = registro.revision || registro.actualizadoEn || "";
+        stockRenderFilasV6021(stockCatalogoV6021(registro));
+        stockEstadoV6021("Registro guardado cargado desde Firebase.");
+      }
+    } catch (error) { console.warn("No se pudo recargar el stock:", error); }
+  });
+  $("stockTraerManana")?.addEventListener("click", stockTraerMananaV6021);
+  $("stockGuardar")?.addEventListener("click", stockGuardarTurnoV6021);
+  $("stockHistorial")?.addEventListener("click", evento => {
+    const boton = evento.target.closest("[data-stock-fecha]");
+    if (!boton) return;
+    if (stockSucioV6021 && !confirm("Hay cambios sin guardar. ¿Querés abrir otro registro?")) return;
+    stockGuardarBorradorAhoraV6021();
+    fecha.value = boton.dataset.stockFecha;
+    turno.value = boton.dataset.stockTurno;
+    stockCargarSeleccionV6021();
+  });
+}
+
 async function init() {
   iniciarPersistenciaDetalles();
   document.querySelectorAll('input[type="date"]').forEach(input => {
     input.lang = "es-AR";
   });
   iniciarModuloCaja();
+  iniciarModuloStockMercaderia();
   iniciarAccesoAdministrador();
   iniciarModuloAdministracion();
 
@@ -15772,7 +16211,7 @@ async function init() {
 
   if (!Array.isArray(clientes) || clientes.length === 0) clientes = [...clientesIniciales];
   compactarCacheTicketsLocalV559();
-  const sesionFirebaseLista = await asegurarConexionFirebaseV6020(false);
+  const sesionFirebaseLista = await asegurarConexionFirebaseV6021(false);
   if (!sesionFirebaseLista && navigator.onLine) {
     setEstadoSync("Reconectando Firebase...");
   }

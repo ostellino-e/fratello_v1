@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=608" />
+  <link rel="stylesheet" href="styles.css?v=609" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.20";
-    document.documentElement.dataset.fratelloVersion = "6.0.20";
+    window.FRATELLO_VERSION = "6.0.21";
+    document.documentElement.dataset.fratelloVersion = "6.0.21";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.20</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.21</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -104,6 +104,9 @@
       </a>
       <a class="homeMainCard caja" href="#seccionCaja" data-seccion="seccionCaja">
         <span class="homeMainIcon">💰</span><span><strong>Caja</strong><small>Cierres por turno y carga de gastos.</small></span><b>›</b>
+      </a>
+      <a class="homeMainCard stock" href="#seccionStockMercaderia" data-seccion="seccionStockMercaderia">
+        <span class="homeMainIcon">📋</span><span><strong>Stock de mercadería</strong><small>Apertura, reposición, cierre y ventas por turno.</small></span><b>›</b>
       </a>
       <a id="tarjetaAdministracionInicio" class="homeMainCard administracion hidden" href="#seccionAdministracion" data-seccion="seccionAdministracion">
         <span class="homeMainIcon">📊</span>
@@ -473,7 +476,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.20 · Navegación fluida</span>
+        <span class="adminFinanceVersion">v6.0.21 · Stock de mercadería</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -1040,6 +1043,32 @@
       </section>
     </section>
 
+    <section class="card wide appSection stockModule" id="seccionStockMercaderia">
+      <a class="volverInicio" href="#" data-volver="true">← Volver</a>
+      <h2>📋 Stock de mercadería</h2>
+      <p class="hint">Anotá lo disponible al abrir y lo que queda al terminar. Vendido = inicial + agregado − final. Las cantidades se muestran en la unidad de cada producto.</p>
+      <div class="stockSelectors">
+        <label>Fecha <input id="stockFecha" type="date"></label>
+        <label>Turno <select id="stockTurno"><option value="manana">Mañana</option><option value="tarde">Tarde</option></select></label>
+      </div>
+      <p id="stockEstado" class="stockEstado" role="status" aria-live="polite"></p>
+      <div class="stockTableHeader" aria-hidden="true"><span>Producto</span><span>Inicial</span><span>Agregado</span><span>Final</span><span>Vendido</span></div>
+      <div id="stockFilas" class="stockFilas"></div>
+      <div class="stockAddProduct">
+        <input id="stockNuevoProducto" type="text" placeholder="Otro producto" aria-label="Nombre de otro producto">
+        <select id="stockNuevaUnidad" aria-label="Unidad del producto"><option value="unidad">unidad</option><option value="kg">kg</option><option value="docena">docena</option></select>
+        <button id="stockAgregarProducto" type="button">＋ Agregar producto</button>
+      </div>
+      <div class="stockActions">
+        <button id="stockTraerManana" type="button">↳ Usar el final de la mañana como inicial</button>
+        <button id="stockGuardar" type="button" class="primary">Guardar stock del turno</button>
+        <button id="stockDescartarBorrador" type="button" class="hidden">Descartar borrador y cargar lo guardado</button>
+      </div>
+      <p id="stockResumenTurno" class="stockResumenTurno"></p>
+      <section class="stockAnalysis"><h3>Promedios de venta</h3><p class="hint">Para este día de la semana y este turno, según registros de los últimos 90 días con inicial y final completos.</p><div id="stockPromedios"></div></section>
+      <section class="stockAnalysis"><h3>Registros recientes</h3><div id="stockHistorial"></div></section>
+    </section>
+
     <section class="card appSection emptyModule" id="seccionTareas">
       <a class="volverInicio" href="#" data-volver="true">← Volver</a>
       <div class="emptyModuleIcon">✅</div>
@@ -1176,7 +1205,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6020"></script>
+  <script src="app.js?v=6021"></script>
 
   
 
@@ -1193,12 +1222,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6020")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6021")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6020", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6021", {
             scope: "./",
             updateViaCache: "none"
           });

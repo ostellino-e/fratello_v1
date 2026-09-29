@@ -1,4 +1,14 @@
-# Fratello v6.0.20
+# Fratello v6.0.21
+
+## Corrección v6.0.21
+
+- Nueva sección **Stock de mercadería**, accesible desde Inicio.
+- Registro independiente para cada fecha y turno mañana/tarde.
+- Cantidades iniciales, reposición y finales por producto; calcula vendido como inicial + agregado − final.
+- Admite guardar la apertura y completar el cierre después, y conserva borradores locales.
+- Sincroniza los turnos mediante documentos separados en Firebase; avisa si otro dispositivo editó el mismo turno.
+- Muestra registros recientes y promedios por producto, unidad, día de la semana y turno, usando cierres de los últimos 90 días.
+- Permite sumar productos manuales y copiar el stock final de mañana al inicio de tarde.
 
 ## Corrección v6.0.20
 
@@ -285,4 +295,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.20
+Versión esperada: v6.0.21

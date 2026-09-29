@@ -1375,6 +1375,39 @@ body:has(.appSection:target) #contenidoApp {
 .emptyModule{text-align:center;padding:46px 20px}.emptyModuleIcon{font-size:55px}.emptyModule h2{margin-bottom:8px}.emptyModule>span{display:inline-block;margin-top:10px;padding:7px 12px;border-radius:18px;background:#eee4d8;font-weight:700}
 @media(max-width:700px){.workflowSteps{grid-template-columns:1fr}.homeMainCard{padding:15px}.clienteCompletoActions{flex-wrap:wrap}}
 
+/* Stock de mercadería: columnas alineadas en PC, tarjetas legibles en celular. */
+.stockModule{max-width:960px}
+.stockSelectors,.stockAddProduct,.stockActions{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:16px 0}
+.stockSelectors label{display:grid;gap:5px;min-width:160px;font-weight:700}
+.stockSelectors input,.stockSelectors select{min-height:43px}
+.stockTableHeader,.stockRow{display:grid;grid-template-columns:minmax(170px,2fr) repeat(4,minmax(75px,1fr));gap:9px;align-items:center}
+.stockTableHeader{padding:10px 12px;font-weight:800;color:#68442e}
+.stockFilas{display:grid;gap:6px}
+.stockRow{padding:10px 12px;border:1px solid #e4d2bb;background:#fffaf4;border-radius:12px}
+.stockRow strong{display:block}.stockRow small{color:#715f51}.stockRow label{display:grid;gap:3px}
+.stockMobileLabel{display:none}
+.stockRow input{min-width:0;width:100%;box-sizing:border-box;text-align:right;padding:9px 6px}
+.stockSold{font-weight:800;text-align:right}.stockSold.invalid{color:#a62828}
+.stockAddProduct input{flex:1;min-width:180px}.stockAddProduct select{min-width:120px}
+.stockActions button{width:auto;min-height:44px}
+.stockEstado{min-height:22px;color:#68442e;font-weight:700}
+.stockResumenTurno{padding:12px;background:#f6ead7;border-radius:12px}
+.stockAnalysis{margin-top:24px;border-top:1px solid #dec8ad;padding-top:14px}
+.stockAnalysis h3{margin:0 0 7px}.stockUnitGroup{margin:14px 0;padding:12px;background:#fffaf4;border:1px solid #e9d8c2;border-radius:12px}
+.stockUnitGroup h4{margin:0 0 8px}.stockUnitGroup p{margin:6px 0}.stockAverageList{display:grid;gap:5px}
+.stockAverageLine,.stockHistoryButton{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:7px 9px;border-radius:8px;background:#fff}
+.stockAverageLine strong{white-space:nowrap}.stockHistoryList{display:grid;gap:5px}
+.stockHistoryButton{width:100%;text-align:left;border:1px solid #e5d3bd;cursor:pointer}
+@media(max-width:700px){
+  .stockTableHeader{display:none}
+  .stockRow{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+  .stockRow .stockProduct{grid-column:1/-1}
+  .stockMobileLabel{display:block;font-size:12px;font-weight:700}
+  .stockRow .stockSold{grid-column:1/-1;text-align:left}
+  .stockRow input{text-align:center}
+  .stockAddProduct button,.stockActions button{width:100%}
+}
+
 /* ===== FRATELLO v2.2: productos sin filas repetidas ===== */
 .unifiedPriceMatrix .unifiedProductPriceRow{vertical-align:top}
 .unifiedProductName{min-width:180px}
