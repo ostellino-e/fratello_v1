@@ -1375,7 +1375,7 @@ body:has(.appSection:target) #contenidoApp {
 .emptyModule{text-align:center;padding:46px 20px}.emptyModuleIcon{font-size:55px}.emptyModule h2{margin-bottom:8px}.emptyModule>span{display:inline-block;margin-top:10px;padding:7px 12px;border-radius:18px;background:#eee4d8;font-weight:700}
 @media(max-width:700px){.workflowSteps{grid-template-columns:1fr}.homeMainCard{padding:15px}.clienteCompletoActions{flex-wrap:wrap}}
 
-/* Stock de mercadería: columnas alineadas en PC, tarjetas legibles en celular. */
+/* Stock de mercadería: columnas alineadas en PC, filas compactas en celular. */
 .stockModule{max-width:960px}
 .stockSelectors,.stockAddProduct,.stockActions{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:16px 0}
 .stockSelectors label{display:grid;gap:5px;min-width:160px;font-weight:700}
@@ -1400,11 +1400,14 @@ body:has(.appSection:target) #contenidoApp {
 .stockHistoryButton{width:100%;text-align:left;border:1px solid #e5d3bd;cursor:pointer}
 @media(max-width:700px){
   .stockTableHeader{display:none}
-  .stockRow{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
-  .stockRow .stockProduct{grid-column:1/-1}
-  .stockMobileLabel{display:block;font-size:12px;font-weight:700}
-  .stockRow .stockSold{grid-column:1/-1;text-align:left}
-  .stockRow input{text-align:center}
+  .stockFilas{gap:4px}
+  .stockRow{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 6px;padding:6px 8px;border-radius:8px}
+  .stockRow .stockProduct{grid-column:1/3;display:flex;align-items:baseline;gap:5px;min-width:0;font-size:13px;line-height:1.15}
+  .stockRow .stockProduct small{font-size:10px;white-space:nowrap}
+  .stockMobileLabel{display:block;font-size:10px;font-weight:700;line-height:1.1}
+  .stockRow .stockSold{grid-column:3;grid-row:1;text-align:right;font-size:11px;line-height:1.2;overflow-wrap:anywhere}
+  .stockRow label{gap:2px;min-width:0}
+  .stockRow input{min-height:36px;margin:0;padding:5px 3px;text-align:center;font-size:16px}
   .stockAddProduct button,.stockActions button{width:100%}
 }
 

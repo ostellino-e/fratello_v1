@@ -1,4 +1,14 @@
-# Fratello v6.0.21
+# Fratello v6.0.23
+
+## Ajuste v6.0.23
+
+- Filas de Stock de mercadería más compactas en celular: producto y vendido en la primera línea, tres cantidades alineadas en la segunda.
+- Mantiene números a 16 px para evitar el zoom automático del teclado en iPhone.
+
+## Ajuste v6.0.22
+
+- La lista inicial de Stock de mercadería incluye únicamente los 14 productos desde Chicharrón hasta Caserito, en el orden de Producción estibada.
+- Los productos adicionales que ya tienen cantidades guardadas permanecen visibles en sus turnos anteriores.
 
 ## Corrección v6.0.21
 
@@ -295,4 +305,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.21
+Versión esperada: v6.0.23

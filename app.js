@@ -15703,18 +15703,31 @@ function stockFormatoV6021(numero) {
   return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 }).format(numero);
 }
 
+// El stock habitual sigue el orden de Producción estibada, de Chicharrón a Caserito.
+const STOCK_PRODUCTOS_HABITUALES_V6022 = [
+  "CHIC", "TREN", "RASP", "CORD_S", "CORD_D", "RASQ_G", "RASQ_M",
+  "BIZ_H", "LIB_MEM", "BIZ_G", "FAC_SUR", "MED", "PAN", "CAS"
+];
+
 function stockCatalogoV6021(registro = null) {
   const mapa = new Map();
-  [...productos, ...productosExtra].forEach(p => {
-    if (!p?.id || !p?.nombre || p.activo === false || p.visible === false) return;
-    if (!mapa.has(String(p.id))) mapa.set(String(p.id), {
+  STOCK_PRODUCTOS_HABITUALES_V6022.forEach(id => {
+    const p = productos.find(producto => String(producto.id) === id);
+    if (!p) return;
+    mapa.set(id, {
       id: String(p.id), nombre: String(p.nombre), unidad: String(p.unidad || "unidad"),
       inicial: null, agregado: null, final: null
     });
   });
   (registro?.items || []).forEach(item => {
     if (!item?.id) return;
-    mapa.set(String(item.id), { ...mapa.get(String(item.id)), ...item });
+    const id = String(item.id);
+    const tieneDatos = [item.inicial, item.agregado, item.final]
+      .some(valor => valor !== null && valor !== undefined && valor !== "");
+    if (!mapa.has(id) && !tieneDatos && !id.startsWith("manual_")) return;
+    // Los productos de turnos anteriores siguen visibles si tienen cantidades.
+    // Así, acortar la lista inicial no borra datos ya guardados.
+    mapa.set(id, { ...mapa.get(id), ...item });
   });
   return [...mapa.values()];
 }
