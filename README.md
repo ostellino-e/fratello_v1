@@ -1,4 +1,9 @@
-# Fratello v6.0.27
+# Fratello v6.0.28
+
+## Ajuste v6.0.28
+
+- En iPhone, Fecha usa un marco de 44 px con el selector nativo dentro para que su alto y ancho visibles coincidan con Turno.
+- Las etiquetas Fecha y Turno quedan alineadas arriba y ambos controles siguen en dos columnas iguales, sin desbordes.
 
 ## Ajuste v6.0.27
 
@@ -328,4 +333,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.27
+Versión esperada: v6.0.28

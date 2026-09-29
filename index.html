@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=614" />
+  <link rel="stylesheet" href="styles.css?v=615" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.27";
-    document.documentElement.dataset.fratelloVersion = "6.0.27";
+    window.FRATELLO_VERSION = "6.0.28";
+    document.documentElement.dataset.fratelloVersion = "6.0.28";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.27</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.28</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -476,7 +476,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.27 · Stock de mercadería</span>
+        <span class="adminFinanceVersion">v6.0.28 · Stock de mercadería</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -1047,7 +1047,7 @@
       <a class="volverInicio" href="#" data-volver="true">← Volver</a>
       <h2>📋 Stock de mercadería</h2>
       <div class="stockSelectors">
-        <label>Fecha <input id="stockFecha" type="date"></label>
+        <label>Fecha <span class="stockDateFrame"><input id="stockFecha" type="date"></span></label>
         <label>Turno <select id="stockTurno"><option value="manana">Mañana</option><option value="tarde">Tarde</option></select></label>
       </div>
       <p id="stockEstado" class="stockEstado" role="status" aria-live="polite"></p>
@@ -1204,7 +1204,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6027"></script>
+  <script src="app.js?v=6028"></script>
 
   
 
@@ -1221,12 +1221,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6027")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6028")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6027", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6028", {
             scope: "./",
             updateViaCache: "none"
           });

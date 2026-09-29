@@ -1380,6 +1380,7 @@ body:has(.appSection:target) #contenidoApp {
 .stockSelectors,.stockAddProduct,.stockActions{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:16px 0}
 .stockSelectors label{display:grid;gap:5px;min-width:160px;font-weight:700}
 .stockSelectors input,.stockSelectors select{min-height:43px}
+.stockDateFrame{display:block;min-width:0;width:100%}
 .stockTableHeader,.stockRow{display:grid;grid-template-columns:minmax(170px,2fr) repeat(4,minmax(75px,1fr));gap:9px;align-items:center}
 .stockTableHeader{padding:10px 12px;font-weight:800;color:#68442e}
 .stockFilas{display:grid;gap:6px}
@@ -1399,9 +1400,11 @@ body:has(.appSection:target) #contenidoApp {
 .stockAverageLine strong{white-space:nowrap}.stockHistoryList{display:grid;gap:5px}
 .stockHistoryButton{width:100%;text-align:left;border:1px solid #e5d3bd;cursor:pointer}
 @media(max-width:700px){
-  .stockModule .stockSelectors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:end;margin:12px 0}
-  .stockModule .stockSelectors label{min-width:0;margin:0;gap:5px}
-  .stockModule .stockSelectors input,.stockModule .stockSelectors select{display:block;width:100%;min-width:0;max-width:100%;height:44px;min-height:44px;margin:0;padding:8px;font-size:16px;box-sizing:border-box}
+  .stockModule .stockSelectors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start;margin:12px 0}
+  .stockModule .stockSelectors label{min-width:0;margin:0;gap:5px;grid-template-rows:auto 44px}
+  .stockModule .stockSelectors .stockDateFrame{position:relative;width:100%;height:44px;min-height:44px;overflow:hidden;border:1px solid #d4c7b8;border-radius:14px;background:#eee;box-sizing:border-box}
+  .stockModule .stockSelectors input,.stockModule .stockSelectors select{display:block;width:100%;min-width:0;max-width:100%;height:44px;min-height:44px;max-height:44px;margin:0;padding:8px;font-size:16px;box-sizing:border-box}
+  .stockModule .stockSelectors #stockFecha{position:absolute;inset:0;width:100%;height:44px;min-height:0;max-height:44px;margin:0;border:0;border-radius:0;background:transparent;-webkit-appearance:none;appearance:none;text-align:center}
   .stockTableHeader{display:none}
   .stockFilas{gap:2px}
   .stockRow{grid-template-columns:repeat(3,minmax(0,1fr));gap:1px 5px;padding:2px 5px;border-radius:7px}
