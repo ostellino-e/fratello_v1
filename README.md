@@ -1,4 +1,10 @@
-# Fratello v6.0.25
+# Fratello v6.0.26
+
+## Corrección v6.0.26
+
+- Si Inicial está vacío pero hay una cantidad Agregada, el cálculo toma Inicial = 0 al cargar Final. Ejemplo: 9 agregados y 0 finales muestran 9 vendidos.
+- Sin cantidad inicial ni agregada, o sin stock final, la venta permanece pendiente.
+- Filas de Stock todavía más bajas en celular: campos de 31 px y Vendido destacado en una línea cuando entra.
 
 ## Ajuste v6.0.25
 
@@ -317,4 +323,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.25
+Versión esperada: v6.0.26

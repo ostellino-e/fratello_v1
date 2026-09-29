@@ -1401,17 +1401,17 @@ body:has(.appSection:target) #contenidoApp {
 @media(max-width:700px){
   .stockTableHeader{display:none}
   .stockFilas{gap:2px}
-  .stockRow{grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 5px;padding:3px 6px;border-radius:7px}
+  .stockRow{grid-template-columns:repeat(3,minmax(0,1fr));gap:1px 5px;padding:2px 5px;border-radius:7px}
   .stockRow .stockProduct{grid-column:1/3;display:flex;align-items:baseline;gap:4px;min-width:0;font-size:12px;line-height:1.1}
   .stockRow .stockProduct small{font-size:9px;white-space:nowrap}
-  .stockMobileLabel{display:block;position:absolute;top:3px;left:6px;z-index:1;pointer-events:none;font-size:9px;font-weight:700;line-height:1}
-  .stockRow .stockSold{grid-column:3;grid-row:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0;padding:2px 6px;border-radius:7px;background:#e6f3e9;color:#185a35;line-height:1;min-height:28px;overflow-wrap:anywhere}
+  .stockMobileLabel{display:block;position:absolute;top:1px;left:5px;z-index:1;pointer-events:none;font-size:9px;font-weight:700;line-height:1}
+  .stockRow .stockSold{grid-column:3;grid-row:1;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px;padding:1px 3px;border-radius:7px;background:#e6f3e9;color:#185a35;line-height:1;min-height:25px;overflow-wrap:anywhere}
   .stockRow .stockSold.invalid{background:#fce8e5;color:#a62828}
   .stockSoldLabel{font-size:9px;font-weight:700}
   .stockRow .stockSoldValue{font-size:18px;line-height:1.1}
   .stockSoldUnit{display:none}
   .stockRow label{position:relative;min-width:0;margin:0;gap:0}
-  .stockModule .stockRow input{height:35px;min-height:0;margin:0;padding:11px 2px 1px;border-radius:7px;text-align:center;font-size:16px}
+  .stockModule .stockRow input{height:31px;min-height:0;margin:0;padding:10px 2px 0;border-radius:7px;text-align:center;font-size:16px}
   .stockAddProduct button,.stockActions button{width:100%}
 }
 

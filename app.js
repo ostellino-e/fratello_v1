@@ -15746,8 +15746,8 @@ function stockCantidadV6021(valor) {
 }
 
 function stockVendidoV6021(item) {
-  if (item.inicial === null || item.final === null) return null;
-  return Number((item.inicial + (item.agregado || 0) - item.final).toFixed(2));
+  if (item.final == null || (item.inicial == null && item.agregado == null)) return null;
+  return Number(((item.inicial ?? 0) + (item.agregado ?? 0) - item.final).toFixed(2));
 }
 
 function stockCapturarFilasV6021(incluirVacias = false) {
@@ -15786,7 +15786,7 @@ function stockRenderFilasV6021(items) {
 function stockActualizarResumenV6021() {
   const items = stockCapturarFilasV6021();
   const completos = items.filter(item => stockVendidoV6021(item) !== null);
-  $("stockResumenTurno").textContent = `${completos.length} producto(s) con apertura y cierre completos · ${items.length - completos.length} pendiente(s). Las ventas solo se calculan cuando cargás el stock final.`;
+  $("stockResumenTurno").textContent = `${completos.length} producto(s) con cantidad disponible y cierre completos · ${items.length - completos.length} pendiente(s). Si la apertura está vacía, se toma como cero cuando cargás un agregado.`;
   document.querySelectorAll("#stockFilas .stockRow").forEach(fila => {
     const item = items.find(v => v.id === fila.dataset.id);
     const valor = item ? stockVendidoV6021(item) : null;
