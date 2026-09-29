@@ -1,4 +1,9 @@
-# Fratello v6.0.26
+# Fratello v6.0.27
+
+## Ajuste v6.0.27
+
+- Elimina el recuadro de instrucciones amarillo en la parte superior de Stock de mercadería.
+- En celular, Fecha y Turno ocupan cada uno la mitad del ancho disponible, con igual altura y sin superponerse.
 
 ## Corrección v6.0.26
 
@@ -323,4 +328,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.26
+Versión esperada: v6.0.27
