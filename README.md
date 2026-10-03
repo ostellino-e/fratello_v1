@@ -1,4 +1,10 @@
-# Fratello v6.0.30
+# Fratello v6.0.31
+
+## Ajuste v6.0.31
+
+- Tickets comerciales muestran solo el total del pedido actual, sin saldo anterior, saldo a favor ni total pendiente de cuenta corriente.
+- El cambio se aplica a tickets individuales y conjuntos, en imagen, PDF e impresión.
+- Conserva los datos guardados de cuenta corriente.
 
 ## Mejora v6.0.30
 
@@ -347,4 +353,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.30
+Versión esperada: v6.0.31

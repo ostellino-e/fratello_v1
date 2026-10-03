@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6030-horas-valor-hora";
+const CACHE_NAME = "fratello-v6031-tickets-sin-saldo";
 const ARCHIVOS = [
   "./",
   "./index.html",

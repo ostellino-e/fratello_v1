@@ -9311,53 +9311,11 @@ function dibujarTicketEnCanvas(ctx, t, x, y, a, h, n = "") {
   yy += 44;
   ctx.font = "bold 47px Arial";
   ctx.textAlign = "left";
-  ctx.fillText("COMPRA DE HOY", l, yy);
+  ctx.fillText("TOTAL DEL PEDIDO", l, yy);
   ctx.textAlign = "right";
   ctx.fillText(formatoDineroTicket(t.total), r, yy);
   yy += 42;
 
-  ctx.lineWidth = 1;
-  ctx.font = "34px Arial";
-  ctx.textAlign = "left";
-  ctx.fillText("Saldo anterior", l, yy);
-  ctx.textAlign = "right";
-  ctx.fillText(formatoDineroTicket(t.saldoAnterior), r, yy);
-  yy += 33;
-
-  if (Number(t.saldoFavorAnterior || 0) > 0) {
-    ctx.textAlign = "left";
-    ctx.fillText("Saldo a favor anterior", l, yy);
-    ctx.textAlign = "right";
-    ctx.fillText(`- ${formatoDineroTicket(t.saldoFavorAnterior)}`, r, yy);
-    yy += 33;
-  }
-
-  if (Number(t.pagoHoy || 0) > 0) {
-    ctx.textAlign = "left";
-    ctx.fillText("Pago recibido", l, yy);
-    ctx.textAlign = "right";
-    ctx.fillText(`- ${formatoDineroTicket(t.pagoHoy)}`, r, yy);
-    yy += 33;
-  }
-
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
-  yy += 44;
-  ctx.font = "bold 48px Arial";
-  ctx.textAlign = "left";
-  ctx.fillText("TOTAL PENDIENTE", l, yy);
-  ctx.textAlign = "right";
-  ctx.fillText(formatoDineroTicket(t.saldoFinal), r, yy);
-  yy += 44;
-
-  if (Number(t.saldoFavorFinal || 0) > 0) {
-    ctx.font = "bold 38px Arial";
-    ctx.textAlign = "left";
-    ctx.fillText("SALDO A FAVOR", l, yy);
-    ctx.textAlign = "right";
-    ctx.fillText(formatoDineroTicket(t.saldoFavorFinal), r, yy);
-    yy += 38;
-  }
   } else {
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(l, yy); ctx.lineTo(r, yy); ctx.stroke();
