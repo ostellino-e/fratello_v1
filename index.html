@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.31";
-    document.documentElement.dataset.fratelloVersion = "6.0.31";
+    window.FRATELLO_VERSION = "6.0.32";
+    document.documentElement.dataset.fratelloVersion = "6.0.32";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.31</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.32</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -476,7 +476,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.31 · Tickets sin saldo pendiente</span>
+        <span class="adminFinanceVersion">v6.0.32 · Horas de varios meses</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -811,10 +811,10 @@
             <div>
               <span class="securityEyebrow">RELOJ DE MARCACIÓN</span>
               <h3>Horas de empleados</h3>
-              <p>Cargá el archivo .XLS del reloj. Muestra minutos reales convertidos a horas y minutos. Cargá el valor hora de cada empleado para calcular el importe del período.</p>
+              <p>Agregá uno o varios reportes del reloj y elegí Desde/Hasta, incluso si la semana cruza dos meses. Las horas y los importes se calculan con minutos reales.</p>
             </div>
-            <label class="employeeHoursUpload primary" for="archivoRelojEmpleados">📥 Cargar archivo del reloj</label>
-            <input id="archivoRelojEmpleados" type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+            <label class="employeeHoursUpload primary" for="archivoRelojEmpleados">📥 Agregar reportes del reloj</label>
+            <input id="archivoRelojEmpleados" type="file" multiple accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
           </article>
 
           <div id="estadoHorasEmpleados" class="employeeHoursStatus">Todavía no cargaste un archivo.</div>
@@ -827,6 +827,7 @@
           <section id="controlesHorasEmpleados" class="employeeHoursControls hidden">
             <label>Desde<input id="horasEmpleadosDesde" type="date"></label>
             <label>Hasta<input id="horasEmpleadosHasta" type="date"></label>
+            <button id="btnNuevaCargaHoras" type="button">Empezar nueva carga</button>
             <button id="btnCalcularHorasEmpleados" class="primary" type="button">Calcular período</button>
             <button id="btnAgregarJornadaManual" type="button">＋ Agregar jornada manual</button>
             <button id="btnGuardarHorasOnline" type="button">☁️ Guardar para todos</button>
@@ -1204,7 +1205,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6031"></script>
+  <script src="app.js?v=6032"></script>
 
   
 
@@ -1221,12 +1222,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6031")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6032")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6031", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6032", {
             scope: "./",
             updateViaCache: "none"
           });

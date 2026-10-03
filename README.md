@@ -1,4 +1,14 @@
-# Fratello v6.0.31
+# Fratello v6.0.32
+
+## Mejora v6.0.32
+
+- Permite agregar varios reportes mensuales del reloj, juntos o de a uno, a la misma carga.
+- Une las fichadas por empleado y fecha sin repetir las mismas horas al cargar un reporte duplicado.
+- Calcula semanas que cruzan dos meses y empareja turnos nocturnos entre ambos reportes.
+- Conserva correcciones y jornadas agregadas manualmente al combinar archivos.
+- Guardar para todos conserva el conjunto de reportes; los últimos datos de un solo archivo siguen siendo compatibles.
+- Empezar nueva carga separa otro conjunto sin borrar datos online ni correcciones.
+- Si un archivo no se puede leer, conserva la carga anterior.
 
 ## Ajuste v6.0.31
 
@@ -353,4 +363,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.31
+Versión esperada: v6.0.32

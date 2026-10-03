@@ -13041,7 +13041,7 @@ async function horasGuardarUltimosDatosOnline(silencioso = false) {
 }
 
 function horasCargarUltimoGuardado() {
-  if (!ultimoArchivoHorasNube?.archivo) return;
+  if (horasCargaReportesEnCurso || !ultimoArchivoHorasNube?.archivo) return;
   archivoHorasEmpleadosActual = JSON.parse(JSON.stringify(ultimoArchivoHorasNube.archivo));
   const correccionesLocales = horasCargarCorrecciones();
   (ultimoArchivoHorasNube.correcciones || []).forEach(item => {
@@ -13452,29 +13452,107 @@ function horasGuardarCorreccionManual() {
   if (debeActualizarOnline) horasGuardarUltimosDatosOnline(true);
 }
 
+function horasUnirReportes(reportes) {
+  const fuentes = new Map(), empleados = new Map();
+  for (const reporte of reportes) {
+    if (!reporte?.periodo || !Array.isArray(reporte.empleados)) throw new Error("Reporte de horas inválido.");
+    for (const fuente of reporte.reportesOrigen || [{ nombreArchivo:reporte.nombreArchivo, periodo:reporte.periodo }]) {
+      fuentes.set(`${fuente.nombreArchivo}|${fuente.periodo.desde}|${fuente.periodo.hasta}`, fuente);
+    }
+    for (const empleado of reporte.empleados) {
+      const numero = String(empleado.numero);
+      if (!empleados.has(numero)) empleados.set(numero, { numero, nombre:empleado.nombre, dias:new Map() });
+      const destino = empleados.get(numero);
+      if (horasNormalizarNombre(destino.nombre) !== horasNormalizarNombre(empleado.nombre)) {
+        throw new Error(`El empleado Nº ${numero} figura con nombres diferentes en los reportes. Revisá que pertenezcan al mismo reloj.`);
+      }
+      for (const dia of empleado.dias || []) {
+        if (!destino.dias.has(dia.fecha)) destino.dias.set(dia.fecha, new Map());
+        const marcas = destino.dias.get(dia.fecha);
+        for (const marca of dia.marcas || []) marcas.set(marca.minutosDia, { ...marca });
+      }
+    }
+  }
+  const origenes = [...fuentes.values()].sort((a,b) => a.periodo.desde.localeCompare(b.periodo.desde) || a.nombreArchivo.localeCompare(b.nombreArchivo));
+  const desde = reportes.map(r=>r.periodo.desde).sort()[0];
+  const hasta = reportes.map(r=>r.periodo.hasta).sort().at(-1);
+  return {
+    nombreArchivo:origenes.map(r=>r.nombreArchivo).join(" + "), reportesOrigen:origenes, periodo:{desde,hasta},
+    empleados:[...empleados.values()].map(e => ({numero:e.numero,nombre:e.nombre,
+      dias:[...e.dias.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([fecha,marcas])=>{
+        const lista=[...marcas.values()].sort((a,b)=>a.minutosDia-b.minutosDia);
+        return {fecha,marcas:lista,valorOriginal:lista.map(m=>m.texto).join(" ")};
+      })
+    }))
+  };
+}
+
+function horasMigrarCorreccionesReportes(anterior, combinado) {
+  const correcciones = horasCargarCorrecciones();
+  const fuentes = combinado.reportesOrigen || [];
+  const numeros = new Set(combinado.empleados.map(e=>String(e.numero)));
+  for (const [clave,item] of Object.entries(correcciones)) {
+    const partes=clave.split("|");
+    const numero=String(item.numeroEmpleado || partes.at(-2) || "");
+    const fecha=item.fecha || partes.at(-1);
+    const nombre=item.archivo || partes.slice(0,-2).join("|");
+    const corresponde = nombre === combinado.nombreArchivo || (anterior && nombre === anterior.nombreArchivo) || fuentes.some(f=>
+      f.nombreArchivo === nombre && fecha >= horasMoverFecha(f.periodo.desde,-1) && fecha <= f.periodo.hasta);
+    if (!corresponde || !numeros.has(numero) || !fecha) continue;
+    const destino=`${combinado.nombreArchivo}|${numero}|${fecha}`;
+    const previo=correcciones[destino];
+    if (previo && String(previo.actualizadoEn || "") > String(item.actualizadoEn || "")) continue;
+    correcciones[destino]={...item,numeroEmpleado:numero,fecha,archivo:combinado.nombreArchivo};
+  }
+  horasGuardarCorrecciones(correcciones);
+}
+
+let horasCargaReportesEnCurso = false;
 async function horasCargarArchivo(evento) {
-  const archivo = evento.target.files?.[0];
-  if (!archivo) return;
-  const estado = $("estadoHorasEmpleados");
+  const archivos = [...(evento.target.files || [])];
+  if (!archivos.length || horasCargaReportesEnCurso) return;
+  const estado = $("estadoHorasEmpleados"), anterior = archivoHorasEmpleadosActual;
+  horasCargaReportesEnCurso=true;
+  evento.target.disabled=true;
+  $("btnNuevaCargaHoras")?.setAttribute("disabled", "");
   try {
     estado.className = "employeeHoursStatus";
-    estado.textContent = "Leyendo el archivo del reloj...";
-    archivoHorasEmpleadosActual = await horasLeerArchivoReloj(archivo);
+    estado.textContent = "Leyendo y uniendo reportes del reloj...";
+    // Publicar la nueva carga solo cuando todos los archivos se leyeron correctamente.
+    const nuevos = await Promise.all(archivos.map(horasLeerArchivoReloj));
+    const combinado = horasUnirReportes(anterior ? [anterior,...nuevos] : nuevos);
+    horasMigrarCorreccionesReportes(anterior,combinado);
+    archivoHorasEmpleadosActual = combinado;
     horasArchivoVinculadoNube = false;
-    $("horasEmpleadosDesde").value = archivoHorasEmpleadosActual.periodo.desde;
-    $("horasEmpleadosHasta").value = archivoHorasEmpleadosActual.periodo.hasta;
+    $("horasEmpleadosDesde").value = combinado.periodo.desde;
+    $("horasEmpleadosHasta").value = combinado.periodo.hasta;
     $("controlesHorasEmpleados").classList.remove("hidden");
     estado.className = "employeeHoursStatus ok";
-    estado.textContent = `${archivo.name} · ${archivoHorasEmpleadosActual.empleados.length} empleados · ${archivoHorasEmpleadosActual.periodo.desde} al ${archivoHorasEmpleadosActual.periodo.hasta}`;
+    estado.textContent = `${combinado.reportesOrigen.length} reporte(s) cargado(s) · ${combinado.nombreArchivo} · ${combinado.periodo.desde} al ${combinado.periodo.hasta}. Elegí Desde/Hasta para calcular tu semana.`;
     horasRenderResultados();
   } catch (error) {
     console.error("Horas de empleados:", error);
-    archivoHorasEmpleadosActual = null;
     estado.className = "employeeHoursStatus error";
-    estado.textContent = error.message || "No se pudo leer el archivo.";
+    estado.textContent = `${error.message || "No se pudo leer el reporte."}${anterior ? " La carga anterior se conserva." : ""}`;
   } finally {
     evento.target.value = "";
+    evento.target.disabled=false;
+    horasCargaReportesEnCurso=false;
+    $("btnNuevaCargaHoras")?.removeAttribute("disabled");
   }
+}
+
+function horasEmpezarNuevaCarga() {
+  if (horasCargaReportesEnCurso || !confirm("¿Empezar una carga nueva? Los datos guardados online y las correcciones se conservan.")) return;
+  archivoHorasEmpleadosActual=null;
+  resultadoHorasEmpleadosActual=[];
+  horasArchivoVinculadoNube=false;
+  $("controlesHorasEmpleados").classList.add("hidden");
+  $("resumenHorasEmpleados").innerHTML="";
+  $("detalleHorasEmpleados").innerHTML="";
+  horasActualizarImportes();
+  $("estadoHorasEmpleados").className="employeeHoursStatus";
+  $("estadoHorasEmpleados").textContent="Seleccioná los reportes que querés combinar en la nueva carga.";
 }
 
 function horasFechasVistaArchivo() {
@@ -13541,6 +13619,7 @@ function iniciarModuloHorasEmpleados() {
   if (window.__FRATELLO_HORAS_INICIADO__) return;
   window.__FRATELLO_HORAS_INICIADO__ = true;
   $("archivoRelojEmpleados")?.addEventListener("change", horasCargarArchivo);
+  $("btnNuevaCargaHoras")?.addEventListener("click", horasEmpezarNuevaCarga);
   $("btnCalcularHorasEmpleados")?.addEventListener("click", horasRenderResultados);
   $("btnAgregarJornadaManual")?.addEventListener("click", horasAbrirNuevaJornada);
   $("btnGuardarHorasOnline")?.addEventListener("click", () => horasGuardarUltimosDatosOnline(false));
