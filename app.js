@@ -7704,7 +7704,7 @@ function calcularDiferencias() {
   }
 
   renderComparador(filas);
-  renderResumenPanadero(filas);
+  renderResumenPanadero(filas, fechaTrabajo);
 }
 
 function renderComparador(filas) {
@@ -7723,12 +7723,17 @@ function renderComparador(filas) {
   $("comparador").innerHTML = html + "</tbody></table>";
 }
 
-function renderResumenPanadero(filas) {
+function encabezadoFechaResumenPanadero(fechaISO = fechaJornadaActual()) {
+  const [anio, mes, dia] = String(fechaISO || "").slice(0, 10).split("-");
+  return `Este resumen pertenece a los pedidos del día ${dia}/${mes}/${anio}.`;
+}
+
+function renderResumenPanadero(filas, fechaISO = fechaJornadaActual()) {
   const diarias = filas.filter(f => esProductoDiarioPanadero(f.productoConfig));
   const faltas = diarias.filter(f => f.estado === "FALTA");
   const sobras = diarias.filter(f => f.estado === "SOBRA");
 
-  let txt = "FRATELLO - RESUMEN PARA PANADERO\n--------------------------------\n\n🔴 FALTANTES A PRODUCIR\n";
+  let txt = `FRATELLO - RESUMEN PARA PANADERO\n${encabezadoFechaResumenPanadero(fechaISO)}\n--------------------------------\n\n🔴 FALTANTES A PRODUCIR\n`;
   txt += faltas.length ? faltas.map(f => `- ${f.producto}: HACER / SACAR ${formatearCantidadPanadero(f.dif, f.productoConfig)}`).join("\n") : "No falta producir nada.";
 
   txt += "\n\n🟢 SOBRANTES / NO HACER MÁS\n";
@@ -10570,8 +10575,8 @@ async function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencia
   return syncV600Guardar("resumen", fechaResumen, memoriaUltimoEnvio);
 }
 
-function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, diferenciasNuevas, pedidosRetirados = []) {
-  let mensaje = "FRATELLO - ACTUALIZACIÓN DE PEDIDOS\n\n";
+function construirMensajeActualizacion(pedidosNuevos, diferenciasAnteriores, diferenciasNuevas, pedidosRetirados = [], fechaISO = fechaJornadaActual()) {
+  let mensaje = `FRATELLO - ACTUALIZACIÓN DE PEDIDOS\n${encabezadoFechaResumenPanadero(fechaISO)}\n\n`;
   mensaje += "⚠️ PRIMERO: CAMBIOS A REALIZAR\n\n";
 
   const ids = new Set([
@@ -10816,7 +10821,8 @@ async function generarMensajeGrupoFratello() {
       pedidosNuevos,
       memoriaUltimoEnvio.diferencias || {},
       diferenciasNuevas,
-      cambiosResumen.retirados
+      cambiosResumen.retirados,
+      fechaResumen
     );
   } else {
     produccionMapa = mapaProduccionActual();
@@ -10829,7 +10835,7 @@ async function generarMensajeGrupoFratello() {
     const faltan = filasDiarias.filter(f => f.dif < 0);
     const sobran = filasDiarias.filter(f => f.dif > 0);
 
-    mensaje = "FRATELLO - Resumen de producción y pedidos\n\n";
+    mensaje = `FRATELLO - Resumen de producción y pedidos\n${encabezadoFechaResumenPanadero(fechaResumen)}\n\n`;
 
     mensaje += "🔴 FALTA HACER:\n";
     if (!faltan.length) {

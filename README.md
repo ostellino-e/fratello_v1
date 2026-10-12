@@ -1,4 +1,9 @@
-# Fratello v6.0.36
+# Fratello v6.0.37
+
+## Mejora v6.0.37
+
+- El resumen para el panadero indica el día de los pedidos seleccionados: Este resumen pertenece a los pedidos del día DD/MM/AAAA.
+- La fecha también aparece en los mensajes de resumen y sus actualizaciones, tomando la fecha de pedidos y no la de generación del mensaje.
 
 ## Ajuste v6.0.36
 
@@ -386,4 +391,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.36
+Versión esperada: v6.0.37

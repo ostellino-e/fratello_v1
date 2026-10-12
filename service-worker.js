@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6036-kg-bandejas";
+const CACHE_NAME = "fratello-v6037-fecha-resumen";
 const ARCHIVOS = [
   "./",
   "./index.html",
