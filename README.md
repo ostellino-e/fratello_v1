@@ -1,4 +1,14 @@
-# Fratello v6.0.41
+# Fratello v6.0.42
+
+## Mejora v6.0.42
+
+- Selector superior de modo de visualización, recordado localmente en cada dispositivo.
+- Genérico: Pedidos (y sus subpantallas), Tareas, Caja y Stock de mercadería.
+- Panadería: suma Clientes, Productos y Notificaciones; no muestra Administración.
+- Administrador: todas las opciones y Administración, con la cuenta existente y el dispositivo autorizado.
+- Elegir Administrador sin sesión solicita ingresar; seleccionar un modo no otorga permisos de administrador.
+- Al cambiar de modo se ajustan las opciones y se cierra la vista privada cuando deja de estar disponible.
+- Los modos operativos comparten los mismos datos y las funciones de carga de las secciones visibles.
 
 ## Ajuste v6.0.41
 
@@ -418,4 +428,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.41
+Versión esperada: v6.0.42

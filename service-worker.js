@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6041-globito-rojo";
+const CACHE_NAME = "fratello-v6042-modos-visualizacion";
 const ARCHIVOS = [
   "./",
   "./index.html",

@@ -122,6 +122,7 @@ function segAplicarPermisosUI() {
   const puedeAdmin = permisos.includes("administracion") && dispositivoAutorizadoActual;
   $("tarjetaAdministracionInicio")?.classList.toggle("hidden", !puedeAdmin);
   document.body.dataset.rolFratello = rol || "invitado";
+  aplicarModoVisual();
 }
 async function segVerificarDispositivo(usuario) {
   dispositivoFratelloActual = segObtenerDispositivoActual();
@@ -1889,6 +1890,7 @@ let pilaNavegacionFratello = [];
 let seccionActualFratello = "inicio";
 
 function mostrarSeccionFratelloSinApilar(idSeccion) {
+  if (!seccionPermitidaEnModo(idSeccion)) { mostrarInicioFratello(); return; }
   const inicio = document.getElementById("panelInicio");
   const contenido = document.getElementById("contenidoApp");
   const destino = document.getElementById(idSeccion);
@@ -1957,6 +1959,7 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
 
 function abrirSeccionFratello(idSeccion) {
   if (!idSeccion) return;
+  if (!seccionPermitidaEnModo(idSeccion)) { mostrarInicioFratello(); return; }
   if (seccionActualFratello === idSeccion) return;
 
   if (seccionActualFratello !== idSeccion) {
@@ -11004,6 +11007,8 @@ function mostrarModalAdministrador() {
 }
 
 function ocultarModalAdministrador() {
+  modoVisualAdminPendiente=false;
+  if ($("modoVisualEstado")) $("modoVisualEstado").textContent="";
   $("modalAccesoAdministrador")?.classList.add("hidden");
   if ($("claveAdministrador")) $("claveAdministrador").value = "";
   if ($("estadoAccesoAdministrador")) $("estadoAccesoAdministrador").textContent = "";
@@ -11027,6 +11032,7 @@ function actualizarInterfazAdministrador() {
     const seccion = document.getElementById("seccionAdministracion");
     if (seccion?.classList.contains("active")) mostrarInicio();
   }
+  aplicarModoVisual();
 }
 
 function actualizarPanelSesionAdministrador() {
@@ -11062,6 +11068,7 @@ async function ingresarAdministradorConUsuario() {
   }
 
   try {
+    modoVisualAdminPendiente=true;
     await authFratello.signInWithEmailAndPassword(usuario, clave);
     if ($("estadoAccesoAdministrador")) $("estadoAccesoAdministrador").textContent = "";
   } catch (error) {
@@ -11090,6 +11097,7 @@ async function cerrarSesionAdministrador() {
   if (!authFratello) return;
 
   try {
+    elegirModoVisual("generico");
     await authFratello.signOut();
     ocultarModalAdministrador();
     mostrarInicio();
@@ -11099,11 +11107,13 @@ async function cerrarSesionAdministrador() {
 }
 
 function abrirAdministracionAutenticada() {
-  if (!tieneRolAdministrador()) {
+  if (!puedeUsarModoAdministrador()) {
+    modoVisualAdminPendiente=true;
     mostrarModalAdministrador();
     return;
   }
 
+  elegirModoVisual("administrador");
   ocultarModalAdministrador();
   vistaAdministracionActual = "";
   abrirAdministracionPrivada();
@@ -11206,7 +11216,7 @@ function iniciarAccesoAdministrador() {
             actualizarInterfazAdministrador();
             actualizarPanelSesionAdministrador();
             segAplicarPermisosUI();
-            if (autorizado) {
+            if (autorizado && modoVisualActivo() === "administrador") {
               // v5.0.9: no reiniciar la navegación si el usuario ya está dentro
               // de una subpantalla de Administración (Resumen, Gastos, etc.).
               const seccionAdministracionActiva =
@@ -12594,7 +12604,7 @@ function renderAdministracionFinanciera() {
 }
 
 function abrirAdministracionPrivada() {
-  if (!tieneRolAdministrador()) {
+  if (!seccionPermitidaEnModo("seccionAdministracion")) {
     administracionPrivadaActiva = false;
     $("panelAdministracionLogin")?.classList.remove("hidden");
     $("panelAdministracionPrivado")?.classList.add("hidden");
@@ -16467,6 +16477,51 @@ function iniciarModuloTareas(){
   const draft=leerJsonLocalSeguro(TAREAS_DRAFT,null);if(draft)tareasAbrirForm(draft);
 }
 
+/* v6.0.42 — Modos de visualización recordados por dispositivo. */
+const MODO_VISUAL_STORAGE="fratello_modo_visual_v1";
+let modoVisualGuardado=leerJsonLocalSeguro(MODO_VISUAL_STORAGE,"generico");
+if(!["generico","panaderia","administrador"].includes(modoVisualGuardado))modoVisualGuardado="generico";
+let modoVisualAdminPendiente=false;
+const SECCIONES_MODO_GENERICO=new Set(["inicio","seccionPedidosCentro","seccionProduccion","seccionPedidos","seccionPedidosHoy","seccionTickets","seccionResumen","seccionPagosPendientes","seccionPedidosFuturos","seccionHistorialPedidos","seccionTareas","seccionCaja","seccionStockMercaderia"]);
+function puedeUsarModoAdministrador(){return tieneRolAdministrador()&&Boolean(dispositivoAutorizadoActual);}
+function modoVisualActivo(){return modoVisualGuardado==="administrador"&&!puedeUsarModoAdministrador()?"generico":modoVisualGuardado;}
+function seccionPermitidaEnModo(id){
+  if(id==="seccionAdministracion")return modoVisualActivo()==="administrador"&&puedeUsarModoAdministrador();
+  return modoVisualActivo()!=="generico"||SECCIONES_MODO_GENERICO.has(id);
+}
+function aplicarModoVisual(){
+  if(modoVisualAdminPendiente&&puedeUsarModoAdministrador()){
+    modoVisualGuardado="administrador";modoVisualAdminPendiente=false;
+    guardarLocalSeguroV6021(MODO_VISUAL_STORAGE,JSON.stringify(modoVisualGuardado));
+    ocultarModalAdministrador();
+  }
+  const modo=modoVisualActivo();
+  document.body.dataset.modoVisual=modo;
+  if($("modoVisualSelect"))$("modoVisualSelect").value=modo;
+  if($("modoVisualEstado"))$("modoVisualEstado").textContent=modoVisualAdminPendiente?"Ingresá con tu cuenta para activar Administrador.":"";
+  document.querySelectorAll("#panelInicio .homeMainCard[data-seccion]").forEach(card=>card.classList.toggle("hidden",!seccionPermitidaEnModo(card.dataset.seccion)));
+  document.querySelectorAll(".syncAdminMonth").forEach(el=>el.classList.toggle("hidden",modo!=="administrador"));
+  $("btnAdministrarPersonasCajaRapido")?.classList.toggle("hidden",modo!=="administrador");
+  if(modo!=="administrador")bloquearAdministracion();
+  if(seccionActualFratello!=="inicio"&&!seccionPermitidaEnModo(seccionActualFratello))mostrarInicioFratello();
+}
+function elegirModoVisual(modo){
+  if(!["generico","panaderia","administrador"].includes(modo))return false;
+  if(modo==="administrador"&&!puedeUsarModoAdministrador()){
+    modoVisualAdminPendiente=true;
+    aplicarModoVisual();mostrarModalAdministrador();return false;
+  }
+  modoVisualAdminPendiente=false;modoVisualGuardado=modo;
+  guardarLocalSeguroV6021(MODO_VISUAL_STORAGE,JSON.stringify(modo));
+  aplicarModoVisual();return true;
+}
+function iniciarModosVisuales(){
+  $("modoVisualSelect")?.addEventListener("change",evento=>{
+    if(elegirModoVisual(evento.target.value))mostrarInicioFratello();
+  });
+  aplicarModoVisual();
+}
+
 async function init() {
   iniciarPersistenciaDetalles();
   document.querySelectorAll('input[type="date"]').forEach(input => {
@@ -16475,6 +16530,7 @@ async function init() {
   iniciarModuloCaja();
   iniciarModuloStockMercaderia();
   iniciarModuloTareas();
+  iniciarModosVisuales();
   iniciarAccesoAdministrador();
   iniciarModuloAdministracion();
 
