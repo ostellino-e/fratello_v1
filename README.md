@@ -1,4 +1,8 @@
-# Fratello v6.0.40
+# Fratello v6.0.41
+
+## Ajuste v6.0.41
+
+- El globito de tareas pendientes ahora es rojo, con el número en blanco.
 
 ## Mejora v6.0.40
 
@@ -414,4 +418,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.40
+Versión esperada: v6.0.41

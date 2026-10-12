@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6040-tareas-contador";
+const CACHE_NAME = "fratello-v6041-globito-rojo";
 const ARCHIVOS = [
   "./",
   "./index.html",
