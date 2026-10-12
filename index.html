@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=617" />
+  <link rel="stylesheet" href="styles.css?v=618" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.32";
-    document.documentElement.dataset.fratelloVersion = "6.0.32";
+    window.FRATELLO_VERSION = "6.0.33";
+    document.documentElement.dataset.fratelloVersion = "6.0.33";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.32</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.33</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -476,7 +476,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.32 · Horas de varios meses</span>
+        <span class="adminFinanceVersion">v6.0.33 · Filtro de ingresos</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -556,10 +556,22 @@
             <button id="btnVistaCargaIngresos" type="button">＋ Cargar y editar pagos</button>
           </div>
 
+          <div class="ingresosFiltroMedio">
+            <label for="filtroMedioIngresos">Filtrar por medio de pago</label>
+            <select id="filtroMedioIngresos">
+              <option value="Todos">Todos los medios</option>
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Mercado Pago">Mercado Pago</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+
           <section id="vistaResumenIngresos" class="ingresosResumenVista">
             <header class="ingresosResumenHero">
               <div>
-                <span>Total ingresos del mes</span>
+                <span id="tituloTotalIngresosResumen">Total ingresos del mes</span>
                 <strong id="totalIngresosMesResumen">$ 0</strong>
               </div>
               <div id="desgloseIngresosMesResumen" class="heroMethodBreakdown"></div>
@@ -1205,7 +1217,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6032"></script>
+  <script src="app.js?v=6033"></script>
 
   
 
@@ -1222,12 +1234,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6032")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6033")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6032", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6033", {
             scope: "./",
             updateViaCache: "none"
           });

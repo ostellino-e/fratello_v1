@@ -1,4 +1,11 @@
-# Fratello v6.0.32
+# Fratello v6.0.33
+
+## Mejora v6.0.33
+
+- Administración → Ingresos: filtro por medio de pago compartido entre resumen por cliente y carga/edición de pagos.
+- Permite consultar Todos, Efectivo, Transferencia, Cheque y otros medios históricos.
+- Tarjetas, movimientos y totales se calculan solo con el medio elegido; los cierres de Caja con efectivo y transferencia aportan únicamente la parte seleccionada.
+- Filtrar no modifica los registros y conserva el cliente seleccionado en el formulario de edición.
 
 ## Mejora v6.0.32
 
@@ -363,4 +370,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.32
+Versión esperada: v6.0.33

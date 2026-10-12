@@ -11942,22 +11942,47 @@ function totalesPorMedioAdministracion(items, campoMonto = "monto", campoMedio =
   return totales;
 }
 
-function htmlDesgloseMediosAdministracion(totales, compacto = false) {
+function htmlDesgloseMediosAdministracion(totales, compacto = false, soloMedio = "") {
   const orden = ["Efectivo", "Transferencia", "Mercado Pago", "Cheque", "Otro"];
   return `<div class="moneyMethodBreakdown ${compacto ? "compact" : ""}">
-    ${orden.map(medio => {
+    ${orden.filter(medio => !soloMedio || medio === soloMedio).map(medio => {
       const monto = adminFinMonto(totales?.[medio]);
-      if (!monto && medio !== "Efectivo" && medio !== "Transferencia") return "";
+      if (!monto && !soloMedio && medio !== "Efectivo" && medio !== "Transferencia") return "";
       return `<div><span>${medio}</span><strong>${adminFinDinero(monto)}</strong></div>`;
     }).join("")}
   </div>`;
 }
 
+function medioFiltroIngresosAdministracion() {
+  return $("filtroMedioIngresos")?.value || "Todos";
+}
+
+function filtrarIngresosPorMedio(items, medio) {
+  if (medio === "Todos") return items;
+  return (items || []).flatMap(item => {
+    const medios = item.mediosPago && typeof item.mediosPago === "object"
+      ? totalesPorMedioAdministracion([item])
+      : item.origen === "Caja"
+        ? {Efectivo:adminFinMonto(item.efectivo),Transferencia:adminFinMonto(item.transferencias)}
+        : {[normalizarMedioPagoAdministracion(item.medio)]:adminFinMonto(item.monto)};
+    const monto = adminFinMonto(medios[medio]);
+    if (!monto) return [];
+    return [{...item,monto,medio,mediosPago:{[medio]:monto},
+      ...(item.origen === "Caja" ? {efectivo:medio === "Efectivo" ? monto : 0,transferencias:medio === "Transferencia" ? monto : 0} : {})}];
+  });
+}
+
+function htmlDesgloseMediosIngresos(totales, compacto = false) {
+  const medio = medioFiltroIngresosAdministracion();
+  return htmlDesgloseMediosAdministracion(totales, compacto, medio === "Todos" ? "" : medio);
+}
+
 function renderResumenClientesExternos() {
   asegurarClientesExternosDesdeIngresos();
-  const ingresos = ingresosExternosDelMesAdministracion()
+  const filtroMedio = medioFiltroIngresosAdministracion();
+  const ingresos = filtrarIngresosPorMedio(ingresosExternosDelMesAdministracion(), filtroMedio)
     .filter(item => item.cobrado !== false);
-  const caja = ingresosCajaDelMesAdministracion();
+  const caja = filtrarIngresosPorMedio(ingresosCajaDelMesAdministracion(), filtroMedio);
 
   const totalCaja = caja.reduce((s, item) => s + adminFinMonto(item.monto), 0);
   const totalExternos = ingresos.reduce((s, item) => s + adminFinMonto(item.monto), 0);
@@ -11970,14 +11995,15 @@ function renderResumenClientesExternos() {
     ]),
     ...ingresos
   ]);
-  const medios = aplicarTransferenciasEntreMedios(mediosBase);
+  const medios = filtroMedio === "Todos" ? aplicarTransferenciasEntreMedios(mediosBase) : mediosBase;
+  if ($("tituloTotalIngresosResumen")) $("tituloTotalIngresosResumen").textContent = filtroMedio === "Todos" ? "Total ingresos del mes" : `Ingresos del mes · ${filtroMedio}`;
 
   if ($("totalIngresosMesResumen")) {
     $("totalIngresosMesResumen").textContent = adminFinDinero(total);
   }
   if ($("desgloseIngresosMesResumen")) {
     $("desgloseIngresosMesResumen").innerHTML =
-      htmlDesgloseMediosAdministracion(medios, true);
+      htmlDesgloseMediosIngresos(medios, true);
   }
   if ($("resumenOrigenIngresos")) {
     $("resumenOrigenIngresos").innerHTML = `
@@ -11996,6 +12022,7 @@ function renderResumenClientesExternos() {
 
   const clientes = [...administracionFinanciera.clientesExternos]
     .filter(cliente => !esClientePanaderiaFratello(cliente.nombre))
+    .filter(cliente => filtroMedio === "Todos" || ingresos.some(item => String(item.cliente || "").trim().toLowerCase() === String(cliente.nombre || "").trim().toLowerCase()))
     .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), "es"));
 
   const efectivoCaja = caja.reduce((s, item) => s + adminFinMonto(item.efectivo), 0);
@@ -12013,7 +12040,7 @@ function renderResumenClientesExternos() {
       <span>
         <strong>🥖 Panadería Fratello</strong>
         <small>Ingresos automáticos de Caja</small>
-        ${htmlDesgloseMediosAdministracion(mediosCaja, true)}
+        ${htmlDesgloseMediosIngresos(mediosCaja, true)}
       </span>
       <b>${adminFinDinero(totalCaja)}</b>
     </summary>
@@ -12023,7 +12050,7 @@ function renderResumenClientesExternos() {
             <span>
               <strong>${adminFinEscapar(adminFinFecha(cierre.fecha))}</strong>
               <small>${adminFinEscapar(cierre.descripcion || "Cierre de Caja")}</small>
-              ${htmlDesgloseMediosAdministracion({
+              ${htmlDesgloseMediosIngresos({
                 Efectivo: adminFinMonto(cierre.efectivo),
                 Transferencia: adminFinMonto(cierre.transferencias),
                 "Mercado Pago": 0,
@@ -12052,7 +12079,7 @@ function renderResumenClientesExternos() {
         <span>
           <strong>${adminFinEscapar(cliente.nombre)}</strong>
           ${cliente.observacion ? `<small>${adminFinEscapar(cliente.observacion)}</small>` : ""}
-          ${htmlDesgloseMediosAdministracion(mediosCliente, true)}
+          ${htmlDesgloseMediosIngresos(mediosCliente, true)}
         </span>
         <b>${adminFinDinero(totalCliente)}</b>
       </summary>
@@ -12075,7 +12102,8 @@ function renderResumenClientesExternos() {
     </details>`;
   }).join("");
 
-  host.innerHTML = tarjetaPanaderia + tarjetasClientes;
+  const tarjetas = (filtroMedio === "Todos" || caja.length ? tarjetaPanaderia : "") + tarjetasClientes;
+  host.innerHTML = tarjetas || adminFinVacio(`No hay ingresos cobrados por ${filtroMedio.toLowerCase()} en este mes.`);
 }
 
 function mostrarVistaIngresos(tipo = "resumen") {
@@ -12092,9 +12120,10 @@ function mostrarVistaIngresos(tipo = "resumen") {
 function renderIngresosAdministracion() {
   asegurarClientesExternosDesdeIngresos();
   renderResumenClientesExternos();
-  llenarSelectClientesExternos();
+  llenarSelectClientesExternos($("ingresoAdminCliente")?.value || "");
 
-  const externos = ingresosExternosDelMesAdministracion();
+  const filtroMedio = medioFiltroIngresosAdministracion();
+  const externos = filtrarIngresosPorMedio(ingresosExternosDelMesAdministracion(), filtroMedio);
   if ($("listaIngresosExternosAdministracion")) {
     $("listaIngresosExternosAdministracion").innerHTML = externos.length
       ? adminFinTabla(
@@ -12112,7 +12141,7 @@ function renderIngresosAdministracion() {
             </td>
           </tr>`)
         )
-      : adminFinVacio("No cargaste pagos de clientes externos en este mes.");
+      : adminFinVacio(filtroMedio === "Todos" ? "No cargaste pagos de clientes externos en este mes." : `No hay pagos de clientes externos por ${filtroMedio.toLowerCase()} en este mes.`);
   }
 }
 
@@ -13857,6 +13886,7 @@ function iniciarModuloAdministracion() {
     document.getElementById("panelCajaAdmin")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
+  $("filtroMedioIngresos")?.addEventListener("change", renderIngresosAdministracion);
   $("btnVistaResumenIngresos")?.addEventListener("click", () => mostrarVistaIngresos("resumen"));
   $("btnVistaCargaIngresos")?.addEventListener("click", () => mostrarVistaIngresos("carga"));
   $("btnAgregarClienteExterno")?.addEventListener("click", () => mostrarFormularioClienteExterno());
