@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6039-tareas-compartidas";
+const CACHE_NAME = "fratello-v6040-tareas-contador";
 const ARCHIVOS = [
   "./",
   "./index.html",

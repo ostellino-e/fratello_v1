@@ -1,4 +1,11 @@
-# Fratello v6.0.39
+# Fratello v6.0.40
+
+## Mejora v6.0.40
+
+- Mueve Tareas inmediatamente debajo de Pedidos en Inicio.
+- Agrega un globito con el número total de tareas pendientes, excluyendo realizadas y eliminadas; se oculta cuando no hay pendientes.
+- Mantiene la actualización compartida mientras se visita Inicio o Tareas y cierra la conexión al visitar otras secciones.
+- Compacta las tarjetas de tareas sin recortar sus indicaciones.
 
 ## Mejora v6.0.39
 
@@ -407,4 +414,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.39
+Versión esperada: v6.0.40

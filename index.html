@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=619" />
+  <link rel="stylesheet" href="styles.css?v=620" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.39";
-    document.documentElement.dataset.fratelloVersion = "6.0.39";
+    window.FRATELLO_VERSION = "6.0.40";
+    document.documentElement.dataset.fratelloVersion = "6.0.40";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.39</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.40</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -102,6 +102,9 @@
       <a class="homeMainCard pedidos" href="#seccionPedidosCentro" data-seccion="seccionPedidosCentro">
         <span class="homeMainIcon">📦</span><span><strong>Pedidos</strong><small>Producción, carga de pedidos y resumen.</small></span><b>›</b>
       </a>
+      <a id="tarjetaTareasInicio" class="homeMainCard tareas" href="#seccionTareas" data-seccion="seccionTareas">
+        <span class="homeMainIcon">✅</span><span><strong>Tareas <em id="badgeTareasPendientes" class="homeTaskBadge hidden" aria-live="polite">0</em></strong><small>Indicaciones y pendientes para el equipo.</small></span><b>›</b>
+      </a>
       <a class="homeMainCard caja" href="#seccionCaja" data-seccion="seccionCaja">
         <span class="homeMainIcon">💰</span><span><strong>Caja</strong><small>Cierres por turno y carga de gastos.</small></span><b>›</b>
       </a>
@@ -112,9 +115,6 @@
         <span class="homeMainIcon">📊</span>
         <span><strong>Administración <em class="privateMiniBadge">PRIVADO</em></strong><small>Ingresos, gastos, presupuesto y resultado.</small></span>
         <b>›</b>
-      </a>
-      <a class="homeMainCard tareas" href="#seccionTareas" data-seccion="seccionTareas">
-        <span class="homeMainIcon">✅</span><span><strong>Tareas</strong><small>Indicaciones y pendientes para el equipo.</small></span><b>›</b>
       </a>
       <a class="homeMainCard clientes" href="#seccionClientes" data-seccion="seccionClientes">
         <span class="homeMainIcon">👥</span><span><strong>Clientes</strong><small>Base de datos y pedidos fijos.</small></span><b>›</b>
@@ -476,7 +476,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.39 · Tareas compartidas</span>
+        <span class="adminFinanceVersion">v6.0.40 · Tareas compartidas</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -1238,7 +1238,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6039"></script>
+  <script src="app.js?v=6040"></script>
 
   
 
@@ -1255,12 +1255,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6039")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6040")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6039", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6040", {
             scope: "./",
             updateViaCache: "none"
           });

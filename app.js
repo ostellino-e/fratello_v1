@@ -1499,7 +1499,6 @@ function configurarPedidoFijoCliente(nombre) {
 }
 
 function mostrarInicioFratello(limpiarPila = true) {
-  if (seccionActualFratello === "seccionTareas") tareasCerrarConexion();
   if (seccionActualFratello === "seccionStockMercaderia" && stockEscuchaV6021) {
     stockEscuchaV6021();
     stockEscuchaV6021 = null;
@@ -1515,6 +1514,7 @@ function mostrarInicioFratello(limpiarPila = true) {
   if (contenido) contenido.classList.remove("contenidoVisible");
 
   seccionActualFratello = "inicio";
+  abrirTareas();
   sessionStorage.setItem("fratello_seccion_actual", "inicio");
   if (limpiarPila) pilaNavegacionFratello = [];
 
@@ -1895,7 +1895,7 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
 
   if (!destino) return;
   const mismaSeccion = seccionActualFratello === idSeccion;
-  if (seccionActualFratello === "seccionTareas" && idSeccion !== "seccionTareas") tareasCerrarConexion();
+  if (!["inicio", "seccionTareas"].includes(idSeccion)) tareasCerrarConexion();
   if (mismaSeccion && destino.classList.contains("seccionActiva")) return;
   if (seccionActualFratello === "seccionStockMercaderia" && idSeccion !== "seccionStockMercaderia" && stockEscuchaV6021) {
     stockEscuchaV6021();
@@ -16348,7 +16348,15 @@ function tareasOrdenadas(lista, estado) {
     ? String(b.realizadaEn||"").localeCompare(String(a.realizadaEn||""))
     : Number(b.prioridad==="alta")-Number(a.prioridad==="alta") || String(a.fecha||"9999").localeCompare(String(b.fecha||"9999")) || String(a.creadoEn||"").localeCompare(String(b.creadoEn||"")));
 }
+function tareasActualizarBadge() {
+  const cantidad=tareasDatos.filter(t=>!t.eliminada&&t.estado==="pendiente").length;
+  const badge=$("badgeTareasPendientes");
+  if(badge){badge.textContent=String(cantidad);badge.classList.toggle("hidden",cantidad===0);badge.setAttribute("aria-label",`${cantidad} tareas pendientes`);}
+  $("tarjetaTareasInicio")?.setAttribute("aria-label",`Tareas: ${cantidad} pendientes`);
+}
 function tareasRender() {
+  tareasActualizarBadge();
+  if(seccionActualFratello!=="seccionTareas")return;
   const host=$("tareasListado"), filtro=$("tareasFiltro");
   if (!host || !filtro) return;
   const seleccionado=filtro.value||"*";
@@ -16437,7 +16445,7 @@ async function abrirTareas(){
   try {
     if(!db || !await asegurarSesionOperativaV601()) throw new Error("tarea-offline");
   } catch(error) {if(token===tareasConexionToken)tareasEstado("Sin conexión: mostrando las tareas guardadas en este dispositivo.");return;}
-  if(token!==tareasConexionToken||seccionActualFratello!=="seccionTareas")return;
+  if(token!==tareasConexionToken||!["inicio","seccionTareas"].includes(seccionActualFratello))return;
   tareasEscucha=db.collection("fratello").doc("tareas").collection("items").where("eliminada","==",false).onSnapshot({includeMetadataChanges:true},snap=>{
     tareasDatos=snap.docs.map(d=>({...d.data(),id:d.id}));
     guardarLocalSeguroV6021(TAREAS_CACHE,JSON.stringify([...tareasOrdenadas(tareasDatos,"pendiente"),...tareasOrdenadas(tareasDatos,"realizada")].slice(0,300)));
@@ -16446,6 +16454,7 @@ async function abrirTareas(){
 }
 function iniciarModuloTareas(){
   if(!$("tareasForm"))return;
+  tareasActualizarBadge();
   $("tareasNueva").addEventListener("click",()=>{if(tareasGuardando)return;if(!$("tareasForm").classList.contains("hidden"))return $("tareasTitulo").focus();tareasAbrirForm();$("tareasTitulo").focus();});
   $("tareasForm").addEventListener("submit",tareasGuardarForm);
   $("tareasForm").addEventListener("input",()=>guardarLocalSeguroV6021(TAREAS_DRAFT,JSON.stringify(tareasCapturarForm())));
@@ -16592,6 +16601,7 @@ async function init() {
   }
   await cargarDesdeNube();
   await iniciarPedidosModuloNube();
+  if (["inicio", "seccionTareas"].includes(seccionActualFratello)) abrirTareas();
   iniciarSyncCentralV600();
   await iniciarCuentaPendientesNube();
   await iniciarSincronizacionModulosFinancieros();
