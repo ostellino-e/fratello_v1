@@ -1,4 +1,10 @@
-# Fratello v6.0.33
+# Fratello v6.0.34
+
+## Mejora v6.0.34
+
+- Administración → Gastos: filtro por medio de pago en resumen semanal y carga/edición.
+- Funciona junto con los filtros de categoría y detalle.
+- Los gastos con medios combinados aportan solo el importe del medio seleccionado; no cambia los registros originales.
 
 ## Mejora v6.0.33
 
@@ -370,4 +376,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.33
+Versión esperada: v6.0.34

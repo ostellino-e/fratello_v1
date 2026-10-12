@@ -12219,8 +12219,24 @@ function rangoSemanaGastos(numero, mes) {
   return `${String(desde).padStart(2, "0")} al ${String(hasta).padStart(2, "0")}`;
 }
 
+function medioFiltroGastosAdministracion() {
+  return $("filtroMedioGastos")?.value || "Todos";
+}
+
+function filtrarGastosPorMedio(items, medio) {
+  if (medio === "Todos") return items;
+  return filtrarIngresosPorMedio((items || []).map(item => ({...item,mediosPago:mediosPagoGastoAdministracion(item)})), medio);
+}
+
+function htmlDesgloseMediosGastos(totales, compacto = false) {
+  const medio = medioFiltroGastosAdministracion();
+  return htmlDesgloseMediosAdministracion(totales, compacto, medio === "Todos" ? "" : medio);
+}
+
 function renderResumenSemanalGastos() {
-  const gastos = todosGastosResumenMes();
+  const medio = medioFiltroGastosAdministracion();
+  const gastos = filtrarGastosPorMedio(todosGastosResumenMes(), medio);
+  if ($("tituloTotalGastosResumen")) $("tituloTotalGastosResumen").textContent = medio === "Todos" ? "Total gastos del mes" : `Gastos del mes · ${medio}`;
   const mes = mesSeleccionadoAdministracion();
   const categorias = ["Empleados", "Insumos", "Atención", "Generales"];
 
@@ -12230,7 +12246,7 @@ function renderResumenSemanalGastos() {
   }
   if ($("desgloseGastosMesResumen")) {
     $("desgloseGastosMesResumen").innerHTML =
-      htmlDesgloseMediosAdministracion(totalesPorMedioAdministracion(gastos), true);
+      htmlDesgloseMediosGastos(totalesPorMedioAdministracion(gastos), true);
   }
 
   if ($("tarjetasCategoriasGastos")) {
@@ -12255,7 +12271,7 @@ function renderResumenSemanalGastos() {
         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();seleccionarFiltroGastos('${categoria}');}">
         <span>${iconos[categoria]} ${categoria}</span>
         <strong>${adminFinDinero(total)}</strong>
-        ${htmlDesgloseMediosAdministracion(mediosCategoria, true)}
+        ${htmlDesgloseMediosGastos(mediosCategoria, true)}
         <small>Tocar para filtrar</small>
       </article>`;
     }).join("");
@@ -12279,14 +12295,14 @@ function renderResumenSemanalGastos() {
       ? ""
       : ` · ${etiquetaDetalleGasto(filtroDetalleGastosActual)}`;
     $("resumenFiltroGastos").innerHTML =
-      `<span>${adminFinEscapar(descripcionCategoria + descripcionDetalle)}</span><strong>${adminFinDinero(totalFiltrado)}</strong>`;
+      `<span>${adminFinEscapar(descripcionCategoria + descripcionDetalle + (medio === "Todos" ? "" : ` · ${medio}`))}</span><strong>${adminFinDinero(totalFiltrado)}</strong>`;
   }
 
   const host = $("resumenSemanalGastos");
   if (!host) return;
 
   if (!filtrados.length) {
-    host.innerHTML = adminFinVacio("No hay gastos para esta categoría en el mes seleccionado.");
+    host.innerHTML = adminFinVacio("No hay gastos que coincidan con los filtros en el mes seleccionado.");
     return;
   }
 
@@ -12316,7 +12332,7 @@ function renderResumenSemanalGastos() {
               </span>
               <span class="gastoSemanaMontoMedio">
                 <b>${adminFinDinero(item.monto)}</b>
-                ${htmlDesgloseMediosAdministracion(totalesPorMedioAdministracion([item]), true)}
+                ${htmlDesgloseMediosGastos(totalesPorMedioAdministracion([item]), true)}
               </span>
             </div>`).join("")
           : `<div class="gastosSemanaVacia">Sin gastos en esta semana.</div>`
@@ -12324,7 +12340,7 @@ function renderResumenSemanalGastos() {
         <div class="gastosSemanaTotal">
           <span>
             <strong>Total semana ${numeroSemana}</strong>
-            ${htmlDesgloseMediosAdministracion(totalesPorMedioAdministracion(items), true)}
+            ${htmlDesgloseMediosGastos(totalesPorMedioAdministracion(items), true)}
           </span>
           <strong>${adminFinDinero(total)}</strong>
         </div>
@@ -12412,8 +12428,9 @@ function mostrarVistaGastos(tipo = "resumen") {
 
 function renderGastosAdministracion() {
   renderResumenSemanalGastos();
-  const caja = gastosCajaDelMesAdministracion();
-  const manuales = gastosManualesDelMesAdministracion();
+  const medio = medioFiltroGastosAdministracion();
+  const caja = filtrarGastosPorMedio(gastosCajaDelMesAdministracion(), medio);
+  const manuales = filtrarGastosPorMedio(gastosManualesDelMesAdministracion(), medio);
 
   if ($("gastosCajaAdministracion")) {
     $("gastosCajaAdministracion").innerHTML = caja.length
@@ -12426,7 +12443,7 @@ function renderGastosAdministracion() {
             <td><strong>${adminFinDinero(item.monto)}</strong></td>
           </tr>`)
         )
-      : adminFinVacio("No hay gastos cargados en los cierres de Caja de este mes.");
+      : adminFinVacio("No hay gastos de Caja que coincidan con el medio seleccionado en este mes.");
   }
 
   if ($("listaGastosManualesAdministracion")) {
@@ -12446,7 +12463,7 @@ function renderGastosAdministracion() {
             </td>
           </tr>`)
         )
-      : adminFinVacio("No cargaste gastos por fuera de Caja en este mes.");
+      : adminFinVacio("No hay gastos por fuera de Caja que coincidan con el medio seleccionado en este mes.");
   }
 }
 
@@ -13897,6 +13914,7 @@ function iniciarModuloAdministracion() {
   $("btnCancelarIngresoAdministracion")?.addEventListener("click", () => ocultarFormularioAdministracion("ingreso"));
   $("btnGuardarIngresoAdministracion")?.addEventListener("click", guardarIngresoAdministracion);
 
+  $("filtroMedioGastos")?.addEventListener("change", renderGastosAdministracion);
   $("btnVistaResumenGastos")?.addEventListener("click", () => mostrarVistaGastos("resumen"));
   $("btnVistaCargaGastos")?.addEventListener("click", () => mostrarVistaGastos("carga"));
   $("filtroCategoriaGastosSelect")?.addEventListener("change", evento => {
