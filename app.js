@@ -2847,6 +2847,7 @@ function fusionarPedidosEliminados(remotos = [], locales = []) {
 }
 
 function pedidoEstaEliminadoSync(pedido, eliminados = pedidosEliminados) {
+  if (pedidoSuspendidoPorProgramacionFija(pedido)) return true;
   const id = clavePedidoSync(pedido);
   const semantica = claveSemanticaPedidoSync(pedido);
   const esFijo = esPedidoFijoRobusto(pedido) || pedido.origen === "pedido_fijo";
@@ -3999,9 +4000,12 @@ function fusionarPedidosFijosSync(remotos = [], locales = []) {
       if (!fijo) return;
       const clave = String(fijo.id || `${fijo.cliente || ""}|${fijo.nombre || ""}`);
       const anterior = mapa.get(clave);
-      const fechaActual = Date.parse(fijo.actualizado || fijo.creado || "") || 0;
-      const fechaAnterior = Date.parse(anterior?.actualizado || anterior?.creado || "") || 0;
-      if (!anterior || fechaActual >= fechaAnterior) mapa.set(clave, fijo);
+      const fechaActual = Date.parse(fijo.actualizado || fijo.actualizadoEn || fijo.creado || "") || 0;
+      const fechaAnterior = Date.parse(anterior?.actualizado || anterior?.actualizadoEn || anterior?.creado || "") || 0;
+      // La eliminación es permanente para este ID: una copia antigua no lo restaura.
+      if (anterior?.eliminado && !fijo.eliminado) return;
+      if (!anterior || fijo.eliminado || fechaActual > fechaAnterior ||
+          (fechaActual === fechaAnterior && (fijo.activo === false || anterior.activo !== false))) mapa.set(clave, fijo);
     });
   return [...mapa.values()];
 }
@@ -6613,11 +6617,35 @@ function aplicarFechaDetectadaAlPedido(texto) {
 }
 
 
+function pedidoSuspendidoPorProgramacionFija(pedido) {
+  if (!esPedidoFijoRobusto(pedido) || estaEntregadoParaSync(pedido) || Number(pedido.pagoEntrega || 0) > 0) return false;
+  const fecha = pedido.fechaTicket || fechaEntregaPedido(pedido);
+  if (!fecha || fecha < hoyISO()) return false;
+  const id = pedido.pedidoFijoId || pedido.programacionId;
+  let fijo = id ? (pedidosFijos || []).find(f => String(f.id) === String(id)) : null;
+  if (!id) {
+    const candidatos = (pedidosFijos || []).filter(f => normalizarClienteReparacion(f.cliente) === normalizarClienteReparacion(pedido.cliente) &&
+      (!pedido.programacionNombre || normalizarClienteReparacion(f.nombre) === normalizarClienteReparacion(pedido.programacionNombre)));
+    if (candidatos.length === 1) fijo = candidatos[0];
+  }
+  return Boolean(fijo && (fijo.eliminado === true || fijo.activo === false));
+}
+
+function actualizarVistasTrasCambioPedidoFijo() {
+  pedidos = pedidos.filter(p => !pedidoSuspendidoPorProgramacionFija(p));
+  ticketsMemoria = (ticketsMemoria || []).filter(t => !pedidoSuspendidoPorProgramacionFija(t));
+  guardarTodo();
+  renderPedidosFijos();
+  renderPedidosCargados();
+  renderPedidosFuturos();
+  calcularDiferencias();
+}
+
 function normalizarProgramacionPedidoFijo(fijo) {
   return {
     ...fijo,
     nombre: fijo.nombre || "Pedido fijo",
-    activo: fijo.activo !== false,
+    activo: fijo.eliminado !== true && fijo.activo !== false,
     dias: Array.isArray(fijo.dias) ? fijo.dias.map(Number) : []
   };
 }
@@ -6773,7 +6801,7 @@ function actualizarPedidoFijoDesdePedido(idPedido) {
   const pedido = pedidos.find(p => Number(p.id) === Number(idPedido));
   if (!pedido || pedido.origen !== "pedido_fijo") return;
 
-  const fijo = pedidosFijos.find(f => Number(f.id) === Number(pedido.pedidoFijoId));
+  const fijo = pedidosFijos.find(f => !f.eliminado && Number(f.id) === Number(pedido.pedidoFijoId));
   if (!fijo) {
     alert("No se encontró el pedido fijo original.");
     return;
@@ -7066,14 +7094,14 @@ function migrarPedidosFijosV301() {
       nombre: String(fijo.nombre || `Pedido ${indice + 1}`).trim(),
       texto: String(fijo.texto || fijo.textoOriginal || "").trim(),
       dias: Array.isArray(fijo.dias) ? fijo.dias.map(Number).filter(d => d >= 0 && d <= 6) : [],
-      activo: fijo.activo !== false
+      activo: fijo.eliminado !== true && fijo.activo !== false
     }));
 
   guardarTodo();
 }
 
 function siguienteNumeroPedidoCliente(cliente) {
-  return pedidosFijos.filter(f => normalizar(f.cliente) === normalizar(cliente)).length + 1;
+  return pedidosFijos.filter(f => !f.eliminado && normalizar(f.cliente) === normalizar(cliente)).length + 1;
 }
 
 function limpiarFormularioPedidoFijo() {
@@ -7121,7 +7149,7 @@ function diasPedidoFijoDesdeTarjeta(tarjeta) {
 function validarDiasSinSuperposicion(id, cliente, dias) {
   const conflicto = pedidosFijos.find(fijo =>
     Number(fijo.id) !== Number(id) &&
-    fijo.activo !== false &&
+    !fijo.eliminado && fijo.activo !== false &&
     normalizar(fijo.cliente) === normalizar(cliente) &&
     (fijo.dias || []).some(dia => dias.includes(Number(dia)))
   );
@@ -7143,7 +7171,7 @@ function validarDiasSinSuperposicion(id, cliente, dias) {
 
 function guardarPedidoFijoTarjeta(id) {
   const tarjeta = document.querySelector(`[data-fixed-order-id="${CSS.escape(String(id))}"]`);
-  const fijo = pedidosFijos.find(p => Number(p.id) === Number(id));
+  const fijo = pedidosFijos.find(p => !p.eliminado && Number(p.id) === Number(id));
   if (!tarjeta || !fijo) return;
 
   const nombre = tarjeta.querySelector("[data-fixed-nombre]")?.value.trim() || fijo.nombre || "Pedido";
@@ -7182,9 +7210,7 @@ function guardarPedidoFijoTarjeta(id) {
       }
     });
 
-  guardarTodo();
-  renderPedidosCargados();
-  calcularDiferencias();
+  actualizarVistasTrasCambioPedidoFijo();
   alert(`${nombre} guardado correctamente.`);
 }
 
@@ -7197,7 +7223,7 @@ function editarPedidoFijo(id) {
 }
 
 function duplicarPedidoFijo(id) {
-  const fijo = pedidosFijos.find(p => Number(p.id) === Number(id));
+  const fijo = pedidosFijos.find(p => !p.eliminado && Number(p.id) === Number(id));
   if (!fijo) return;
 
   const nuevo = {
@@ -7223,21 +7249,22 @@ function duplicarPedidoFijo(id) {
 }
 
 function alternarPedidoFijo(id) {
-  const fijo = pedidosFijos.find(p => Number(p.id) === Number(id));
+  const fijo = pedidosFijos.find(p => !p.eliminado && Number(p.id) === Number(id));
   if (!fijo) return;
   fijo.activo = fijo.activo === false;
-  guardarTodo();
-  renderPedidosFijos();
+  fijo.actualizado = new Date().toISOString();
+  actualizarVistasTrasCambioPedidoFijo();
 }
 
 function eliminarPedidoFijo(id) {
-  const fijo = pedidosFijos.find(p => Number(p.id) === Number(id));
+  const fijo = pedidosFijos.find(p => !p.eliminado && Number(p.id) === Number(id));
   if (!fijo) return;
   if (!confirm(`¿Eliminar "${fijo.nombre || "este pedido"}" de ${fijo.cliente}?`)) return;
-
-  pedidosFijos = pedidosFijos.filter(p => Number(p.id) !== Number(id));
-  guardarTodo();
-  renderPedidosFijos();
+  fijo.eliminado = true;
+  fijo.activo = false;
+  fijo.actualizado = new Date().toISOString();
+  fijo.eliminadoEn = fijo.actualizado;
+  actualizarVistasTrasCambioPedidoFijo();
 }
 
 function renderPedidosFijos() {
@@ -7253,6 +7280,7 @@ function renderPedidosFijos() {
   clientes.forEach(cliente => grupos[cliente] = []);
 
   pedidosFijos
+    .filter(fijo => !fijo.eliminado)
     .map(normalizarProgramacionPedidoFijo)
     .sort((a, b) =>
       String(a.cliente).localeCompare(String(b.cliente), "es") ||
@@ -7506,6 +7534,7 @@ function alternarConfirmacionPedido(idPedido, confirmado) {
 
 function pedidosConfirmadosParaFecha(fecha) {
   return pedidos.filter(pedido =>
+    !pedidoSuspendidoPorProgramacionFija(pedido) &&
     fechaEntregaPedido(pedido) === fecha &&
     pedidoEstaConfirmado(pedido)
   );
@@ -8430,7 +8459,7 @@ function sincronizarMemoriaTickets() {
   repararDuplicadosPedidosFijos("", false);
 
   const actuales = [
-    ...pedidos.map(pedido => ({ pedido, tipo: "normal" })),
+    ...pedidos.filter(pedido => !pedidoSuspendidoPorProgramacionFija(pedido)).map(pedido => ({ pedido, tipo: "normal" })),
     ...pedidosHoy.map(pedido => ({ pedido, tipo: "hoy" }))
   ];
 
@@ -8441,6 +8470,7 @@ function sincronizarMemoriaTickets() {
   const porClave = new Map(
     (Array.isArray(ticketsMemoria) ? ticketsMemoria : [])
       .filter(ticket => {
+        if (pedidoSuspendidoPorProgramacionFija(ticket)) return false;
         const clave = ticket.claveMemoria || claveTicketMemoria(ticket, ticket.tipoTicket || "normal");
         const fecha = ticket.fechaTicket || ticket.fechaEntrega || ticket.fecha || "";
         const esPedidoHoy = ticket.tipoTicket === "hoy" || ticket.esPedidoHoy === true;

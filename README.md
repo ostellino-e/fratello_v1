@@ -1,4 +1,11 @@
-# Fratello v6.0.37
+# Fratello v6.0.38
+
+## Corrección v6.0.38
+
+- Pausar un pedido fijo guarda la fecha de modificación y retira sus pedidos operativos de hoy y futuros sin entrega ni cobro.
+- Eliminar una programación conserva una marca de eliminación en la sincronización para impedir que copias anteriores la restituyan.
+- Los pedidos y tickets de programaciones inactivas se excluyen también al recibir datos y generar resúmenes.
+- Historial anterior, entregas y comprobantes con cobros se conservan.
 
 ## Mejora v6.0.37
 
@@ -391,4 +398,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.37
+Versión esperada: v6.0.38
