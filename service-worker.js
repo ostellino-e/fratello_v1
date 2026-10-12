@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6034-filtro-gastos";
+const CACHE_NAME = "fratello-v6035-criollos-bandejas";
 const ARCHIVOS = [
   "./",
   "./index.html",

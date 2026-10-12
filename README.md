@@ -1,4 +1,10 @@
-# Fratello v6.0.34
+# Fratello v6.0.35
+
+## Mejora v6.0.35
+
+- Incluye Criollos en los faltantes y sobrantes del resumen panadero y en las actualizaciones de pedidos.
+- Para bizcocho hojaldre y bizcochos de grasa comunica bandejas prácticas aproximadas, tomando 1,5 kg por bandeja y redondeando a medias bandejas; 0,5 kg se indica como media bandeja.
+- Conserva la cantidad exacta en kg entre paréntesis y mantiene los pedidos y la producción guardados en sus unidades originales.
 
 ## Mejora v6.0.34
 
@@ -376,4 +382,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.34
+Versión esperada: v6.0.35

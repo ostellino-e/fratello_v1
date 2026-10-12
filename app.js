@@ -7610,9 +7610,9 @@ function formatearCantidadResumen(cantidadBase, producto) {
 }
 
 // Productos que el panadero controla todos los días en el resumen operativo.
-// El orden coincide con la producción: Chicharrón hasta Medialunas.
+// El orden coincide con la producción: Criollos y Chicharrón hasta Medialunas.
 const PRODUCTOS_DIARIOS_PANADERO = [
-  "CHIC", "TREN", "RASP", "CORD_S", "CORD_D", "RASQ_G", "RASQ_M",
+  "CRIOLLOS", "CHIC", "TREN", "RASP", "CORD_S", "CORD_D", "RASQ_G", "RASQ_M",
   "BIZ_H", "LIB_MEM", "BIZ_G", "FAC_SUR", "MED"
 ];
 
@@ -7624,6 +7624,14 @@ function esProductoDiarioPanadero(productoOId) {
 function formatearCantidadPanadero(cantidadBase, producto) {
   const valor = Math.abs(Number(cantidadBase || 0));
   const unidad = String(producto?.unidad || "unidad").toLowerCase();
+
+  // Equivalencia práctica acordada: 1,5 kg por bandeja, aproximando
+  // a medias bandejas (0,5 kg se comunica como media bandeja).
+  if (unidad === "kg" && ["BIZ_H", "BIZ_G"].includes(producto?.id)) {
+    const bandejas = valor > 0 ? Math.max(0.5, Math.round(valor / 1.5 * 2) / 2) : 0;
+    const texto = bandejas === 0.5 ? "media bandeja" : `${fmt(bandejas)} ${bandejas === 1 ? "bandeja" : "bandejas"}`;
+    return `≈ ${texto} (${fmt(valor)} kg)`;
+  }
 
   // Solamente los productos configurados realmente por docena se convierten.
   if (unidad === "docena" || producto?.formaVenta === "unidad_docena") {
@@ -7672,12 +7680,12 @@ function calcularDiferencias() {
 
     if (difBase > 0) {
       estado = "SOBRA";
-      accion = `Sobran ${formatearCantidadResumen(difBase, p)}`;
+      accion = `Sobran ${["BIZ_H", "BIZ_G"].includes(p.id) ? formatearCantidadPanadero(difBase, p) : formatearCantidadResumen(difBase, p)}`;
     }
 
     if (difBase < 0) {
       estado = "FALTA";
-      accion = `HACER ${formatearCantidadResumen(Math.abs(difBase), p)}`;
+      accion = `HACER ${["BIZ_H", "BIZ_G"].includes(p.id) ? formatearCantidadPanadero(difBase, p) : formatearCantidadResumen(Math.abs(difBase), p)}`;
     }
 
     filas.push({
