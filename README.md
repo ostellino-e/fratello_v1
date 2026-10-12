@@ -1,4 +1,13 @@
-# Fratello v6.0.42
+# Fratello v6.0.43
+
+## Mejora v6.0.43
+
+- Panadería solicita una contraseña antes de habilitar sus opciones adicionales.
+- Administrador conserva su cuenta actual y puede crear/cambiar la contraseña desde el botón Contraseña Panadería, mínimo 6 caracteres.
+- Se guarda un verificador PBKDF2 con sal aleatoria; no se persiste el texto de la contraseña.
+- La configuración compartida se guarda en seguridadFratello/modo_panaderia; solo un administrador puede cambiarla.
+- Requiere publicar firestore.rules: npx firebase-tools deploy --only firestore:rules. Si falta autenticación de la CLI, ejecutar npx firebase-tools login.
+- Los modos son vistas operativas de la misma app: la contraseña habilita la vista Panadería, y la protección de los datos privados de Administración conserva las reglas existentes.
 
 ## Mejora v6.0.42
 
@@ -428,4 +437,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.42
+Versión esperada: v6.0.43

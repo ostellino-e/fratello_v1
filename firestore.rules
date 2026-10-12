@@ -21,6 +21,11 @@ service cloud.firestore {
     match /administracion/{document=**} {
       allow read, write: if isAdmin();
     }
+    // Verificador del modo Panadería: lectura operativa, cambios solo de admin.
+    match /seguridadFratello/modo_panaderia {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
     match /seguridadFratello/{document=**} {
       allow read, write: if isAdmin();
     }

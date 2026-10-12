@@ -11184,6 +11184,7 @@ function iniciarAccesoAdministrador() {
       rolUsuarioActual = obtenerRolUsuario(usuarioAdministradorActual);
 
       if (usuario) {
+        iniciarPasswordPanaderia();
         iniciarSyncCentralV600();
         syncV600ReenviarCola().catch(() => {});
       }
@@ -16482,16 +16483,21 @@ const MODO_VISUAL_STORAGE="fratello_modo_visual_v1";
 let modoVisualGuardado=leerJsonLocalSeguro(MODO_VISUAL_STORAGE,"generico");
 if(!["generico","panaderia","administrador"].includes(modoVisualGuardado))modoVisualGuardado="generico";
 let modoVisualAdminPendiente=false;
+let modoPanHashAutorizado="", modoPanPendiente=false;
 const SECCIONES_MODO_GENERICO=new Set(["inicio","seccionPedidosCentro","seccionProduccion","seccionPedidos","seccionPedidosHoy","seccionTickets","seccionResumen","seccionPagosPendientes","seccionPedidosFuturos","seccionHistorialPedidos","seccionTareas","seccionCaja","seccionStockMercaderia"]);
 function puedeUsarModoAdministrador(){return tieneRolAdministrador()&&Boolean(dispositivoAutorizadoActual);}
-function modoVisualActivo(){return modoVisualGuardado==="administrador"&&!puedeUsarModoAdministrador()?"generico":modoVisualGuardado;}
+function modoVisualActivo(){
+  if(modoVisualGuardado==="administrador"&&!puedeUsarModoAdministrador())return "generico";
+  if(modoVisualGuardado==="panaderia"&&(!passwordPanConfig || modoPanHashAutorizado!==passwordPanConfig.hash))return "generico";
+  return modoVisualGuardado;
+}
 function seccionPermitidaEnModo(id){
   if(id==="seccionAdministracion")return modoVisualActivo()==="administrador"&&puedeUsarModoAdministrador();
   return modoVisualActivo()!=="generico"||SECCIONES_MODO_GENERICO.has(id);
 }
 function aplicarModoVisual(){
   if(modoVisualAdminPendiente&&puedeUsarModoAdministrador()){
-    modoVisualGuardado="administrador";modoVisualAdminPendiente=false;
+    modoVisualGuardado="administrador";modoVisualAdminPendiente=false;modoPanHashAutorizado="";
     guardarLocalSeguroV6021(MODO_VISUAL_STORAGE,JSON.stringify(modoVisualGuardado));
     ocultarModalAdministrador();
   }
@@ -16502,24 +16508,122 @@ function aplicarModoVisual(){
   document.querySelectorAll("#panelInicio .homeMainCard[data-seccion]").forEach(card=>card.classList.toggle("hidden",!seccionPermitidaEnModo(card.dataset.seccion)));
   document.querySelectorAll(".syncAdminMonth").forEach(el=>el.classList.toggle("hidden",modo!=="administrador"));
   $("btnAdministrarPersonasCajaRapido")?.classList.toggle("hidden",modo!=="administrador");
+  $("btnPasswordPanaderia")?.classList.toggle("hidden",modo!=="administrador");
   if(modo!=="administrador")bloquearAdministracion();
   if(seccionActualFratello!=="inicio"&&!seccionPermitidaEnModo(seccionActualFratello))mostrarInicioFratello();
 }
 function elegirModoVisual(modo){
   if(!["generico","panaderia","administrador"].includes(modo))return false;
+  if(modo==="panaderia")iniciarPasswordPanaderia();
+  if(modo==="panaderia"&&(!passwordPanConfig || modoPanHashAutorizado!==passwordPanConfig.hash)){
+    modoPanPendiente=true;aplicarModoVisual();abrirPasswordPanaderia(false);return false;
+  }
   if(modo==="administrador"&&!puedeUsarModoAdministrador()){
     modoVisualAdminPendiente=true;
     aplicarModoVisual();mostrarModalAdministrador();return false;
   }
   modoVisualAdminPendiente=false;modoVisualGuardado=modo;
+  if(modo!=="panaderia")modoPanHashAutorizado="";
   guardarLocalSeguroV6021(MODO_VISUAL_STORAGE,JSON.stringify(modo));
   aplicarModoVisual();return true;
 }
 function iniciarModosVisuales(){
+  iniciarFormularioPasswordPanaderia();
   $("modoVisualSelect")?.addEventListener("change",evento=>{
     if(elegirModoVisual(evento.target.value))mostrarInicioFratello();
   });
   aplicarModoVisual();
+}
+
+/* v6.0.43 — contraseña compartida para el modo Panadería. */
+const PASSWORD_PAN_CACHE="fratello_password_pan_config_v1";
+function passwordPanConfigValida(d){return d && /^[a-f0-9]{64}$/.test(d.hash||"") && /^[a-f0-9]{32}$/.test(d.salt||"") && Number.isInteger(d.iteraciones) && d.iteraciones>=100000 && d.iteraciones<=1000000;}
+let passwordPanConfig=leerJsonLocalSeguro(PASSWORD_PAN_CACHE,null);
+if(!passwordPanConfigValida(passwordPanConfig))passwordPanConfig=null;
+let passwordPanEscucha=null,passwordPanCargando=false,passwordPanConfigurando=false,passwordPanOcupado=false;
+function passwordPanRef(){return db.collection("seguridadFratello").doc("modo_panaderia");}
+function passwordPanHex(bytes){return [...bytes].map(b=>b.toString(16).padStart(2,"0")).join("");}
+async function passwordPanDerivar(clave,config){
+  if(!window.crypto?.subtle)throw new Error("Abrí la app desde su enlace HTTPS para usar la contraseña.");
+  const salt=new Uint8Array(config.salt.match(/../g).map(x=>parseInt(x,16)));
+  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(clave),"PBKDF2",false,["deriveBits"]);
+  const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:config.iteraciones,hash:"SHA-256"},key,256);
+  return passwordPanHex(new Uint8Array(bits));
+}
+function abrirPasswordPanaderia(configurar=false){
+  if(configurar&&!puedeUsarModoAdministrador())return;
+  passwordPanConfigurando=configurar;
+  $("tituloPasswordPanaderia").textContent=configurar?"Contraseña de Panadería":"Entrar a Panadería";
+  $("ayudaPasswordPanaderia").textContent=configurar?"Creá o cambiá la contraseña compartida para la PC y el celular de la panadería. Usá al menos 6 caracteres.":"Ingresá la contraseña del modo Panadería.";
+  $("guardarPasswordPanaderia").textContent=configurar?"Guardar contraseña":"Entrar";
+  $("repetirPasswordPanaderiaFila").classList.toggle("hidden",!configurar);
+  $("repetirClavePanaderia").required=configurar;
+  $("claveModoPanaderia").autocomplete=configurar?"new-password":"current-password";
+  $("claveModoPanaderia").value="";$("repetirClavePanaderia").value="";
+  $("estadoPasswordPanaderia").textContent=!configurar&&!passwordPanConfig?"El administrador debe configurar primero la contraseña de Panadería.":"";
+  $("modalPasswordPanaderia").classList.remove("hidden");
+  $("claveModoPanaderia").focus();
+}
+function cerrarPasswordPanaderia(){
+  if(passwordPanOcupado)return;
+  $("modalPasswordPanaderia").classList.add("hidden");
+  $("claveModoPanaderia").value="";$("repetirClavePanaderia").value="";
+  modoPanPendiente=false;
+  if(!passwordPanConfigurando&&modoVisualGuardado==="panaderia"&&!modoPanHashAutorizado)elegirModoVisual("generico");
+}
+async function iniciarPasswordPanaderia(){
+  if(passwordPanEscucha||passwordPanCargando||!db)return;
+  passwordPanCargando=true;
+  try{
+    if(!await asegurarSesionOperativaV601())throw new Error("Sin conexión para consultar la contraseña.");
+    passwordPanEscucha=passwordPanRef().onSnapshot(snap=>{
+      const dato=snap.exists?snap.data():null;
+      passwordPanConfig=passwordPanConfigValida(dato)?dato:null;
+      guardarLocalSeguroV6021(PASSWORD_PAN_CACHE,JSON.stringify(passwordPanConfig));
+      if(modoPanHashAutorizado&&modoPanHashAutorizado!==passwordPanConfig?.hash)modoPanHashAutorizado="";
+      aplicarModoVisual();
+      if((modoVisualGuardado==="panaderia"||modoPanPendiente)&&!modoPanHashAutorizado&&$("modalPasswordPanaderia").classList.contains("hidden"))abrirPasswordPanaderia(false);
+    },error=>{
+      console.error("Contraseña Panadería:",error);passwordPanEscucha=null;
+      $("modoVisualEstado").textContent="No se pudo consultar la contraseña. Revisá la conexión y la actualización de reglas de Firebase.";
+    });
+  }catch(error){console.error("Contraseña Panadería:",error);}finally{passwordPanCargando=false;}
+}
+async function guardarOEntrarPasswordPanaderia(evento){
+  evento.preventDefault();if(passwordPanOcupado)return;
+  const clave=$("claveModoPanaderia").value,configurando=passwordPanConfigurando;
+  const estado=$("estadoPasswordPanaderia");
+  if(configurando&&(!puedeUsarModoAdministrador()||modoVisualActivo()!=="administrador")){estado.textContent="Ingresá como administrador para cambiar la contraseña.";return;}
+  if(configurando&&(clave.trim().length<6||clave!==$("repetirClavePanaderia").value)){estado.textContent="Usá al menos 6 caracteres y repetí la misma contraseña.";return;}
+  if(!configurando&&!passwordPanConfig){estado.textContent="El administrador debe configurar primero la contraseña de Panadería.";return;}
+  passwordPanOcupado=true;const controles=[...$("formPasswordPanaderia").querySelectorAll("input,button")];controles.forEach(el=>el.disabled=true);
+  estado.textContent=configurando?"Guardando contraseña...":"Verificando...";
+  try{
+    if(configurando){
+      if(!db||!await asegurarSesionOperativaV601())throw new Error("Necesitás conexión para guardar la contraseña.");
+      const config={salt:passwordPanHex(crypto.getRandomValues(new Uint8Array(16))),iteraciones:150000,actualizadoEn:new Date().toISOString()};
+      config.hash=await passwordPanDerivar(clave,config);
+      await passwordPanRef().set(config);
+      passwordPanConfig=config;modoPanHashAutorizado="";
+      guardarLocalSeguroV6021(PASSWORD_PAN_CACHE,JSON.stringify(config));
+      passwordPanOcupado=false;cerrarPasswordPanaderia();
+      $("modoVisualEstado").textContent="Contraseña de Panadería guardada. Elegí Panadería para ingresar.";
+    }else{
+      const config={...passwordPanConfig}, hash=await passwordPanDerivar(clave,config);
+      if(hash!==config.hash)throw new Error("Contraseña incorrecta.");
+      if(passwordPanConfig?.hash!==config.hash)throw new Error("La contraseña cambió. Volvé a intentar.");
+      modoPanHashAutorizado=hash;modoPanPendiente=false;
+      elegirModoVisual("panaderia");passwordPanOcupado=false;cerrarPasswordPanaderia();mostrarInicioFratello();
+    }
+  }catch(error){console.error("Contraseña Panadería:",error);estado.textContent=error.code==="permission-denied"?"No se pudo guardar. Actualizá las reglas de Firebase y verificá tu acceso de administrador.":error.message||"No se pudo completar. Volvé a intentar.";}
+  finally{passwordPanOcupado=false;controles.forEach(el=>el.disabled=false);}
+}
+function iniciarFormularioPasswordPanaderia(){
+  $("btnPasswordPanaderia")?.addEventListener("click",()=>abrirPasswordPanaderia(true));
+  $("formPasswordPanaderia")?.addEventListener("submit",guardarOEntrarPasswordPanaderia);
+  $("cancelarPasswordPanaderia")?.addEventListener("click",cerrarPasswordPanaderia);
+  $("modalPasswordPanaderia")?.addEventListener("click",e=>{if(e.target.id==="modalPasswordPanaderia")cerrarPasswordPanaderia();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("modalPasswordPanaderia").classList.contains("hidden"))cerrarPasswordPanaderia();});
 }
 
 async function init() {
@@ -16657,6 +16761,7 @@ async function init() {
   }
   await cargarDesdeNube();
   await iniciarPedidosModuloNube();
+  iniciarPasswordPanaderia();
   if (["inicio", "seccionTareas"].includes(seccionActualFratello)) abrirTareas();
   iniciarSyncCentralV600();
   await iniciarCuentaPendientesNube();

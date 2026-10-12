@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6042-modos-visualizacion";
+const CACHE_NAME = "fratello-v6043-password-panaderia";
 const ARCHIVOS = [
   "./",
   "./index.html",
