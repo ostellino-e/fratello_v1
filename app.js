@@ -7630,7 +7630,7 @@ function formatearCantidadPanadero(cantidadBase, producto) {
   if (unidad === "kg" && ["BIZ_H", "BIZ_G"].includes(producto?.id)) {
     const bandejas = valor > 0 ? Math.max(0.5, Math.round(valor / 1.5 * 2) / 2) : 0;
     const texto = bandejas === 0.5 ? "media bandeja" : `${fmt(bandejas)} ${bandejas === 1 ? "bandeja" : "bandejas"}`;
-    return `≈ ${texto} (${fmt(valor)} kg)`;
+    return `${fmt(valor)} kg (≈ ${texto})`;
   }
 
   // Solamente los productos configurados realmente por docena se convierten.

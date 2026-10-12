@@ -1,4 +1,8 @@
-# Fratello v6.0.35
+# Fratello v6.0.36
+
+## Ajuste v6.0.36
+
+- En el resumen panadero, los bizcochos muestran primero los kg y luego las bandejas entre paréntesis: 0,5 kg (≈ media bandeja).
 
 ## Mejora v6.0.35
 
@@ -382,4 +386,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.35
+Versión esperada: v6.0.36
