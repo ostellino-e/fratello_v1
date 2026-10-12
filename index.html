@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=618" />
+  <link rel="stylesheet" href="styles.css?v=619" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.38";
-    document.documentElement.dataset.fratelloVersion = "6.0.38";
+    window.FRATELLO_VERSION = "6.0.39";
+    document.documentElement.dataset.fratelloVersion = "6.0.39";
   </script>
 
 </head>
@@ -79,7 +79,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.38</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.39</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -114,7 +114,7 @@
         <b>›</b>
       </a>
       <a class="homeMainCard tareas" href="#seccionTareas" data-seccion="seccionTareas">
-        <span class="homeMainIcon">✅</span><span><strong>Tareas</strong><small>Próximamente.</small></span><b>›</b>
+        <span class="homeMainIcon">✅</span><span><strong>Tareas</strong><small>Indicaciones y pendientes para el equipo.</small></span><b>›</b>
       </a>
       <a class="homeMainCard clientes" href="#seccionClientes" data-seccion="seccionClientes">
         <span class="homeMainIcon">👥</span><span><strong>Clientes</strong><small>Base de datos y pedidos fijos.</small></span><b>›</b>
@@ -476,7 +476,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.38 · Pedidos fijos</span>
+        <span class="adminFinanceVersion">v6.0.39 · Tareas compartidas</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -1093,12 +1093,21 @@
       <section class="stockAnalysis"><h3>Registros recientes</h3><div id="stockHistorial"></div></section>
     </section>
 
-    <section class="card appSection emptyModule" id="seccionTareas">
+    <section class="card wide appSection tareasModule" id="seccionTareas">
       <a class="volverInicio" href="#" data-volver="true">← Volver</a>
-      <div class="emptyModuleIcon">✅</div>
-      <h2>Tareas</h2>
-      <p>Esta sección queda preparada para las próximas mejoras de tareas.</p>
-      <span>Próximamente</span>
+      <div class="tareasHeader"><div><h2>✅ Tareas</h2><p>Revisá las indicaciones del equipo al llegar a la panadería.</p></div><button id="tareasNueva" type="button" class="primary">＋ Nueva tarea</button></div>
+      <p id="tareasEstado" class="tareasStatus" role="status" aria-live="polite"></p><button id="tareasReintentar" type="button">Actualizar tareas</button>
+      <form id="tareasForm" class="tareasForm hidden">
+        <h3 id="tareasFormTitulo">Nueva tarea</h3>
+        <label class="tareasWide">Tarea<input id="tareasTitulo" type="text" maxlength="120" required placeholder="Ej.: preparar prepizzas para mañana"></label>
+        <label class="tareasWide">Indicaciones<textarea id="tareasDescripcion" rows="3" maxlength="2000" placeholder="Cantidades, instrucciones o lo que tienen que revisar"></textarea></label>
+        <label>Responsable<input id="tareasResponsable" type="text" list="tareasResponsablesLista" maxlength="80" placeholder="Todos, Panaderos o un nombre"><datalist id="tareasResponsablesLista"><option value="Todos"><option value="Panaderos"><option value="Atención"></datalist></label>
+        <label>Fecha para realizar (opcional)<input id="tareasFecha" type="date"></label>
+        <label>Prioridad<select id="tareasPrioridad"><option value="normal">Normal</option><option value="alta">Alta</option></select></label>
+        <div class="tareasWide tareasFormActions"><button id="tareasCancelar" type="button">Cancelar</button><button id="tareasGuardar" class="primary" type="submit">Guardar tarea</button></div>
+      </form>
+      <div class="tareasToolbar"><div class="tareasTabs"><button id="tareasPendientes" type="button" class="active">Pendientes</button><button id="tareasRealizadas" type="button">Realizadas</button></div><label>Ver responsable<select id="tareasFiltro"><option value="*">Todos los responsables</option></select></label></div>
+      <div id="tareasListado" class="tareasListado"></div>
     </section>
 
     <section class="card appSection" id="seccionProductos">
@@ -1229,7 +1238,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6038"></script>
+  <script src="app.js?v=6039"></script>
 
   
 
@@ -1246,12 +1255,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6038")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6039")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6038", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6039", {
             scope: "./",
             updateViaCache: "none"
           });

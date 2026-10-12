@@ -1499,6 +1499,7 @@ function configurarPedidoFijoCliente(nombre) {
 }
 
 function mostrarInicioFratello(limpiarPila = true) {
+  if (seccionActualFratello === "seccionTareas") tareasCerrarConexion();
   if (seccionActualFratello === "seccionStockMercaderia" && stockEscuchaV6021) {
     stockEscuchaV6021();
     stockEscuchaV6021 = null;
@@ -1894,6 +1895,7 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
 
   if (!destino) return;
   const mismaSeccion = seccionActualFratello === idSeccion;
+  if (seccionActualFratello === "seccionTareas" && idSeccion !== "seccionTareas") tareasCerrarConexion();
   if (mismaSeccion && destino.classList.contains("seccionActiva")) return;
   if (seccionActualFratello === "seccionStockMercaderia" && idSeccion !== "seccionStockMercaderia" && stockEscuchaV6021) {
     stockEscuchaV6021();
@@ -1918,6 +1920,8 @@ function mostrarSeccionFratelloSinApilar(idSeccion) {
   if (idSeccion === "seccionTickets") {
     renderTicketsPorDia();
   }
+
+  if (idSeccion === "seccionTareas") abrirTareas();
 
   if (idSeccion === "seccionStockMercaderia") {
     abrirStockMercaderia();
@@ -16323,6 +16327,137 @@ function iniciarModuloStockMercaderia() {
   });
 }
 
+/* v6.0.39 — Tablero compartido de tareas; un documento por tarea. */
+const TAREAS_CACHE = "fratello_tareas_cache_v1";
+const TAREAS_DRAFT = "fratello_tareas_borrador_v1";
+let tareasDatos = leerJsonLocalSeguro(TAREAS_CACHE, []);
+if (!Array.isArray(tareasDatos)) tareasDatos = [];
+let tareasEscucha = null, tareasConexionToken = 0, tareasVista = "pendiente";
+let tareasEdicion = {id:"",revision:""};
+let tareasGuardando = false;
+
+function tareasRef(id) { return db.collection("fratello").doc("tareas").collection("items").doc(id); }
+function tareasRevision() { return `${Date.now()}_${Math.random().toString(36).slice(2,10)}`; }
+function tareasEstado(texto) { if ($("tareasEstado")) $("tareasEstado").textContent = texto; }
+function tareasFechaTexto(fecha) {
+  const iso=String(fecha||"").slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split("-").reverse().join("/") : "Sin fecha";
+}
+function tareasOrdenadas(lista, estado) {
+  return lista.filter(t=>!t.eliminada && t.estado===estado).sort((a,b)=>estado==="realizada"
+    ? String(b.realizadaEn||"").localeCompare(String(a.realizadaEn||""))
+    : Number(b.prioridad==="alta")-Number(a.prioridad==="alta") || String(a.fecha||"9999").localeCompare(String(b.fecha||"9999")) || String(a.creadoEn||"").localeCompare(String(b.creadoEn||"")));
+}
+function tareasRender() {
+  const host=$("tareasListado"), filtro=$("tareasFiltro");
+  if (!host || !filtro) return;
+  const seleccionado=filtro.value||"*";
+  const responsables=[...new Set(["Todos","Panaderos","Atención",...tareasDatos.filter(t=>!t.eliminada).map(t=>t.responsable||"Todos")])];
+  filtro.innerHTML='<option value="*">Todos los responsables</option>'+responsables.map(r=>`<option value="${escaparHtmlCatalogo(r)}">${escaparHtmlCatalogo(r)}</option>`).join("");
+  filtro.value=responsables.includes(seleccionado)?seleccionado:"*";
+  ["pendiente","realizada"].forEach(estado=>{
+    const boton=$(estado==="pendiente"?"tareasPendientes":"tareasRealizadas");
+    boton.textContent=`${estado==="pendiente"?"Pendientes":"Realizadas"} (${tareasDatos.filter(t=>!t.eliminada && t.estado===estado).length})`;
+    boton.classList.toggle("active",tareasVista===estado);
+    boton.setAttribute("aria-pressed",String(tareasVista===estado));
+  });
+  const lista=tareasOrdenadas(tareasDatos,tareasVista).filter(t=>filtro.value==="*" || (t.responsable||"Todos")===filtro.value || t.responsable==="Todos");
+  host.innerHTML=lista.length?lista.map(t=>`<article class="tareaCard ${t.prioridad==="alta"?"alta":""} ${t.estado==="realizada"?"realizada":""}" data-tarea-id="${escaparHtmlCatalogo(t.id)}">
+    <div class="tareaMeta"><span>${escaparHtmlCatalogo(t.responsable||"Todos")}</span>${t.prioridad==="alta"?'<b>Prioridad alta</b>':""}<span class="${t.estado!=="realizada"&&t.fecha&&t.fecha<hoyISO()?"tareaAtrasada":""}">${t.fecha?`Para el ${tareasFechaTexto(t.fecha)}`:"Sin fecha"}</span></div>
+    <h3>${escaparHtmlCatalogo(t.titulo)}</h3>${t.descripcion?`<p class="tareaDescripcion">${escaparHtmlCatalogo(t.descripcion)}</p>`:""}
+    ${t.estado==="realizada"?`<small>Realizada el ${tareasFechaTexto(t.realizadaEn)}</small>`:""}
+    <div class="tareaActions"><button type="button" class="${t.estado==="pendiente"?"primary":""}" data-tarea-accion="estado">${t.estado==="pendiente"?"✓ Marcar realizada":"Volver a pendiente"}</button><button type="button" data-tarea-accion="editar">Editar</button><button type="button" data-tarea-accion="eliminar">Eliminar</button></div>
+  </article>`).join(""):'<div class="tareasVacio">'+(tareasVista==="pendiente"?"No hay tareas pendientes para esta vista.":"No hay tareas realizadas para esta vista.")+"</div>";
+}
+function tareasCapturarForm() {
+  return {...tareasEdicion,titulo:$("tareasTitulo").value.trim(),descripcion:$("tareasDescripcion").value.trim(),responsable:$("tareasResponsable").value.trim()||"Todos",fecha:$("tareasFecha").value,prioridad:$("tareasPrioridad").value};
+}
+function tareasAbrirForm(dato=null) {
+  tareasEdicion={id:dato?.id||"",revision:dato?.revision||""};
+  $("tareasFormTitulo").textContent=tareasEdicion.id?"Editar tarea":"Nueva tarea";
+  $("tareasTitulo").value=dato?.titulo||""; $("tareasDescripcion").value=dato?.descripcion||"";
+  $("tareasResponsable").value=dato?.responsable||"Todos"; $("tareasFecha").value=dato?.fecha||""; $("tareasPrioridad").value=dato?.prioridad||"normal";
+  $("tareasForm").classList.remove("hidden");
+}
+function tareasCancelarForm() {
+  if (tareasGuardando) return;
+  $("tareasForm").classList.add("hidden"); tareasEdicion={id:"",revision:""};
+  guardarLocalSeguroV6021(TAREAS_DRAFT,"null");
+}
+async function tareasGuardarForm(evento) {
+  evento.preventDefault(); if(tareasGuardando) return;
+  const dato=tareasCapturarForm();
+  if (!dato.titulo) return tareasEstado("Escribí el título de la tarea.");
+  tareasGuardando=true; const controles=[...$("tareasForm").querySelectorAll("input,select,textarea,button")]; controles.forEach(el=>el.disabled=true);
+  tareasEstado("Guardando tarea...");
+  try {
+    if (!db || !await asegurarSesionOperativaV601()) throw new Error("tarea-offline");
+    const id=dato.id||tareasRevision(), ahora=new Date().toISOString(), revision=tareasRevision();
+    const campos={titulo:dato.titulo,descripcion:dato.descripcion,responsable:dato.responsable,fecha:dato.fecha,prioridad:dato.prioridad,actualizadoEn:ahora,revision};
+    await db.runTransaction(async tx=>{
+      const ref=tareasRef(id), snap=await tx.get(ref);
+      if(dato.id && (!snap.exists || snap.data().eliminada || snap.data().revision!==dato.revision)) throw new Error("tarea-conflicto");
+      if(!dato.id && snap.exists) throw new Error("tarea-conflicto");
+      tx.set(ref,dato.id?campos:{...campos,creadoEn:ahora,estado:"pendiente",eliminada:false},{merge:Boolean(dato.id)});
+    });
+    tareasGuardando=false; tareasCancelarForm(); tareasEstado("✅ Tarea guardada para todos los dispositivos.");
+  } catch(error) {
+    console.error("No se pudo guardar la tarea:",error);
+    tareasEstado(error.message==="tarea-conflicto"?"La tarea cambió en otro dispositivo. Tu borrador se conserva; revisá la versión actual antes de editarla otra vez.":"No se pudo guardar online. Conservamos el borrador para reintentar.");
+  } finally { tareasGuardando=false; controles.forEach(el=>el.disabled=false); }
+}
+async function tareasAccion(evento) {
+  const boton=evento.target.closest("[data-tarea-accion]");if(!boton)return;
+  const id=boton.closest("[data-tarea-id]")?.dataset.tareaId,tarea=tareasDatos.find(t=>t.id===id);if(!tarea)return;
+  const accion=boton.dataset.tareaAccion;
+  if(accion==="editar") {
+    if(!$("tareasForm").classList.contains("hidden")&&!confirm("¿Reemplazar el borrador abierto por esta tarea?"))return;
+    tareasAbrirForm(tarea);guardarLocalSeguroV6021(TAREAS_DRAFT,JSON.stringify(tareasCapturarForm()));$("tareasForm").scrollIntoView({behavior:"smooth",block:"start"});return;
+  }
+  if(accion==="eliminar"&&!confirm(`¿Eliminar la tarea «${tarea.titulo}»?`))return;
+  if(boton.disabled)return;
+  boton.disabled=true;
+  try {
+    if(!db || !await asegurarSesionOperativaV601())throw new Error("tarea-offline");
+    const ahora=new Date().toISOString();
+    await db.runTransaction(async tx=>{
+      const ref=tareasRef(id),snap=await tx.get(ref);if(!snap.exists||snap.data().eliminada)throw new Error("tarea-conflicto");
+      if(accion==="eliminar"&&snap.data().revision!==tarea.revision)throw new Error("tarea-conflicto");
+      if(accion==="estado"&&snap.data().estado===(tarea.estado==="pendiente"?"realizada":"pendiente"))return;
+      tx.update(ref,accion==="eliminar"?{eliminada:true,actualizadoEn:ahora,revision:tareasRevision()}:{estado:tarea.estado==="pendiente"?"realizada":"pendiente",realizadaEn:tarea.estado==="pendiente"?ahora:null,actualizadoEn:ahora,revision:tareasRevision()});
+    });
+    tareasEstado(accion==="eliminar"?"Tarea eliminada.":tarea.estado==="pendiente"?"✅ Tarea marcada como realizada.":"Tarea devuelta a pendientes.");
+  } catch(error){console.error("No se pudo actualizar la tarea:",error);tareasEstado(error.message==="tarea-conflicto"?"La tarea cambió. Revisá la versión actual y volvé a intentar.":"No se pudo guardar el cambio online. Volvé a intentar.");}
+  finally{boton.disabled=false;}
+}
+function tareasCerrarConexion(){tareasConexionToken++;if(tareasEscucha)tareasEscucha();tareasEscucha=null;}
+async function abrirTareas(){
+  tareasRender(); if(tareasEscucha)return;
+  const token=++tareasConexionToken;tareasEstado("Consultando tareas compartidas...");
+  try {
+    if(!db || !await asegurarSesionOperativaV601()) throw new Error("tarea-offline");
+  } catch(error) {if(token===tareasConexionToken)tareasEstado("Sin conexión: mostrando las tareas guardadas en este dispositivo.");return;}
+  if(token!==tareasConexionToken||seccionActualFratello!=="seccionTareas")return;
+  tareasEscucha=db.collection("fratello").doc("tareas").collection("items").where("eliminada","==",false).onSnapshot({includeMetadataChanges:true},snap=>{
+    tareasDatos=snap.docs.map(d=>({...d.data(),id:d.id}));
+    guardarLocalSeguroV6021(TAREAS_CACHE,JSON.stringify([...tareasOrdenadas(tareasDatos,"pendiente"),...tareasOrdenadas(tareasDatos,"realizada")].slice(0,300)));
+    tareasRender();tareasEstado(snap.metadata?.fromCache?"Mostrando tareas guardadas; esperando conexión con la nube.":"Tareas compartidas actualizadas.");
+  },error=>{console.error("No se pudieron consultar las tareas:",error);tareasCerrarConexion();tareasEstado("No se pudo actualizar. Las tareas guardadas siguen visibles; tocá Reintentar.");$("tareasReintentar")?.classList.remove("hidden");});
+}
+function iniciarModuloTareas(){
+  if(!$("tareasForm"))return;
+  $("tareasNueva").addEventListener("click",()=>{if(tareasGuardando)return;if(!$("tareasForm").classList.contains("hidden"))return $("tareasTitulo").focus();tareasAbrirForm();$("tareasTitulo").focus();});
+  $("tareasForm").addEventListener("submit",tareasGuardarForm);
+  $("tareasForm").addEventListener("input",()=>guardarLocalSeguroV6021(TAREAS_DRAFT,JSON.stringify(tareasCapturarForm())));
+  $("tareasCancelar").addEventListener("click",tareasCancelarForm);
+  $("tareasListado").addEventListener("click",tareasAccion);
+  $("tareasFiltro").addEventListener("change",tareasRender);
+  $("tareasPendientes").addEventListener("click",()=>{tareasVista="pendiente";tareasRender();});
+  $("tareasRealizadas").addEventListener("click",()=>{tareasVista="realizada";tareasRender();});
+  $("tareasReintentar")?.addEventListener("click",()=>{tareasCerrarConexion();abrirTareas();});
+  const draft=leerJsonLocalSeguro(TAREAS_DRAFT,null);if(draft)tareasAbrirForm(draft);
+}
+
 async function init() {
   iniciarPersistenciaDetalles();
   document.querySelectorAll('input[type="date"]').forEach(input => {
@@ -16330,6 +16465,7 @@ async function init() {
   });
   iniciarModuloCaja();
   iniciarModuloStockMercaderia();
+  iniciarModuloTareas();
   iniciarAccesoAdministrador();
   iniciarModuloAdministracion();
 

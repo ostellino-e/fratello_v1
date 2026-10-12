@@ -1,4 +1,13 @@
-# Fratello v6.0.38
+# Fratello v6.0.39
+
+## Mejora v6.0.39
+
+- Activa Tareas como tablero compartido desde Inicio para PC y celulares.
+- Permite dejar título e indicaciones, responsable (equipo o nombre), fecha opcional y prioridad.
+- Pendientes y Realizadas, filtros por responsable, edición, eliminación y vuelta a pendiente.
+- Firebase guarda cada tarea por separado; la escucha se abre solo mientras se visita Tareas.
+- Conserva borradores locales y avisa ante una edición simultánea para evitar sobrescrituras.
+- El tablero es operativo compartido: los usuarios de la app pueden crear tareas y marcar lo realizado.
 
 ## Corrección v6.0.38
 
@@ -398,4 +407,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.38
+Versión esperada: v6.0.39
