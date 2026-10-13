@@ -4047,6 +4047,21 @@ function fusionarListaAdminSync(remota = [], local = []) {
   return [...mapa.values()];
 }
 
+function fusionarTransferenciasDineroSync(remota = [], local = []) {
+  const eliminadas = new Map();
+  [...(Array.isArray(remota) ? remota : []), ...(Array.isArray(local) ? local : [])]
+    .filter(item => item?.id && item.eliminado)
+    .forEach(item => {
+      const anterior = eliminadas.get(String(item.id));
+      if (!anterior || fechaCambioAdminSync(item) >= fechaCambioAdminSync(anterior)) {
+        eliminadas.set(String(item.id), item);
+      }
+    });
+  // El borrado prevalece incluso ante una edición hecha sobre una copia antigua.
+  return fusionarListaAdminSync(remota, local)
+    .map(item => eliminadas.get(String(item.id)) || item);
+}
+
 function fusionarAdministracionFinancieraSync(remota = {}, local = {}) {
   const clientesEliminados = [...new Set([
     ...(Array.isArray(remota.clientesExternosEliminados) ? remota.clientesExternosEliminados : []),
@@ -4078,7 +4093,7 @@ function fusionarAdministracionFinancieraSync(remota = {}, local = {}) {
     gastosManuales: fusionarListaAdminSync(remota.gastosManuales, local.gastosManuales),
     presupuestos: fusionarListaAdminSync(remota.presupuestos, local.presupuestos),
     plataRealManual,
-    transferenciasDinero: fusionarListaAdminSync(remota.transferenciasDinero, local.transferenciasDinero)
+    transferenciasDinero: fusionarTransferenciasDineroSync(remota.transferenciasDinero, local.transferenciasDinero)
   };
 }
 
@@ -11419,8 +11434,7 @@ function fechaEnMesAdministracion(fecha, mes = mesSeleccionadoAdministracion()) 
   return String(fecha || "").slice(0, 7) === mes;
 }
 
-function ingresosCajaDelMesAdministracion() {
-  const mes = mesSeleccionadoAdministracion();
+function ingresosCajaDelMesAdministracion(mes = mesSeleccionadoAdministracion()) {
   return (Array.isArray(cierresCaja) ? cierresCaja : [])
     .filter(cierre => fechaEnMesAdministracion(cierre.fecha, mes))
     .map(cierre => ({
@@ -11459,8 +11473,7 @@ function gastosCajaDelMesAdministracion() {
   return resultado.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 }
 
-function ingresosExternosDelMesAdministracion() {
-  const mes = mesSeleccionadoAdministracion();
+function ingresosExternosDelMesAdministracion(mes = mesSeleccionadoAdministracion()) {
   return administracionFinanciera.ingresosExternos
     .filter(item => fechaEnMesAdministracion(item.fecha, mes))
     .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
@@ -11535,7 +11548,7 @@ function adminFinTabla(encabezados, filas) {
 
 function transferenciasDineroDelMes(mes = mesSeleccionadoAdministracion()) {
   return (administracionFinanciera.transferenciasDinero || [])
-    .filter(item => String(item.fecha || "").slice(0, 7) === mes)
+    .filter(item => !item.eliminado && String(item.fecha || "").slice(0, 7) === mes)
     .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 }
 
@@ -11548,7 +11561,7 @@ function aplicarTransferenciasEntreMedios(totales, movimientos = transferenciasD
     "Otro": adminFinMonto(totales?.["Otro"])
   };
 
-  (movimientos || []).forEach(item => {
+  (movimientos || []).filter(item => !item.eliminado).forEach(item => {
     const desde = normalizarMedioPagoAdministracion(item.desde);
     const hacia = normalizarMedioPagoAdministracion(item.hacia);
     const monto = adminFinMonto(item.monto);
@@ -11559,13 +11572,43 @@ function aplicarTransferenciasEntreMedios(totales, movimientos = transferenciasD
   return resultado;
 }
 
+function cerrarFormularioTransferenciaDinero() {
+  const form = $("formTransferenciaDinero");
+  form?.classList.add("hidden");
+  if (form) form.dataset.edicionId = "";
+}
+
+function editarTransferenciaDinero(id) {
+  const item = (administracionFinanciera.transferenciasDinero || [])
+    .find(item => item.id === id && !item.eliminado);
+  const form = $("formTransferenciaDinero");
+  if (!item || !form) return;
+  form.dataset.edicionId = item.id;
+  form.dataset.mes = mesSeleccionadoAdministracion();
+  ["Desde", "Hacia", "Monto", "Fecha", "Observacion"].forEach(campo => {
+    const input = $("transferenciaDinero" + campo);
+    if (input) input.value = item[campo.toLowerCase()] ?? "";
+  });
+  $("btnGuardarTransferenciaDinero").textContent = "Guardar cambios";
+  form.classList.remove("hidden");
+  form.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 function guardarTransferenciaDinero() {
   const desde = $("transferenciaDineroDesde")?.value || "Efectivo";
   const hacia = $("transferenciaDineroHacia")?.value || "Transferencia";
   const monto = adminFinMonto($("transferenciaDineroMonto")?.value);
-  const fecha = $("transferenciaDineroFecha")?.value || adminFinHoy();
+  const fecha = $("transferenciaDineroFecha")?.value;
   const observacion = String($("transferenciaDineroObservacion")?.value || "").trim();
+  const id = $("formTransferenciaDinero")?.dataset.edicionId || "";
+  const anterior = (administracionFinanciera.transferenciasDinero || []).find(item => item.id === id);
 
+  if (id && (!anterior || anterior.eliminado)) {
+    alert("Esta transferencia ya fue eliminada. No se pueden guardar cambios.");
+    cerrarFormularioTransferenciaDinero();
+    renderResumenMovilAdministracion();
+    return;
+  }
   if (desde === hacia) {
     alert("Elegí dos medios de dinero diferentes.");
     return;
@@ -11574,33 +11617,55 @@ function guardarTransferenciaDinero() {
     alert("Ingresá un monto válido.");
     return;
   }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || "")) {
+    alert("Ingresá una fecha válida.");
+    return;
+  }
 
-  const base = datosResumenMovilAdministracion();
-  const disponible = adminFinMonto(base.ingresosPorMedio?.[normalizarMedioPagoAdministracion(desde)]);
+  // Al editar se calcula el disponible sin el movimiento anterior, en el mes de destino.
+  const mes = fecha.slice(0, 7);
+  const ingresosBase = totalesPorMedioAdministracion([
+    ...ingresosCajaDelMesAdministracion(mes).flatMap(item => [
+      { monto: item.efectivo, medio: "Efectivo" },
+      { monto: item.transferencias, medio: "Transferencia" }
+    ]),
+    ...ingresosExternosDelMesAdministracion(mes).filter(item => item.cobrado !== false)
+  ]);
+  const saldos = aplicarTransferenciasEntreMedios(ingresosBase,
+    transferenciasDineroDelMes(mes).filter(item => item.id !== id));
+  const disponible = adminFinMonto(saldos[normalizarMedioPagoAdministracion(desde)]);
   if (monto > disponible) {
     alert(`No podés transferir más de ${adminFinDinero(disponible)} desde ${desde}.`);
     return;
   }
 
+  const ahora = new Date().toISOString();
+  const movimiento = {
+    ...anterior,
+    id: anterior?.id || adminFinId("transf"),
+    fecha, desde, hacia, monto, observacion,
+    creadoEn: anterior?.creadoEn || ahora,
+    actualizadoEn: ahora,
+    eliminado: false
+  };
   administracionFinanciera.transferenciasDinero ||= [];
-  administracionFinanciera.transferenciasDinero.push({
-    id: adminFinId("transf"),
-    fecha,
-    desde,
-    hacia,
-    monto,
-    observacion,
-    creadoEn: new Date().toISOString()
-  });
-
+  if (anterior) {
+    administracionFinanciera.transferenciasDinero = administracionFinanciera.transferenciasDinero
+      .map(item => item.id === id ? movimiento : item);
+  } else {
+    administracionFinanciera.transferenciasDinero.push(movimiento);
+  }
+  cerrarFormularioTransferenciaDinero();
   guardarAdministracion();
   renderResumenMovilAdministracion();
 }
 
 function eliminarTransferenciaDinero(id) {
-  if (!confirm("¿Eliminar esta transferencia de dinero?")) return;
-  administracionFinanciera.transferenciasDinero =
-    (administracionFinanciera.transferenciasDinero || []).filter(item => item.id !== id);
+  const item = (administracionFinanciera.transferenciasDinero || []).find(item => item.id === id && !item.eliminado);
+  if (!item || !confirm("¿Eliminar esta transferencia de dinero?")) return;
+  item.eliminado = true;
+  item.actualizadoEn = new Date().toISOString();
+  if ($("formTransferenciaDinero")?.dataset.edicionId === id) cerrarFormularioTransferenciaDinero();
   guardarAdministracion();
   renderResumenMovilAdministracion();
 }
@@ -11618,7 +11683,8 @@ function renderHistorialTransferenciasDinero() {
             <small>${adminFinEscapar(adminFinFecha(item.fecha))}${item.observacion ? ` · ${adminFinEscapar(item.observacion)}` : ""}</small>
           </span>
           <b>${adminFinDinero(item.monto)}</b>
-          <button type="button" onclick="eliminarTransferenciaDinero('${item.id}')">Eliminar</button>
+          <button type="button" onclick="editarTransferenciaDinero('${adminFinEscapar(item.id)}')">Editar</button>
+          <button type="button" onclick="eliminarTransferenciaDinero('${adminFinEscapar(item.id)}')">Eliminar</button>
         </div>`).join("")}`
     : "";
 }
@@ -11698,6 +11764,13 @@ function datosResumenMovilAdministracion() {
 function renderResumenMovilAdministracion() {
   const host = $("resumenMovilAdministracion");
   if (!host) return;
+  const formAnterior = $("formTransferenciaDinero");
+  const borrador = formAnterior && !formAnterior.classList.contains("hidden") &&
+    formAnterior.dataset.mes === mesSeleccionadoAdministracion() ? {
+      id: formAnterior.dataset.edicionId || "",
+      campos: ["Desde", "Hacia", "Monto", "Fecha", "Observacion"].map(campo =>
+        [campo, $("transferenciaDinero" + campo)?.value || ""])
+    } : null;
   const d = datosResumenMovilAdministracion();
   const diferenciaClase = Math.abs(d.diferencia) < 0.01 ? "ok" : d.diferencia > 0 ? "positive" : "negative";
   const clientesHtml = d.clientes.length
@@ -11802,6 +11875,14 @@ function renderResumenMovilAdministracion() {
     </section>`;
 
   renderHistorialTransferenciasDinero();
+  const form = $("formTransferenciaDinero");
+  if (form) form.dataset.mes = mesSeleccionadoAdministracion();
+  if (borrador && (!borrador.id || administracionFinanciera.transferenciasDinero.some(item => item.id === borrador.id && !item.eliminado))) {
+    form.dataset.edicionId = borrador.id;
+    borrador.campos.forEach(([campo, valor]) => { $("transferenciaDinero" + campo).value = valor; });
+    $("btnGuardarTransferenciaDinero").textContent = borrador.id ? "Guardar cambios" : "Confirmar transferencia";
+    form.classList.remove("hidden");
+  }
 }
 
 function renderResumenAdministracion() {
@@ -13944,11 +14025,21 @@ function iniciarModuloAdministracion() {
       return;
     }
     if (evento.target.closest("#btnAbrirTransferenciaDinero")) {
-      $("formTransferenciaDinero")?.classList.toggle("hidden");
+      const form = $("formTransferenciaDinero");
+      if (form?.classList.contains("hidden")) {
+        form.dataset.edicionId = "";
+        $("transferenciaDineroDesde").value = "Efectivo";
+        $("transferenciaDineroHacia").value = "Transferencia";
+        $("transferenciaDineroMonto").value = "";
+        $("transferenciaDineroFecha").value = adminFinHoy();
+        $("transferenciaDineroObservacion").value = "";
+        $("btnGuardarTransferenciaDinero").textContent = "Confirmar transferencia";
+        form.classList.remove("hidden");
+      } else cerrarFormularioTransferenciaDinero();
       return;
     }
     if (evento.target.closest("#btnCancelarTransferenciaDinero")) {
-      $("formTransferenciaDinero")?.classList.add("hidden");
+      cerrarFormularioTransferenciaDinero();
       return;
     }
     if (evento.target.closest("#btnGuardarTransferenciaDinero")) {
@@ -14029,6 +14120,7 @@ window.imprimirTicketProduccion = imprimirTicketProduccion;
 window.imprimirTicketsComercialesDelDia = imprimirTicketsComercialesDelDia;
 window.imprimirTicketsProduccionDelDia = imprimirTicketsProduccionDelDia;
 window.eliminarTransferenciaDinero = eliminarTransferenciaDinero;
+window.editarTransferenciaDinero = editarTransferenciaDinero;
 window.editarClienteExterno = editarClienteExterno;
 window.eliminarClienteExterno = eliminarClienteExterno;
 window.eliminarIngresoAdministracion = eliminarIngresoAdministracion;

@@ -4762,7 +4762,7 @@ body.modal-open{
 .moneyTransferHistory h4{margin:0 0 2px}
 .moneyTransferRow{
   display:grid;
-  grid-template-columns:1fr auto auto;
+  grid-template-columns:1fr auto auto auto;
   align-items:center;
   gap:12px;
   padding:10px 11px;
@@ -4780,7 +4780,7 @@ body.modal-open{
   .moneyTransferGrid{grid-template-columns:1fr 1fr}
   .moneyTransferGrid label.wide{grid-column:1/-1}
   .moneyTransferRow{grid-template-columns:1fr auto}
-  .moneyTransferRow button{grid-column:1/-1}
+  .moneyTransferRow button{grid-column:auto}
 }
 
 

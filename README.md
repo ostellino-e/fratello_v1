@@ -1,4 +1,13 @@
-# Fratello v6.0.43
+# Fratello v6.0.44
+
+## Mejora v6.0.44
+
+- Las transferencias eliminadas conservan una marca persistente que prevalece sobre copias antiguas al sincronizar. No se muestran ni participan en los cálculos.
+- El historial incluye Editar para corregir origen, destino, monto, fecha y observación, manteniendo el ID original.
+- La edición valida el disponible sin contar dos veces el movimiento anterior y utiliza los ingresos del mes de la nueva fecha.
+- El formulario conserva lo escrito si se actualiza el resumen durante la carga o edición.
+- No requiere volver a publicar las reglas de Firebase.
+- Validación: sintaxis JavaScript y pruebas de borrado, recarga, fusión remota/local, edición, cambios de mes y cálculo de saldos.
 
 ## Mejora v6.0.43
 
@@ -437,4 +446,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.43
+Versión esperada: v6.0.44
