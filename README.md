@@ -1,4 +1,12 @@
-# Fratello v6.0.44
+# Fratello v6.0.45
+
+## Mejora v6.0.45
+
+- Los gastos manuales borrados conservan una marca persistente que prevalece durante la sincronización, incluso sobre ediciones realizadas en copias antiguas.
+- Se excluyen de las listas, resúmenes, filtros, totales y CSV; se bloquea su restauración mediante un formulario de edición antiguo.
+- Se mantiene la corrección de transferencias de la v6.0.44.
+- No requiere publicar nuevas reglas de Firebase.
+- Validación: sintaxis JavaScript y pruebas de borrado/cancelación, recarga, fusión en ambos sentidos, exclusión del resumen/CSV, carga/edición de gastos activos y regresión de transferencias.
 
 ## Mejora v6.0.44
 
@@ -446,4 +454,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.44
+Versión esperada: v6.0.45

@@ -265,7 +265,7 @@ async function restaurarBackupCompleto() {
 function exportarAdministracionCSV() {
   const filas=[["Tipo","Fecha","Concepto","Categoría/Cliente","Medio","Monto","Estado"]];
   (administracionFinanciera.ingresosExternos||[]).forEach(x=>filas.push(["Ingreso",x.fecha,x.descripcion||"",x.cliente||"",x.medio||"",x.monto||0,x.cobrado===false?"Pendiente":"Cobrado"]));
-  (administracionFinanciera.gastosManuales||[]).forEach(x=>filas.push(["Gasto",x.fecha,x.motivo||"",x.categoria||"",x.medio||"",x.monto||0,x.pagado===false?"Pendiente":"Pagado"]));
+  (administracionFinanciera.gastosManuales||[]).filter(x=>!x.eliminado).forEach(x=>filas.push(["Gasto",x.fecha,x.motivo||"",x.categoria||"",x.medio||"",x.monto||0,x.pagado===false?"Pendiente":"Pagado"]));
   (administracionFinanciera.presupuestos||[]).forEach(x=>filas.push(["Presupuesto",x.mes||"",x.concepto||"",x.categoria||"","",x.monto||0,""]));
   const csv="\ufeff"+filas.map(f=>f.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\n");
   segDescargar(`fratello_administracion_${adminFinHoy()}.csv`,csv,"text/csv;charset=utf-8"); segAuditar("backup","Administración exportada a CSV","");
@@ -4047,7 +4047,7 @@ function fusionarListaAdminSync(remota = [], local = []) {
   return [...mapa.values()];
 }
 
-function fusionarTransferenciasDineroSync(remota = [], local = []) {
+function fusionarListaAdminConEliminacionesSync(remota = [], local = []) {
   const eliminadas = new Map();
   [...(Array.isArray(remota) ? remota : []), ...(Array.isArray(local) ? local : [])]
     .filter(item => item?.id && item.eliminado)
@@ -4060,6 +4060,10 @@ function fusionarTransferenciasDineroSync(remota = [], local = []) {
   // El borrado prevalece incluso ante una edición hecha sobre una copia antigua.
   return fusionarListaAdminSync(remota, local)
     .map(item => eliminadas.get(String(item.id)) || item);
+}
+
+function fusionarTransferenciasDineroSync(remota = [], local = []) {
+  return fusionarListaAdminConEliminacionesSync(remota, local);
 }
 
 function fusionarAdministracionFinancieraSync(remota = {}, local = {}) {
@@ -4090,7 +4094,7 @@ function fusionarAdministracionFinancieraSync(remota = {}, local = {}) {
     ingresosExternos: fusionarListaAdminSync(remota.ingresosExternos, local.ingresosExternos),
     clientesExternos: clientes,
     clientesExternosEliminados: clientesEliminados,
-    gastosManuales: fusionarListaAdminSync(remota.gastosManuales, local.gastosManuales),
+    gastosManuales: fusionarListaAdminConEliminacionesSync(remota.gastosManuales, local.gastosManuales),
     presupuestos: fusionarListaAdminSync(remota.presupuestos, local.presupuestos),
     plataRealManual,
     transferenciasDinero: fusionarTransferenciasDineroSync(remota.transferenciasDinero, local.transferenciasDinero)
@@ -11482,7 +11486,7 @@ function ingresosExternosDelMesAdministracion(mes = mesSeleccionadoAdministracio
 function gastosManualesDelMesAdministracion() {
   const mes = mesSeleccionadoAdministracion();
   return administracionFinanciera.gastosManuales
-    .filter(item => fechaEnMesAdministracion(item.fecha, mes))
+    .filter(item => !item.eliminado && fechaEnMesAdministracion(item.fecha, mes))
     .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 }
 
@@ -12950,7 +12954,14 @@ function eliminarIngresoAdministracion(id) {
 }
 
 function guardarGastoAdministracion() {
-  const id = $("gastoAdminId")?.value || adminFinId("gas");
+  const idEdicion = $("gastoAdminId")?.value || "";
+  const anterior = administracionFinanciera.gastosManuales.find(x => x.id === idEdicion);
+  if (idEdicion && (!anterior || anterior.eliminado)) {
+    alert("Este gasto ya fue eliminado. No se pueden guardar cambios.");
+    ocultarFormularioAdministracion("gasto");
+    return;
+  }
+  const id = idEdicion || adminFinId("gas");
   const mediosPago = leerMediosPagoGastoAdministracion();
   const montoTotalGasto = totalMediosPagoGastoAdministracion(mediosPago);
   const item = {
@@ -13003,15 +13014,18 @@ function guardarGastoAdministracion() {
 }
 
 function editarGastoAdministracion(id) {
-  const item = administracionFinanciera.gastosManuales.find(x => x.id === id);
+  const item = administracionFinanciera.gastosManuales.find(x => x.id === id && !x.eliminado);
   if (!item) return;
   cambiarTabAdministracion("gastos");
   mostrarFormularioAdministracion("gasto", item);
 }
 
 function eliminarGastoAdministracion(id) {
-  if (!confirm("¿Eliminar este gasto?")) return;
-  administracionFinanciera.gastosManuales = administracionFinanciera.gastosManuales.filter(x => x.id !== id);
+  const item = administracionFinanciera.gastosManuales.find(x => x.id === id && !x.eliminado);
+  if (!item || !confirm("¿Eliminar este gasto?")) return;
+  item.eliminado = true;
+  item.actualizadoEn = new Date().toISOString();
+  if ($("gastoAdminId")?.value === id) ocultarFormularioAdministracion("gasto");
   guardarAdministracion();
 }
 
