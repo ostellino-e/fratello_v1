@@ -1,4 +1,13 @@
-# Fratello v6.0.45
+# Fratello v6.0.46
+
+## Mejora v6.0.46
+
+- Los ingresos externos borrados conservan una marca persistente que prevalece sobre copias antiguas durante la sincronización.
+- Se excluyen de listados, filtros, resúmenes, montos disponibles para transferir, totales, pendientes, CSV y creación automática de clientes desde ingresos.
+- Se bloquea restaurarlos mediante una edición abierta antes del borrado.
+- Incluye las correcciones de borrado de gastos y transferencias.
+- No requiere nuevas reglas de Firebase.
+- Validación: sintaxis JavaScript; borrado/cancelación, recarga, sincronización en ambos sentidos, ediciones antiguas, totales/pending/CSV, carga y edición activa; regresión de gastos y transferencias.
 
 ## Mejora v6.0.45
 
@@ -454,4 +463,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.45
+Versión esperada: v6.0.46

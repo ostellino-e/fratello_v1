@@ -264,7 +264,7 @@ async function restaurarBackupCompleto() {
 }
 function exportarAdministracionCSV() {
   const filas=[["Tipo","Fecha","Concepto","Categoría/Cliente","Medio","Monto","Estado"]];
-  (administracionFinanciera.ingresosExternos||[]).forEach(x=>filas.push(["Ingreso",x.fecha,x.descripcion||"",x.cliente||"",x.medio||"",x.monto||0,x.cobrado===false?"Pendiente":"Cobrado"]));
+  (administracionFinanciera.ingresosExternos||[]).filter(x=>!x.eliminado).forEach(x=>filas.push(["Ingreso",x.fecha,x.descripcion||"",x.cliente||"",x.medio||"",x.monto||0,x.cobrado===false?"Pendiente":"Cobrado"]));
   (administracionFinanciera.gastosManuales||[]).filter(x=>!x.eliminado).forEach(x=>filas.push(["Gasto",x.fecha,x.motivo||"",x.categoria||"",x.medio||"",x.monto||0,x.pagado===false?"Pendiente":"Pagado"]));
   (administracionFinanciera.presupuestos||[]).forEach(x=>filas.push(["Presupuesto",x.mes||"",x.concepto||"",x.categoria||"","",x.monto||0,""]));
   const csv="\ufeff"+filas.map(f=>f.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\n");
@@ -4091,7 +4091,7 @@ function fusionarAdministracionFinancieraSync(remota = {}, local = {}) {
   });
 
   return {
-    ingresosExternos: fusionarListaAdminSync(remota.ingresosExternos, local.ingresosExternos),
+    ingresosExternos: fusionarListaAdminConEliminacionesSync(remota.ingresosExternos, local.ingresosExternos),
     clientesExternos: clientes,
     clientesExternosEliminados: clientesEliminados,
     gastosManuales: fusionarListaAdminConEliminacionesSync(remota.gastosManuales, local.gastosManuales),
@@ -11479,7 +11479,7 @@ function gastosCajaDelMesAdministracion() {
 
 function ingresosExternosDelMesAdministracion(mes = mesSeleccionadoAdministracion()) {
   return administracionFinanciera.ingresosExternos
-    .filter(item => fechaEnMesAdministracion(item.fecha, mes))
+    .filter(item => !item.eliminado && fechaEnMesAdministracion(item.fecha, mes))
     .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 }
 
@@ -11940,7 +11940,7 @@ function asegurarClientesExternosDesdeIngresos() {
     )
   );
 
-  administracionFinanciera.ingresosExternos.forEach(item => {
+  administracionFinanciera.ingresosExternos.filter(item => !item.eliminado).forEach(item => {
     const nombre = String(item.cliente || "").trim();
     const clave = nombre.toLowerCase();
     if (!nombre || existentes.has(clave) || eliminados.has(clave)) return;
@@ -12899,7 +12899,14 @@ function ocultarFormularioAdministracion(tipo) {
 }
 
 function guardarIngresoAdministracion() {
-  const id = $("ingresoAdminId")?.value || adminFinId("ing");
+  const idEdicion = $("ingresoAdminId")?.value || "";
+  const anterior = administracionFinanciera.ingresosExternos.find(x => x.id === idEdicion);
+  if (idEdicion && (!anterior || anterior.eliminado)) {
+    alert("Este ingreso ya fue eliminado. No se pueden guardar cambios.");
+    ocultarFormularioAdministracion("ingreso");
+    return;
+  }
+  const id = idEdicion || adminFinId("ing");
   const item = {
     id,
     fecha: $("ingresoAdminFecha")?.value || adminFinHoy(),
@@ -12939,7 +12946,7 @@ function guardarIngresoAdministracion() {
 }
 
 function editarIngresoAdministracion(id) {
-  const item = administracionFinanciera.ingresosExternos.find(x => x.id === id);
+  const item = administracionFinanciera.ingresosExternos.find(x => x.id === id && !x.eliminado);
   if (!item) return;
   activarTabAdministracion("ingresos");
   mostrarVistaIngresos("carga");
@@ -12948,8 +12955,11 @@ function editarIngresoAdministracion(id) {
 }
 
 function eliminarIngresoAdministracion(id) {
-  if (!confirm("¿Eliminar este ingreso?")) return;
-  administracionFinanciera.ingresosExternos = administracionFinanciera.ingresosExternos.filter(x => x.id !== id);
+  const item = administracionFinanciera.ingresosExternos.find(x => x.id === id && !x.eliminado);
+  if (!item || !confirm("¿Eliminar este ingreso?")) return;
+  item.eliminado = true;
+  item.actualizadoEn = new Date().toISOString();
+  if ($("ingresoAdminId")?.value === id) ocultarFormularioAdministracion("ingreso");
   guardarAdministracion();
 }
 
