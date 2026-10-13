@@ -5349,3 +5349,8 @@ body.modal-open{
 
 /* v6.0.43 — acceso a modo Panadería */
 .passwordPanaActions{display:flex;justify-content:flex-end;gap:7px}.passwordPanaActions button{margin:0}.modoVisualBar #btnPasswordPanaderia{margin:0;padding:6px 9px;font-size:11px;min-height:32px}#estadoPasswordPanaderia{font-size:13px;color:#a33127;min-height:18px}.passwordPanaActions{margin-top:14px}
+
+/* v6.0.47 — diferencias de dinero por medio */
+.moneyDifferenceBreakdown .moneyDifferenceNegative{color:#b42318!important}
+.moneyDifferenceBreakdown .moneyDifferencePositive{color:#187044!important}
+.moneyDifferenceBreakdown .moneyDifferenceOk{color:#5a655d!important}

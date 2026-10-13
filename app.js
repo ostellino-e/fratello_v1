@@ -11422,8 +11422,12 @@ function recalcularPlataRealManualEnPantalla() {
   const transferencias = adminFinMonto($("plataRealTransferenciasManual")?.value);
   const cheques = adminFinMonto($("plataRealChequesManual")?.value);
   const total = efectivo + transferencias + cheques;
-  const resultado = resumenNumericoAdministracion().resultado;
-  const diferencia = total - resultado;
+  const resumen = datosResumenMovilAdministracion();
+  const diferencia = total - resumen.resultado;
+  const diferenciasMedios = diferenciasDineroPorMedio(resumen.gananciaPorMedio, { efectivo, transferencias, cheques });
+  if ($("plataRealDiferenciasMedios")) {
+    $("plataRealDiferenciasMedios").innerHTML = htmlDiferenciasDineroPorMedio(diferenciasMedios);
+  }
   const clase = Math.abs(diferencia) < 0.01 ? "ok" : diferencia > 0 ? "positive" : "negative";
 
   if ($("plataRealTotalManual")) $("plataRealTotalManual").textContent = adminFinDinero(total);
@@ -11569,8 +11573,8 @@ function aplicarTransferenciasEntreMedios(totales, movimientos = transferenciasD
     const desde = normalizarMedioPagoAdministracion(item.desde);
     const hacia = normalizarMedioPagoAdministracion(item.hacia);
     const monto = adminFinMonto(item.monto);
-    resultado[desde] = adminFinMonto(resultado[desde]) - monto;
-    resultado[hacia] = adminFinMonto(resultado[hacia]) + monto;
+    resultado[desde] = (Number(resultado[desde]) || 0) - monto;
+    resultado[hacia] = (Number(resultado[hacia]) || 0) + monto;
   });
 
   return resultado;
@@ -11693,6 +11697,30 @@ function renderHistorialTransferenciasDinero() {
     : "";
 }
 
+function diferenciasDineroPorMedio(esperado, real) {
+  return {
+    "Efectivo": adminFinMonto(real.efectivo) - (Number(esperado.Efectivo) || 0),
+    "Transferencia": adminFinMonto(real.transferencias) -
+      ((Number(esperado.Transferencia) || 0) + (Number(esperado["Mercado Pago"]) || 0)),
+    "Cheque": adminFinMonto(real.cheques) - (Number(esperado.Cheque) || 0),
+    "Otro": -(Number(esperado.Otro) || 0)
+  };
+}
+
+function htmlDiferenciasDineroPorMedio(diferencias) {
+  return `<div class="moneyMethodBreakdown compact moneyDifferenceBreakdown">${
+    ["Efectivo", "Transferencia", "Cheque", "Otro"]
+      .filter(medio => medio !== "Otro" || Math.abs(diferencias[medio] || 0) >= 0.01)
+      .map(medio => {
+        const monto = Number(diferencias[medio]) || 0;
+        const clase = Math.abs(monto) < 0.01 ? "moneyDifferenceOk" :
+          monto > 0 ? "moneyDifferencePositive" : "moneyDifferenceNegative";
+        const etiqueta = medio === "Transferencia" ? "Transferencias" : medio === "Cheque" ? "Cheques" : medio;
+        return `<div><span${medio === "Transferencia" ? ' title="Incluye Mercado Pago"' : ""}>${etiqueta}</span><strong class="${clase}">${monto > 0 ? "+" : ""}${adminFinDinero(monto)}</strong></div>`;
+      }).join("")
+  }</div>`;
+}
+
 function datosResumenMovilAdministracion() {
   const r = resumenNumericoAdministracion();
   const caja = ingresosCajaDelMesAdministracion();
@@ -11745,7 +11773,7 @@ function datosResumenMovilAdministracion() {
   const gananciaPorMedio = {};
   ["Efectivo", "Transferencia", "Mercado Pago", "Cheque", "Otro"].forEach(medio => {
     gananciaPorMedio[medio] =
-      adminFinMonto(ingresosPorMedio[medio]) - adminFinMonto(gastosPorMedio[medio]);
+      (Number(ingresosPorMedio[medio]) || 0) - adminFinMonto(gastosPorMedio[medio]);
   });
 
   return {
@@ -11754,6 +11782,7 @@ function datosResumenMovilAdministracion() {
     ingresosPorMedio,
     gastosPorMedio,
     gananciaPorMedio,
+    diferenciaPorMedio: diferenciasDineroPorMedio(gananciaPorMedio, manual),
     efectivoCalculado: efectivo,
     transferenciasCalculadas: transferencias,
     chequesCalculados: cheques,
@@ -11816,9 +11845,10 @@ function renderResumenMovilAdministracion() {
         <small>Ingresada manualmente</small>
       </article>
       <article class="difference ${diferenciaClase}">
-        <span>Diferencia</span>
+        <span>Diferencia total</span>
         <strong id="plataRealDiferenciaManual">${adminFinDinero(d.diferencia)}</strong>
-        <small>Plata real − ganancia esperada</small>
+        <div id="plataRealDiferenciasMedios">${htmlDiferenciasDineroPorMedio(d.diferenciaPorMedio)}</div>
+        <small>+ sobra · − falta</small>
       </article>
     </div>
     <section class="adminMobileRealEditor">
@@ -12090,7 +12120,7 @@ function htmlDesgloseMediosAdministracion(totales, compacto = false, soloMedio =
   const orden = ["Efectivo", "Transferencia", "Mercado Pago", "Cheque", "Otro"];
   return `<div class="moneyMethodBreakdown ${compacto ? "compact" : ""}">
     ${orden.filter(medio => !soloMedio || medio === soloMedio).map(medio => {
-      const monto = adminFinMonto(totales?.[medio]);
+      const monto = Number(totales?.[medio]) || 0;
       if (!monto && !soloMedio && medio !== "Efectivo" && medio !== "Transferencia") return "";
       return `<div><span>${medio}</span><strong>${adminFinDinero(monto)}</strong></div>`;
     }).join("")}

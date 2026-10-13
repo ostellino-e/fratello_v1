@@ -1,4 +1,13 @@
-# Fratello v6.0.46
+# Fratello v6.0.47
+
+## Mejora v6.0.47
+
+- El resumen muestra la diferencia total y el faltante/sobrante por efectivo, transferencias y cheques: dinero real contado menos saldo calculado del medio.
+- Las diferencias por medio se actualizan al editar/eliminar cambios de dinero y al escribir los valores de plata real. Transferencias incluye Mercado Pago; Otros se muestra si tiene diferencia.
+- Los saldos negativos conservan su signo al calcular y mostrar el resumen. Los movimientos entre medios conservan la suma total.
+- Se mantienen los valores de plata real ingresados manualmente.
+- Incluye las correcciones de borrado anteriores; no requiere nuevas reglas de Firebase.
+- Validación: sintaxis JavaScript y pruebas de edición 690.000->800.000, diferencia total invariable, variación por medio, saldos negativos, agrupación Mercado Pago, presentación de signos/colores y actualización al escribir.
 
 ## Mejora v6.0.46
 
@@ -463,4 +472,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.46
+Versión esperada: v6.0.47
