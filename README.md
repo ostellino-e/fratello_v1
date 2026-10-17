@@ -1,4 +1,23 @@
-# Fratello v6.0.47
+# Fratello v6.0.48
+
+## Mejora v6.0.48
+
+- Calendario nacional argentino 2026 verificado al 17/10/2026, con feriados trasladados y el feriado extraordinario del 09/11 (DNU 1103/2026). No incluye feriados provinciales/locales.
+- Identifica el feriado según el día laboral asignado por el módulo, incluido Arnold, y separa minutos comunes/de feriado sin alterar los minutos reales trabajados.
+- Para las horas registradas de un feriado, suma un adicional del 100% del valor hora. Muestra ese adicional y el importe del período; los importes diarios y el total usan el mismo cálculo. La exportación CSV incluye tipo de día y desglose.
+- Los días turísticos no laborables del 23/03, 10/07 y 07/12 no reciben recargo automático. El 02/04 es feriado nacional por Malvinas aunque también sea Jueves Santo.
+- Los años sin calendario verificado se señalan como pendientes. No se muestran importes definitivos de esos empleados ni se incluyen en el subtotal calculado.
+- El cálculo comprende trabajo registrado: no determina el pago de feriados no trabajados, bases variables, horas extra u otros adicionales.
+- Funciona sin una consulta remota adicional. No cambia los reportes guardados ni requiere nuevas reglas de Firebase.
+- Pruebas: horas reales, pago común/doble y período mixto; traslados y días no laborables; Ana, Arnold, edición manual, importes en pantalla/CSV, tarifas faltantes y cambio de año sin calendario.
+
+Fuentes consultadas:
+- https://www.argentina.gob.ar/normativa/nacional/25552/actualizacion (artículos 166 a 169)
+- https://www.argentina.gob.ar/normativa/nacional/ley-27399-281835/texto
+- https://www.argentina.gob.ar/feriados
+- https://chamb.cancilleria.gob.ar/es/node/51036 (fechas observadas de 2026)
+- https://www.argentina.gob.ar/normativa/nacional/norma-421799/texto
+- https://www.argentina.gob.ar/normativa/nacional/norma-430580/texto
 
 ## Mejora v6.0.47
 
@@ -472,4 +491,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.47
+Versión esperada: v6.0.48

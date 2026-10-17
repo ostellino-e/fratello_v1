@@ -13119,6 +13119,51 @@ let horasValoresHora = leerJsonLocalSeguro(HORAS_VALORES_STORAGE, {});
 if (!horasValoresHora || typeof horasValoresHora !== "object" || Array.isArray(horasValoresHora)) horasValoresHora = {};
 const horasValoresPendientes = new Map();
 
+// Calendario nacional verificado al 17/10/2026. No incluye feriados provinciales.
+// Fuentes: Ley 27.399, calendario oficial 2026, Res. 164/2025 y DNU 1103/2026.
+const HORAS_CALENDARIO_ARGENTINA = {
+  "2026": {
+    feriados: {
+      "01-01":"Año Nuevo", "02-16":"Carnaval", "02-17":"Carnaval",
+      "03-24":"Día de la Memoria por la Verdad y la Justicia",
+      "04-02":"Día del Veterano y de los Caídos en Malvinas", "04-03":"Viernes Santo",
+      "05-01":"Día del Trabajador", "05-25":"Revolución de Mayo",
+      "06-15":"Paso a la Inmortalidad de Martín Miguel de Güemes (trasladado del 17/06)",
+      "06-20":"Paso a la Inmortalidad de Manuel Belgrano", "07-09":"Día de la Independencia",
+      "08-17":"Paso a la Inmortalidad de José de San Martín",
+      "10-12":"Día del Respeto a la Diversidad Cultural",
+      "11-09":"Visita del Papa León XIV (DNU 1103/2026)",
+      "11-23":"Día de la Soberanía Nacional (trasladado del 20/11)",
+      "12-08":"Inmaculada Concepción de María", "12-25":"Navidad"
+    },
+    noLaborables: {
+      "03-23":"Día no laborable turístico", "07-10":"Día no laborable turístico",
+      "12-07":"Día no laborable turístico"
+    }
+  }
+};
+
+function horasTipoDia(fecha) {
+  const calendario = HORAS_CALENDARIO_ARGENTINA[String(fecha).slice(0,4)];
+  if (!calendario) return { feriado:false, calendarioPendiente:true, nombre:"Calendario pendiente de actualizar" };
+  const dia = String(fecha).slice(5);
+  if (calendario.feriados[dia]) return { feriado:true, calendarioPendiente:false, nombre:calendario.feriados[dia] };
+  return { feriado:false, calendarioPendiente:false, nombre:calendario.noLaborables[dia] || "Día común" };
+}
+
+function horasAplicarFeriados(jornadas) {
+  return jornadas.map(j => {
+    const tipo = horasTipoDia(j.fecha);
+    return { ...j, feriado:tipo.feriado, nombreDia:tipo.nombre,
+      calendarioPendiente:tipo.calendarioPendiente, minutosFeriado:tipo.feriado ? j.minutos : 0 };
+  });
+}
+
+function horasImportePeriodo(empleado, valorHora) {
+  if (empleado.calendarioPendiente) return null;
+  return horasImporteMinutos(empleado.totalMinutos + empleado.minutosFeriado, valorHora);
+}
+
 function horasLeerValorHora(valor) {
   if (valor === null || valor === undefined || String(valor).trim() === "") return null;
   const numero = Number(String(valor).replace(",", "."));
@@ -13143,7 +13188,8 @@ function horasDinero(valor) {
 
 function horasActualizarImportes() {
   document.querySelectorAll("[data-horas-importe]").forEach(el => {
-    el.textContent = horasDinero(horasImporteMinutos(Number(el.dataset.minutos), horasValorHora(el.dataset.empleado)));
+    el.textContent = el.dataset.calendarioPendiente === "1" ? "Revisar calendario" :
+      horasDinero(horasImporteMinutos(Number(el.dataset.minutos) + Number(el.dataset.minutosFeriado || 0), horasValorHora(el.dataset.empleado)));
   });
   document.querySelectorAll("[data-horas-valor]").forEach(input => {
     const clave = input.dataset.horasValor;
@@ -13151,11 +13197,12 @@ function horasActualizarImportes() {
   });
   const total = $("horasTotalAPagar");
   if (total) {
-    const conValor = resultadoHorasEmpleadosActual.filter(e => horasValorHora(e.numero) !== null);
-    const importe = conValor.reduce((s,e) => s + horasImporteMinutos(e.totalMinutos, horasValorHora(e.numero)), 0);
-    const faltantes = resultadoHorasEmpleadosActual.length - conValor.length;
+    const conValor = resultadoHorasEmpleadosActual.filter(e => horasValorHora(e.numero) !== null && !e.calendarioPendiente);
+    const importe = conValor.reduce((s,e) => s + horasImportePeriodo(e, horasValorHora(e.numero)), 0);
+    const faltantes = resultadoHorasEmpleadosActual.filter(e => horasValorHora(e.numero) === null).length;
+    const pendientes = resultadoHorasEmpleadosActual.filter(e => e.calendarioPendiente).length;
     total.classList.toggle("hidden", !resultadoHorasEmpleadosActual.length);
-    total.textContent = `Total calculado: ${horasDinero(importe)}${faltantes ? ` · ${faltantes} empleado(s) sin valor hora` : ""}`;
+    total.textContent = `${faltantes || pendientes ? "Subtotal calculado" : "Total calculado"}: ${horasDinero(importe)}${faltantes ? ` · ${faltantes} empleado(s) sin valor hora` : ""}${pendientes ? ` · ${pendientes} empleado(s) con calendario pendiente; no incluidos` : ""}`;
   }
 }
 
@@ -13531,9 +13578,13 @@ function horasCalcularResultados() {
     });
     jornadas.sort((a,b) => a.fecha.localeCompare(b.fecha));
     jornadas = jornadas.filter(j => j.fecha >= desde && j.fecha <= hasta && (j.marcas.length || j.minutos));
+    jornadas = horasAplicarFeriados(jornadas);
     const totalMinutos = jornadas.reduce((s,j) => s + j.minutos, 0);
+    const minutosFeriado = jornadas.reduce((s,j) => s + j.minutosFeriado, 0);
+    const calendarioPendiente = jornadas.some(j => j.calendarioPendiente);
+    const minutosSinCalendario = jornadas.filter(j => j.calendarioPendiente).reduce((s,j) => s + j.minutos, 0);
     const revisar = jornadas.filter(j => j.revisar).length;
-    return { numero:empleado.numero, nombre:empleado.nombre, jornadas, totalMinutos, revisar };
+    return { numero:empleado.numero, nombre:empleado.nombre, jornadas, totalMinutos, minutosFeriado, minutosSinCalendario, calendarioPendiente, revisar };
   }).filter(e => e.jornadas.length);
   resultadoHorasEmpleadosActual = resultados;
   return resultados;
@@ -13550,8 +13601,8 @@ function horasRenderResultados() {
     detalle.innerHTML = '<div class="employeeHoursStatus">No hay marcaciones en el período seleccionado.</div>';
     return;
   }
-  resumen.innerHTML = resultados.map(e => `<article class="employeeHoursCard"><span>${adminFinEscapar(e.nombre)}</span><strong>${horasFormatearMinutos(e.totalMinutos)}</strong><small>${e.totalMinutos} minutos${e.revisar ? ` · ${e.revisar} día(s) para revisar` : ""}</small><label class="employeeHoursRateLabel">Valor hora ($)<input type="number" inputmode="decimal" min="0" step="0.01" data-horas-valor="${adminFinEscapar(e.numero)}" value="${adminFinEscapar(horasValoresPendientes.get(String(e.numero)) ?? horasValoresHora[String(e.numero)] ?? "")}"></label><button type="button" data-guardar-valor-hora="${adminFinEscapar(e.numero)}">Guardar valor hora</button><small class="employeeHoursRateStatus">${horasValoresPendientes.has(String(e.numero)) ? "Valor modificado sin guardar." : ""}</small><div class="employeeHoursPay"><span>Importe del período</span><strong data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${e.totalMinutos}">—</strong></div></article>`).join("");
-  detalle.innerHTML = resultados.map(e => `<details class="employeeHoursEmployee"><summary><span><strong>${adminFinEscapar(e.nombre)}</strong><small>${e.jornadas.length} jornada(s)${e.revisar ? ` · ${e.revisar} para revisar` : ""}</small></span><b>${horasFormatearMinutos(e.totalMinutos)}</b></summary><div class="employeeHoursTableWrap"><table class="employeeHoursTable"><thead><tr><th>Día laboral</th><th>Marcaciones</th><th>Minutos</th><th>Horas</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${e.jornadas.map(j => `<tr><td>${adminFinEscapar(horasFechaLegible(j.fecha))}</td><td>${adminFinEscapar(j.marcas.map(m => m.texto).join(" → ") || "—")}${j.manual ? '<span class="employeeHoursManualBadge">EDITADO</span>' : ""}</td><td>${j.minutos}</td><td>${horasFormatearMinutos(j.minutos)}</td><td data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${j.minutos}">—</td><td class="${j.revisar ? "employeeHoursReview" : "employeeHoursOk"}">${adminFinEscapar(j.estado)}${j.revisar || j.manual ? `<br><button class="employeeHoursRowAction" type="button" data-editar-horas="1" data-empleado-horas="${adminFinEscapar(e.numero)}" data-fecha-horas="${adminFinEscapar(j.fecha)}">${j.manual ? "Volver a editar" : "Corregir marcaciones"}</button>` : ""}</td></tr>`).join("")}</tbody></table></div></details>`).join("");
+  resumen.innerHTML = resultados.map(e => `<article class="employeeHoursCard"><span>${adminFinEscapar(e.nombre)}</span><strong>${horasFormatearMinutos(e.totalMinutos)}</strong><small>${e.totalMinutos} minutos${e.revisar ? ` · ${e.revisar} día(s) para revisar` : ""}</small><small>Comunes: ${horasFormatearMinutos(e.totalMinutos - e.minutosFeriado - e.minutosSinCalendario)} · En feriado: ${horasFormatearMinutos(e.minutosFeriado)}</small>${e.calendarioPendiente ? `<small class="employeeHoursReview">Sin clasificar: ${horasFormatearMinutos(e.minutosSinCalendario)}. Actualizar calendario para calcular el importe.</small>` : ""}<label class="employeeHoursRateLabel">Valor hora ($)<input type="number" inputmode="decimal" min="0" step="0.01" data-horas-valor="${adminFinEscapar(e.numero)}" value="${adminFinEscapar(horasValoresPendientes.get(String(e.numero)) ?? horasValoresHora[String(e.numero)] ?? "")}"></label><button type="button" data-guardar-valor-hora="${adminFinEscapar(e.numero)}">Guardar valor hora</button><small class="employeeHoursRateStatus">${horasValoresPendientes.has(String(e.numero)) ? "Valor modificado sin guardar." : ""}</small><div class="employeeHoursHolidayPay"><span>Adicional feriados (+100%)</span><b data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${e.minutosFeriado}" data-calendario-pendiente="${e.calendarioPendiente ? "1" : "0"}">—</b></div><div class="employeeHoursPay"><span>Importe del período</span><strong data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${e.totalMinutos}" data-minutos-feriado="${e.minutosFeriado}" data-calendario-pendiente="${e.calendarioPendiente ? "1" : "0"}">—</strong></div></article>`).join("");
+  detalle.innerHTML = resultados.map(e => `<details class="employeeHoursEmployee"><summary><span><strong>${adminFinEscapar(e.nombre)}</strong><small>${e.jornadas.length} jornada(s)${e.revisar ? ` · ${e.revisar} para revisar` : ""}</small></span><b>${horasFormatearMinutos(e.totalMinutos)}</b></summary><div class="employeeHoursTableWrap"><table class="employeeHoursTable"><thead><tr><th>Día laboral</th><th>Marcaciones</th><th>Minutos</th><th>Horas</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${e.jornadas.map(j => `<tr><td>${adminFinEscapar(horasFechaLegible(j.fecha))}<small class="employeeHoursDayType ${j.feriado ? "employeeHoursHolidayBadge" : ""}">${j.feriado ? "FERIADO · +100% · " : ""}${adminFinEscapar(j.nombreDia)}</small></td><td>${adminFinEscapar(j.marcas.map(m => m.texto).join(" → ") || "—")}${j.manual ? '<span class="employeeHoursManualBadge">EDITADO</span>' : ""}</td><td>${j.minutos}</td><td>${horasFormatearMinutos(j.minutos)}</td><td data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${j.minutos}" data-minutos-feriado="${j.minutosFeriado}" data-calendario-pendiente="${j.calendarioPendiente ? "1" : "0"}">—</td><td class="${j.revisar ? "employeeHoursReview" : "employeeHoursOk"}">${adminFinEscapar(j.estado)}${j.revisar || j.manual ? `<br><button class="employeeHoursRowAction" type="button" data-editar-horas="1" data-empleado-horas="${adminFinEscapar(e.numero)}" data-fecha-horas="${adminFinEscapar(j.fecha)}">${j.manual ? "Volver a editar" : "Corregir marcaciones"}</button>` : ""}</td></tr>`).join("")}</tbody></table></div></details>`).join("");
   horasActualizarImportes();
 }
 
@@ -13846,10 +13897,19 @@ function horasDescargarImagenArchivo() {
 
 function horasExportarCSV() {
   if (!resultadoHorasEmpleadosActual.length) return alert("Primero cargá y calculá un archivo del reloj.");
-  const filas = [["Empleado","Día laboral","Entrada/Salida","Minutos","Horas","Estado","Valor hora","Importe"]];
+  const filas = [["Empleado","Día laboral","Entrada/Salida","Minutos reales","Horas reales","Estado","Valor hora","Importe con feriados","Tipo de día","Horas comunes","Horas en feriado","Adicional feriado (+100%)"]];
   resultadoHorasEmpleadosActual.forEach(e => {
-    e.jornadas.forEach(j => filas.push([e.nombre,j.fecha,j.marcas.map(m=>m.texto).join(" - "),j.minutos,horasFormatearMinutos(j.minutos),j.estado,horasValorHora(e.numero),horasImporteMinutos(j.minutos,horasValorHora(e.numero))]));
-    filas.push([e.nombre,"TOTAL","",e.totalMinutos,horasFormatearMinutos(e.totalMinutos),e.revisar ? `${e.revisar} para revisar` : "Correcto",horasValorHora(e.numero),horasImporteMinutos(e.totalMinutos,horasValorHora(e.numero))]);
+    const valor = horasValorHora(e.numero);
+    e.jornadas.forEach(j => filas.push([
+      e.nombre,j.fecha,j.marcas.map(m=>m.texto).join(" - "),j.minutos,horasFormatearMinutos(j.minutos),
+      j.estado,valor,j.calendarioPendiente ? null : horasImporteMinutos(j.minutos+j.minutosFeriado,valor),
+      j.nombreDia,j.calendarioPendiente ? "" : horasFormatearMinutos(j.minutos-j.minutosFeriado),j.calendarioPendiente ? "" : horasFormatearMinutos(j.minutosFeriado),
+      j.calendarioPendiente ? null : horasImporteMinutos(j.minutosFeriado,valor)
+    ]));
+    filas.push([e.nombre,"TOTAL","",e.totalMinutos,horasFormatearMinutos(e.totalMinutos),
+      e.calendarioPendiente ? "Calendario pendiente" : e.revisar ? `${e.revisar} para revisar` : "Correcto",valor,
+      horasImportePeriodo(e,valor),"",e.calendarioPendiente ? "" : horasFormatearMinutos(e.totalMinutos-e.minutosFeriado),
+      horasFormatearMinutos(e.minutosFeriado),e.calendarioPendiente ? null : horasImporteMinutos(e.minutosFeriado,valor)]);
   });
   const csv = "\uFEFF" + filas.map(f => f.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n");
   segDescargar(`fratello_horas_${adminFinHoy()}.csv`, csv, "text/csv;charset=utf-8");

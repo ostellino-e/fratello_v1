@@ -5354,3 +5354,8 @@ body.modal-open{
 .moneyDifferenceBreakdown .moneyDifferenceNegative{color:#b42318!important}
 .moneyDifferenceBreakdown .moneyDifferencePositive{color:#187044!important}
 .moneyDifferenceBreakdown .moneyDifferenceOk{color:#5a655d!important}
+
+/* v6.0.48 — horas trabajadas en feriados nacionales */
+.employeeHoursDayType{display:block;font-size:11px;margin-top:4px;max-width:220px;white-space:normal;color:#716256}
+.employeeHoursHolidayBadge{color:#96520a;font-weight:700}
+.employeeHoursHolidayPay{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;font-size:12px;color:#86510d;margin-top:8px}

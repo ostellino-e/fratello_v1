@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
-  <link rel="stylesheet" href="styles.css?v=625" />
+  <link rel="stylesheet" href="styles.css?v=626" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.47";
-    document.documentElement.dataset.fratelloVersion = "6.0.47";
+    window.FRATELLO_VERSION = "6.0.48";
+    document.documentElement.dataset.fratelloVersion = "6.0.48";
   </script>
 
 </head>
@@ -97,7 +97,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.47</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.48</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -494,7 +494,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.47 · Diferencias por medio de pago</span>
+        <span class="adminFinanceVersion">v6.0.48 · Feriados nacionales en horas</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -886,6 +886,9 @@
             <span>Minutos reales, sin redondeo.</span>
             <span>Ana: suma separada de mañana y tarde.</span>
             <span>Arnold: el turno cercano a las 00:00 se asigna al día laboral anterior.</span>
+            <span>Feriados nacionales 2026: las horas registradas del día laboral se pagan con +100%. Los minutos trabajados no se duplican.</span>
+            <span>Días no laborables turísticos: sin recargo automático. Calendario verificado al 17/10/2026; otros años requieren actualización.</span>
+            <span>Este cálculo comprende las horas registradas; no liquida feriados no trabajados ni otros adicionales.</span>
             <span>Marcaciones incompletas quedan señaladas para revisar.</span>
           </aside>
 
@@ -1256,7 +1259,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6047"></script>
+  <script src="app.js?v=6048"></script>
 
   
 
@@ -1273,12 +1276,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6047")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6048")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6047", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6048", {
             scope: "./",
             updateViaCache: "none"
           });
