@@ -13113,6 +13113,168 @@ let correccionHorasActual = null;
 const HORAS_CORRECCIONES_STORAGE = "fratello_horas_correcciones_v6013";
 let ultimoArchivoHorasNube = null;
 let horasArchivoVinculadoNube = false;
+let horasUltimaCopiaLocal = null;
+let horasCorreccionesMemoria = null;
+let horasRestauracionIntentada = false;
+let horasRestauracionEnCurso = null;
+let horasColaLocal = Promise.resolve();
+let horasEnviandoCopia = false;
+let horasConsultaEnCurso = false;
+let horasReintentoCopia = null;
+let horasRevisionPersistida = null;
+let horasNuevaCargaSolicitada = false;
+const HORAS_ULTIMA_CARGA_STORAGE = "fratello_horas_ultimo_v6049";
+
+function horasEstadoGuardado(texto, error = false) {
+  const estado = $("estadoGuardadoHoras");
+  if (estado) {
+    estado.textContent = texto;
+    estado.className = `employeeHoursStatus ${error ? "error" : "ok"}`;
+  }
+}
+
+function horasCopiaValida(datos) {
+  return Boolean(datos?.archivo?.periodo?.desde && datos.archivo.periodo.hasta &&
+    Array.isArray(datos.archivo.empleados) && Array.isArray(datos.correcciones));
+}
+
+function horasAccesoBDLocal(guardar, datos) {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) return reject(new Error("IndexedDB no disponible"));
+    const apertura = window.indexedDB.open("fratello_horas_v1", 1);
+    apertura.onupgradeneeded = () => apertura.result.createObjectStore("cargas");
+    apertura.onerror = () => reject(apertura.error);
+    apertura.onblocked = () => reject(new Error("No se pudo abrir el guardado local"));
+    apertura.onsuccess = () => {
+      const bd = apertura.result;
+      const tx = bd.transaction("cargas", guardar ? "readwrite" : "readonly");
+      const req = guardar ? tx.objectStore("cargas").put(datos, "ultimo") : tx.objectStore("cargas").get("ultimo");
+      tx.oncomplete = () => { bd.close(); resolve(guardar ? datos : req.result); };
+      tx.onerror = tx.onabort = () => { bd.close(); reject(tx.error || new Error("No se pudo guardar la carga")); };
+    };
+  });
+}
+
+function horasGuardarCopiaLocal(datos) {
+  const copia = JSON.parse(JSON.stringify(datos));
+  const tarea = horasColaLocal.catch(() => {}).then(async () => {
+    try {
+      await horasAccesoBDLocal(true, copia);
+      try { localStorage.removeItem(HORAS_ULTIMA_CARGA_STORAGE); } catch (_) {}
+    } catch (error) {
+      // Respaldo persistente real: no se informa éxito si el navegador rechaza ambos.
+      localStorage.setItem(HORAS_ULTIMA_CARGA_STORAGE, JSON.stringify(copia));
+    }
+  });
+  horasColaLocal = tarea.then(() => { horasRevisionPersistida = copia.revision; });
+  return horasColaLocal;
+}
+
+async function horasLeerCopiaLocal() {
+  let copia = null;
+  try { copia = await horasAccesoBDLocal(false); } catch (_) {}
+  let respaldo = null;
+  try { respaldo = JSON.parse(localStorage.getItem(HORAS_ULTIMA_CARGA_STORAGE) || "null"); } catch (_) {}
+  if (horasCopiaValida(respaldo) && (!horasCopiaValida(copia) || String(respaldo.actualizadoEn) > String(copia.actualizadoEn))) copia = respaldo;
+  return horasCopiaValida(copia) ? copia : null;
+}
+
+function horasCrearCopiaActual() {
+  return {
+    archivo:JSON.parse(JSON.stringify(archivoHorasEmpleadosActual)),
+    correcciones:horasCorreccionesArchivoActual(),
+    vista:{desde:$("horasEmpleadosDesde")?.value, hasta:$("horasEmpleadosHasta")?.value},
+    actualizadoEn:new Date().toISOString(),
+    revision:`${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    pendienteSync:true,
+    version:window.FRATELLO_VERSION || "6.0.49"
+  };
+}
+
+function horasAplicarCopia(datos, origen) {
+  archivoHorasEmpleadosActual = JSON.parse(JSON.stringify(datos.archivo));
+  const correcciones = horasCargarCorrecciones();
+  (datos.correcciones || []).forEach(item => {
+    if (item?.numeroEmpleado === undefined || !item?.fecha) return;
+    const clave = horasClaveCorreccion(item.numeroEmpleado, item.fecha);
+    if (!correcciones[clave] || String(item.actualizadoEn || "") >= String(correcciones[clave].actualizadoEn || "")) correcciones[clave] = item;
+  });
+  horasGuardarCorrecciones(correcciones);
+  horasArchivoVinculadoNube = !datos.pendienteSync;
+  $("horasEmpleadosDesde").value = datos.vista?.desde || datos.archivo.periodo.desde;
+  $("horasEmpleadosHasta").value = datos.vista?.hasta || datos.archivo.periodo.hasta;
+  $("controlesHorasEmpleados").classList.remove("hidden");
+  $("estadoHorasEmpleados").className = "employeeHoursStatus ok";
+  $("estadoHorasEmpleados").textContent = `${datos.archivo.nombreArchivo} · Última carga recuperada ${origen}`;
+  horasRenderResultados();
+}
+
+async function horasRestaurarCargaLocal() {
+  if (horasRestauracionEnCurso) return horasRestauracionEnCurso;
+  if (horasRestauracionIntentada) return;
+  horasRestauracionIntentada = true;
+  horasRestauracionEnCurso = (async () => {
+    const datos = await horasLeerCopiaLocal();
+    // No reemplazar un archivo que se seleccionó mientras se leía el respaldo.
+    if (!datos || archivoHorasEmpleadosActual || horasCargaReportesEnCurso || horasNuevaCargaSolicitada) return;
+    horasUltimaCopiaLocal = datos;
+    horasRevisionPersistida = datos.revision;
+    horasAplicarCopia(datos, "en este dispositivo");
+    horasEstadoGuardado(datos.pendienteSync ? "Guardado en este dispositivo · Pendiente de sincronizar para los demás." : "Última carga guardada recuperada.");
+  })();
+  try { await horasRestauracionEnCurso; } finally { horasRestauracionEnCurso = null; }
+}
+
+async function horasGuardarAutomaticamente() {
+  if (!archivoHorasEmpleadosActual) return false;
+  const copia = horasCrearCopiaActual();
+  horasUltimaCopiaLocal = copia;
+  horasEstadoGuardado("Guardando la última carga...");
+  try {
+    await horasGuardarCopiaLocal(copia);
+    if (horasUltimaCopiaLocal?.revision === copia.revision) horasEstadoGuardado("Guardado en este dispositivo · Sincronización pendiente.");
+  } catch (error) {
+    console.error("Guardado local de horas:", error);
+    horasEstadoGuardado("No se pudo guardar en este dispositivo. Intentando guardar online; mantené abierta esta pantalla.", true);
+  }
+  // El guardado online no bloquea la carga del archivo ni el editor.
+  horasGuardarUltimosDatosOnline(true).catch(error => console.error("Sincronización de horas:", error));
+  return horasRevisionPersistida === copia.revision;
+}
+
+async function horasGuardarVistaLocal() {
+  if (!archivoHorasEmpleadosActual || !horasUltimaCopiaLocal) return;
+  horasUltimaCopiaLocal = {...horasUltimaCopiaLocal, vista:{desde:$("horasEmpleadosDesde")?.value,hasta:$("horasEmpleadosHasta")?.value}};
+  try { await horasGuardarCopiaLocal(horasUltimaCopiaLocal); }
+  catch (_) { horasEstadoGuardado("No se pudo guardar el período seleccionado en este dispositivo.", true); }
+}
+
+function horasPartirCopiaOnline(texto) {
+  const partes = [];
+  for (let inicio = 0; inicio < texto.length;) {
+    let fin = Math.min(inicio + 180000, texto.length);
+    const ultimo = texto.charCodeAt(fin - 1);
+    if (fin < texto.length && ultimo >= 0xD800 && ultimo <= 0xDBFF) fin--;
+    partes.push(texto.slice(inicio, fin));
+    inicio = fin;
+  }
+  return partes;
+}
+
+async function horasLeerPaqueteOnline(snap) {
+  if (!snap.exists) return null;
+  const dato = snap.data();
+  if (dato.archivo) return {...dato,revision:dato.revision || `legacy_${Date.now()}`,correcciones:dato.correcciones || [],pendienteSync:false};
+  if (dato.formato !== "partes_v6049" || !/^[a-zA-Z0-9_]+$/.test(dato.revision || "") ||
+      !Number.isInteger(dato.partes) || dato.partes < 1 || dato.partes > 400) throw new Error("Carga online incompleta o inválida");
+  const ref = db.collection("administracion").doc("horas_empleados_ultimo").collection("versiones").doc(dato.revision).collection("partes");
+  const partes = await Promise.all(Array.from({length:dato.partes}, (_,i) => ref.doc(String(i)).get()));
+  if (partes.some(p => !p.exists || typeof p.data().contenido !== "string")) throw new Error("Faltan partes del reporte guardado");
+  const datos = JSON.parse(partes.map(p => p.data().contenido).join(""));
+  if (!horasCopiaValida(datos) || datos.revision !== dato.revision) throw new Error("Reporte guardado inválido");
+  return {...datos,pendienteSync:false};
+}
+
 
 const HORAS_VALORES_STORAGE = "fratello_horas_valores_hora_v1";
 let horasValoresHora = leerJsonLocalSeguro(HORAS_VALORES_STORAGE, {});
@@ -13246,11 +13408,14 @@ async function horasGuardarValorHora(boton) {
 
 
 function horasCargarCorrecciones() {
-  try { return JSON.parse(localStorage.getItem(HORAS_CORRECCIONES_STORAGE) || "{}"); }
-  catch (_) { return {}; }
+  if (horasCorreccionesMemoria) return horasCorreccionesMemoria;
+  try { horasCorreccionesMemoria = JSON.parse(localStorage.getItem(HORAS_CORRECCIONES_STORAGE) || "{}"); }
+  catch (_) { horasCorreccionesMemoria = {}; }
+  return horasCorreccionesMemoria;
 }
 
 function horasGuardarCorrecciones(datos) {
+  horasCorreccionesMemoria = datos || {};
   guardarLocalSeguroV6021(HORAS_CORRECCIONES_STORAGE, JSON.stringify(datos || {}));
 }
 
@@ -13284,14 +13449,33 @@ function horasMostrarTarjetaNube(datos) {
 }
 
 async function horasConsultarUltimoOnline() {
-  if (!db || !tieneRolAdministrador()) return;
-  horasConsultarValoresOnline();
+  if (!tieneRolAdministrador() || horasConsultaEnCurso) return;
+  horasConsultaEnCurso = true;
   try {
+    await horasRestaurarCargaLocal();
+    if (!db) return;
+    horasConsultarValoresOnline();
+    if (horasUltimaCopiaLocal?.pendienteSync && archivoHorasEmpleadosActual) {
+      await horasGuardarUltimosDatosOnline(true);
+      if (horasUltimaCopiaLocal?.pendienteSync) return;
+    }
     const snap = await db.collection("administracion").doc("horas_empleados_ultimo").get();
-    horasMostrarTarjetaNube(snap.exists ? snap.data() : null);
+    const datos = await horasLeerPaqueteOnline(snap);
+    if (!datos) return; // Una consulta vacía no borra una copia local.
+    horasMostrarTarjetaNube(datos);
+    const hayCopiaMasNueva = archivoHorasEmpleadosActual && horasUltimaCopiaLocal &&
+      !horasUltimaCopiaLocal.pendienteSync && !correccionHorasActual &&
+      String(datos.actualizadoEn || "") > String(horasUltimaCopiaLocal.actualizadoEn || "");
+    if ((!archivoHorasEmpleadosActual || hayCopiaMasNueva) && !horasCargaReportesEnCurso && !horasNuevaCargaSolicitada) {
+      horasUltimaCopiaLocal = datos;
+      horasAplicarCopia(datos, "desde la nube");
+      try { await horasGuardarCopiaLocal(datos); } catch (_) {}
+      horasEstadoGuardado("Última carga recuperada desde la nube.");
+    }
   } catch (error) {
     console.warn("No se pudieron consultar las horas guardadas:", error);
-  }
+    horasEstadoGuardado(archivoHorasEmpleadosActual ? "Se conserva la carga de este dispositivo. No se pudo consultar la copia online." : "No se pudo consultar la última carga online. Volvé a intentar con conexión.", true);
+  } finally { horasConsultaEnCurso = false; }
 }
 
 async function horasGuardarUltimosDatosOnline(silencioso = false) {
@@ -13299,50 +13483,73 @@ async function horasGuardarUltimosDatosOnline(silencioso = false) {
     if (!silencioso) alert("Primero cargá un archivo del reloj.");
     return false;
   }
-  if (!db || !tieneRolAdministrador()) {
-    if (!silencioso) alert("Necesitás conexión y sesión de administrador para guardar estos datos.");
+  if (!horasUltimaCopiaLocal) horasUltimaCopiaLocal = horasCrearCopiaActual();
+  if (!db || !tieneRolAdministrador() || navigator.onLine === false) {
+    horasEstadoGuardado(horasRevisionPersistida === horasUltimaCopiaLocal.revision ?
+      "Guardado en este dispositivo · Pendiente de sincronizar al recuperar conexión o abrir Horas." :
+      "Sin copia persistente de los últimos cambios. Mantené abierta la pantalla y reintentá guardar con conexión.", horasRevisionPersistida !== horasUltimaCopiaLocal.revision);
     return false;
   }
+  if (horasEnviandoCopia) return false;
+  horasEnviandoCopia = true;
+  const datos = JSON.parse(JSON.stringify(horasUltimaCopiaLocal));
+  datos.revision ||= `${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const boton = $("btnGuardarHorasOnline");
-  const textoAnterior = boton?.textContent;
-  if (boton && !silencioso) { boton.disabled = true; boton.textContent = "Guardando..."; }
+  if (boton) boton.disabled = true;
+  let guardado = false;
   try {
-    const datos = {
-      archivo:JSON.parse(JSON.stringify(archivoHorasEmpleadosActual)),
-      correcciones:horasCorreccionesArchivoActual(),
-      actualizadoEn:new Date().toISOString(),
-      version:window.FRATELLO_VERSION || "6.0.30"
-    };
-    await db.collection("administracion").doc("horas_empleados_ultimo").set(datos);
-    horasArchivoVinculadoNube = true;
-    horasMostrarTarjetaNube(datos);
-    if (!silencioso) $("estadoHorasEmpleados").textContent = `${archivoHorasEmpleadosActual.nombreArchivo} · Guardado para todos los dispositivos`;
+    horasEstadoGuardado(horasRevisionPersistida === datos.revision ?
+      "Guardado en este dispositivo · Sincronizando para los demás..." : "Guardando para todos los dispositivos...");
+    // Partes pequeñas para no superar el límite de 1 MiB por documento.
+    const texto = JSON.stringify({...datos,pendienteSync:false});
+    const partes = horasPartirCopiaOnline(texto);
+    if (partes.length > 400) throw new Error("El reporte es demasiado grande para guardar");
+    const ref = db.collection("administracion").doc("horas_empleados_ultimo");
+    const version = ref.collection("versiones").doc(datos.revision);
+    const lote = db.batch();
+    partes.forEach((contenido,i) => lote.set(version.collection("partes").doc(String(i)), {contenido}));
+    lote.set(ref, {formato:"partes_v6049", revision:datos.revision, partes:partes.length, actualizadoEn:datos.actualizadoEn});
+    await lote.commit();
+    guardado = true;
+    if (horasUltimaCopiaLocal?.revision === datos.revision) {
+      horasUltimaCopiaLocal = {...horasUltimaCopiaLocal,pendienteSync:false};
+      horasArchivoVinculadoNube = true;
+      try { await horasGuardarCopiaLocal(horasUltimaCopiaLocal); } catch (_) {}
+      if (horasUltimaCopiaLocal?.revision === datos.revision) {
+        horasMostrarTarjetaNube({...datos,pendienteSync:false});
+        horasEstadoGuardado("Última carga y correcciones guardadas para todos los dispositivos.");
+      }
+    }
     return true;
   } catch (error) {
     console.error("No se pudieron guardar las horas online:", error);
-    if (!silencioso) alert("No se pudieron guardar los datos. Revisá la conexión e intentá nuevamente.");
+    horasEstadoGuardado(horasRevisionPersistida === horasUltimaCopiaLocal?.revision ?
+      "No se pudo sincronizar. La carga está guardada en este dispositivo; guardado online pendiente." :
+      "No se pudo guardar la última carga. Mantené abierta la pantalla y reintentá guardar con conexión.", true);
     return false;
   } finally {
-    if (boton && !silencioso) { boton.disabled = false; boton.textContent = textoAnterior || "☁️ Guardar para todos"; }
+    horasEnviandoCopia = false;
+    if (boton) boton.disabled = false;
+    clearTimeout(horasReintentoCopia);
+    if (horasUltimaCopiaLocal?.pendienteSync && archivoHorasEmpleadosActual) {
+      if (guardado) queueMicrotask(() => horasGuardarUltimosDatosOnline(true));
+      else horasReintentoCopia = setTimeout(() => horasGuardarUltimosDatosOnline(true), 30000);
+    }
   }
 }
 
-function horasCargarUltimoGuardado() {
+async function horasCargarUltimoGuardado() {
   if (horasCargaReportesEnCurso || !ultimoArchivoHorasNube?.archivo) return;
-  archivoHorasEmpleadosActual = JSON.parse(JSON.stringify(ultimoArchivoHorasNube.archivo));
-  const correccionesLocales = horasCargarCorrecciones();
-  (ultimoArchivoHorasNube.correcciones || []).forEach(item => {
-    if (!item?.numeroEmpleado || !item?.fecha) return;
-    correccionesLocales[horasClaveCorreccion(item.numeroEmpleado, item.fecha)] = item;
-  });
-  horasGuardarCorrecciones(correccionesLocales);
-  horasArchivoVinculadoNube = true;
-  $("horasEmpleadosDesde").value = archivoHorasEmpleadosActual.periodo.desde;
-  $("horasEmpleadosHasta").value = archivoHorasEmpleadosActual.periodo.hasta;
-  $("controlesHorasEmpleados").classList.remove("hidden");
-  $("estadoHorasEmpleados").className = "employeeHoursStatus ok";
-  $("estadoHorasEmpleados").textContent = `${archivoHorasEmpleadosActual.nombreArchivo} · Datos guardados cargados en este dispositivo`;
-  horasRenderResultados();
+  if (horasUltimaCopiaLocal?.pendienteSync) {
+    horasEstadoGuardado("Hay cambios locales pendientes de guardar. Conservamos esa carga para evitar perderlos.", true);
+    return;
+  }
+  horasNuevaCargaSolicitada = false;
+  const datos = JSON.parse(JSON.stringify(ultimoArchivoHorasNube));
+  horasUltimaCopiaLocal = {...datos,pendienteSync:false};
+  horasAplicarCopia(datos, "desde la nube");
+  try { await horasGuardarCopiaLocal(horasUltimaCopiaLocal); }
+  catch (_) { horasEstadoGuardado("Carga online abierta; no se pudo guardar una copia en este dispositivo.", true); }
 }
 
 function horasClaveCorreccion(numeroEmpleado, fecha) {
@@ -13602,7 +13809,7 @@ function horasRenderResultados() {
     return;
   }
   resumen.innerHTML = resultados.map(e => `<article class="employeeHoursCard"><span>${adminFinEscapar(e.nombre)}</span><strong>${horasFormatearMinutos(e.totalMinutos)}</strong><small>${e.totalMinutos} minutos${e.revisar ? ` · ${e.revisar} día(s) para revisar` : ""}</small><small>Comunes: ${horasFormatearMinutos(e.totalMinutos - e.minutosFeriado - e.minutosSinCalendario)} · En feriado: ${horasFormatearMinutos(e.minutosFeriado)}</small>${e.calendarioPendiente ? `<small class="employeeHoursReview">Sin clasificar: ${horasFormatearMinutos(e.minutosSinCalendario)}. Actualizar calendario para calcular el importe.</small>` : ""}<label class="employeeHoursRateLabel">Valor hora ($)<input type="number" inputmode="decimal" min="0" step="0.01" data-horas-valor="${adminFinEscapar(e.numero)}" value="${adminFinEscapar(horasValoresPendientes.get(String(e.numero)) ?? horasValoresHora[String(e.numero)] ?? "")}"></label><button type="button" data-guardar-valor-hora="${adminFinEscapar(e.numero)}">Guardar valor hora</button><small class="employeeHoursRateStatus">${horasValoresPendientes.has(String(e.numero)) ? "Valor modificado sin guardar." : ""}</small><div class="employeeHoursHolidayPay"><span>Adicional feriados (+100%)</span><b data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${e.minutosFeriado}" data-calendario-pendiente="${e.calendarioPendiente ? "1" : "0"}">—</b></div><div class="employeeHoursPay"><span>Importe del período</span><strong data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${e.totalMinutos}" data-minutos-feriado="${e.minutosFeriado}" data-calendario-pendiente="${e.calendarioPendiente ? "1" : "0"}">—</strong></div></article>`).join("");
-  detalle.innerHTML = resultados.map(e => `<details class="employeeHoursEmployee"><summary><span><strong>${adminFinEscapar(e.nombre)}</strong><small>${e.jornadas.length} jornada(s)${e.revisar ? ` · ${e.revisar} para revisar` : ""}</small></span><b>${horasFormatearMinutos(e.totalMinutos)}</b></summary><div class="employeeHoursTableWrap"><table class="employeeHoursTable"><thead><tr><th>Día laboral</th><th>Marcaciones</th><th>Minutos</th><th>Horas</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${e.jornadas.map(j => `<tr><td>${adminFinEscapar(horasFechaLegible(j.fecha))}<small class="employeeHoursDayType ${j.feriado ? "employeeHoursHolidayBadge" : ""}">${j.feriado ? "FERIADO · +100% · " : ""}${adminFinEscapar(j.nombreDia)}</small></td><td>${adminFinEscapar(j.marcas.map(m => m.texto).join(" → ") || "—")}${j.manual ? '<span class="employeeHoursManualBadge">EDITADO</span>' : ""}</td><td>${j.minutos}</td><td>${horasFormatearMinutos(j.minutos)}</td><td data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${j.minutos}" data-minutos-feriado="${j.minutosFeriado}" data-calendario-pendiente="${j.calendarioPendiente ? "1" : "0"}">—</td><td class="${j.revisar ? "employeeHoursReview" : "employeeHoursOk"}">${adminFinEscapar(j.estado)}${j.revisar || j.manual ? `<br><button class="employeeHoursRowAction" type="button" data-editar-horas="1" data-empleado-horas="${adminFinEscapar(e.numero)}" data-fecha-horas="${adminFinEscapar(j.fecha)}">${j.manual ? "Volver a editar" : "Corregir marcaciones"}</button>` : ""}</td></tr>`).join("")}</tbody></table></div></details>`).join("");
+  detalle.innerHTML = resultados.map(e => `<details class="employeeHoursEmployee"><summary><span><strong>${adminFinEscapar(e.nombre)}</strong><small>${e.jornadas.length} jornada(s)${e.revisar ? ` · ${e.revisar} para revisar` : ""}</small></span><b>${horasFormatearMinutos(e.totalMinutos)}</b></summary><div class="employeeHoursTableWrap"><table class="employeeHoursTable"><thead><tr><th>Día laboral</th><th>Marcaciones</th><th>Minutos</th><th>Horas</th><th>Importe</th><th>Estado</th></tr></thead><tbody>${e.jornadas.map(j => `<tr><td>${adminFinEscapar(horasFechaLegible(j.fecha))}<small class="employeeHoursDayType ${j.feriado ? "employeeHoursHolidayBadge" : ""}">${j.feriado ? "FERIADO · +100% · " : ""}${adminFinEscapar(j.nombreDia)}</small></td><td>${adminFinEscapar(j.marcas.map(m => m.texto).join(" → ") || "—")}${j.manual ? '<span class="employeeHoursManualBadge">EDITADO</span>' : ""}</td><td>${j.minutos}</td><td>${horasFormatearMinutos(j.minutos)}</td><td data-horas-importe="1" data-empleado="${adminFinEscapar(e.numero)}" data-minutos="${j.minutos}" data-minutos-feriado="${j.minutosFeriado}" data-calendario-pendiente="${j.calendarioPendiente ? "1" : "0"}">—</td><td class="${j.revisar ? "employeeHoursReview" : "employeeHoursOk"}">${adminFinEscapar(j.estado)}<br><button class="employeeHoursRowAction" type="button" data-editar-horas="1" data-empleado-horas="${adminFinEscapar(e.numero)}" data-fecha-horas="${adminFinEscapar(j.fecha)}">${j.manual ? "Volver a editar" : "Editar marcaciones"}</button></td></tr>`).join("")}</tbody></table></div></details>`).join("");
   horasActualizarImportes();
 }
 
@@ -13733,14 +13940,13 @@ function horasGuardarCorreccionManual() {
     actualizadoEn:new Date().toISOString()
   };
   horasGuardarCorrecciones(correcciones);
-  const debeActualizarOnline = horasArchivoVinculadoNube;
   if (correccionHorasActual.nueva) {
     if ($("horasEmpleadosDesde")?.value > correccionHorasActual.fecha) $("horasEmpleadosDesde").value = correccionHorasActual.fecha;
     if ($("horasEmpleadosHasta")?.value < correccionHorasActual.fecha) $("horasEmpleadosHasta").value = correccionHorasActual.fecha;
   }
   horasCerrarCorreccion();
   horasRenderResultados();
-  if (debeActualizarOnline) horasGuardarUltimosDatosOnline(true);
+  horasGuardarAutomaticamente().catch(error => console.error("Guardado de marcaciones:", error));
 }
 
 function horasUnirReportes(reportes) {
@@ -13814,6 +14020,7 @@ async function horasCargarArchivo(evento) {
     const combinado = horasUnirReportes(anterior ? [anterior,...nuevos] : nuevos);
     horasMigrarCorreccionesReportes(anterior,combinado);
     archivoHorasEmpleadosActual = combinado;
+    horasNuevaCargaSolicitada = false;
     horasArchivoVinculadoNube = false;
     $("horasEmpleadosDesde").value = combinado.periodo.desde;
     $("horasEmpleadosHasta").value = combinado.periodo.hasta;
@@ -13821,6 +14028,7 @@ async function horasCargarArchivo(evento) {
     estado.className = "employeeHoursStatus ok";
     estado.textContent = `${combinado.reportesOrigen.length} reporte(s) cargado(s) · ${combinado.nombreArchivo} · ${combinado.periodo.desde} al ${combinado.periodo.hasta}. Elegí Desde/Hasta para calcular tu semana.`;
     horasRenderResultados();
+    await horasGuardarAutomaticamente();
   } catch (error) {
     console.error("Horas de empleados:", error);
     estado.className = "employeeHoursStatus error";
@@ -13835,6 +14043,8 @@ async function horasCargarArchivo(evento) {
 
 function horasEmpezarNuevaCarga() {
   if (horasCargaReportesEnCurso || !confirm("¿Empezar una carga nueva? Los datos guardados online y las correcciones se conservan.")) return;
+  horasNuevaCargaSolicitada=true;
+  horasRestauracionIntentada=true;
   archivoHorasEmpleadosActual=null;
   resultadoHorasEmpleadosActual=[];
   horasArchivoVinculadoNube=false;
@@ -13920,7 +14130,11 @@ function iniciarModuloHorasEmpleados() {
   window.__FRATELLO_HORAS_INICIADO__ = true;
   $("archivoRelojEmpleados")?.addEventListener("change", horasCargarArchivo);
   $("btnNuevaCargaHoras")?.addEventListener("click", horasEmpezarNuevaCarga);
-  $("btnCalcularHorasEmpleados")?.addEventListener("click", horasRenderResultados);
+  $("btnCalcularHorasEmpleados")?.addEventListener("click", () => { horasRenderResultados(); horasGuardarVistaLocal(); });
+  ["horasEmpleadosDesde", "horasEmpleadosHasta"].forEach(id => $(id)?.addEventListener("change", () => horasGuardarVistaLocal()));
+  window.addEventListener("online", () => {
+    if (archivoHorasEmpleadosActual && horasUltimaCopiaLocal?.pendienteSync) horasGuardarUltimosDatosOnline(true);
+  });
   $("btnAgregarJornadaManual")?.addEventListener("click", horasAbrirNuevaJornada);
   $("btnGuardarHorasOnline")?.addEventListener("click", () => horasGuardarUltimosDatosOnline(false));
   $("btnCargarUltimoArchivoHoras")?.addEventListener("click", horasCargarUltimoGuardado);

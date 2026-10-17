@@ -1,4 +1,17 @@
-# Fratello v6.0.48
+# Fratello v6.0.49
+
+## Mejora v6.0.49
+
+- Todas las jornadas, incluidas las correctas, muestran Editar marcaciones. Las ediciones recalculan minutos, feriados e importes.
+- Cada carga y corrección se guarda automáticamente en IndexedDB (con respaldo localStorage si IndexedDB no está disponible) y se envía a Firebase sin bloquear el selector ni el editor.
+- Al entrar a Horas se recuperan la última carga, el período y sus correcciones. Si existe una copia online más reciente, se abre automáticamente cuando no hay una carga nueva ni edición local pendiente.
+- Se conservan las correcciones en memoria para incluirlas en el respaldo aunque localStorage esté lleno. Se distingue guardado local de sincronización pendiente; al recuperar conexión o abrir Horas se reintenta. Los errores online también reintentan cada 30 segundos.
+- Los envíos están serializados. La confirmación de un envío anterior no marca una edición posterior como guardada. Un error o consulta online vacía no elimina la copia local.
+- Las cargas grandes se escriben por partes en una operación atómica bajo administracion/horas_empleados_ultimo/versiones; se evita el límite de 1 MiB por documento y se mantienen compatibles las cargas antiguas. Las versiones previas no se borran durante el guardado.
+- Empezar nueva carga vacía la vista sin borrar el último respaldo, y evita que una consulta tardía reabra el archivo anterior durante la nueva selección.
+- Se conservan los datos leídos de los reportes y su vista como tabla/imagen; no se guarda el binario XLS original. El botón Guardar para todos queda disponible como reintento manual.
+- No requiere publicar nuevas reglas: se usan las rutas privadas de Administración existentes. Actualizar todos los dispositivos para leer el nuevo formato de guardado.
+- Pruebas: edición disponible en jornadas correctas, carga y corrección offline, recarga, sincronización y apertura desde otra sesión, escrituras grandes con Unicode, ediciones concurrentes con un envío pendiente, error de red, respaldo localStorage y lectura del formato anterior. Se verificaron también los cálculos de feriados.
 
 ## Mejora v6.0.48
 
@@ -491,4 +504,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.48
+Versión esperada: v6.0.49

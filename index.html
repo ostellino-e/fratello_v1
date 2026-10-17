@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.48";
-    document.documentElement.dataset.fratelloVersion = "6.0.48";
+    window.FRATELLO_VERSION = "6.0.49";
+    document.documentElement.dataset.fratelloVersion = "6.0.49";
   </script>
 
 </head>
@@ -97,7 +97,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.48</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.49</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -494,7 +494,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.48 · Feriados nacionales en horas</span>
+        <span class="adminFinanceVersion">v6.0.49 · Edición y guardado automático de horas</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -860,6 +860,7 @@
           </article>
 
           <div id="estadoHorasEmpleados" class="employeeHoursStatus">Todavía no cargaste un archivo.</div>
+          <div id="estadoGuardadoHoras" class="employeeHoursStatus">La carga y sus correcciones se guardan automáticamente.</div>
 
           <article id="ultimoArchivoHorasGuardado" class="employeeHoursCloudCard hidden">
             <div><span>☁️ ÚLTIMO ARCHIVO GUARDADO</span><strong id="nombreUltimoArchivoHoras">—</strong><small id="detalleUltimoArchivoHoras">—</small></div>
@@ -1259,7 +1260,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="app.js?v=6048"></script>
+  <script src="app.js?v=6049"></script>
 
   
 
@@ -1276,12 +1277,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6048")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6049")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6048", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6049", {
             scope: "./",
             updateViaCache: "none"
           });

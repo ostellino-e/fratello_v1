@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6048-feriados-horas";
+const CACHE_NAME = "fratello-v6049-horas-persistentes";
 const ARCHIVOS = [
   "./",
   "./index.html",
