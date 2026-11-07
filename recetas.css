@@ -1,0 +1,46 @@
+/* Fratello — Recetas y costos */
+.rcPanel [hidden]{display:none!important}
+.rcPanel h3,.rcPanel h4,.rcPanel h5,.rcPanel p{margin-top:0}
+.rcPanel h3{margin-bottom:6px}.rcPanel h4{margin-bottom:8px}.rcPanel h5{font-size:14px;margin:12px 0 8px}
+.rcPanel button{min-height:36px;cursor:pointer;font-size:13px}
+.rcTitulo,.rcBarra,.rcRecetaCabecera{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rcTitulo p,.rcAyuda{font-size:13px;color:#756454;line-height:1.45}
+.rcTitulo p{margin-bottom:0}.rcTitulo>button{flex:none}
+.rcTabs{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.rcTabs button.active{background:#245d49;color:white;border-color:#245d49}
+.rcTabs #rcRecuperarBorrador{font-size:11px;background:transparent}
+.rcEstado{font-size:13px;color:#245d49;line-height:1.45;margin:9px 0;min-height:0}
+.rcEstado:empty{display:none}.rcEstado.rcError{color:#a82c22}
+.rcBarra{margin:12px 0 8px}.rcBarra input{min-width:0;flex:1}.rcBarra button{flex:none}
+.rcPanel input,.rcPanel select,.rcPanel textarea{box-sizing:border-box;max-width:100%;min-width:0;width:100%;font-size:15px;border:1px solid #d9cabc;background:#fff;border-radius:7px;padding:8px;color:#29211b}
+.rcPanel label{display:grid;gap:5px;font-size:12px;font-weight:600}
+.rcForm{padding:14px;border:1px solid #ddc6a6;border-radius:12px;background:#fffaf2;margin:12px 0 16px}
+.rcGridIngrediente{display:grid;grid-template-columns:1.7fr 1fr 1fr .7fr;gap:10px}
+.rcGridReceta{display:grid;grid-template-columns:1.7fr .8fr 1fr;gap:10px}
+.rcLista{display:grid;gap:10px}
+.rcIngrediente{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px;border:1px solid #e6dacd;background:white;border-radius:10px}
+.rcIngrediente strong,.rcIngrediente small{display:block}.rcIngrediente strong{font-size:14px}.rcIngrediente small{font-size:12px;color:#766759;margin-top:4px}
+.rcAcciones{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.rcIngrediente .rcAcciones{margin:0;flex:none}
+.rcAcciones button{font-size:12px;padding:7px 10px;min-height:32px}
+.rcCheck{display:flex!important;align-items:center;gap:6px!important;font-size:12px!important;margin:12px 0}
+.rcCheck input{width:auto;accent-color:#245d49}
+.rcReceta{background:white;border:1px solid #e1d4c5;border-radius:12px;padding:13px}
+.rcReceta h4{font-size:17px;margin-bottom:3px}.rcReceta small{font-size:12px;color:#756454}
+.rcCosto{display:grid;gap:4px;text-align:right;color:#245d49}.rcCosto strong{font-size:20px;line-height:1.2}.rcCosto small{max-width:260px;font-size:12px}
+.rcReceta details{margin-top:10px}.rcReceta summary{font-size:13px;cursor:pointer}
+.rcTablaWrap{overflow-x:auto;margin-top:8px}.rcPanel table{width:100%;border-collapse:collapse;font-size:13px}.rcPanel th,.rcPanel td{padding:7px 5px;text-align:left;border-bottom:1px solid #eee5da}.rcPanel td:last-child,.rcPanel th:last-child{text-align:right}
+.rcPreparacion{white-space:pre-wrap;font-size:13px;line-height:1.5;margin:12px 0 4px;overflow-wrap:anywhere}
+.rcLinea{display:grid;grid-template-columns:minmax(100px,1fr) 100px 85px 32px;gap:8px;align-items:end;padding:9px 0;border-bottom:1px solid #ebdfce}
+.rcLinea button{padding:4px;min-height:36px}.rcLineaCosto{grid-column:1/-1;text-align:right;color:#245d49;font-weight:600;font-size:12px}
+.rcPreparacionLabel{margin-top:12px}.rcPreview{margin-top:13px;padding:12px;border-radius:8px;background:#eaf5ed}
+.rcVacio{padding:18px 10px;border:1px dashed #cfbfae;border-radius:10px;text-align:center;color:#756454;font-size:14px}
+.rcArchivado{background:#f8f6f2}.rcAviso{font-size:12px;color:#8c5517;margin:9px 0}
+@media(max-width:650px){
+ .rcTitulo{align-items:flex-start}.rcTitulo h3{font-size:20px}.rcTitulo button{font-size:11px;padding:6px 9px}
+ .rcGridIngrediente{grid-template-columns:1fr 1fr}.rcGridIngrediente .rcNombre{grid-column:1/-1}
+ .rcGridReceta{grid-template-columns:1fr 1fr}.rcGridReceta>label:first-child{grid-column:1/-1}
+ .rcIngrediente{align-items:flex-start;flex-wrap:wrap}.rcIngrediente .rcAcciones{margin-left:auto}
+ .rcRecetaCabecera{align-items:flex-start;flex-wrap:wrap}.rcCosto{margin-left:auto}.rcCosto strong{font-size:19px}
+ .rcLinea{grid-template-columns:minmax(80px,1fr) 85px 32px}.rcElegirIngrediente{grid-column:1/-1}.rcLineaCosto{grid-column:1/-1}
+ .rcBarra button{font-size:12px;padding:7px 9px}.rcForm{padding:11px}.rcPanel input,.rcPanel select,.rcPanel textarea{font-size:16px}
+}

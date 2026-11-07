@@ -132,13 +132,15 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6050-horas-tiempo-real";
+const CACHE_NAME = "fratello-v6051-recetas-costos";
 const ARCHIVOS = [
   "./",
   "./index.html",
   "./pedido.html",
   "./styles.css",
   "./app.js",
+  "./recetas.js",
+  "./recetas.css",
   "./xlsx.full.min.js",
   "./manifest.json",
   "./icon-192.png",
@@ -178,7 +180,9 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/") ||
     url.pathname.endsWith("/index.html") ||
     url.pathname.endsWith("/app.js") ||
-    url.pathname.endsWith("/styles.css");
+    url.pathname.endsWith("/styles.css") ||
+    url.pathname.endsWith("/recetas.js") ||
+    url.pathname.endsWith("/recetas.css");
 
   // v5.0.3: arranque instantáneo desde caché y actualización silenciosa detrás.
   // Evita que el ícono instalado espere a la red para mostrar Fratello.

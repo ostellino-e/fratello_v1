@@ -1,4 +1,18 @@
-# Fratello v6.0.50
+# Fratello v6.0.51
+
+## Mejora v6.0.51
+
+- Nueva sección privada Administración > Recetas y costos, con vistas Recetas e Ingredientes y precios.
+- Cada ingrediente tiene nombre, precio de compra, cantidad comprada y unidad. Permite bolsas de 20 kg y otras presentaciones sin convertir precios a mano.
+- Las recetas guardan referencias a ingredientes, cantidades, unidades, rendimiento y preparación opcional. Calculan el costo de ingredientes de toda la preparación y por unidad de rendimiento (unidad, kg, docena o litro).
+- Las conversiones admiten g/kg, ml/l y unidades/docenas. No se convierten masa y volumen entre sí sin conocer densidad.
+- Cambiar un precio actualiza automáticamente todas las recetas que usan ese ingrediente; el costo se calcula con los precios actuales y no queda copiado dentro de la receta. No incluye mano de obra, energía ni otros gastos.
+- Ingredientes y recetas se guardan en documentos individuales de administracion/recetas_costos/ingredientes y administracion/recetas_costos/recetas, con escucha en tiempo real. Se usan las reglas privadas actuales; no es necesario publicarlas otra vez.
+- La edición usa transacciones y versiones para detectar cambios simultáneos. Los formularios se conservan durante actualizaciones remotas, y se ofrece recuperar borradores locales por cuenta.
+- Archivar/restaurar conserva IDs y precios de ingredientes referenciados. Una referencia faltante o una conversión inválida muestra Costo incompleto en lugar de un total parcial engañoso.
+- Se requiere conexión para confirmar guardados; se muestran errores de acceso o conexión. Al cerrar sesión se limpian los datos privados en memoria.
+- Nuevos archivos recetas.js y recetas.css, incluidos en la caché de la app y en el ZIP con todos los archivos en raíz.
+- Verificación: sintaxis de JavaScript, IDs y navegación. Pruebas funcionales con DOM/Firebase simulados para conversiones, entrada y guardado de una receta completa, cambio de precios entre sesiones, borrador abierto, edición concurrente, archivo/restauración, datos incompletos y falta de conexión. No se probaron pantallas en un navegador real ni escrituras en la cuenta real de Firebase.
 
 ## Mejora v6.0.50
 
@@ -515,4 +529,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.50
+Versión esperada: v6.0.51

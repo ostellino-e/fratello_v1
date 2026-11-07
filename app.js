@@ -11035,6 +11035,7 @@ function ocultarModalAdministrador() {
 
 function actualizarInterfazAdministrador() {
   const conectado = tieneRolAdministrador();
+  window.RecetasCostos?.sesionCambiada(conectado);
   if (window.__FRATELLO_HORAS_INICIADO__) {
     if (conectado) horasConsultarUltimoOnline();
     else horasDetenerEscuchaOnline();
@@ -14261,6 +14262,7 @@ function tituloTabAdministracion(nombre) {
     presupuesto: "📅 Presupuesto",
     caja: "🏦 Caja privada",
     horas: "⏱️ Horas de empleados",
+    recetas: "📖 Recetas y costos",
     usuarios: "👥 Usuarios",
     dispositivos: "📱 Dispositivos",
     auditoria: "📜 Auditoría",
@@ -14298,7 +14300,7 @@ function mostrarMenuAdministracion() {
 }
 
 function activarTabAdministracion(nombre = "resumen", opciones = {}) {
-  const tabsSeguras = ["caja", "horas", "usuarios", "dispositivos", "auditoria", "backup"];
+  const tabsSeguras = ["caja", "horas", "recetas", "usuarios", "dispositivos", "auditoria", "backup"];
   if (tabsSeguras.includes(nombre) && !tieneRolAdministrador()) {
     mostrarModalAdministrador();
     return false;
@@ -14348,6 +14350,9 @@ function activarTabAdministracion(nombre = "resumen", opciones = {}) {
       break;
     case "caja":
       cajaAdminActivo = true; renderCajaAdminSeguro(); break;
+    case "recetas":
+      window.RecetasCostos?.iniciar();
+      break;
     case "horas":
       iniciarModuloHorasEmpleados();
       horasConsultarUltimoOnline();
