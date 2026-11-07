@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6052-recetas-planilla";
+const CACHE_NAME = "fratello-v6053-porcentajes-recetas";
 const ARCHIVOS = [
   "./",
   "./index.html",

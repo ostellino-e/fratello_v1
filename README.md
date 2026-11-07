@@ -1,4 +1,11 @@
-# Fratello v6.0.52
+# Fratello v6.0.53
+
+## Mejora v6.0.53
+
+- Revisión de fórmulas del archivo Costeo_Productos_Frattello_v6.xlsx: TOTAL = Merma + Envoltura + Energía; REAL por producto = costo base del producto × (1 + TOTAL). La mano de obra y otros extras fijos se incluyen antes de calcular el costo por kg y por pieza.
+- El campo Ganancia sobre costo se reemplaza por Total adicionales (%), automático y de solo lectura. El porcentaje se aplica una sola vez. Se elimina la columna adicional de precio con ganancia y las filas repetidas del resumen.
+- Las recetas y borradores anteriores siguen siendo legibles. El antiguo campo gananciaPorcentaje deja de intervenir y al guardar queda en 0; los tres porcentajes originales se conservan. No se escriben datos en Firebase hasta que el usuario guarda y no se modificó ni importó automáticamente el Excel.
+- Comparación numérica con las fórmulas y valores del Excel en hojaldre, chicharrón y raspaditas. Verificación de sintaxis, total automático en el formulario, recálculo al cambiar precios, persistencia entre sesiones simuladas y protección de edición concurrente. No se probaron escrituras en el Firebase real ni visualización en navegador real.
 
 ## Mejora v6.0.52
 

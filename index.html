@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
   <link rel="stylesheet" href="styles.css?v=626" />
-  <link rel="stylesheet" href="recetas.css?v=6052" />
+  <link rel="stylesheet" href="recetas.css?v=6053" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -15,8 +15,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.52";
-    document.documentElement.dataset.fratelloVersion = "6.0.52";
+    window.FRATELLO_VERSION = "6.0.53";
+    document.documentElement.dataset.fratelloVersion = "6.0.53";
   </script>
 
 </head>
@@ -98,7 +98,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.52</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.53</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -495,7 +495,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.52 · Costos y recetas como planilla</span>
+        <span class="adminFinanceVersion">v6.0.53 · Porcentajes automáticos en recetas</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -883,8 +883,8 @@
               <button type="button" id="rcAgregarIngrediente">＋ Agregar ingrediente</button>
               <h5>EXTRAS</h5>
               <div id="rcExtrasReceta"></div><button type="button" id="rcAgregarExtra">＋ Agregar extra</button>
-              <div class="rcAdicionalesGrid"><label>Merma (%)<input id="rcMermaPorcentaje" type="number" min="0" step="any" inputmode="decimal"></label><label>Envoltura (%)<input id="rcEnvolturaPorcentaje" type="number" min="0" step="any" inputmode="decimal"></label><label>Energía (%)<input id="rcEnergiaPorcentaje" type="number" min="0" step="any" inputmode="decimal"></label><label>Ganancia sobre costo (%)<input id="rcGananciaPorcentaje" type="number" min="0" step="any" inputmode="decimal"></label></div>
-              <p class="rcAyuda">Los extras fijos se suman a la materia prima. Merma, envoltura y energía se suman como porcentajes sobre ese costo base; no descuentan kilos. Cargá cada gasto una sola vez. La ganancia se aplica sobre el costo.</p>
+              <div class="rcAdicionalesGrid"><label>Merma (%)<input id="rcMermaPorcentaje" type="number" min="0" step="any" inputmode="decimal"></label><label>Envoltura (%)<input id="rcEnvolturaPorcentaje" type="number" min="0" step="any" inputmode="decimal"></label><label>Energía (%)<input id="rcEnergiaPorcentaje" type="number" min="0" step="any" inputmode="decimal"></label><label>Total adicionales (%)<input id="rcTotalPorcentajes" type="number" readonly aria-label="Total automático de merma, envoltura y energía"></label></div>
+              <p class="rcAyuda">El total suma merma + envoltura + energía automáticamente. Ese porcentaje se agrega una sola vez al costo base de cada producto para obtener el costo REAL. El costo base incluye materia prima y extras fijos. Cargá cada gasto una sola vez.</p>
               <h5>PRODUCCIÓN Y PRECIO POR PRODUCTO</h5>
               <div class="rcProductoGrid"><label id="rcPesoTotalLabel">Producción total (kg, opcional)<input id="rcPesoTotalKg" type="number" min="0.000001" step="any" inputmode="decimal" placeholder="Si no se puede sumar el peso"></label><label>Producto elaborado<input id="rcProductoNombre" maxlength="120" placeholder="Ej.: Rasqueta"></label><label>Gramos por unidad<input id="rcGramosUnidad" type="number" min="0.000001" step="any" inputmode="decimal" placeholder="Ej.: 250"></label></div>
               <label class="rcPreparacionLabel">Preparación (opcional)<textarea id="rcRecetaPreparacion" rows="3" maxlength="15000" placeholder="Escribí los pasos de la receta"></textarea></label>
@@ -1311,8 +1311,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="recetas.js?v=6052"></script>
-  <script src="app.js?v=6052"></script>
+  <script src="recetas.js?v=6053"></script>
+  <script src="app.js?v=6053"></script>
 
   
 
@@ -1329,12 +1329,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6052")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6053")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6052", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6053", {
             scope: "./",
             updateViaCache: "none"
           });

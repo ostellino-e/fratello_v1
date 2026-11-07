@@ -89,3 +89,5 @@
  .rcExtraCosto{grid-column:1/-1}.rcRendimientoPlanilla{grid-template-columns:1fr}
  .rcPanel .rcMateriasTabla input,.rcPanel .rcMateriasTabla select{font-size:16px}
 }
+
+.rcPanel #rcTotalPorcentajes{font-weight:800;background:#e6efd1;border-color:#9aaf69;cursor:default}
