@@ -11035,6 +11035,10 @@ function ocultarModalAdministrador() {
 
 function actualizarInterfazAdministrador() {
   const conectado = tieneRolAdministrador();
+  if (window.__FRATELLO_HORAS_INICIADO__) {
+    if (conectado) horasConsultarUltimoOnline();
+    else horasDetenerEscuchaOnline();
+  }
   $("tarjetaAdministracionInicio")?.classList.toggle("hidden", !conectado);
   document.body.classList.toggle("admin-authenticated", conectado);
   $("btnAdministrarPersonasCajaRapido")?.classList.toggle("hidden", !conectado);
@@ -13123,6 +13127,9 @@ let horasConsultaEnCurso = false;
 let horasReintentoCopia = null;
 let horasRevisionPersistida = null;
 let horasNuevaCargaSolicitada = false;
+let horasCancelarEscucha = null;
+let horasGeneracionLectura = 0;
+let horasCargaModificadaEnSesion = false;
 const HORAS_ULTIMA_CARGA_STORAGE = "fratello_horas_ultimo_v6049";
 
 function horasEstadoGuardado(texto, error = false) {
@@ -13187,6 +13194,7 @@ function horasCrearCopiaActual() {
     actualizadoEn:new Date().toISOString(),
     revision:`${Date.now()}_${Math.random().toString(36).slice(2)}`,
     pendienteSync:true,
+    baseRevision:horasUltimaCopiaLocal?.pendienteSync ? horasUltimaCopiaLocal.baseRevision || null : horasUltimaCopiaLocal?.revision || null,
     version:window.FRATELLO_VERSION || "6.0.49"
   };
 }
@@ -13228,6 +13236,7 @@ async function horasRestaurarCargaLocal() {
 async function horasGuardarAutomaticamente() {
   if (!archivoHorasEmpleadosActual) return false;
   const copia = horasCrearCopiaActual();
+  horasCargaModificadaEnSesion = true;
   horasUltimaCopiaLocal = copia;
   horasEstadoGuardado("Guardando la última carga...");
   try {
@@ -13261,14 +13270,14 @@ function horasPartirCopiaOnline(texto) {
   return partes;
 }
 
-async function horasLeerPaqueteOnline(snap) {
+async function horasLeerPaqueteOnline(snap, desdeServidor = false) {
   if (!snap.exists) return null;
   const dato = snap.data();
-  if (dato.archivo) return {...dato,revision:dato.revision || `legacy_${Date.now()}`,correcciones:dato.correcciones || [],pendienteSync:false};
+  if (dato.archivo) return {...dato,revision:dato.revision || `legacy_${Date.parse(dato.actualizadoEn || "") || 0}`,correcciones:dato.correcciones || [],pendienteSync:false};
   if (dato.formato !== "partes_v6049" || !/^[a-zA-Z0-9_]+$/.test(dato.revision || "") ||
       !Number.isInteger(dato.partes) || dato.partes < 1 || dato.partes > 400) throw new Error("Carga online incompleta o inválida");
   const ref = db.collection("administracion").doc("horas_empleados_ultimo").collection("versiones").doc(dato.revision).collection("partes");
-  const partes = await Promise.all(Array.from({length:dato.partes}, (_,i) => ref.doc(String(i)).get()));
+  const partes = await Promise.all(Array.from({length:dato.partes}, (_,i) => desdeServidor ? ref.doc(String(i)).get({source:"server"}) : ref.doc(String(i)).get()));
   if (partes.some(p => !p.exists || typeof p.data().contenido !== "string")) throw new Error("Faltan partes del reporte guardado");
   const datos = JSON.parse(partes.map(p => p.data().contenido).join(""));
   if (!horasCopiaValida(datos) || datos.revision !== dato.revision) throw new Error("Reporte guardado inválido");
@@ -13448,33 +13457,90 @@ function horasMostrarTarjetaNube(datos) {
   $("detalleUltimoArchivoHoras").textContent = `${periodo} · ${cantidad} empleados${fecha ? ` · Guardado ${fecha}` : ""}`;
 }
 
+function horasErrorSincronizacion(error) {
+  if (error?.code === "permission-denied" || error?.code === "unauthenticated") {
+    horasEstadoGuardado("Firebase no autorizó las horas. Ingresá con tu cuenta de Administrador en este dispositivo y verificá las reglas publicadas.", true);
+  } else {
+    horasEstadoGuardado(archivoHorasEmpleadosActual ?
+      "Se conserva la carga local. No se pudo consultar Firebase; tocá Actualizar horas con conexión." :
+      "No se pudo consultar Firebase. Tocá Actualizar horas con conexión para recuperar la carga.", true);
+  }
+}
+
+function horasDetenerEscuchaOnline() {
+  if (horasCancelarEscucha) horasCancelarEscucha();
+  horasCancelarEscucha = null;
+  horasGeneracionLectura++;
+}
+
+async function horasRecibirCopiaOnline(snap) {
+  if (snap.metadata?.hasPendingWrites || snap.metadata?.fromCache) return null;
+  const generacion = ++horasGeneracionLectura;
+  const datos = await horasLeerPaqueteOnline(snap, true);
+  if (generacion !== horasGeneracionLectura || !tieneRolAdministrador() || !datos) return null;
+  horasMostrarTarjetaNube(datos);
+  const local = horasUltimaCopiaLocal;
+  if (local?.revision === datos.revision) {
+    if (local.pendienteSync) {
+      horasUltimaCopiaLocal = {...local,pendienteSync:false};
+      try { await horasGuardarCopiaLocal(horasUltimaCopiaLocal); } catch (_) {}
+    }
+    if (horasUltimaCopiaLocal?.revision === datos.revision && !horasUltimaCopiaLocal.pendienteSync) {
+      horasEstadoGuardado("Carga confirmada en Firebase · Disponible en los otros dispositivos con Administrador.");
+    }
+    return datos;
+  }
+  if (local?.pendienteSync || correccionHorasActual || horasCargaReportesEnCurso || horasNuevaCargaSolicitada) {
+    horasEstadoGuardado(local?.pendienteSync ?
+      "Hay una carga online y cambios locales pendientes. Se conserva la edición local; Guardar para todos publica esta carga." :
+      "Hay una carga actualizada online. Terminá la edición o abrila desde Último archivo guardado.");
+    return datos;
+  }
+  // La revisión confirmada por Firebase determina la última carga, no el reloj del dispositivo.
+  horasUltimaCopiaLocal = datos;
+  horasAplicarCopia(datos, "desde Firebase");
+  try { await horasGuardarCopiaLocal(datos); } catch (_) {}
+  horasEstadoGuardado("Última carga de Firebase recibida y mostrada en este dispositivo.");
+  return datos;
+}
+
+function horasIniciarEscuchaOnline() {
+  if (!db || !tieneRolAdministrador() || horasCancelarEscucha) return;
+  const ref = db.collection("administracion").doc("horas_empleados_ultimo");
+  horasCancelarEscucha = ref.onSnapshot({includeMetadataChanges:true}, snap => {
+    horasRecibirCopiaOnline(snap).catch(horasErrorSincronizacion);
+  }, error => {
+    horasCancelarEscucha = null;
+    horasGeneracionLectura++;
+    horasErrorSincronizacion(error);
+  });
+}
+
 async function horasConsultarUltimoOnline() {
-  if (!tieneRolAdministrador() || horasConsultaEnCurso) return;
+  if (!tieneRolAdministrador()) {
+    horasDetenerEscuchaOnline();
+    horasEstadoGuardado("Ingresá como Administrador para recibir las horas guardadas en Firebase.", true);
+    return;
+  }
+  if (horasConsultaEnCurso) return;
   horasConsultaEnCurso = true;
   try {
     await horasRestaurarCargaLocal();
-    if (!db) return;
+    if (!db) { horasEstadoGuardado("Firebase todavía no inició. Se conserva la copia local.", true); return; }
+    horasIniciarEscuchaOnline();
     horasConsultarValoresOnline();
-    if (horasUltimaCopiaLocal?.pendienteSync && archivoHorasEmpleadosActual) {
-      await horasGuardarUltimosDatosOnline(true);
-      if (horasUltimaCopiaLocal?.pendienteSync) return;
+    const snap = await db.collection("administracion").doc("horas_empleados_ultimo").get({source:"server"});
+    const datos = await horasRecibirCopiaOnline(snap);
+    if (!datos && !snap.exists && !horasUltimaCopiaLocal?.pendienteSync) {
+      horasEstadoGuardado("Firebase todavía no tiene una carga de horas. En la PC revisá que diga guardada para todos los dispositivos.");
     }
-    const snap = await db.collection("administracion").doc("horas_empleados_ultimo").get();
-    const datos = await horasLeerPaqueteOnline(snap);
-    if (!datos) return; // Una consulta vacía no borra una copia local.
-    horasMostrarTarjetaNube(datos);
-    const hayCopiaMasNueva = archivoHorasEmpleadosActual && horasUltimaCopiaLocal &&
-      !horasUltimaCopiaLocal.pendienteSync && !correccionHorasActual &&
-      String(datos.actualizadoEn || "") > String(horasUltimaCopiaLocal.actualizadoEn || "");
-    if ((!archivoHorasEmpleadosActual || hayCopiaMasNueva) && !horasCargaReportesEnCurso && !horasNuevaCargaSolicitada) {
-      horasUltimaCopiaLocal = datos;
-      horasAplicarCopia(datos, "desde la nube");
-      try { await horasGuardarCopiaLocal(datos); } catch (_) {}
-      horasEstadoGuardado("Última carga recuperada desde la nube.");
+    if (horasUltimaCopiaLocal?.pendienteSync && archivoHorasEmpleadosActual &&
+        (!snap.exists || horasCargaModificadaEnSesion || (datos && horasUltimaCopiaLocal.baseRevision === datos.revision))) {
+      horasGuardarUltimosDatosOnline(true).catch(horasErrorSincronizacion);
     }
   } catch (error) {
     console.warn("No se pudieron consultar las horas guardadas:", error);
-    horasEstadoGuardado(archivoHorasEmpleadosActual ? "Se conserva la carga de este dispositivo. No se pudo consultar la copia online." : "No se pudo consultar la última carga online. Volvé a intentar con conexión.", true);
+    horasErrorSincronizacion(error);
   } finally { horasConsultaEnCurso = false; }
 }
 
@@ -13511,6 +13577,9 @@ async function horasGuardarUltimosDatosOnline(silencioso = false) {
     lote.set(ref, {formato:"partes_v6049", revision:datos.revision, partes:partes.length, actualizadoEn:datos.actualizadoEn});
     await lote.commit();
     guardado = true;
+    if (horasUltimaCopiaLocal?.revision !== datos.revision && horasUltimaCopiaLocal?.pendienteSync) {
+      horasUltimaCopiaLocal = {...horasUltimaCopiaLocal,baseRevision:datos.revision};
+    }
     if (horasUltimaCopiaLocal?.revision === datos.revision) {
       horasUltimaCopiaLocal = {...horasUltimaCopiaLocal,pendienteSync:false};
       horasArchivoVinculadoNube = true;
@@ -13523,6 +13592,10 @@ async function horasGuardarUltimosDatosOnline(silencioso = false) {
     return true;
   } catch (error) {
     console.error("No se pudieron guardar las horas online:", error);
+    if (error?.code === "permission-denied" || error?.code === "unauthenticated") {
+      horasErrorSincronizacion(error);
+      return false;
+    }
     horasEstadoGuardado(horasRevisionPersistida === horasUltimaCopiaLocal?.revision ?
       "No se pudo sincronizar. La carga está guardada en este dispositivo; guardado online pendiente." :
       "No se pudo guardar la última carga. Mantené abierta la pantalla y reintentá guardar con conexión.", true);
@@ -14133,7 +14206,7 @@ function iniciarModuloHorasEmpleados() {
   $("btnCalcularHorasEmpleados")?.addEventListener("click", () => { horasRenderResultados(); horasGuardarVistaLocal(); });
   ["horasEmpleadosDesde", "horasEmpleadosHasta"].forEach(id => $(id)?.addEventListener("change", () => horasGuardarVistaLocal()));
   window.addEventListener("online", () => {
-    if (archivoHorasEmpleadosActual && horasUltimaCopiaLocal?.pendienteSync) horasGuardarUltimosDatosOnline(true);
+    if (archivoHorasEmpleadosActual && horasUltimaCopiaLocal?.pendienteSync) horasConsultarUltimoOnline();
   });
   $("btnAgregarJornadaManual")?.addEventListener("click", horasAbrirNuevaJornada);
   $("btnGuardarHorasOnline")?.addEventListener("click", () => horasGuardarUltimosDatosOnline(false));
@@ -14172,6 +14245,10 @@ function iniciarModuloHorasEmpleados() {
   $("btnDescargarImagenHoras")?.addEventListener("click", horasDescargarImagenArchivo);
   $("modalVistaArchivoHoras")?.addEventListener("click", evento => {
     if (evento.target?.id === "modalVistaArchivoHoras") horasCerrarVistaArchivo();
+  });
+  $("btnActualizarHorasOnline")?.addEventListener("click", horasConsultarUltimoOnline);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && tieneRolAdministrador()) horasConsultarUltimoOnline();
   });
   setTimeout(horasConsultarUltimoOnline, 700);
 }

@@ -1,4 +1,15 @@
-# Fratello v6.0.49
+# Fratello v6.0.50
+
+## Mejora v6.0.50
+
+- Horas escucha en tiempo real la última carga confirmada por Firebase. Una nueva carga se refleja en otro dispositivo administrador aunque la sección ya esté abierta.
+- Las consultas explícitas leen del servidor tanto el índice como las partes del reporte. Las instantáneas de caché o con escrituras pendientes no sustituyen una carga confirmada.
+- La revisión de Firebase determina qué carga mostrar: ya no se comparan las horas de los relojes de PC y celular. Las respuestas antiguas que llegan tarde se descartan.
+- Actualizar horas desde Firebase permite consultar sin volver a importar. La consulta se repite al regresar a la app, recuperar conexión y terminar el inicio de sesión de Administrador.
+- Los mensajes distinguen una falta de autorización de una consulta sin conexión. No se modifican las reglas ni se habilitan datos privados a usuarios genéricos.
+- Una edición local pendiente se conserva; no se sobreescribe automáticamente al recibir una carga remota. Tampoco se publica una copia pendiente antigua al abrir la sección si Firebase contiene otra revisión más reciente y no hubo cambios en la sesión.
+- Se conservan el guardado automático, la lectura del formato anterior, las correcciones, el cálculo por minutos y los feriados.
+- Pruebas con Firebase simulado: recepción en una pantalla ya abierta, metadatos/partes desde servidor, relojes desfasados, caché y escrituras pendientes, respuestas tardías, edición local pendiente, confirmación de revisión, cierre/reinicio de sesión, permisos y formato anterior. No se ejecutaron pruebas sobre la cuenta real de Firebase ni sobre los dispositivos del negocio.
 
 ## Mejora v6.0.49
 
@@ -504,4 +515,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.49
+Versión esperada: v6.0.50

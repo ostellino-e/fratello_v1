@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6049-horas-persistentes";
+const CACHE_NAME = "fratello-v6050-horas-tiempo-real";
 const ARCHIVOS = [
   "./",
   "./index.html",
