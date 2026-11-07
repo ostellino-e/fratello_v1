@@ -44,3 +44,48 @@
  .rcLinea{grid-template-columns:minmax(80px,1fr) 85px 32px}.rcElegirIngrediente{grid-column:1/-1}.rcLineaCosto{grid-column:1/-1}
  .rcBarra button{font-size:12px;padding:7px 9px}.rcForm{padding:11px}.rcPanel input,.rcPanel select,.rcPanel textarea{font-size:16px}
 }
+/* v6.0.52 — vistas como la planilla de materias primas y recetas */
+.rcMateriasTabla{min-width:810px;font-size:13px}
+.rcPanel .rcMateriasTabla th,.rcPanel .rcMateriasTabla td{border:1px solid #c3c4b7;padding:6px;text-align:left}
+.rcMateriasTabla thead th{background:#d2d8bc;color:#252c1e;font-weight:700}
+.rcMateriasTabla tbody th{background:#ece9df;min-width:120px;position:sticky;left:0;z-index:1}
+.rcMateriasTabla th small{display:block;font-weight:400}
+.rcMateriasTabla td:nth-child(2){min-width:145px}.rcMateriasTabla td:nth-child(3){min-width:120px}.rcMateriasTabla td:nth-child(4){min-width:140px;background:#f2efd9;font-weight:700}
+.rcPanel .rcMateriasTabla input,.rcPanel .rcMateriasTabla select{background:#d9f8ca;border-color:#aac992;padding:7px;font-size:15px}
+.rcCompraCelda{display:grid;grid-template-columns:1fr 62px;gap:4px}
+.rcMateriasTabla .rcAcciones{margin:0;gap:3px}.rcMateriasTabla .rcAcciones button{font-size:11px;min-height:28px;padding:4px 6px}
+.rcFechaPrecio{font-size:11px;min-width:72px}
+.rcFormulaScroll{max-width:100%;overflow-x:auto;margin-bottom:10px}
+.rcFormulaCabecera{display:grid;grid-template-columns:minmax(160px,1.6fr) 90px 76px 115px 100px 32px;gap:7px;padding:7px 0;background:#d9e4c7;font-size:12px;font-weight:700;min-width:620px}
+.rcLinea{grid-template-columns:minmax(160px,1.6fr) 90px 76px 115px 100px 32px;min-width:620px;gap:7px;align-items:end}
+.rcLinea>label:nth-child(1){grid-column:1;grid-row:1}.rcLinea>label:nth-child(2){grid-column:2;grid-row:1}.rcLinea>label:nth-child(3){grid-column:3;grid-row:1}
+.rcLinea>.rcQuitarLinea{grid-column:6;grid-row:1}
+.rcLinea>.rcLineaPrecio{grid-column:4;grid-row:1;align-self:end;background:#f0ebd6;padding:9px 5px;font-size:12px;white-space:nowrap}
+.rcLinea>.rcLineaCosto{grid-column:5;grid-row:1;align-self:end;padding:9px 5px;font-size:12px;background:#e8f4e4;white-space:nowrap}
+.rcPanel .rcLinea input,.rcPanel .rcLinea select{background:#ddf8d1}
+.rcExtra{display:grid;grid-template-columns:minmax(140px,1.4fr) 85px minmax(100px,1fr) 32px;gap:8px;align-items:end;padding:8px 0;border-bottom:1px solid #e3daca}
+.rcExtra button{padding:5px}.rcExtraCosto{grid-column:1/-1;text-align:right;color:#245d49}
+.rcPanel .rcExtra input{background:#eef2ed}
+.rcAdicionalesGrid,.rcProductoGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:13px 0}
+.rcProductoGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.rcPanel .rcAdicionalesGrid input,.rcPanel .rcProductoGrid input{background:#fff3cc}
+.rcCalculoPlanilla{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin:12px 0}
+.rcPanel .rcResumenTabla th,.rcPanel .rcResumenTabla td{padding:6px;border:1px solid #d7dcc7;background:#f0f3df;font-size:12px;text-align:left}
+.rcPanel .rcResumenTabla td{text-align:right;white-space:nowrap;font-weight:700}
+.rcPanel .rcResumenTabla .rcTotalReal th,.rcPanel .rcResumenTabla .rcTotalReal td{background:#225544;color:white}
+.rcRendimientoPlanilla{display:grid;align-content:start;gap:5px}
+.rcRendimientoPlanilla span{display:flex;justify-content:space-between;gap:8px;background:#eaf2d9;padding:7px;font-size:12px}
+.rcRendimientoPlanilla b{white-space:nowrap}
+.rcPanel table caption{caption-side:top;background:#d2dfb6;font-size:12px;font-weight:bold;text-align:center;padding:6px;margin-top:10px}
+.rcPanel .rcProductosTabla caption{background:#b13c28;color:white}
+.rcProductosTabla{min-width:480px}.rcProductosTabla td:nth-child(4){background:#f4e6c3;font-weight:700}
+.rcFichaPlanilla{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:8px}
+.rcFichaPlanilla .rcCalculoPlanilla{grid-template-columns:1fr}
+.rcPreview{background:#f9f9f0}
+@media(max-width:850px){.rcFichaPlanilla{grid-template-columns:1fr}.rcCalculoPlanilla{grid-template-columns:1fr}.rcRendimientoPlanilla{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){
+ .rcAdicionalesGrid,.rcProductoGrid{grid-template-columns:1fr 1fr}.rcProductoGrid>label:nth-child(2){grid-column:auto}
+ .rcExtra{grid-template-columns:1fr 1fr 32px}.rcExtra>label:first-child{grid-column:1/-1}.rcExtra>button{grid-column:3;grid-row:2}
+ .rcExtraCosto{grid-column:1/-1}.rcRendimientoPlanilla{grid-template-columns:1fr}
+ .rcPanel .rcMateriasTabla input,.rcPanel .rcMateriasTabla select{font-size:16px}
+}

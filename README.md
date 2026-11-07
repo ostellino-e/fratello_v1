@@ -1,4 +1,18 @@
-# Fratello v6.0.51
+# Fratello v6.0.52
+
+## Mejora v6.0.52
+
+- Materias primas en una tabla con celdas verdes editables: cantidad por presentación, unidad, precio de presentación, precio convertido por kg/litro/unidad y fecha de actualización. Guardar fila publica el nuevo precio y actualiza las recetas vinculadas.
+- Fórmula de receta con ingrediente, cantidad, unidad, precio de referencia y costo de cada ingrediente. La ficha guardada combina fórmula, extras, resumen de costos y rendimiento, con presentación similar a la planilla de referencia y desplazamiento horizontal en tablas para móvil.
+- Extras con concepto, cantidad, precio unitario e importe. Plantilla inicial: mano de obra, gas, luz y envío, con cantidades cero; se pueden agregar y quitar conceptos.
+- Porcentajes de merma, envoltura y energía editables. Se suman y se aplican como recargo al costo base (materia prima + extras fijos), sin descontar kilos. Las recetas nuevas parten de 5% en cada concepto, como la referencia. Las recetas existentes sin estos campos conservan 0%, para no alterar costos anteriores automáticamente.
+- Ganancia como porcentaje sobre costo. Se muestra el precio ideal por kg sobre el costo base y el precio REAL con los adicionales incluidos. No es porcentaje de margen sobre venta.
+- El rendimiento en kg puede calcularse sumando ingredientes cargados en peso o indicarse manualmente. Si hay ingredientes por volumen o unidades, no se supone una densidad: se pide un peso final o se usa el rendimiento en piezas y gramos por pieza.
+- Producto elaborado y gramos por unidad permiten calcular unidades estimadas, costo base por pieza, costo REAL por pieza y precio con ganancia. Los valores son estimaciones sobre el rendimiento cargado.
+- Las filas de precios con cambios pendientes se conservan al recibir actualizaciones; se detecta una versión cambiada en otro dispositivo y se evita sobrescribirla sin revisión. Se conserva el foco y desplazamiento de la tabla durante el refresco.
+- Las recetas de la v6.0.51 siguen siendo legibles. No se migran ni escriben automáticamente precios o recetas de las capturas: sirven como referencia de diseño y flujo de trabajo.
+- Mantiene los permisos privados y la sincronización actuales. No requiere nuevas reglas de Firebase.
+- Verificación: sintaxis JavaScript, campos HTML, cálculos de compra/conversión, masa automática, costo por pieza, extras, porcentajes aditivos, ganancia, compatibilidad con recetas anteriores y datos incompletos. Pruebas con DOM/Firebase simulados del guardado en celdas, recálculo entre sesiones, persistencia de campos y protección contra ediciones simultáneas. No se realizó validación visual en navegador real ni escritura en el Firebase del negocio.
 
 ## Mejora v6.0.51
 
@@ -529,4 +543,4 @@ Versión esperada: v6.0.10
 - Una copia histórica antigua ya no puede reemplazar cantidades nuevas.
 - El mensaje de éxito aparece después de la confirmación online.
 
-Versión esperada: v6.0.51
+Versión esperada: v6.0.52
