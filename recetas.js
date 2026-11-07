@@ -1,4 +1,4 @@
-/* Fratello v6.0.53 — recetas enlazadas a precios de ingredientes. */
+/* Fratello v6.0.54 — recetas enlazadas a precios de ingredientes. */
 (() => {
   'use strict';
   const UNIDADES = Object.freeze({
@@ -182,12 +182,19 @@
     if(id&&!dato)return;
     estado.formIngrediente={id:dato?.id||idNuevo(),version:dato?.version||0,nuevo:!dato?.id||dato.nuevo===true};
     el('rcIngredienteNombre').value=dato?.nombre||'';el('rcIngredientePrecio').value=dato?.precioCompra??'';
+    el('rcIngredienteSinCosto').checked=dato?.precioCompra===0;actualizarPrecioIngrediente();
     el('rcIngredienteCantidad').value=dato?.cantidadCompra??1;el('rcIngredienteUnidad').value=dato?.unidadCompra||'kg';
     el('rcTituloIngrediente').textContent=id?'Editar ingrediente y precio':'Nuevo ingrediente';
     el('rcFormIngrediente').hidden=false;mensaje('rcEstadoIngrediente','');seleccionarVista('ingredientes');
   }
+  function actualizarPrecioIngrediente() {
+    const sinCosto=el('rcIngredienteSinCosto').checked,precio=el('rcIngredientePrecio');
+    precio.required=!sinCosto;precio.readOnly=sinCosto;
+    if(sinCosto)precio.value='';
+    precio.placeholder=sinCosto?'Sin costo ($0)':'Ej.: 20000';
+  }
   function leerIngrediente() {
-    return {...estado.formIngrediente,nombre:el('rcIngredienteNombre').value.trim(),precioCompra:numero(el('rcIngredientePrecio').value),
+    return {...estado.formIngrediente,nombre:el('rcIngredienteNombre').value.trim(),precioCompra:el('rcIngredienteSinCosto').checked?0:numero(el('rcIngredientePrecio').value),
       cantidadCompra:numero(el('rcIngredienteCantidad').value),unidadCompra:el('rcIngredienteUnidad').value};
   }
   function renderFila(linea={}) {
@@ -350,6 +357,7 @@
     ['Ingredientes','Recetas'].forEach(n=>el('rcBuscar'+n).addEventListener('input',n==='Ingredientes'?renderIngredientes:renderRecetas));
     el('rcVerArchivadosIngredientes').addEventListener('change',e=>{estado.archivadosIngredientes=e.target.checked;renderIngredientes();});
     el('rcVerArchivadasRecetas').addEventListener('change',e=>{estado.archivadasRecetas=e.target.checked;renderRecetas();});
+    el('rcIngredienteSinCosto').addEventListener('change',()=>{actualizarPrecioIngrediente();guardarBorrador('ingredientes');});
     el('rcFormIngrediente').addEventListener('submit',e=>{e.preventDefault();guardar('ingredientes');});
     el('rcFormReceta').addEventListener('submit',e=>{e.preventDefault();guardar('recetas');});
     ['Ingrediente','Receta'].forEach(n=>{

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
   <link rel="stylesheet" href="styles.css?v=626" />
-  <link rel="stylesheet" href="recetas.css?v=6053" />
+  <link rel="stylesheet" href="recetas.css?v=6054" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -15,8 +15,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.53";
-    document.documentElement.dataset.fratelloVersion = "6.0.53";
+    window.FRATELLO_VERSION = "6.0.54";
+    document.documentElement.dataset.fratelloVersion = "6.0.54";
   </script>
 
 </head>
@@ -98,7 +98,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.53</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.54</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -495,7 +495,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.53 · Porcentajes automáticos en recetas</span>
+        <span class="adminFinanceVersion">v6.0.54 · Ingredientes sin costo en recetas</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -865,6 +865,8 @@
                 <label>Cantidad que comprás<input id="rcIngredienteCantidad" type="number" min="0.000001" step="any" inputmode="decimal" required></label>
                 <label>Unidad<select id="rcIngredienteUnidad"><option value="kg">kg</option><option value="g">g</option><option value="l">litros</option><option value="ml">ml</option><option value="unidad">unidades</option><option value="docena">docenas</option></select></label>
               </div>
+              <label class="rcCheck"><input type="checkbox" id="rcIngredienteSinCosto"> Sin costo (por ejemplo, agua)</label>
+              <p class="rcAyuda">Si marcás Sin costo, podés dejar el precio vacío: se guarda a $0. Para que el agua sume al peso automático de la masa, cargala en kg o gramos.</p>
               <p id="rcEstadoIngrediente" class="rcEstado" role="status"></p>
               <div class="rcAcciones"><button type="submit" class="primary">Guardar ingrediente y precio</button><button type="button" id="rcCancelarIngrediente">Cancelar</button></div>
             </form>
@@ -1311,8 +1313,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="recetas.js?v=6053"></script>
-  <script src="app.js?v=6053"></script>
+  <script src="recetas.js?v=6054"></script>
+  <script src="app.js?v=6054"></script>
 
   
 
@@ -1329,12 +1331,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6053")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6054")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6053", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6054", {
             scope: "./",
             updateViaCache: "none"
           });

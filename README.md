@@ -1,4 +1,11 @@
-# Fratello v6.0.53
+# Fratello v6.0.54
+
+## Mejora v6.0.54
+
+- Ingredientes: opción explícita Sin costo (por ejemplo, agua). Permite dejar el precio vacío y guarda precioCompra: 0. Los demás ingredientes siguen requiriendo un precio válido, para evitar costos incompletos presentados como cero.
+- El agua en kg o gramos participa del rendimiento automático y las unidades estimadas sin agregar costo. No se convierte automáticamente volumen a masa.
+- Editar un ingrediente guardado con precio cero recupera la opción Sin costo. Desmarcarla permite volver a cargar precio. Borradores y guardado usan el valor cero sin cambiar el esquema ni las reglas de Firebase.
+- Verificación de sintaxis, cálculo de masa/costo con agua, guardado y lectura entre sesiones simuladas, recuperación de ingrediente de costo cero, cambio a ingrediente con precio y regresión de cálculos contra Excel. No se hicieron escrituras en Firebase real ni pruebas visuales en navegador real.
 
 ## Mejora v6.0.53
 
