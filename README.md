@@ -1,4 +1,11 @@
-# Fratello v6.0.54
+# Fratello v6.0.55
+
+## Mejora v6.0.55
+
+- Las tarjetas y la vista previa destacan Costo REAL por unidad (adicionales incluidos) cuando se cargó el peso por pieza o un rendimiento en unidades/docenas. Las docenas se convierten a costo de una unidad.
+- Sin peso por pieza y con rendimiento en kg o litros, se indica el costo REAL por kg o litro, sin inventar unidades. El total de la receta queda como información secundaria en letra más chica.
+- Se destaca también la columna REAL con adicionales en el detalle del producto. No cambia la fórmula, los datos guardados ni las reglas de Firebase.
+- Verificación: sintaxis y simulación del texto/importe destacado por pieza, unidad, docena, kg y litro; porcentaje aplicado una sola vez, agua a costo cero sumada al peso e ingredientes incompletos. Sin validación visual en navegador real.
 
 ## Mejora v6.0.54
 

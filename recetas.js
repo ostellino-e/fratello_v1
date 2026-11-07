@@ -1,4 +1,4 @@
-/* Fratello v6.0.54 — recetas enlazadas a precios de ingredientes. */
+/* Fratello v6.0.55 — recetas enlazadas a precios de ingredientes. */
 (() => {
   'use strict';
   const UNIDADES = Object.freeze({
@@ -91,7 +91,7 @@
       [`Adicionales (${cantidad(c.porcentajeTotal)}%)`,c.ok?c.adicional:null],['Costo total REAL',c.total],['Costo REAL por kg',c.costoRealKg]];
     return `<div class="rcCalculoPlanilla"><div class="rcTablaWrap"><table class="rcResumenTabla"><tbody>${filas.map(([n,v])=>`<tr${n.includes('REAL')?' class="rcTotalReal"':''}><th>${escape(n)}</th><td>${money(v)}</td></tr>`).join('')}</tbody></table></div>
       <div class="rcRendimientoPlanilla"><span>Masa / producción total <b>${c.masaKg>0?cantidad(c.masaKg)+' kg':'Completá producción en kg'}</b></span><span>Total gramos <b>${c.masaKg>0?cantidad(c.masaKg*1000)+' g':'—'}</b></span><span>Gramos por unidad <b>${c.gramosUnidad>0?cantidad(c.gramosUnidad)+' g':'—'}</b></span><span>Unidades estimadas <b>${c.unidades>0?cantidad(c.unidades):'—'}</b></span></div></div>
-      ${c.producto?`<div class="rcTablaWrap"><table class="rcProductosTabla"><caption>PRECIO DE COSTO POR PRODUCTO</caption><thead><tr><th>Producto</th><th>Peso (g)</th><th>Costo base</th><th>REAL (con adicionales)</th></tr></thead><tbody><tr><td>${escape(c.producto.nombre)}</td><td>${cantidad(c.producto.gramos)}</td><td>${money(c.producto.costoBase)}</td><td>${money(c.producto.costoReal)}</td></tr></tbody></table></div>`:''}`;
+      ${c.producto?`<div class="rcTablaWrap"><table class="rcProductosTabla"><caption>PRECIO DE COSTO POR PRODUCTO</caption><thead><tr><th>Producto</th><th>Peso (g)</th><th>Costo base</th><th>REAL (con adicionales)</th></tr></thead><tbody><tr><td>${escape(c.producto.nombre)}</td><td>${cantidad(c.producto.gramos)}</td><td>${money(c.producto.costoBase)}</td><td class="rcCostoProductoReal">${money(c.producto.costoReal)}</td></tr></tbody></table></div>`:''}`;
   }
   function htmlExtras(c) {
     return c.extras.some(e=>e.cantidad>0)?`<div class="rcTablaWrap"><table><caption>EXTRAS</caption><thead><tr><th>Concepto</th><th>Cantidad</th><th>Precio unitario</th><th>Costo</th></tr></thead><tbody>${c.extras.filter(e=>e.cantidad>0).map(e=>`<tr><td>${escape(e.nombre)}</td><td>${cantidad(e.cantidad)}</td><td>${dinero(e.precioUnitario)}</td><td>${e.ok?dinero(e.importe):'Revisar'}</td></tr>`).join('')}</tbody></table></div>`:'';
@@ -102,7 +102,12 @@
   }
   function singular(unidad){return {kg:'kg',unidad:'unidad',docena:'docena',l:'litro'}[unidad]||unidad;}
   function etiquetaCosto(coste,receta) {
-    return coste.ok ? `<strong>${dinero(coste.total)}</strong><small>Preparación completa · ${dinero(coste.porRendimiento)} por ${singular(receta.unidadRinde)}</small>` : '<strong>Costo incompleto</strong><small>Revisá los ingredientes, cantidades y rendimiento.</small>';
+    if(!coste.ok)return '<strong>Costo incompleto</strong><small>Revisá los ingredientes, cantidades y rendimiento.</small>';
+    const porPieza=Boolean(coste.producto)||['unidad','docena'].includes(receta.unidadRinde);
+    const importe=coste.producto?coste.producto.costoReal:receta.unidadRinde==='docena'?coste.porRendimiento/12:coste.porRendimiento;
+    const unidad=porPieza?'unidad':singular(receta.unidadRinde);
+    const peso=coste.producto?` · ${cantidad(coste.producto.gramos)} g`:'';
+    return `<small class="rcCostoEtiqueta">Costo REAL por ${escape(unidad)}${peso}</small><strong>${dinero(importe)}</strong><small>Con adicionales incluidos</small><small class="rcCostoPreparacion">Total de la receta: ${dinero(coste.total)}</small>`;
   }
   function renderIngredientes() {
     const nodo=el('rcListaIngredientes');if(!nodo)return;

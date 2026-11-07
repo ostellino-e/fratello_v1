@@ -91,3 +91,9 @@
 }
 
 .rcPanel #rcTotalPorcentajes{font-weight:800;background:#e6efd1;border-color:#9aaf69;cursor:default}
+
+.rcPanel .rcCosto strong{font-size:26px;font-weight:800}
+.rcPanel .rcCosto .rcCostoEtiqueta{font-weight:700;color:#245d49}
+.rcPanel .rcCosto .rcCostoPreparacion{font-size:11px;color:#6a6259;margin-top:3px}
+.rcPanel .rcProductosTabla .rcCostoProductoReal{font-size:18px;font-weight:800;background:#e6efd1;color:#225544}
+@media(max-width:600px){.rcPanel .rcCosto strong{font-size:24px}}

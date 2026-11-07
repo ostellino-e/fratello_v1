@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6054-ingredientes-sin-costo";
+const CACHE_NAME = "fratello-v6055-costo-real-unidad";
 const ARCHIVOS = [
   "./",
   "./index.html",
