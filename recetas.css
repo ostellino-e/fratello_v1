@@ -97,3 +97,5 @@
 .rcPanel .rcCosto .rcCostoPreparacion{font-size:11px;color:#6a6259;margin-top:3px}
 .rcPanel .rcProductosTabla .rcCostoProductoReal{font-size:18px;font-weight:800;background:#e6efd1;color:#225544}
 @media(max-width:600px){.rcPanel .rcCosto strong{font-size:24px}}
+
+.rcPanel .rcOrigenPeso{font-size:12px;line-height:1.5;margin:8px 0;color:#245d49}.rcPanel .rcOrigenPeso.rcAviso{color:#795207}

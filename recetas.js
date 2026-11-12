@@ -1,4 +1,4 @@
-/* Fratello v6.0.55 — recetas enlazadas a precios de ingredientes. */
+/* Fratello v6.0.56 — recetas enlazadas a precios de ingredientes. */
 (() => {
   'use strict';
   const UNIDADES = Object.freeze({
@@ -61,6 +61,7 @@
     const pesoPorPiezas=rindeManual>0 && gramosUnidad>0 && ['unidad','docena'].includes(receta.unidadRinde)
       ? rindeManual*UNIDADES[receta.unidadRinde].factor*gramosUnidad/1000:null;
     const masaKg=pesoManual>0?pesoManual:receta.unidadRinde==='kg'&&rindeManual>0?rindeManual:pesoAuto>0?pesoAuto:pesoPorPiezas;
+    const origenPeso=pesoManual>0||receta.unidadRinde==='kg'&&rindeManual>0?'manual':pesoAuto>0?'ingredientes':pesoPorPiezas>0?'piezas':'incompleto';
     const rinde=rindeManual??(receta.unidadRinde==='kg'?masaKg:null);
     const opcionalesOk=(pesoManual===null||pesoManual>0)&&(gramosUnidad===null||gramosUnidad>0);
     const valido=filas.length>0 && errores.length===0 && extras.every(e=>e.ok) &&
@@ -73,7 +74,7 @@
     const producto=ok&&unidades>0?{nombre:receta.productoNombre||receta.nombre,gramos:gramosUnidad,unidades,
       costoBase:costoBase/unidades,costoReal:suma/unidades,precioIdeal:suma/unidades}:null;
     return {ok,filas,extras,materiaPrima,extrasFijos,costoBase,adicional,porcentajeTotal,
-      masaKg,rinde,gramosUnidad,unidades,producto,costoKg,costoRealKg,
+      masaKg,origenPeso,pesoAuto,rinde,gramosUnidad,unidades,producto,costoKg,costoRealKg,
       precioIdealKg:costoKg,
       precioRealKg:costoRealKg,
       total:ok?suma:null,porRendimiento:ok?suma/rinde:null,errores,archivados:filas.filter(f=>f.coste.archivado).length};
@@ -89,7 +90,8 @@
     const money=v=>v===null||!Number.isFinite(v)?'—':dinero(v);
     const filas=[['Materia prima',c.ok?c.materiaPrima:null],['Extras fijos',c.ok?c.extrasFijos:null],['Costo total base',c.ok?c.costoBase:null],['Costo por kg',c.costoKg],
       [`Adicionales (${cantidad(c.porcentajeTotal)}%)`,c.ok?c.adicional:null],['Costo total REAL',c.total],['Costo REAL por kg',c.costoRealKg]];
-    return `<div class="rcCalculoPlanilla"><div class="rcTablaWrap"><table class="rcResumenTabla"><tbody>${filas.map(([n,v])=>`<tr${n.includes('REAL')?' class="rcTotalReal"':''}><th>${escape(n)}</th><td>${money(v)}</td></tr>`).join('')}</tbody></table></div>
+    const origen=c.origenPeso==='manual'?'Kilos fijados manualmente: no cambian al editar ingredientes.':c.origenPeso==='ingredientes'?'Kilos automáticos: suma de los ingredientes en kg y gramos.':c.origenPeso==='piezas'?'Kilos calculados según cantidad de piezas y peso por unidad.':'Para calcular kilos automáticamente, cargá todos los ingredientes en kg o gramos.';
+    return `<p class="rcOrigenPeso${c.origenPeso==='manual'?' rcAviso':''}">${origen}${c.origenPeso==='manual'&&c.pesoAuto>0?` Suma actual de ingredientes: <b>${cantidad(c.pesoAuto)} kg</b>.`:''}</p><div class="rcCalculoPlanilla"><div class="rcTablaWrap"><table class="rcResumenTabla"><tbody>${filas.map(([n,v])=>`<tr${n.includes('REAL')?' class="rcTotalReal"':''}><th>${escape(n)}</th><td>${money(v)}</td></tr>`).join('')}</tbody></table></div>
       <div class="rcRendimientoPlanilla"><span>Masa / producción total <b>${c.masaKg>0?cantidad(c.masaKg)+' kg':'Completá producción en kg'}</b></span><span>Total gramos <b>${c.masaKg>0?cantidad(c.masaKg*1000)+' g':'—'}</b></span><span>Gramos por unidad <b>${c.gramosUnidad>0?cantidad(c.gramosUnidad)+' g':'—'}</b></span><span>Unidades estimadas <b>${c.unidades>0?cantidad(c.unidades):'—'}</b></span></div></div>
       ${c.producto?`<div class="rcTablaWrap"><table class="rcProductosTabla"><caption>PRECIO DE COSTO POR PRODUCTO</caption><thead><tr><th>Producto</th><th>Peso (g)</th><th>Costo base</th><th>REAL (con adicionales)</th></tr></thead><tbody><tr><td>${escape(c.producto.nombre)}</td><td>${cantidad(c.producto.gramos)}</td><td>${money(c.producto.costoBase)}</td><td class="rcCostoProductoReal">${money(c.producto.costoReal)}</td></tr></tbody></table></div>`:''}`;
   }
@@ -243,11 +245,21 @@
     el('rcTotalPorcentajes').value=Number.isFinite(c.porcentajeTotal)?Number(c.porcentajeTotal.toFixed(10)):'';
     el('rcPreviewCosto').innerHTML=`<div class="rcCosto">${etiquetaCosto(c,r)}</div>${htmlResumenPlanilla(c,r)}`;
     el('rcPesoTotalLabel').hidden=r.unidadRinde==='kg';
+    el('rcUsarPesoAutomatico').hidden=c.origenPeso==='ingredientes';
     el('rcRecetaRinde').placeholder=r.unidadRinde==='kg'?'Automático: suma de ingredientes':'Ej.: 30';
     [...el('rcLineasReceta').querySelectorAll('.rcLinea')].forEach((f,i)=>{const dato=c.filas[i]?.coste,precio=precioReferencia(c.filas[i]?.ingrediente);
       f.querySelector('.rcLineaPrecio').textContent=precio?`${dinero(precio.importe)} / ${singular(precio.unidad)}`:'—';
       f.querySelector('.rcLineaCosto').textContent=dato?.ok?dinero(dato.importe):dato?.motivo||'';});
     [...el('rcExtrasReceta').querySelectorAll('.rcExtra')].forEach((f,i)=>{const extra=c.extras[i];f.querySelector('.rcExtraCosto').textContent=extra?.ok?dinero(extra.importe):'Revisar cantidad y precio';});
+  }
+  function usarPesoAutomatico() {
+    if(estado.guardando)return;
+    const r=leerReceta(),c=costeReceta(r);
+    if(!(c.pesoAuto>0)){mensaje('rcEstadoReceta','Para sumar los kilos automáticamente, cargá todos los ingredientes en kg o gramos. Si alguno está en litros o unidades, indicá el peso total manualmente.',true);return;}
+    if(r.unidadRinde==='kg')el('rcRecetaRinde').value='';
+    el('rcPesoTotalKg').value='';
+    actualizarPreview();guardarBorrador('recetas');
+    mensaje('rcEstadoReceta','Kilos automáticos activados. Al cambiar un ingrediente se actualizan el peso y el costo por unidad. Guardá la receta para conservarlo.');
   }
   function renderExtra(extra={}) {
     return `<div class="rcExtra"><label>Concepto<input class="rcExtraNombre" maxlength="120" value="${escape(extra.nombre||'')}"></label><label>Cantidad<input class="rcExtraCantidad" type="number" min="0" step="any" inputmode="decimal" value="${escape(extra.cantidad??0)}"></label><label>Precio unitario ($)<input class="rcExtraPrecio" type="number" min="0" step="any" inputmode="decimal" value="${escape(extra.precioUnitario??'')}"></label><button type="button" data-rc-quitar-extra aria-label="Quitar extra">×</button><small class="rcExtraCosto"></small></div>`;
@@ -356,6 +368,7 @@
       if(b.hasAttribute('data-rc-quitar-linea')){if(estado.guardando)return;b.closest('.rcLinea').remove();actualizarPreview();guardarBorrador('recetas');}
     });
     ['input','change'].forEach(tipo=>el('rcListaIngredientes').addEventListener(tipo,e=>{if(e.target.dataset.rcCampo)editarPrecioEnTabla(e.target);}));
+    el('rcUsarPesoAutomatico').addEventListener('click',usarPesoAutomatico);
     el('rcAgregarExtra').addEventListener('click',()=>{if(estado.guardando)return;el('rcExtrasReceta').insertAdjacentHTML('beforeend',renderExtra());actualizarPreview();guardarBorrador('recetas');});
     el('rcNuevoIngrediente').addEventListener('click',()=>abrirIngrediente());el('rcNuevaReceta').addEventListener('click',()=>abrirReceta());
     el('rcAgregarIngrediente').addEventListener('click',()=>{if(estado.guardando)return;el('rcLineasReceta').insertAdjacentHTML('beforeend',renderFila());actualizarPreview();guardarBorrador('recetas');});

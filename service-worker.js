@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6055-costo-real-unidad";
+const CACHE_NAME = "fratello-v6056-peso-automatico";
 const ARCHIVOS = [
   "./",
   "./index.html",

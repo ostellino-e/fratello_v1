@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fratello - Pedidos y Producción</title>
   <link rel="stylesheet" href="styles.css?v=626" />
-  <link rel="stylesheet" href="recetas.css?v=6055" />
+  <link rel="stylesheet" href="recetas.css?v=6056" />
   <meta name="theme-color" content="#2b2118" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -15,8 +15,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
 
   <script>
-    window.FRATELLO_VERSION = "6.0.55";
-    document.documentElement.dataset.fratelloVersion = "6.0.55";
+    window.FRATELLO_VERSION = "6.0.56";
+    document.documentElement.dataset.fratelloVersion = "6.0.56";
   </script>
 
 </head>
@@ -98,7 +98,7 @@
     <div class="syncStatusCompact">
       <strong>Sincronización:</strong>
       <span id="estadoSync">Modo local</span>
-      <small id="versionFratello" class="syncVersionBadge">v6.0.55</small>
+      <small id="versionFratello" class="syncVersionBadge">v6.0.56</small>
     </div>
     <label class="syncAdminMonth" aria-label="Elegir mes de Administración">
       <span>📅</span>
@@ -495,7 +495,7 @@
           <h2>📊 Administración</h2>
           <p class="hint">Panel financiero privado de Fratello.</p>
         </div>
-        <span class="adminFinanceVersion">v6.0.55 · Costo REAL por unidad</span>
+        <span class="adminFinanceVersion">v6.0.56 · Cálculo automático de kilos</span>
       </div>
 
       <section id="panelAdministracionLogin" class="adminFinanceLogin hidden">
@@ -879,6 +879,7 @@
               <h4 id="rcTituloReceta">Nueva receta</h4>
               <div class="rcGridReceta"><label>Nombre de la receta<input id="rcRecetaNombre" required maxlength="120" placeholder="Ej.: Raspaditas"></label><label>Producción / rendimiento<input id="rcRecetaRinde" type="number" min="0.000001" step="any" inputmode="decimal" placeholder="Automático en kg"></label><label>Unidad de rendimiento<select id="rcRecetaUnidadRinde"><option value="unidad">unidades</option><option value="kg">kg</option><option value="docena">docenas</option><option value="l">litros</option></select></label></div>
               <p class="rcAyuda">En kg, dejá el rendimiento vacío para sumar automáticamente los ingredientes pesados. Podés cargar los kg finales para contemplar la pérdida en elaboración.</p>
+              <button type="button" id="rcUsarPesoAutomatico">Recalcular kilos con ingredientes</button>
               <h5>FÓRMULA DE LA RECETA</h5>
               <div class="rcFormulaScroll"><div class="rcFormulaCabecera"><span>Ingrediente</span><span>Cantidad</span><span>Unidad</span><span>Precio de referencia</span><span>Costo</span></div>
               <div id="rcLineasReceta"></div></div>
@@ -1313,8 +1314,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="xlsx.full.min.js?v=185"></script>
-  <script src="recetas.js?v=6055"></script>
-  <script src="app.js?v=6055"></script>
+  <script src="recetas.js?v=6056"></script>
+  <script src="app.js?v=6056"></script>
 
   
 
@@ -1331,12 +1332,12 @@
               registro.installing?.scriptURL ||
               "";
 
-            if (urlActiva && !urlActiva.includes("service-worker.js?v=6055")) {
+            if (urlActiva && !urlActiva.includes("service-worker.js?v=6056")) {
               await registro.unregister();
             }
           }
 
-          const registro = await navigator.serviceWorker.register("service-worker.js?v=6055", {
+          const registro = await navigator.serviceWorker.register("service-worker.js?v=6056", {
             scope: "./",
             updateViaCache: "none"
           });

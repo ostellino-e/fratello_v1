@@ -1,4 +1,11 @@
-# Fratello v6.0.55
+# Fratello v6.0.56
+
+## Mejora v6.0.56
+
+- Se muestra el origen del peso: suma automática de ingredientes, kilos manuales o estimación por piezas. Un valor manual advierte que no cambia al editar ingredientes y muestra también la suma actual de los ingredientes cuando está disponible.
+- Recalcular kilos con ingredientes quita el peso manual y el rendimiento manual en kg, y activa la suma automática. Se conserva el rendimiento en unidades/docenas/litros cuando corresponde. El botón verifica primero que todos los ingredientes estén en kg o gramos.
+- Al guardar la receta, el modo automático queda representado por los campos de peso/rendimiento en kg vacíos. No se reemplazan silenciosamente pesos manuales existentes ni se cambian reglas de Firebase.
+- Verificación: sintaxis y pruebas del cambio manual a automático, un kilo menos de agua, recálculo de unidades/costo REAL, conservación de cantidades por pieza y restricciones de unidades de peso. Sin escrituras en Firebase real ni validación visual en navegador real.
 
 ## Mejora v6.0.55
 
