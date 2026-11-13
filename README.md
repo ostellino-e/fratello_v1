@@ -1,4 +1,13 @@
-# Fratello v6.0.56
+# Fratello v6.0.57
+
+## Mejora v6.0.57
+
+- Resumen: campos manuales de kilos de masa de factura y de hojaldre. El bloque Masa a preparar aparece en la vista previa, copia y WhatsApp para la fecha de pedidos correspondiente. Vacío omite el concepto; cero se informa explícitamente. No calcula masa desde productos o recetas.
+- Conserva la carga local por fecha; Guardar kilos la comparte en documentos individuales fratello/masas_panadero/jornadas/AAAA-MM-DD con las reglas operativas actuales. La escucha actualiza otros dispositivos y conserva cambios locales pendientes.
+- Una modificación únicamente en las masas permite generar una actualización de WhatsApp. Las cantidades se indican como totales que reemplazan la instrucción anterior. La memoria guarda los kilos enviados y permite comunicar que se quitaron las indicaciones.
+- Valida números no negativos; no envía un resumen si los campos son inválidos. Las masas de otra fecha no se arrastran al cambiar jornada. No se publicaron cambios en Vercel ni se escribieron datos en Firebase real durante la preparación.
+
+- Verificación: sintaxis y pruebas con DOM/Firebase simulados de separación por fecha, guardado entre dispositivos, conservación de edición pendiente, decimales/cero/vacío, copia, primer envío, actualización solo de masas y eliminación de indicaciones. No se realizó prueba visual en navegador real.
 
 ## Mejora v6.0.56
 

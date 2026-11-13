@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", event => {
   );
 });
 
-const CACHE_NAME = "fratello-v6056-peso-automatico";
+const CACHE_NAME = "fratello-v6057-masas-panadero";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -140,6 +140,7 @@ const ARCHIVOS = [
   "./styles.css",
   "./app.js",
   "./recetas.js",
+  "./masas-panadero.js",
   "./recetas.css",
   "./xlsx.full.min.js",
   "./manifest.json",
@@ -182,6 +183,7 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/app.js") ||
     url.pathname.endsWith("/styles.css") ||
     url.pathname.endsWith("/recetas.js") ||
+    url.pathname.endsWith("/masas-panadero.js") ||
     url.pathname.endsWith("/recetas.css");
 
   // v5.0.3: arranque instantáneo desde caché y actualización silenciosa detrás.

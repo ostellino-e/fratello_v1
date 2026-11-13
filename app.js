@@ -7784,6 +7784,7 @@ function encabezadoFechaResumenPanadero(fechaISO = fechaJornadaActual()) {
 }
 
 function renderResumenPanadero(filas, fechaISO = fechaJornadaActual()) {
+  window.MasasPanadero?.activar(fechaISO);
   const diarias = filas.filter(f => esProductoDiarioPanadero(f.productoConfig));
   const faltas = diarias.filter(f => f.estado === "FALTA");
   const sobras = diarias.filter(f => f.estado === "SOBRA");
@@ -7794,6 +7795,7 @@ function renderResumenPanadero(filas, fechaISO = fechaJornadaActual()) {
   txt += "\n\n🟢 SOBRANTES / NO HACER MÁS\n";
   txt += sobras.length ? sobras.map(f => `- ${f.producto}: GUARDAR ${formatearCantidadPanadero(f.dif, f.productoConfig)}`).join("\n") : "No hay sobrantes.";
 
+  txt += window.MasasPanadero?.texto(fechaISO) || "";
   $("resumenPanadero").textContent = txt;
 }
 
@@ -7802,6 +7804,8 @@ function fmt(n) {
 }
 
 function copiarResumen() {
+  if(window.MasasPanadero && !window.MasasPanadero.validar(fechaJornadaActual()))return;
+  calcularDiferencias();
   const acciones = $("resumenPanadero")?.textContent || "";
   const clientes = textoPedidosClientes();
   const mensaje = `${acciones}
@@ -10623,6 +10627,7 @@ async function guardarMemoriaEnvio(produccionMapa, pedidosAcumulados, diferencia
     pedidosEnviados: mapaPedidosEnviadosResumen(pedidosIncluidos),
     hora: new Date().toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"}),
     actualizado: new Date().toISOString(),
+    masasPanadero: window.MasasPanadero?.valores(fechaResumen) || {factura:null,hojaldre:null},
     jornadaEnviada: true
   };
 
@@ -10843,6 +10848,7 @@ async function generarMensajeGrupoFratello() {
   if (!verificarChecksAntesDeWhatsApp()) return;
 
   const fechaResumen = fechaPanelSemanalAbierto() || fechaJornadaActual();
+  if(window.MasasPanadero && !await window.MasasPanadero.preparar(fechaResumen))return;
   const pedidosConfirmadosFecha = pedidosConfirmadosParaFecha(fechaResumen);
   if (!pedidosConfirmadosFecha.length) {
     alert("No hay pedidos confirmados para enviar.");
@@ -10854,7 +10860,10 @@ async function generarMensajeGrupoFratello() {
     : { modificados: pedidosConfirmadosFecha, retirados: [] };
   const pedidosNuevos = cambiosResumen.modificados;
 
-  if (esActualizacion && !pedidosNuevos.length && !cambiosResumen.retirados.length) {
+  const masasActuales=window.MasasPanadero?.valores(fechaResumen)||{factura:null,hojaldre:null};
+  const masasPrevias=memoriaUltimoEnvio?.masasPanadero||{factura:null,hojaldre:null};
+  const cambiaronMasas=masasActuales.factura!==masasPrevias.factura||masasActuales.hojaldre!==masasPrevias.hojaldre;
+  if (esActualizacion && !pedidosNuevos.length && !cambiosResumen.retirados.length && !cambiaronMasas) {
     alert("Este resumen ya fue enviado y no hay pedidos nuevos ni modificaciones para informar.");
     return;
   }
@@ -10929,6 +10938,9 @@ async function generarMensajeGrupoFratello() {
 
     mensaje += "Enviado desde sistema Fratello.";
   }
+
+  const bloqueMasas=window.MasasPanadero?.texto(fechaResumen,esActualizacion&&cambiaronMasas)||"";
+  if(bloqueMasas)mensaje += bloqueMasas + (esActualizacion?"Cantidades totales para esta fecha: reemplazan la indicación anterior de masas.\n":"");
 
   await guardarMemoriaEnvio(
     produccionMapa,
@@ -17136,6 +17148,7 @@ async function init() {
   iniciarModuloCaja();
   iniciarModuloStockMercaderia();
   iniciarModuloTareas();
+  window.MasasPanadero?.iniciar();
   iniciarModosVisuales();
   iniciarAccesoAdministrador();
   iniciarModuloAdministracion();
